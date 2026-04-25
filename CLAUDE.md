@@ -63,10 +63,10 @@ commit. Add follow-ups as they emerge.
 
 - [x] Rewrite `README.md` into a proper README (description, features, setup,
       screenshots placeholder, license).
-- [ ] Scaffold Maven project: `pom.xml`, `mvnw`/`mvnw.cmd`, `.mvn/wrapper/`,
+- [x] Scaffold Maven project: `pom.xml`, `mvnw`/`mvnw.cmd`, `.mvn/wrapper/`,
       `EmailMessengerApplication.java`, `application.yml` with `dev` and
       `prod` profiles.
-- [ ] Add starters: web, thymeleaf, data-jpa, validation, mail; runtime
+- [x] Add starters: web, thymeleaf, data-jpa, validation, mail; runtime
       `postgresql`; test `h2`, `spring-boot-starter-test`, `testcontainers`.
 - [ ] Add Flyway and write `V1__init.sql` for the domain model.
 - [ ] Implement domain entities and Spring Data repositories.
