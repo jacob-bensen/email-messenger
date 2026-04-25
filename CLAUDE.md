@@ -61,7 +61,7 @@ src/main/resources/
 The routine should work the first unchecked item, then check it off in a
 commit. Add follow-ups as they emerge.
 
-- [ ] Rewrite `README.md` into a proper README (description, features, setup,
+- [x] Rewrite `README.md` into a proper README (description, features, setup,
       screenshots placeholder, license).
 - [ ] Scaffold Maven project: `pom.xml`, `mvnw`/`mvnw.cmd`, `.mvn/wrapper/`,
       `EmailMessengerApplication.java`, `application.yml` with `dev` and
