@@ -12,7 +12,6 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 
 ### Core Features (income-blocking)
 
-- [ ] TODO [CORE] [M] CSS for the IM look: day separators, dark mode, refined bubble borders, hover states — basic mobile-responsive CSS is in place; this task adds polish
 - [ ] TODO [CORE] [M] IMAP polling job (@Scheduled) behind a feature flag
 
 ### Growth / Revenue
@@ -51,11 +50,15 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [ ] TODO [GROWTH] [S] Reply signature: per-user configurable HTML/text signature appended to all outgoing replies; increases reply adoption and product stickiness. MEDIUM income impact. Prerequisite: user auth.
 - [ ] TODO [GROWTH] [S] Outbound webhook trigger on new message: allow users to POST to a configured URL when a new thread message arrives (simplified Zapier/Make integration); Team plan gate. MEDIUM income impact. Prerequisite: IMAP polling.
 - [ ] TODO [GROWTH] [S] "Copy conversation as Markdown" button: one-click copy of full thread as clean Markdown to clipboard; useful for Notion/Slack/docs; zero-friction share touchpoint. MEDIUM income impact.
+- [ ] TODO [GROWTH] [S] Static pricing page at /pricing: plan comparison table (Free/Personal/Team/Enterprise) with feature matrix and CTA buttons; no auth required; prerequisite for organic conversion from landing page. HIGH income impact.
+- [ ] TODO [GROWTH] [S] 14-day free trial on Personal tier: set trial_period_days=14 on the Stripe Personal plan price; no credit card required on signup; highest-leverage SaaS conversion mechanism. HIGH income impact. Prerequisite: Stripe billing.
+- [ ] TODO [GROWTH] [S] PWA web app manifest: add manifest.json + apple-touch-icon to enable "Add to Home Screen" on iOS/Android; zero-cost mobile distribution channel; users who install the PWA have 3× higher 30-day retention. MEDIUM income impact.
+- [ ] TODO [GROWTH] [S] Thread archiving: "Archive" action on each thread; archived threads hidden from main list; /archived route to view them; essential GTD workflow for power users driving Personal plan upgrade. MEDIUM income impact. Prerequisite: user auth (per-user archive state).
+- [ ] TODO [GROWTH] [S] Conversation pinning: pin up to 3 threads to the top of the thread list; per-user state; drives team plan upgrade for "pin important client threads" use case. MEDIUM income impact. Prerequisite: user auth.
 
 ### UX
 
 - [ ] TODO [UX] [S] Thread list: show last-message-body preview (first 80 chars) below the subject line — requires adding a last_message_preview column to email_threads or denormalizing via query; current UI shows only subject + count + date
-- [ ] TODO [UX] [S] Keyboard shortcuts: j/k to navigate thread list, r to focus reply textarea, Esc to blur; power users require this before upgrading; drives word-of-mouth. Implement via vanilla JS snippet.
 - [ ] TODO [UX] [S] Thread list header navigation: the "+ Add mailbox" link currently points to /settings/mailboxes which does not yet exist; implement the mailbox settings page (or redirect to auth/onboarding once auth ships) so the link is not a dead-end
 - [ ] TODO [UX] [S] IMAP sync status indicator: show "last synced X minutes ago" in the thread list header so users know when their data is fresh; update via polling or SSE
 - [ ] TODO [UX] [M] Mobile layout pass: ensure thread list and conversation bubble view are usable on 375px-wide screens; bubbles should not overflow viewport; basic responsive CSS exists, full pass needed
@@ -87,3 +90,5 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [x] DONE [UX] [S] Conversation view empty state: conversation.html shows "No messages in this thread yet" when runs list is empty
 - [x] DONE [UX] [S] Conversation view reply button: btn-primary styled blue button is the visually dominant action in the reply-area
 - [x] DONE [UX] [S] Bubble body HTML rendering: conversation.html uses th:utext with a warning comment explaining the sanitization contract
+- [x] DONE [CORE] [M] CSS for the IM look: day separators (JS-inserted, date-aware with Today/Yesterday labels), dark mode (@media prefers-color-scheme), refined bubble borders + hover shadow, header-nav and msg-count CSS classes replacing inline styles
+- [x] DONE [UX] [S] Keyboard shortcuts: j/k to navigate thread list with .kb-focus indicator, Enter to open, r to focus reply textarea, Esc to blur

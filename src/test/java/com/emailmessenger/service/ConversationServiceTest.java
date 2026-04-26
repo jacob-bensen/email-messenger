@@ -182,6 +182,47 @@ class ConversationServiceTest {
         assertThat(bodyHtml).contains("<em>italic</em>");
     }
 
+    // --- BubbleRun.date() ---
+
+    @Test
+    void bubbleRunDateReturnsLocalDateOfFirstMessage() {
+        EmailThread t = thread("Test");
+        Participant alice = new Participant("alice@test.com", "Alice");
+        LocalDateTime ts = LocalDateTime.of(2025, 6, 15, 9, 30);
+        t.addMessage(new Message(t, alice, "Subject", "Hello", null, ts));
+
+        Conversation conv = svc.buildConversation(t);
+
+        assertThat(conv.runs().get(0).date())
+            .isEqualTo(ts.toLocalDate());
+    }
+
+    @Test
+    void bubbleRunDateIsNullWhenFirstMessageHasNullSentAt() {
+        EmailThread t = thread("Test");
+        Participant alice = new Participant("alice@test.com", "Alice");
+        t.addMessage(new Message(t, alice, "Subject", "Hello", null, null));
+
+        Conversation conv = svc.buildConversation(t);
+
+        assertThat(conv.runs().get(0).date()).isNull();
+    }
+
+    @Test
+    void separateRunsOnDifferentDaysHaveDifferentDates() {
+        EmailThread t = thread("Test");
+        Participant alice = new Participant("alice@test.com", "Alice");
+        Participant bob   = new Participant("bob@test.com", "Bob");
+        LocalDateTime day1 = LocalDateTime.of(2025, 6, 15, 9, 0);
+        LocalDateTime day2 = LocalDateTime.of(2025, 6, 16, 10, 0);
+        t.addMessage(new Message(t, alice, "Subject", "Day 1", null, day1));
+        t.addMessage(new Message(t, bob,   "Subject", "Day 2", null, day2));
+
+        Conversation conv = svc.buildConversation(t);
+
+        assertThat(conv.runs().get(0).date()).isNotEqualTo(conv.runs().get(1).date());
+    }
+
     @Test
     void quotedRepliesStrippedBeforeRendering() {
         EmailThread t = thread("Test");

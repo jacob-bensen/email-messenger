@@ -88,3 +88,8 @@ third-party accounts, marketing, or legal steps.
 - [ ] [MARKETING] Configure an Anthropic API key (ANTHROPIC_API_KEY env var) once the AI thread
       summary feature ships — needed to enable the Personal+ tier differentiator. Sign up at
       console.anthropic.com if no account exists.
+- [ ] [MARKETING] Set up a transactional email provider (Postmark, SendGrid, or Resend) and
+      configure three automated emails: (1) welcome email sent at signup, (2) "getting started"
+      tip email at day 3, (3) upgrade prompt email at day 7 targeting active free-tier users.
+      These 3 emails are the highest ROI re-engagement mechanism for early SaaS growth.
+      Requires account creation and API key; dev will wire the triggers once user auth ships.

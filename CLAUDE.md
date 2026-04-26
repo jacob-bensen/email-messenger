@@ -76,7 +76,7 @@ commit. Add follow-ups as they emerge.
       consecutive same-sender messages, render basic markdown.
 - [x] Thymeleaf templates: thread list, conversation view with chat bubbles,
       reply form.
-- [ ] CSS for the IM look: avatars, bubbles, day separators, dark mode.
+- [x] CSS for the IM look: avatars, bubbles, day separators, dark mode.
 - [ ] IMAP polling job (`@Scheduled`) behind a feature flag.
 - [ ] Integration tests with Testcontainers (Postgres) + GreenMail (SMTP/IMAP).
 - [ ] `Dockerfile` + `docker-compose.yml` (app + postgres).

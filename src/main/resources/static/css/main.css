@@ -153,6 +153,8 @@ body {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
 /* ── Conversation Body ──────────────────────────────── */
@@ -220,6 +222,7 @@ body {
   background: var(--surface);
   padding: 10px 14px;
   border-radius: 4px 16px 16px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   font-size: 14px;
   line-height: 1.65;
@@ -228,7 +231,9 @@ body {
   word-wrap: break-word;
   overflow-wrap: break-word;
   margin-bottom: 3px;
+  transition: box-shadow 0.15s;
 }
+.bubble:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14); }
 .bubble p { margin-bottom: 0.5em; }
 .bubble p:last-child { margin-bottom: 0; }
 .bubble a { color: var(--brand); }
@@ -290,6 +295,51 @@ body {
   border: 1px solid #a7f3d0;
 }
 
+/* ── Header Nav (replaces inline styles) ────────────── */
+.header-nav {
+  margin-left: auto;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.header-nav a {
+  font-size: 14px;
+  color: var(--brand);
+  text-decoration: none;
+  font-weight: 500;
+}
+.header-nav a:hover { text-decoration: underline; }
+
+/* ── Message count badge ────────────────────────────── */
+.msg-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Day Separator ──────────────────────────────────── */
+.day-separator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 6px 0;
+  pointer-events: none;
+  user-select: none;
+}
+.day-separator::before,
+.day-separator::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
 /* ── Mobile ─────────────────────────────────────────── */
 @media (max-width: 640px) {
   .thread-page { padding: 16px 12px; }
@@ -297,4 +347,66 @@ body {
   .messages { padding: 16px 16px 8px; }
   .reply-area { padding: 12px 16px; }
   .bubble { max-width: 100%; border-radius: 4px 14px 14px 14px; }
+}
+
+/* ── Keyboard focus indicator for thread list ──────── */
+.thread-item.kb-focus {
+  background: #eef2ff;
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
+
+/* ── Keyboard shortcut hint ─────────────────────────── */
+.kbd-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: auto;
+  letter-spacing: 0.02em;
+}
+.kbd-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: var(--font);
+  background: var(--bg);
+  margin: 0 1px;
+}
+
+/* ── Dark Mode ──────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #7d8590;
+    --brand: #58a6ff;
+    --brand-dark: #388bfd;
+  }
+
+  .thread-item:hover   { background: #1a2233; }
+  .thread-item.kb-focus { background: #1a2a4a; outline-color: var(--brand); }
+  .page-link:hover     { background: #1a2233; }
+  .kbd-hint kbd        { background: var(--surface); }
+
+  .bubble              { border-color: rgba(255, 255, 255, 0.05); }
+  .bubble:hover        { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); }
+
+  .reply-form textarea {
+    background: var(--bg);
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .reply-form textarea:focus {
+    background: #0d1117;
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+  }
+
+  .alert-success {
+    background: #0a2a1a;
+    color: #6ee7b7;
+    border-color: #064e3b;
+  }
 }
