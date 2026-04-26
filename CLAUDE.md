@@ -74,7 +74,7 @@ commit. Add follow-ups as they emerge.
       from `Message-ID` / `In-Reply-To` / `References`.
 - [x] IM transform: strip quoted replies (`> ...`, "On … wrote:"), collapse
       consecutive same-sender messages, render basic markdown.
-- [ ] Thymeleaf templates: thread list, conversation view with chat bubbles,
+- [x] Thymeleaf templates: thread list, conversation view with chat bubbles,
       reply form.
 - [ ] CSS for the IM look: avatars, bubbles, day separators, dark mode.
 - [ ] IMAP polling job (`@Scheduled`) behind a feature flag.

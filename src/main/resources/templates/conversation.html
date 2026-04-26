@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="|(${conversation.thread().subject.length() > 57 ? conversation.thread().subject.substring(0, 57) + '…' : conversation.thread().subject}) — MailIM|">Conversation — MailIM</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="conv-header">
+  <a href="/threads" class="back-link">← All threads</a>
+  <h1 th:text="${conversation.thread().subject}">Thread subject</h1>
+  <span style="font-size:12px;color:#6b7280;white-space:nowrap;margin-left:auto;flex-shrink:0;"
+        th:text="${conversation.thread().messageCount + ' message' + (conversation.thread().messageCount != 1 ? 's' : '')}">
+    1 message
+  </span>
+</header>
+
+<div class="conv-body">
+
+  <!-- Messages area -->
+  <div class="messages" id="messages">
+
+    <div class="messages-empty" th:if="${#lists.isEmpty(conversation.runs())}">
+      No messages in this thread yet.
+    </div>
+
+    <!--
+      Each BubbleRun groups consecutive messages from the same sender.
+      th:utext renders pre-sanitized HTML (sanitized by jsoup in ConversationService) —
+      do not change to th:text or it will render raw HTML tags to the user.
+    -->
+    <div class="bubble-run" th:each="run : ${conversation.runs()}">
+      <div class="avatar"
+           th:text="${run.sender().initials()}"
+           th:title="${run.sender().displayName != null ? run.sender().displayName : run.sender().email}">
+        AB
+      </div>
+      <div class="bubble-group">
+        <div class="bubble-sender"
+             th:text="${run.sender().displayName != null ? run.sender().displayName : run.sender().email}">
+          Sender Name
+        </div>
+        <div th:each="bubble : ${run.messages()}">
+          <div class="bubble" th:utext="${bubble.bodyHtml()}">Message body</div>
+          <div class="bubble-time"
+               th:text="${#temporals.format(bubble.sentAt(), 'MMM d, h:mm a')}">Jan 1, 12:00 PM</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Reply area -->
+  <div class="reply-area">
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Reply sent.</div>
+
+    <form th:action="@{/threads/{id}/reply(id=${conversation.thread().id})}"
+          th:object="${replyForm}"
+          method="post"
+          class="reply-form">
+      <textarea th:field="*{body}"
+                placeholder="Write a reply…"
+                rows="3"
+                th:classappend="${#fields.hasErrors('body')} ? ' error' : ''"></textarea>
+      <div class="field-error"
+           th:if="${#fields.hasErrors('body')}"
+           th:errors="*{body}">Validation error</div>
+      <div class="reply-actions">
+        <button type="submit" class="btn btn-primary">Send Reply</button>
+      </div>
+    </form>
+  </div>
+
+</div>
+
+<script>
+  // Scroll message list to bottom on page load so newest messages are visible
+  const msgs = document.getElementById('messages');
+  if (msgs) msgs.scrollTop = msgs.scrollHeight;
+</script>
+
+</body>
+</html>

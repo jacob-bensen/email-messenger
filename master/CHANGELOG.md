@@ -1,5 +1,197 @@
 # Changelog
 
+## 2026-04-26 — Autonomous Run #7
+
+### Role 1 — Feature Implementer
+**Task completed**: Thymeleaf templates — thread list, conversation view with chat bubbles, reply form [CORE][L]
+
+Files created/changed:
+- `src/main/java/com/emailmessenger/web/ReplyForm.java` — package-private JavaBeans form object
+  with `@NotBlank` + `@Size(max=100,000)` on the `body` field; used by `@Valid @ModelAttribute`
+  in the reply POST handler.
+- `src/main/java/com/emailmessenger/web/ThreadViewService.java` — package-private `@Service`;
+  `@Transactional(readOnly=true)` method `getConversation(long threadId)` that loads `EmailThread`
+  from the repository and calls `ConversationService.buildConversation()` within a single
+  transaction (prevents `LazyInitializationException` from `thread.getMessages()` with
+  `open-in-view=false`).
+- `src/main/java/com/emailmessenger/service/ReplyService.java` — public `@Service`;
+  `sendReply(long threadId, String subject, String body)` loads the last message from the thread,
+  constructs a `MimeMessage` via `MimeMessageHelper` (sets From, To, Subject, In-Reply-To,
+  References headers), and sends via `JavaMailSender`. Throws `MailPreparationException` on
+  `MessagingException`; `MailSendException` propagates from `mailSender.send()`. Both are caught
+  by `GlobalExceptionHandler` (502 → friendly error page).
+- `src/main/java/com/emailmessenger/web/ThreadController.java` — package-private `@Controller`:
+  - `GET /` → redirect to `/threads`
+  - `GET /threads?page=N` → paginates `EmailThreadRepository.findAllByOrderByUpdatedAtDesc`,
+    clamps negative page numbers to 0, adds `threads` (Page) to model, returns `"threads"` view.
+  - `GET /threads/{id}` → loads `Conversation` via `ThreadViewService`, adds `replyForm` to
+    model, returns `"conversation"` view.
+  - `POST /threads/{id}/reply` → validates `ReplyForm`, shows validation errors inline if
+    invalid, calls `ReplyService.sendReply`, redirects with flash `successMessage` on success.
+- `src/main/resources/templates/threads.html` — Thymeleaf thread list: brand header with
+  "+ Add mailbox" nav link, paginated thread list with subject/count/date per row, empty state
+  card with CTA, pagination prev/next links.
+- `src/main/resources/templates/conversation.html` — Thymeleaf conversation view: sticky back
+  + subject header with message count badge, scrollable bubble area (auto-scrolls to bottom on
+  load), BubbleRun avatar+sender+messages structure, `th:utext` for pre-sanitized HTML bodies
+  (with explanatory comment), reply form with inline validation error display and success flash,
+  "Send Reply" as primary CTA.
+- `src/main/resources/static/css/main.css` — 250-line IM-look CSS: CSS custom properties,
+  thread list items, chat bubble styling (4px/16px radius, box-shadow), avatar circles, sticky
+  reply area, focus ring on textarea, mobile breakpoint at 640px.
+
+Bug fixed during implementation: `EmailThread` has `getId()` not `id()` — template originally
+used `${conversation.thread().id()}` which would throw `SpelEvaluationException`; corrected to
+`${conversation.thread().id}` (property access).
+
+Verified: `./mvnw test` → BUILD SUCCESS, 60 tests pass (was 48).
+
+**Income relevance**: The thread list and conversation view are the product's entire visible
+surface area. Without templates, there is no product for users to see, no conversion funnel, and
+no path to payment. This is the single most income-blocking task in the backlog and is now done.
+
+---
+
+### Role 2 — Test Examiner
+**Coverage added**: 12 new tests across 2 new test classes (60 total, up from 48)
+
+Files created:
+- `src/test/java/com/emailmessenger/web/ThreadControllerTest.java` (8 tests):
+  - `rootRedirectsToThreads` — GET / returns 302 to /threads
+  - `listThreadsReturnsThreadsViewWithModel` — empty page → 200, view="threads", model has "threads"
+  - `listThreadsNegativePageClampsToZero` — page=-5 → still returns 200 (no exception)
+  - `viewConversationReturnsConversationView` — valid id → 200, view="conversation", has model attrs
+  - `viewConversationWithUnknownIdReturns404` — getConversation throws NoSuchElementException → 404, view="error"
+  - `replyWithEmptyBodyShowsValidationErrorAndConversationView` — empty body → 200, view="conversation",
+    model has field errors on "body", ReplyService is never called
+  - `replyWithValidBodyRedirectsWithSuccessFlash` — valid body → 302 to /threads/{id}
+  - `replyWithUnknownThreadIdReturns404` — unknown id on error path → 404
+  
+  All tests use `MockMvcBuilders.standaloneSetup` with `InternalResourceViewResolver` (prefix
+  "/WEB-INF/templates/", suffix ".html") to prevent circular view path error in standalone mode.
+  `GlobalExceptionHandler` included via `.setControllerAdvice()`.
+
+- `src/test/java/com/emailmessenger/service/ReplyServiceTest.java` (4 tests):
+  - `sendReplyDoesNothingWhenThreadHasNoMessages` — empty thread → mailSender.send never called
+  - `sendReplySendsMimeMessageToLastMessageSender` — verifies Subject = "Re: ...", To = last sender email
+  - `sendReplyUsesLastMessageSenderWhenMultipleMessages` — picks last message's sender, not first
+  - `sendReplyPropagatesMailSendExceptionOnFailure` — MailSendException propagates to controller
+
+Income-critical paths now covered:
+- Reply form validation (empty body blocked, no spam send)
+- Reply service routing (last message sender, not arbitrary)
+- 404 handling for missing threads on all paths
+
+Still zero coverage (code not written yet):
+- Stripe webhook handler and subscription state
+- User authentication flows
+- IMAP polling job
+
+---
+
+### Role 3 — Growth Strategist
+Identified 5 new implementable growth opportunities not previously captured:
+
+1. **Custom SMTP/from-address per user** [GROWTH][S] — Without this, all outgoing replies
+   come from the app's noreply address, which is useless in production. Per-user SMTP config is
+   a prerequisite for the reply feature being actually valuable post-auth. HIGH income impact.
+   Prerequisite: user auth.
+2. **AI-generated thread summary** [GROWTH][M] — One-sentence summary per thread shown in
+   thread list; Claude API (already available); Personal+ gate; strong differentiator vs every
+   other email client. HIGH income impact. Prerequisite: auth + ANTHROPIC_API_KEY env var.
+3. **Reply signature** [GROWTH][S] — Per-user configurable signature appended to all replies;
+   increases reply adoption by making the app feel production-ready; Personal+ gate. MEDIUM
+   income impact. Prerequisite: user auth.
+4. **Outbound webhook trigger** [GROWTH][S] — POST to a user-configured URL on new message
+   arrival; enables Zapier/Make integrations without a full API; Team plan gate. MEDIUM income
+   impact. Prerequisite: IMAP polling.
+5. **"Copy conversation as Markdown"** [GROWTH][S] — One-click copy of full thread as Markdown
+   to clipboard; useful for pasting into Notion/Slack/docs; zero-friction share touchpoint.
+   MEDIUM income impact.
+
+Added 2 [MARKETING] items to TODO_MASTER.md:
+- 15-second GIF/screen recording of email → chat bubble transform for social distribution.
+- Configure ANTHROPIC_API_KEY env var once AI summary feature ships.
+
+---
+
+### Role 4 — UX Auditor
+Audited flows: Landing `/` → thread list, thread list → conversation view, reply form submit.
+
+**Direct fixes applied:**
+1. **App header navigation** — Added "+ Add mailbox" link to threads.html header. Previously
+   there was no navigation at all; new users had no affordance to find where to connect a
+   mailbox. The link points to `/settings/mailboxes` (not yet built, tracked in UX TODO).
+2. **Conversation page title truncation** — Capped `<title>` to 57 chars + ellipsis to prevent
+   ugly/truncated browser tab labels from long email subjects.
+3. **Message count in conversation header** — Added "N message(s)" count badge to the right
+   of the thread subject in the conversation header; helps users orient without scrolling.
+
+**Issues flagged (added to INTERNAL_TODO.md [UX]):**
+- Thread list: no last-message preview text below subject — users can't identify threads
+  at a glance; requires denormalizing preview into email_threads table or a query join.
+- Keyboard shortcuts (j/k/r/Esc) not implemented; essential for power user adoption.
+- "+ Add mailbox" link is a dead-end until mailbox settings page is built.
+- IMAP sync status indicator still missing (carried from prior runs).
+- Mobile layout pass needed (basic responsive CSS exists, not fully tested).
+
+---
+
+### Role 5 — Task Optimizer
+Rewrote INTERNAL_TODO.md:
+- Archived 8 newly completed tasks:
+  - [CORE][L] Thymeleaf templates → Done
+  - [HEALTH][S] Input validation (ReplyForm) → Done
+  - [UX][S] Thread list empty state → Done
+  - [UX][S] Conversation view empty state → Done
+  - [UX][S] Reply button visual prominence → Done
+  - [UX][S] Bubble body th:utext rendering → Done
+  - Done section now has 19 items
+- Added 5 new [GROWTH] tasks from Role 3 in priority order
+- Added 3 new [UX] tasks from Role 4 (2 carried forward + 1 new header nav item)
+- Removed [HEALTH][S] "input validation" from active — done via ReplyForm @Valid
+- CSS task description updated to note basic CSS is in place; remaining work is polish
+- Active task count: 46 tasks (2 Core, 35 Growth, 5 UX, 3 Infra)
+- No blocked tasks (input validation prerequisite now resolved)
+
+---
+
+### Role 6 — Health Monitor
+Security:
+- `ThreadController.reply` validates `ReplyForm` with `@Valid` + `BindingResult` before calling
+  `ReplyService.sendReply` — no unchecked user input reaches the mail layer. Input validation
+  constraint is now enforced at the web boundary.
+- `ReplyService.sendReply` uses `MimeMessageHelper.setText(body, false)` — `false` means
+  plain text, no HTML injection risk in outgoing reply body.
+- `ReplyService.fromAddress` is initialized to `"noreply@mailaim.app"` — a defined fallback
+  prevents null `setFrom()` call which would result in a malformed SMTP envelope.
+- No user input is passed to `setFrom()` — "from" address is app-controlled only.
+
+Performance:
+- `ThreadViewService.getConversation` is `@Transactional(readOnly=true)` — read-only hint
+  signals Hibernate to skip dirty checking; no write locks acquired.
+- `ThreadController.listThreads` uses `PageRequest.of(page, 20)` — paginated; never loads all
+  threads. Free tier users with 500 threads: max 20 per request.
+- `ReplyService.sendReply` does one `findByThreadIdOrderBySentAtAsc` query — O(n) in thread
+  message count. For typical threads (<100 messages) this is negligible.
+
+Code quality:
+- `ThreadViewService` is package-private to `web` — correctly scoped; not exposed beyond
+  the web package boundary.
+- `ReplyForm` is package-private — correctly scoped; only used by `ThreadController`.
+- No field `@Autowired` in any new class; all constructor injection.
+- `ReplyService.sendReply` is `@Transactional(readOnly=true)` to load sender data safely.
+
+Dependencies:
+- No new dependencies added this run. All mail functionality uses `spring-boot-starter-mail`
+  and `jakarta.mail` already in pom.xml.
+
+Legal:
+- No new legal risks introduced.
+- All prior [LEGAL] items in TODO_MASTER.md remain outstanding.
+
+---
+
 ## 2026-04-26 — Autonomous Run #6
 
 ### Role 1 — Feature Implementer

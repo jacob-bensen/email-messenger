@@ -81,3 +81,10 @@ third-party accounts, marketing, or legal steps.
       signup: identify promoters (score 9-10) → ask for G2/Capterra reviews; identify detractors
       (score 0-6) → trigger personal outreach to prevent churn. MEDIUM income impact (retention
       + review velocity).
+- [ ] [MARKETING] Once the templates are live and the app has a working UI, record a 15-second
+      GIF/screen-recording showing an email thread transforming into chat bubbles and post it on
+      Twitter/X, Indie Hackers, and LinkedIn. High-engagement visual content with strong viral
+      potential in productivity communities. No code required — use LICEcap or Kap to capture.
+- [ ] [MARKETING] Configure an Anthropic API key (ANTHROPIC_API_KEY env var) once the AI thread
+      summary feature ships — needed to enable the Personal+ tier differentiator. Sign up at
+      console.anthropic.com if no account exists.

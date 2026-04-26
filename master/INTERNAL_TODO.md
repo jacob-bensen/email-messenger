@@ -10,14 +10,9 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 
 ## Active / High Priority
 
-### Health / Security (pre-launch blockers)
-
-- [ ] TODO [HEALTH] [S] Add input validation for all web form objects using jakarta.validation (@NotBlank, @Email, @Size) — blocked until web controllers exist (prerequisite: Thymeleaf templates task)
-
 ### Core Features (income-blocking)
 
-- [ ] TODO [CORE] [L] Thymeleaf templates: thread list, conversation view with chat bubbles, reply form
-- [ ] TODO [CORE] [M] CSS for the IM look: avatars, bubbles, day separators, dark mode
+- [ ] TODO [CORE] [M] CSS for the IM look: day separators, dark mode, refined bubble borders, hover states — basic mobile-responsive CSS is in place; this task adds polish
 - [ ] TODO [CORE] [M] IMAP polling job (@Scheduled) behind a feature flag
 
 ### Growth / Revenue
@@ -51,16 +46,19 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [ ] TODO [GROWTH] [S] "Sent via MailIM" branding footer in outgoing replies for Free plan users: each email sent becomes a distribution touchpoint; disabled for Personal+ plan. MEDIUM income impact.
 - [ ] TODO [GROWTH] [S] Public roadmap page at /roadmap: static HTML listing upcoming features; reduces "is this abandoned?" churn; generates shareability. MEDIUM income impact.
 - [ ] TODO [GROWTH] [S] In-app referral prompt: after user imports 10+ threads show "Loving MailIM? Invite a colleague" modal with pre-filled tweet text and copy-to-clipboard referral link. MEDIUM income impact.
+- [ ] TODO [GROWTH] [S] Custom SMTP/from-address settings per user account: allow users to configure their own "From" email address and display name for outgoing replies (currently defaults to spring.mail.username); critical for replies to appear as the user's own email identity in production. HIGH income impact. Prerequisite: user auth.
+- [ ] TODO [GROWTH] [M] AI-generated thread summary: one-sentence summary per thread shown in the thread list; powered by Claude API; Personal+ tier gate; differentiates MailIM from standard email clients. HIGH income impact (unique feature). Prerequisite: user auth + Anthropic API key config.
+- [ ] TODO [GROWTH] [S] Reply signature: per-user configurable HTML/text signature appended to all outgoing replies; increases reply adoption and product stickiness. MEDIUM income impact. Prerequisite: user auth.
+- [ ] TODO [GROWTH] [S] Outbound webhook trigger on new message: allow users to POST to a configured URL when a new thread message arrives (simplified Zapier/Make integration); Team plan gate. MEDIUM income impact. Prerequisite: IMAP polling.
+- [ ] TODO [GROWTH] [S] "Copy conversation as Markdown" button: one-click copy of full thread as clean Markdown to clipboard; useful for Notion/Slack/docs; zero-friction share touchpoint. MEDIUM income impact.
 
 ### UX
 
-- [ ] TODO [UX] [S] Thread list empty state: when no threads exist show "Connect your first mailbox" card with a prominent CTA button — currently users see a blank page with no direction
-- [ ] TODO [UX] [S] Conversation view empty state: when a thread has no messages show explanatory copy, not a blank panel
-- [ ] TODO [UX] [S] Conversation view reply button: the "Reply" affordance must be the visually dominant primary action (large, colored button); do not bury it below the message list
-- [ ] TODO [UX] [S] Bubble body HTML rendering: when the Thymeleaf template renders BubbleMessage.bodyHtml, use th:utext (not th:text) since the value is pre-rendered and already sanitized HTML; add a comment in the template so it isn't accidentally reverted
-- [ ] TODO [UX] [S] Import error feedback: when EmailImportService throws EmailImportException, surface a user-visible error banner (not a 500 page) in the thread list or a toast notification
+- [ ] TODO [UX] [S] Thread list: show last-message-body preview (first 80 chars) below the subject line — requires adding a last_message_preview column to email_threads or denormalizing via query; current UI shows only subject + count + date
+- [ ] TODO [UX] [S] Keyboard shortcuts: j/k to navigate thread list, r to focus reply textarea, Esc to blur; power users require this before upgrading; drives word-of-mouth. Implement via vanilla JS snippet.
+- [ ] TODO [UX] [S] Thread list header navigation: the "+ Add mailbox" link currently points to /settings/mailboxes which does not yet exist; implement the mailbox settings page (or redirect to auth/onboarding once auth ships) so the link is not a dead-end
 - [ ] TODO [UX] [S] IMAP sync status indicator: show "last synced X minutes ago" in the thread list header so users know when their data is fresh; update via polling or SSE
-- [ ] TODO [UX] [M] Mobile layout pass: ensure thread list and conversation bubble view are usable on 375px-wide screens; bubbles should not overflow viewport
+- [ ] TODO [UX] [M] Mobile layout pass: ensure thread list and conversation bubble view are usable on 375px-wide screens; bubbles should not overflow viewport; basic responsive CSS exists, full pass needed
 
 ### Infrastructure
 
@@ -83,3 +81,9 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [x] DONE [UX] [S] Participant initials utility: added initials() method to Participant entity
 - [x] DONE [HEALTH] [S] EmailImportService: wrap MessagingException and IOException in EmailImportException (unchecked) — importMessage() no longer leaks mail-stack checked exceptions across layer boundaries
 - [x] DONE [HEALTH] [S] Add global exception handler: GlobalExceptionHandler (@ControllerAdvice) with error.html template; handles NoResourceFoundException (404), NoSuchElementException (404), MailException/EmailImportException (502), DataIntegrityViolationException (409), and generic Exception (500); disables Whitelabel error page
+- [x] DONE [CORE] [L] Thymeleaf templates: threads.html (thread list with empty state + pagination), conversation.html (chat bubbles + reply form), main.css (IM look with avatars, bubbles, mobile responsive), ThreadController, ThreadViewService, ReplyService
+- [x] DONE [HEALTH] [S] Add input validation for all web form objects: ReplyForm has @NotBlank + @Size(max=100,000); ThreadController uses @Valid + BindingResult; validation errors shown inline
+- [x] DONE [UX] [S] Thread list empty state: threads.html shows "No conversations yet" card with CTA when threads.totalElements == 0
+- [x] DONE [UX] [S] Conversation view empty state: conversation.html shows "No messages in this thread yet" when runs list is empty
+- [x] DONE [UX] [S] Conversation view reply button: btn-primary styled blue button is the visually dominant action in the reply-area
+- [x] DONE [UX] [S] Bubble body HTML rendering: conversation.html uses th:utext with a warning comment explaining the sanitization contract
