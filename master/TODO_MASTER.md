@@ -5,6 +5,14 @@ third-party accounts, marketing, or legal steps.
 
 ---
 
+## Critical Security
+
+- [ ] [CRITICAL] HTML email body XSS: ConversationService.buildBodyHtml passes raw msg.getBodyHtml()
+      through to the Thymeleaf template without sanitization. When rendered with th:utext this allows
+      any script/malicious HTML in an email body to execute in users' browsers. Fix: add jsoup
+      (org.jsoup:jsoup) to pom.xml and call Jsoup.clean(bodyHtml, Safelist.relaxed()) in buildBodyHtml
+      before returning the value. Track in INTERNAL_TODO.md [HEALTH][M].
+
 ## Infrastructure / Credentials
 
 - [ ] [DEPLOY] Create a PostgreSQL 16 database (Supabase, Railway, Neon, or self-hosted).
@@ -57,3 +65,9 @@ third-party accounts, marketing, or legal steps.
 - [ ] [MARKETING] Once Slack/Discord webhook integration ships, post a targeted announcement in
       Slack communities (e.g. Indie Hackers Slack, remote work Slack groups) — contextually
       relevant to the integration and low-cost distribution.
+- [ ] [MARKETING] Record a 60–90 second Loom or YouTube demo video showing an email thread
+      transforming into the IM chat view in real time; embed on the landing page above the fold.
+      This is the single highest-leverage conversion asset for skeptical visitors.
+- [ ] [MARKETING] Build or commission a Chrome/Firefox browser extension that adds an
+      "Open in MailIM" button inside Gmail threads — distributes the product as a side-effect of
+      using Gmail; each install is a growth loop touchpoint. Requires extension review/approval.

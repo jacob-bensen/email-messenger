@@ -72,7 +72,7 @@ commit. Add follow-ups as they emerge.
 - [x] Implement domain entities and Spring Data repositories.
 - [x] Email-import service: parse RFC 822 via Jakarta Mail, build threads
       from `Message-ID` / `In-Reply-To` / `References`.
-- [ ] IM transform: strip quoted replies (`> ...`, "On … wrote:"), collapse
+- [x] IM transform: strip quoted replies (`> ...`, "On … wrote:"), collapse
       consecutive same-sender messages, render basic markdown.
 - [ ] Thymeleaf templates: thread list, conversation view with chat bubbles,
       reply form.

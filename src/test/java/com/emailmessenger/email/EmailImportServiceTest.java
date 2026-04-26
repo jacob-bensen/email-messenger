@@ -125,6 +125,28 @@ class EmailImportServiceTest {
         assertThat(ccCount).isEqualTo(1);
     }
 
+    @Test
+    void bccRecipientsAreCaptured() throws Exception {
+        Session session = Session.getInstance(new Properties());
+        MimeMessage mail = new MimeMessage(session);
+        mail.setHeader("Message-ID", "<bcc@test.com>");
+        mail.setSubject("BCC test");
+        mail.setFrom(new InternetAddress("sender@test.com"));
+        mail.setRecipients(jakarta.mail.Message.RecipientType.TO,
+                InternetAddress.parse("to@test.com"));
+        mail.setRecipients(jakarta.mail.Message.RecipientType.BCC,
+                InternetAddress.parse("hidden@test.com"));
+        mail.setText("Body.");
+        mail.setSentDate(new Date());
+
+        Optional<Message> result = importService.importMessage(mail);
+
+        assertThat(result).isPresent();
+        long bccCount = result.get().getRecipients().stream()
+                .filter(r -> RecipientType.BCC == r.getRecipientType()).count();
+        assertThat(bccCount).isEqualTo(1);
+    }
+
     // ---- helper ----
 
     private MimeMessage plainMessage(String messageId, String subject, String from,
