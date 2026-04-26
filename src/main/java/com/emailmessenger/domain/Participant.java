@@ -44,4 +44,22 @@ public class Participant {
     public LocalDateTime getCreatedAt() { return createdAt; }
 
     public void setDisplayName(String displayName) { this.displayName = displayName; }
+
+    /**
+     * Returns 1–2 uppercase initials for avatar fallback.
+     * "Alice Bob" → "AB", "alice@test.com" → "A", "Charlie" → "C".
+     */
+    public String initials() {
+        String name = (displayName != null && !displayName.isBlank()) ? displayName : email;
+        // For bare email addresses, use only the local part before @
+        if (!name.contains(" ") && name.contains("@")) {
+            name = name.substring(0, name.indexOf('@'));
+        }
+        String[] parts = name.trim().split("\\s+");
+        if (parts.length == 0 || parts[0].isBlank()) return "?";
+        if (parts.length >= 2 && !parts[1].isBlank()) {
+            return (parts[0].substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();
+        }
+        return parts[0].substring(0, 1).toUpperCase();
+    }
 }

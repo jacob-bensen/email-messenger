@@ -7,11 +7,10 @@ third-party accounts, marketing, or legal steps.
 
 ## Critical Security
 
-- [ ] [CRITICAL] HTML email body XSS: ConversationService.buildBodyHtml passes raw msg.getBodyHtml()
-      through to the Thymeleaf template without sanitization. When rendered with th:utext this allows
-      any script/malicious HTML in an email body to execute in users' browsers. Fix: add jsoup
-      (org.jsoup:jsoup) to pom.xml and call Jsoup.clean(bodyHtml, Safelist.relaxed()) in buildBodyHtml
-      before returning the value. Track in INTERNAL_TODO.md [HEALTH][M].
+- [x] [LIKELY DONE - verify] HTML email body XSS: jsoup 1.17.2 added to pom.xml;
+      ConversationService.buildBodyHtml now calls Jsoup.clean(bodyHtml, Safelist.relaxed())
+      before returning. Scripts, event handlers, and javascript: links stripped. 4 XSS tests added.
+      Verify sanitization behavior in production with real-world HTML email bodies.
 
 ## Infrastructure / Credentials
 
@@ -71,3 +70,6 @@ third-party accounts, marketing, or legal steps.
 - [ ] [MARKETING] Build or commission a Chrome/Firefox browser extension that adds an
       "Open in MailIM" button inside Gmail threads — distributes the product as a side-effect of
       using Gmail; each install is a growth loop touchpoint. Requires extension review/approval.
+- [ ] [MARKETING] List MailIM on AppSumo for a lifetime deal campaign: generates immediate lump-sum
+      revenue, hundreds of reviews, and organic word-of-mouth. Best timed after the MVP is live and
+      stable. Requires AppSumo partner application at appsumo.com/sell.

@@ -120,7 +120,66 @@ class ConversationServiceTest {
         Conversation conv = svc.buildConversation(t);
 
         String bodyHtml = conv.runs().get(0).messages().get(0).bodyHtml();
-        assertThat(bodyHtml).isEqualTo("<p>Already <b>HTML</b></p>");
+        assertThat(bodyHtml).contains("Already");
+        assertThat(bodyHtml).contains("<b>HTML</b>");
+    }
+
+    // --- HTML sanitization (XSS prevention) ---
+
+    @Test
+    void scriptTagsStrippedFromHtmlBody() {
+        EmailThread t = thread("XSS");
+        Participant alice = new Participant("alice@test.com", "Alice");
+        Message msg = new Message(t, alice, "Subject", "plain",
+            "<p>Hello</p><script>alert('xss')</script>", BASE_TIME);
+        t.addMessage(msg);
+
+        String bodyHtml = svc.buildConversation(t).runs().get(0).messages().get(0).bodyHtml();
+
+        assertThat(bodyHtml).doesNotContain("<script>");
+        assertThat(bodyHtml).doesNotContain("alert");
+        assertThat(bodyHtml).contains("Hello");
+    }
+
+    @Test
+    void inlineEventHandlersStrippedFromHtmlBody() {
+        EmailThread t = thread("XSS");
+        Participant alice = new Participant("alice@test.com", "Alice");
+        Message msg = new Message(t, alice, "Subject", "plain",
+            "<a href=\"#\" onclick=\"steal()\">click me</a>", BASE_TIME);
+        t.addMessage(msg);
+
+        String bodyHtml = svc.buildConversation(t).runs().get(0).messages().get(0).bodyHtml();
+
+        assertThat(bodyHtml).doesNotContain("onclick");
+        assertThat(bodyHtml).contains("click me");
+    }
+
+    @Test
+    void javascriptLinksStrippedFromHtmlBody() {
+        EmailThread t = thread("XSS");
+        Participant alice = new Participant("alice@test.com", "Alice");
+        Message msg = new Message(t, alice, "Subject", "plain",
+            "<a href=\"javascript:void(0)\">danger</a>", BASE_TIME);
+        t.addMessage(msg);
+
+        String bodyHtml = svc.buildConversation(t).runs().get(0).messages().get(0).bodyHtml();
+
+        assertThat(bodyHtml).doesNotContain("javascript:");
+    }
+
+    @Test
+    void safeHtmlElementsPreservedAfterSanitization() {
+        EmailThread t = thread("Safe");
+        Participant alice = new Participant("alice@test.com", "Alice");
+        Message msg = new Message(t, alice, "Subject", "plain",
+            "<p><strong>Bold</strong> and <em>italic</em></p>", BASE_TIME);
+        t.addMessage(msg);
+
+        String bodyHtml = svc.buildConversation(t).runs().get(0).messages().get(0).bodyHtml();
+
+        assertThat(bodyHtml).contains("<strong>Bold</strong>");
+        assertThat(bodyHtml).contains("<em>italic</em>");
     }
 
     @Test

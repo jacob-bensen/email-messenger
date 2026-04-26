@@ -64,6 +64,13 @@
       <artifactId>spring-boot-starter-mail</artifactId>
     </dependency>
 
+    <!-- HTML sanitization (prevent XSS from email body HTML) -->
+    <dependency>
+      <groupId>org.jsoup</groupId>
+      <artifactId>jsoup</artifactId>
+      <version>1.17.2</version>
+    </dependency>
+
     <!-- Jakarta Mail for RFC 822 parsing -->
     <dependency>
       <groupId>com.sun.mail</groupId>

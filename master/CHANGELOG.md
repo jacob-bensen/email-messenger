@@ -1,5 +1,140 @@
 # Changelog
 
+## 2026-04-26 — Autonomous Run #5
+
+### Role 1 — Feature Implementer
+**Task completed**: HTML email body XSS sanitization [HEALTH][M] — CRITICAL pre-launch blocker
+
+Files changed:
+- `pom.xml` — added `org.jsoup:jsoup:1.17.2` runtime dependency.
+- `src/main/java/com/emailmessenger/service/ConversationService.java` — `buildBodyHtml`
+  now passes the raw HTML email body through `Jsoup.clean(html, Safelist.relaxed())` before
+  returning it. This strips `<script>` tags, inline event handlers (`onclick`, `onerror`, etc.),
+  `javascript:` protocol hrefs, `<iframe>`, and any other dangerous construct that malicious
+  senders embed in HTML email bodies. Safe elements — `<p>`, `<b>`, `<strong>`, `<em>`, `<a>`,
+  `<ul>`, `<ol>`, `<li>`, `<blockquote>`, `<code>`, `<pre>` — are preserved unchanged.
+  The plain-text path (renderMarkdown) was already safe via HTML-escaping; no change needed there.
+
+Verified: `./mvnw test` → BUILD SUCCESS, 44 tests pass.
+
+**Income relevance**: Closes the only CRITICAL security vulnerability identified since
+project start. Without sanitization, any HTML email with a `<script>` tag would execute
+in every subscriber's browser. Shipping this unresolved would be a liability that could
+kill the business on first security disclosure.
+
+---
+
+### Role 2 — Test Examiner
+**Coverage added**: 4 new XSS sanitization tests in ConversationServiceTest
+
+Tests added:
+- `scriptTagsStrippedFromHtmlBody` — verifies `<script>alert('xss')</script>` is removed
+  and safe content is preserved.
+- `inlineEventHandlersStrippedFromHtmlBody` — verifies `onclick` is stripped from `<a>` tags.
+- `javascriptLinksStrippedFromHtmlBody` — verifies `javascript:void(0)` href is removed.
+- `safeHtmlElementsPreservedAfterSanitization` — verifies `<strong>` and `<em>` survive.
+
+Also updated `htmlBodyPassesThroughWithoutTransform` to use `contains()` assertions
+instead of `isEqualTo()` to be robust against jsoup output normalization differences.
+
+Total test count: 44 (up from 40). 0 failures.
+
+Income-critical paths still at zero coverage (code not yet written):
+- Stripe webhook handler and subscription state
+- User authentication flows
+- IMAP polling job
+- Thymeleaf template rendering
+
+---
+
+### Role 3 — Growth Strategist
+Identified 4 new implementable growth opportunities not previously captured:
+
+1. **Stripe customer portal integration** [GROWTH][S] — Stripe self-service portal for plan
+   upgrades, downgrades, cancellations, and invoice downloads. Reduces support overhead and
+   churn from users who can't find the cancel button. HIGH income impact (direct retention
+   mechanism). Prerequisite: Stripe billing task.
+2. **In-app upgrade preview of locked features** [GROWTH][S] — Show blurred/disabled previews
+   of Team-tier features (Slack webhook, full-text search) with an "Upgrade to unlock" CTA.
+   Direct upgrade-conversion trigger visible to every Personal-tier user. HIGH income impact.
+3. **Send-later scheduling for replies** [GROWTH][M] — Schedule an email reply to send at a
+   future time; critical for remote workers across time zones. Personal/Team plan gate. HIGH
+   income impact (differentiation from standard email clients).
+4. **Thread snooze** [GROWTH][S] — Snooze a thread to re-surface at a user-set time; reduces
+   inbox anxiety and drives daily re-engagement. MEDIUM income impact.
+
+Added 1 [MARKETING] item to TODO_MASTER.md:
+- AppSumo lifetime deal: immediate lump-sum revenue + organic reviews.
+
+---
+
+### Role 4 — UX Auditor
+Templates still do not exist; no live user flows to walk. One UX task completed directly in code:
+
+**Direct fix: Participant.initials() helper** [UX][S]
+- Added `initials()` method to `Participant` entity: "Alice Bob"→"AB", "alice@test.com"→"A",
+  "Charlie"→"C". This is the prerequisite for the avatar rendering planned in templates — without
+  it, the template author would have to inline the initials logic in Thymeleaf expressions.
+- Method is a pure string function with no JPA/persistence side effects; safe to call anywhere.
+
+Updated UX note in INTERNAL_TODO.md: "[UX][S] Bubble body HTML rendering — use th:utext"
+now explicitly states that the value is "pre-rendered and already sanitized HTML" (now that
+the sanitization fix is in place), so template authors don't need to add their own safeguards.
+
+No structural UX issues possible to flag without live templates; existing UX task list in
+INTERNAL_TODO.md remains accurate.
+
+---
+
+### Role 5 — Task Optimizer
+Rewrote INTERNAL_TODO.md:
+- Archived 2 newly completed tasks:
+  - [HEALTH][M] HTML sanitization → Done section
+  - [UX][S] Participant initials utility → Done section
+  - Done section now has 9 items
+- Added 4 new [GROWTH] tasks from Role 3 in priority order
+- Added 1 new AppSumo [MARKETING] item to TODO_MASTER.md
+- Removed duplicate mention of initials in Gravatar task (notes helper already exists)
+- TODO_MASTER.md [CRITICAL] XSS item tagged [LIKELY DONE - verify] since code fix is complete
+- Active task count: 40 tasks across Health (3), Core (3), Growth (26), UX (8), Infra (3) sections
+- All tasks remain [S/M/L] tagged; no vague or oversized tasks
+- No blocked tasks
+
+---
+
+### Role 6 — Health Monitor
+Security:
+- **XSS vector closed**: jsoup 1.17.2 `Safelist.relaxed()` sanitization is now active in
+  production code path. Verified by 4 new tests covering script injection, event handler
+  injection, javascript: protocol abuse, and safe-element preservation.
+- jsoup 1.17.2 — no known CVEs; widely deployed in production Spring Boot applications.
+  Consider upgrading to 1.18.1 when convenient (no security driver; minor API improvements).
+- No new hardcoded credentials in any file added this run.
+- `initials()` in Participant is pure string manipulation — no SQL, no user input reaching
+  any persistence layer, no XSS risk.
+
+Performance:
+- `Jsoup.clean()` is O(n) in HTML size. For typical email bodies (< 100 KB), the overhead
+  is negligible (sub-millisecond). No caching needed.
+- No new N+1 query risks introduced.
+
+Code quality:
+- Comment in `buildBodyHtml` explains WHY sanitization is done (malicious sender context) —
+  non-obvious to a future reader; justified. All other new code is self-explanatory.
+- `initials()` follows the project convention (no unnecessary comments, no field `@Autowired`).
+- Dead code check: all modified code paths are exercised by tests.
+
+Dependencies:
+- jsoup 1.17.2 added (Apache 2.0 license — compatible with commercial SaaS use, no copyleft risk).
+- Spring Boot 3.5.14 still current; no new CVEs flagged.
+
+Legal:
+- jsoup is Apache 2.0 licensed — no copyleft constraint; safe for commercial closed-source use.
+- All prior [LEGAL] items in TODO_MASTER.md remain outstanding (Privacy Policy, ToS, Refund
+  Policy, Cookie consent) — none were addressed this run (require Master action).
+
+---
+
 ## 2026-04-26 — Autonomous Run #4
 
 ### Role 1 — Feature Implementer

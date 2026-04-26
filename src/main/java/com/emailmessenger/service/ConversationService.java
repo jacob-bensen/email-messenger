@@ -3,6 +3,8 @@ package com.emailmessenger.service;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.Participant;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Safelist;
 import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,7 +51,9 @@ public class ConversationService {
 
     private String buildBodyHtml(Message msg) {
         if (msg.getBodyHtml() != null && !msg.getBodyHtml().isBlank()) {
-            return msg.getBodyHtml();
+            // Sanitize with a permissive but safe allowlist — strips <script>, event handlers,
+            // iframes, and javascript: URLs that malicious senders embed in HTML email bodies.
+            return Jsoup.clean(msg.getBodyHtml(), Safelist.relaxed());
         }
         String stripped = imTransform.stripQuotes(msg.getBodyPlain());
         return imTransform.renderMarkdown(stripped);
