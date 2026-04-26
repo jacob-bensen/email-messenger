@@ -11,7 +11,7 @@ third-party accounts, marketing, or legal steps.
       Set the connection details as environment variables: DB_URL, DB_USER, DB_PASS.
 - [ ] [DEPLOY] Choose a hosting platform (Heroku, Render, Railway, or VPS) and configure
       the Spring Boot app to run there. Set SPRING_PROFILES_ACTIVE=prod.
-- [ ] [DEPLOY] Register a domain name for the SaaS (e.g. mailaim.app or simliar) and
+- [ ] [DEPLOY] Register a domain name for the SaaS (e.g. mailaim.app or similar) and
       point it at the hosting platform.
 
 ## Billing
@@ -23,6 +23,12 @@ third-party accounts, marketing, or legal steps.
 - [ ] [BILLING] Configure Stripe webhook endpoint (pointing to /billing/webhook) and set
       STRIPE_WEBHOOK_SECRET env var.
 
+## Google OAuth (for GROWTH task: Google SSO)
+
+- [ ] [CREDENTIAL] Create a Google Cloud project and enable the Google OAuth 2.0 API.
+      Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET env vars once code is ready.
+      Required for the Google OAuth sign-in feature.
+
 ## Legal
 
 - [ ] [LEGAL] Add a Privacy Policy page (required for GDPR/CCPA and for any OAuth or payment flow).
@@ -30,6 +36,8 @@ third-party accounts, marketing, or legal steps.
 - [ ] [LEGAL] Add Terms of Service page.
 - [ ] [LEGAL] Add Refund Policy page (required by Stripe and consumer protection law).
 - [ ] [LEGAL] Add Cookie banner / consent if targeting EU users (GDPR cookie consent).
+- [ ] [LEGAL] Review Google OAuth terms of service before launching SSO — ensure the app's
+      privacy policy covers use of Google account data.
 
 ## Marketing
 

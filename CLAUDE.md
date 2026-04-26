@@ -68,8 +68,8 @@ commit. Add follow-ups as they emerge.
       `prod` profiles.
 - [x] Add starters: web, thymeleaf, data-jpa, validation, mail; runtime
       `postgresql`; test `h2`, `spring-boot-starter-test`, `testcontainers`.
-- [ ] Add Flyway and write `V1__init.sql` for the domain model.
-- [ ] Implement domain entities and Spring Data repositories.
+- [x] Add Flyway and write `V1__init.sql` for the domain model.
+- [x] Implement domain entities and Spring Data repositories.
 - [ ] Email-import service: parse RFC 822 via Jakarta Mail, build threads
       from `Message-ID` / `In-Reply-To` / `References`.
 - [ ] IM transform: strip quoted replies (`> ...`, "On … wrote:"), collapse
