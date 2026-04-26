@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="|(${conversation.thread().subject.length() > 57 ? conversation.thread().subject.substring(0, 57) + '…' : conversation.thread().subject}) — MailIM|">Conversation — MailIM</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="conv-header">
+  <a href="/threads" class="back-link">← All threads</a>
+  <h1 th:text="${conversation.thread().subject}">Thread subject</h1>
+  <span class="kbd-hint"><kbd>r</kbd> reply · <kbd>Esc</kbd> cancel</span>
+  <span class="msg-count"
+        th:text="${conversation.thread().messageCount + ' message' + (conversation.thread().messageCount != 1 ? 's' : '')}">
+    1 message
+  </span>
+</header>
+
+<div class="conv-body">
+
+  <!-- Messages area -->
+  <div class="messages" id="messages">
+
+    <div class="messages-empty" th:if="${#lists.isEmpty(conversation.runs())}">
+      No messages in this thread yet.
+    </div>
+
+    <!--
+      Each BubbleRun groups consecutive messages from the same sender.
+      th:utext renders pre-sanitized HTML (sanitized by jsoup in ConversationService) —
+      do not change to th:text or it will render raw HTML tags to the user.
+    -->
+    <div class="bubble-run" th:each="run : ${conversation.runs()}"
+         th:attr="data-date=${run.date() != null ? #temporals.format(run.date(), 'yyyy-MM-dd') : ''}"
+    >
+      <div class="avatar"
+           th:text="${run.sender().initials()}"
+           th:title="${run.sender().displayName != null ? run.sender().displayName : run.sender().email}">
+        AB
+      </div>
+      <div class="bubble-group">
+        <div class="bubble-sender"
+             th:text="${run.sender().displayName != null ? run.sender().displayName : run.sender().email}">
+          Sender Name
+        </div>
+        <div th:each="bubble : ${run.messages()}">
+          <div class="bubble" th:utext="${bubble.bodyHtml()}">Message body</div>
+          <div class="bubble-time"
+               th:text="${#temporals.format(bubble.sentAt(), 'MMM d, h:mm a')}">Jan 1, 12:00 PM</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Reply area -->
+  <div class="reply-area">
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Reply sent.</div>
+
+    <form th:action="@{/threads/{id}/reply(id=${conversation.thread().id})}"
+          th:object="${replyForm}"
+          method="post"
+          class="reply-form">
+      <textarea th:field="*{body}"
+                placeholder="Write a reply…"
+                rows="3"
+                th:classappend="${#fields.hasErrors('body')} ? ' error' : ''"></textarea>
+      <div class="field-error"
+           th:if="${#fields.hasErrors('body')}"
+           th:errors="*{body}">Validation error</div>
+      <div class="reply-actions">
+        <button type="submit" class="btn btn-primary">Send Reply</button>
+      </div>
+    </form>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const msgs = document.getElementById('messages');
+  if (!msgs) return;
+
+  // Insert day separators between bubble runs whose dates differ
+  const runs = Array.from(msgs.querySelectorAll('.bubble-run'));
+  let lastDate = null;
+  runs.forEach(function (run) {
+    const date = run.dataset.date;
+    if (!date || date === lastDate) { lastDate = date || lastDate; return; }
+    const sep = document.createElement('div');
+    sep.className = 'day-separator';
+    sep.innerHTML = '<span>' + formatDateLabel(date) + '</span>';
+    msgs.insertBefore(sep, run);
+    lastDate = date;
+  });
+
+  // Scroll to bottom so newest messages are visible
+  msgs.scrollTop = msgs.scrollHeight;
+}());
+
+// r to focus reply, Esc to blur
+document.addEventListener('keydown', function (e) {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  var ta = document.querySelector('.reply-form textarea');
+  if (!ta) return;
+  if (e.key === 'r' && document.activeElement !== ta) {
+    e.preventDefault();
+    ta.focus();
+    ta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  if (e.key === 'Escape' && document.activeElement === ta) {
+    ta.blur();
+  }
+});
+
+function formatDateLabel(iso) {
+  var parts = iso.split('-');
+  var d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  if (d.getTime() === today.getTime())     return 'Today';
+  if (d.getTime() === yesterday.getTime()) return 'Yesterday';
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+}
+</script>
+
+</body>
+</html>

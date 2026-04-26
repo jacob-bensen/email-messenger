@@ -63,20 +63,20 @@ commit. Add follow-ups as they emerge.
 
 - [x] Rewrite `README.md` into a proper README (description, features, setup,
       screenshots placeholder, license).
-- [ ] Scaffold Maven project: `pom.xml`, `mvnw`/`mvnw.cmd`, `.mvn/wrapper/`,
+- [x] Scaffold Maven project: `pom.xml`, `mvnw`/`mvnw.cmd`, `.mvn/wrapper/`,
       `EmailMessengerApplication.java`, `application.yml` with `dev` and
       `prod` profiles.
-- [ ] Add starters: web, thymeleaf, data-jpa, validation, mail; runtime
+- [x] Add starters: web, thymeleaf, data-jpa, validation, mail; runtime
       `postgresql`; test `h2`, `spring-boot-starter-test`, `testcontainers`.
-- [ ] Add Flyway and write `V1__init.sql` for the domain model.
-- [ ] Implement domain entities and Spring Data repositories.
-- [ ] Email-import service: parse RFC 822 via Jakarta Mail, build threads
+- [x] Add Flyway and write `V1__init.sql` for the domain model.
+- [x] Implement domain entities and Spring Data repositories.
+- [x] Email-import service: parse RFC 822 via Jakarta Mail, build threads
       from `Message-ID` / `In-Reply-To` / `References`.
-- [ ] IM transform: strip quoted replies (`> ...`, "On … wrote:"), collapse
+- [x] IM transform: strip quoted replies (`> ...`, "On … wrote:"), collapse
       consecutive same-sender messages, render basic markdown.
-- [ ] Thymeleaf templates: thread list, conversation view with chat bubbles,
+- [x] Thymeleaf templates: thread list, conversation view with chat bubbles,
       reply form.
-- [ ] CSS for the IM look: avatars, bubbles, day separators, dark mode.
+- [x] CSS for the IM look: avatars, bubbles, day separators, dark mode.
 - [ ] IMAP polling job (`@Scheduled`) behind a feature flag.
 - [ ] Integration tests with Testcontainers (Postgres) + GreenMail (SMTP/IMAP).
 - [ ] `Dockerfile` + `docker-compose.yml` (app + postgres).

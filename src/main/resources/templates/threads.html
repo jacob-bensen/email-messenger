@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inbox — MailIM</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <span class="brand">MailIM</span>
+  <nav class="header-nav">
+    <span class="kbd-hint"><kbd>j</kbd><kbd>k</kbd> navigate · <kbd>Enter</kbd> open</span>
+    <a href="/settings/mailboxes">+ Add mailbox</a>
+  </nav>
+</header>
+
+<main class="thread-page">
+
+  <div th:if="${threads.totalElements > 0}">
+    <h2 class="section-title">Conversations</h2>
+    <div class="thread-list">
+      <a th:each="thread : ${threads}"
+         th:href="@{/threads/{id}(id=${thread.id})}"
+         class="thread-item">
+        <div class="thread-subject" th:text="${thread.subject}">Thread subject</div>
+        <div class="thread-meta">
+          <span th:text="${thread.messageCount + ' message' + (thread.messageCount != 1 ? 's' : '')}">1 message</span>
+          <span th:text="${#temporals.format(thread.updatedAt, 'MMM d, yyyy')}">Jan 1, 2025</span>
+        </div>
+      </a>
+    </div>
+
+    <nav class="pagination" th:if="${threads.totalPages > 1}">
+      <a th:if="${!threads.first}"
+         th:href="@{/threads(page=${threads.number - 1})}"
+         class="page-link">← Newer</a>
+      <span class="page-info"
+            th:text="|Page ${threads.number + 1} of ${threads.totalPages}|">Page 1 of 1</span>
+      <a th:if="${!threads.last}"
+         th:href="@{/threads(page=${threads.number + 1})}"
+         class="page-link">Older →</a>
+    </nav>
+  </div>
+
+  <div class="empty-state" th:if="${threads.totalElements == 0}">
+    <h2>No conversations yet</h2>
+    <p>Connect your first mailbox to see email threads as chat.</p>
+    <a href="#" class="btn btn-primary">Connect a mailbox</a>
+  </div>
+
+</main>
+<script>
+(function () {
+  var items = Array.from(document.querySelectorAll('.thread-item'));
+  if (!items.length) return;
+  var idx = -1;
+
+  function setFocus(n) {
+    if (idx >= 0) items[idx].classList.remove('kb-focus');
+    idx = Math.max(0, Math.min(items.length - 1, n));
+    items[idx].classList.add('kb-focus');
+    items[idx].scrollIntoView({ block: 'nearest' });
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'j') { e.preventDefault(); setFocus(idx < 0 ? 0 : idx + 1); }
+    if (e.key === 'k') { e.preventDefault(); setFocus(idx < 0 ? items.length - 1 : idx - 1); }
+    if (e.key === 'Enter' && idx >= 0) { e.preventDefault(); items[idx].click(); }
+  });
+}());
+</script>
+</body>
+</html>
