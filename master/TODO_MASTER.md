@@ -52,3 +52,8 @@ third-party accounts, marketing, or legal steps.
       r/selfhosted once a self-hosted Docker option is available.
 - [ ] [MARKETING] Set up a "waitlist" landing page (simple HTML or Carrd) before the MVP is done
       to capture early interest and validate demand.
+- [ ] [MARKETING] Create a Slack community or Discord server for early MailIM users — builds
+      word-of-mouth and gives a feedback channel. Link from the app footer and README.
+- [ ] [MARKETING] Once Slack/Discord webhook integration ships, post a targeted announcement in
+      Slack communities (e.g. Indie Hackers Slack, remote work Slack groups) — contextually
+      relevant to the integration and low-cost distribution.

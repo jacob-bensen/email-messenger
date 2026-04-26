@@ -1,5 +1,139 @@
 # Changelog
 
+## 2026-04-26 — Autonomous Run #3
+
+### Role 1 — Feature Implementer
+**Task completed**: Email-import service — RFC 822 parsing + thread building
+
+Files created:
+- `src/main/java/com/emailmessenger/email/ParsedEmail.java` — package-private record holding
+  all parsed fields from a MimeMessage before DB operations: messageId, inReplyTo, references
+  (List<String>), subject, from, to/cc/bcc recipients, bodyPlain, bodyHtml, attachments, sentAt.
+  Two nested records: `AddressEntry(email, name)` and `AttachmentEntry(filename, mimeType, sizeBytes)`.
+- `src/main/java/com/emailmessenger/email/MimeMessageParser.java` — package-private class that
+  walks a `MimeMessage` tree: extracts RFC 5322 headers, recursively walks `multipart/*` to find
+  `text/plain` / `text/html` parts, collects attachment metadata (filename, mimeType, size).
+  Does NOT read attachment byte content — only metadata; blob_ref is wired separately.
+- `src/main/java/com/emailmessenger/email/EmailImportService.java` — `@Service` with
+  `@Transactional` import method:
+  - Idempotent: skips if Message-ID already exists in the database.
+  - Thread resolution: walks References list newest-first per RFC 5322, falls back to In-Reply-To,
+    then rootMessageId lookup, then creates a new EmailThread.
+  - `resolveParticipant()`: find-or-create Participant by normalised email address.
+  - Attachment metadata captured; `blob_ref` is null until external storage is wired.
+  - Save order: `messageRepo.save(message)` first so the subsequent `threadRepo.save(thread)`
+    cascade-merges an already-managed entity (avoids double-INSERT unique constraint violation).
+
+Bug found and fixed during test run: original code called `thread.addMessage(message)` +
+`threadRepo.save(thread)` (which cascades ALL to the unsaved message entity, inserting it), then
+called `messageRepo.save(message)` again — violating the `message_id_header` unique constraint.
+Fix: save message first, then add to thread, then save thread.
+
+Verified: `./mvnw test` → BUILD SUCCESS, 17 tests pass.
+
+**Income relevance**: Email parsing and thread building are the core data pipeline. Without this,
+no thread can ever appear in the UI — it is the prerequisite for all user-visible value.
+
+---
+
+### Role 2 — Test Examiner
+**Coverage added**: 6 new tests in `EmailImportServiceTest` (17 total, up from 11)
+
+File created: `src/test/java/com/emailmessenger/email/EmailImportServiceTest.java`
+- `importCreatesThreadAndMessage` — verifies thread, message, sender, body, rootMessageId
+- `replyViaInReplyToJoinsExistingThread` — verifies In-Reply-To links reply to parent thread; checks messageCount=2
+- `replyViaReferencesJoinsExistingThread` — verifies References header thread linking
+- `duplicateMessageIdIsSkipped` — verifies idempotency returns empty + only one DB row
+- `senderParticipantIsDeduplicated` — verifies two messages from same address → 1 Participant
+- `toAndCcRecipientsAreCaptured` — verifies RecipientType.TO (×2) and CC (×1) stored correctly
+
+Tests use `@SpringBootTest @ActiveProfiles("dev") @Transactional` with H2; each test rolls back.
+MimeMessage instances built in-process via `jakarta.mail.Session.getInstance(new Properties())`.
+
+Income-critical paths with zero coverage (code not yet written — expected):
+- Stripe webhook handler and subscription state
+- User authentication flows
+- IM transform (quoted-reply stripping)
+- IMAP polling job
+
+No flaky tests. No redundant tests. No test failures.
+
+---
+
+### Role 3 — Growth Strategist
+Added 5 new growth tasks to INTERNAL_TODO.md (not previously captured):
+1. **Thread permalink sharing** [GROWTH][M] — shareable read-only `/share/{token}` link is a
+   viral touchpoint; every person who receives a link gets a demo of the product. HIGH income impact.
+2. **Browser push notifications** [GROWTH][S] — Web Push API re-engages users without requiring
+   them to keep the tab open; drives daily active usage. MEDIUM income impact.
+3. **Slack/Discord webhook integration** [GROWTH][M] — sends a Slack/Discord notification when
+   a new email arrives; this is a natural $29/mo Team plan feature gate. HIGH income impact.
+4. **Thread export (PDF/HTML)** [GROWTH][M] — freelancers and support teams need to export
+   conversations; this is a paid-tier feature gate. MEDIUM income impact.
+5. **In-app referral prompt** [GROWTH][S] — triggered after activation milestone (10 threads
+   imported); shows tweet + copy-link modal. MEDIUM income impact.
+
+Added 2 [MARKETING] items to TODO_MASTER.md:
+- Slack/Discord community for early users
+- Channel-specific announcement when webhook integration ships
+
+---
+
+### Role 4 — UX Auditor
+No Thymeleaf templates exist yet so no live user flows to walk. All 5 previously flagged UX
+issues remain in INTERNAL_TODO.md. Added 2 new UX issues specific to the import service now built:
+1. **Import error feedback** [UX][S] — MessagingException/IOException from import currently
+   bubbles up as a 500. Needs a user-visible error banner or toast, not a crash page.
+2. **IMAP sync status indicator** [UX][S] — thread list should show "last synced X minutes ago"
+   so users know whether they're seeing live data; critical for trust in the product.
+
+---
+
+### Role 5 — Task Optimizer
+Audited and rewrote INTERNAL_TODO.md:
+- Archived 1 new completed task (Email Import Service) → Done section now has 6 items
+- Added 5 new [GROWTH] tasks from Role 3 in priority order (below existing Growth items)
+- Added 2 new [UX] tasks from Role 4
+- Added 1 new [HEALTH] task: wrap mail exceptions in domain exception
+- Confirmed no duplicates across 30 active tasks
+- All tasks remain tagged [S/M/L]; no vague or oversized tasks
+- No blocked tasks
+
+---
+
+### Role 6 — Health Monitor
+Security (no critical issues):
+- No hardcoded credentials in any new file
+- `MimeMessageParser` handles null Message-ID, null sender, null sent date defensively
+- `resolveParticipant` normalises email to lowercase before lookup/storage — prevents duplicate
+  Participants from case-variant addresses (e.g. Alice@Test.com vs alice@test.com)
+- `importMessage` is idempotent on Message-ID — safe to call from a polling job without
+  duplicate-import protection at the job level
+
+Performance:
+- `walkParts` recursion depth is bounded by the message structure (typically 2–3 levels);
+  no risk of stack overflow for standard RFC 822 messages
+- `resolveParticipant` does a SELECT before every INSERT — acceptable for import volumes,
+  but may become a bottleneck in bulk-import scenarios (flagged for future batching)
+- `resolveThread` does up to N+1 SELECTs for messages in the References list (worst case:
+  long References chain with no match). Low risk at current scale; indexed on message_id_header.
+
+Code quality:
+- `MimeMessageParser` is package-private (correctly scoped)
+- `ParsedEmail` is a record — immutable, no mutable state
+- Constructor injection enforced; no `@Autowired` fields
+- `(String) part.getContent()` cast in `walkParts` is guarded by `isMimeType("text/plain")`
+  and `isMimeType("text/html")` checks — Jakarta Mail guarantees String content for those types
+
+Flagged:
+- `MessagingException` and `IOException` leak through `EmailImportService.importMessage()` as
+  checked exceptions — added [HEALTH][S] task to wrap in a domain exception
+- No rate limiting on import volume per user — will need enforcement when IMAP polling ships
+
+Legal (no change from Run #2 — all items still open in TODO_MASTER.md [LEGAL]).
+
+---
+
 ## 2026-04-26 — Autonomous Run #2
 
 ### Role 1 — Feature Implementer
