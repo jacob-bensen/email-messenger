@@ -12,9 +12,7 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 
 ### Health / Security (pre-launch blockers)
 
-- [ ] TODO [HEALTH] [S] Add global exception handler (@ControllerAdvice) with user-friendly error pages for common exceptions (NotFoundException, MailException, DataIntegrityViolationException)
-- [ ] TODO [HEALTH] [S] EmailImportService: wrap MessagingException and IOException in a domain-specific unchecked exception (e.g. EmailImportException) so callers don't leak mail-stack exceptions across layer boundaries
-- [ ] TODO [HEALTH] [S] Add input validation for all web form objects using jakarta.validation (@NotBlank, @Email, @Size)
+- [ ] TODO [HEALTH] [S] Add input validation for all web form objects using jakarta.validation (@NotBlank, @Email, @Size) — blocked until web controllers exist (prerequisite: Thymeleaf templates task)
 
 ### Core Features (income-blocking)
 
@@ -34,6 +32,8 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [ ] TODO [GROWTH] [M] SEO-friendly static landing page at / with features, pricing table, and CTA; serves organic traffic before users register
 - [ ] TODO [GROWTH] [M] First-run onboarding wizard: guided "connect your first mailbox" flow with progress steps; reduces signup-to-value drop-off (HIGH income impact)
 - [ ] TODO [GROWTH] [S] Add Google OAuth single sign-on: lower signup friction and auto-populate Gmail mailbox connection (HIGH income impact)
+- [ ] TODO [GROWTH] [S] Annual/monthly billing toggle on pricing/settings page: show monthly vs annual pricing with "Save 16%" label; higher LTV per conversion. HIGH income impact. Prerequisite: Stripe billing task.
+- [ ] TODO [GROWTH] [M] REST API for Personal+ tier: JSON API for thread/message/reply operations; enables Zapier/Make integrations; key upsell feature gate for developers. HIGH income impact.
 - [ ] TODO [GROWTH] [M] Add Gravatar + initials avatar fallback for Participant display (initials() helper already added to Participant entity)
 - [ ] TODO [GROWTH] [S] Add unread thread tracking: mark-as-read on view, unread count badge in thread list (engagement driver)
 - [ ] TODO [GROWTH] [M] Add full-text search across threads (PostgreSQL tsvector) — key feature gate for Personal/Team upgrade
@@ -48,16 +48,17 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [ ] TODO [GROWTH] [M] Send-later scheduling for replies: schedule a reply to be sent at a future date/time; useful for async remote workers across time zones; Personal/Team plan gate. HIGH income impact.
 - [ ] TODO [GROWTH] [S] Thread snooze: snooze a thread to re-surface at a set time; reduces inbox anxiety and drives daily re-engagement. MEDIUM income impact.
 - [ ] TODO [GROWTH] [S] Browser push notifications via Web Push API: notify users in-browser when a new email arrives in a watched thread — drives daily active usage. MEDIUM income impact. Requires service worker.
+- [ ] TODO [GROWTH] [S] "Sent via MailIM" branding footer in outgoing replies for Free plan users: each email sent becomes a distribution touchpoint; disabled for Personal+ plan. MEDIUM income impact.
+- [ ] TODO [GROWTH] [S] Public roadmap page at /roadmap: static HTML listing upcoming features; reduces "is this abandoned?" churn; generates shareability. MEDIUM income impact.
 - [ ] TODO [GROWTH] [S] In-app referral prompt: after user imports 10+ threads show "Loving MailIM? Invite a colleague" modal with pre-filled tweet text and copy-to-clipboard referral link. MEDIUM income impact.
 
 ### UX
 
 - [ ] TODO [UX] [S] Thread list empty state: when no threads exist show "Connect your first mailbox" card with a prominent CTA button — currently users see a blank page with no direction
 - [ ] TODO [UX] [S] Conversation view empty state: when a thread has no messages show explanatory copy, not a blank panel
-- [ ] TODO [UX] [S] Error pages: replace default Spring Whitelabel error page with user-friendly error.html template (plain-English message, link back to home)
 - [ ] TODO [UX] [S] Conversation view reply button: the "Reply" affordance must be the visually dominant primary action (large, colored button); do not bury it below the message list
-- [ ] TODO [UX] [S] Bubble body HTML rendering: when the Thymeleaf template renders BubbleMessage.bodyHtml, use th:utext (not th:text) since the value is pre-rendered (and already sanitized) HTML; add a comment in the template so it isn't accidentally reverted
-- [ ] TODO [UX] [S] Import error feedback: when EmailImportService throws, surface a user-visible error banner (not a 500 page) in the thread list or a toast notification
+- [ ] TODO [UX] [S] Bubble body HTML rendering: when the Thymeleaf template renders BubbleMessage.bodyHtml, use th:utext (not th:text) since the value is pre-rendered and already sanitized HTML; add a comment in the template so it isn't accidentally reverted
+- [ ] TODO [UX] [S] Import error feedback: when EmailImportService throws EmailImportException, surface a user-visible error banner (not a 500 page) in the thread list or a toast notification
 - [ ] TODO [UX] [S] IMAP sync status indicator: show "last synced X minutes ago" in the thread list header so users know when their data is fresh; update via polling or SSE
 - [ ] TODO [UX] [M] Mobile layout pass: ensure thread list and conversation bubble view are usable on 375px-wide screens; bubbles should not overflow viewport
 
@@ -78,5 +79,7 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [x] DONE [CORE] [M] Implement domain entities (EmailThread, Message, Participant, MessageRecipient, Attachment) and Spring Data repositories
 - [x] DONE [CORE] [L] Email-import service: parse RFC 822 via Jakarta Mail, build threads from Message-ID / In-Reply-To / References
 - [x] DONE [CORE] [M] IM transform: IMTransformService (stripQuotes + renderMarkdown), ConversationService (BubbleRun grouping), Conversation/BubbleRun/BubbleMessage view model records
-- [x] DONE [HEALTH] [M] Sanitize HTML email bodies: added jsoup 1.17.2 to pom.xml; ConversationService.buildBodyHtml now calls Jsoup.clean(bodyHtml, Safelist.relaxed()) before returning — strips <script>, event handlers, iframes, and javascript: URLs from incoming HTML email bodies. CRITICAL XSS vector closed.
-- [x] DONE [UX] [S] Participant initials utility: added initials() method to Participant entity — "Alice Bob"→"AB", "alice@test.com"→"A"; prerequisites for avatar rendering in templates are now met.
+- [x] DONE [HEALTH] [M] Sanitize HTML email bodies: jsoup 1.17.2 added; ConversationService.buildBodyHtml calls Jsoup.clean(bodyHtml, Safelist.relaxed()) — closes CRITICAL XSS vector
+- [x] DONE [UX] [S] Participant initials utility: added initials() method to Participant entity
+- [x] DONE [HEALTH] [S] EmailImportService: wrap MessagingException and IOException in EmailImportException (unchecked) — importMessage() no longer leaks mail-stack checked exceptions across layer boundaries
+- [x] DONE [HEALTH] [S] Add global exception handler: GlobalExceptionHandler (@ControllerAdvice) with error.html template; handles NoResourceFoundException (404), NoSuchElementException (404), MailException/EmailImportException (502), DataIntegrityViolationException (409), and generic Exception (500); disables Whitelabel error page

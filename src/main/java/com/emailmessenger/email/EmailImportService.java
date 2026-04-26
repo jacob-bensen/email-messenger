@@ -39,8 +39,13 @@ public class EmailImportService {
      * then In-Reply-To, then rootMessageId lookup, then new thread.
      */
     @Transactional
-    public Optional<Message> importMessage(MimeMessage mimeMessage) throws MessagingException, IOException {
-        ParsedEmail parsed = parser.parse(mimeMessage);
+    public Optional<Message> importMessage(MimeMessage mimeMessage) {
+        ParsedEmail parsed;
+        try {
+            parsed = parser.parse(mimeMessage);
+        } catch (MessagingException | IOException e) {
+            throw new EmailImportException("Failed to parse email message", e);
+        }
 
         if (parsed.messageId() != null
                 && messageRepo.findByMessageIdHeader(parsed.messageId()).isPresent()) {

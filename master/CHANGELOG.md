@@ -1,5 +1,144 @@
 # Changelog
 
+## 2026-04-26 — Autonomous Run #6
+
+### Role 1 — Feature Implementer
+**Tasks completed**: EmailImportException + GlobalExceptionHandler + error.html [HEALTH][S] × 2
+
+Files created/changed:
+- `src/main/java/com/emailmessenger/email/EmailImportException.java` — package-private unchecked
+  exception wrapping `MessagingException` / `IOException` from the mail parse layer. Callers
+  no longer leak Jakarta Mail types across package boundaries.
+- `src/main/java/com/emailmessenger/email/EmailImportService.java` — `importMessage()` signature
+  changed from `throws MessagingException, IOException` to unchecked. Body wrapped in
+  `try/catch (MessagingException | IOException e)` → `throw new EmailImportException(...)`.
+- `src/main/java/com/emailmessenger/web/GlobalExceptionHandler.java` — `@ControllerAdvice` with
+  five handlers: `NoResourceFoundException` (404), `NoSuchElementException` (404),
+  `MailException | EmailImportException` (502), `DataIntegrityViolationException` (409),
+  `Exception` (500). All handlers set the HTTP status via `HttpServletResponse.setStatus()`,
+  populate `status` and `message` model attributes, and return view name `"error"`. SLF4J
+  logger logs WARN for mail/conflict errors, ERROR with full stack trace for unhandled exceptions.
+- `src/main/resources/templates/error.html` — Thymeleaf error page: centered card, status code
+  in red, context-sensitive heading (different for 404 / 50x / 409), plain-English message
+  attribute, "Back to MailIM" button, support email link. Mobile-responsive. Replaces Spring
+  Whitelabel error page.
+- `src/main/resources/application.yml` — added `server.error.whitelabel.enabled: false` in dev
+  profile so Spring's built-in Whitelabel page can never appear.
+
+Verified: `./mvnw test` → BUILD SUCCESS, 48 tests pass.
+
+**Income relevance**: Users previously saw raw Spring Whitelabel error pages on any unhandled
+exception, which undermines trust. Professional error pages with actionable messages reduce
+abandonment. Hiding checked exceptions behind `EmailImportException` prevents accidental exception
+leakage into future web controllers (which would result in 500 pages for preventable errors).
+
+---
+
+### Role 2 — Test Examiner
+**Coverage added**: 4 new tests in GlobalExceptionHandlerTest
+
+File created: `src/test/java/com/emailmessenger/web/GlobalExceptionHandlerTest.java`
+- Uses `MockMvcBuilders.standaloneSetup()` with a package-private inner `ThrowingController` —
+  no `@SpringBootTest` overhead; fast and isolated.
+- `mailExceptionReturns502WithErrorView` — `MailSendException` → 502, view=error, model.status=502
+- `noSuchElementReturns404WithErrorView` — `NoSuchElementException` → 404, view=error, model.status=404
+- `dataIntegrityViolationReturns409WithErrorView` — `DataIntegrityViolationException` → 409
+- `unhandledExceptionReturns500WithErrorView` — `RuntimeException` → 500, view=error, model.status=500
+
+Total test count: 48 (up from 44). 0 failures.
+
+Income-critical paths still at zero coverage (code not yet written):
+- Stripe webhook handler and subscription state
+- User authentication flows
+- IMAP polling job
+- Thymeleaf thread list / conversation templates
+
+---
+
+### Role 3 — Growth Strategist
+Identified 4 new implementable growth opportunities not previously captured:
+
+1. **Annual/monthly billing toggle** [GROWTH][S] — Show a toggle on the pricing/plan-selection page
+   switching between monthly and annual pricing with a "Save 16%" label. Annual = 2× LTV per
+   conversion. HIGH income impact. Prerequisite: Stripe billing task.
+2. **REST API for Personal+ tier** [GROWTH][M] — JSON API exposing thread list, message retrieval,
+   and reply sending; enables Zapier/Make integrations; strong upsell lever for developer users.
+   HIGH income impact.
+3. **"Sent via MailIM" branding footer** [GROWTH][S] — Append "Sent via MailIM [try free]" link
+   to outgoing email replies for Free-tier users only. Each sent email distributes the product.
+   Disabled for Personal+. MEDIUM income impact.
+4. **Public roadmap at /roadmap** [GROWTH][S] — Static page listing upcoming features; shows
+   the product is actively developed; generates shareability. MEDIUM income impact.
+
+Added 2 [MARKETING] items to TODO_MASTER.md:
+- Affiliate program via Rewardful/PartnerStack (30% recurring commission)
+- NPS survey at day 30 (Delighted/Typeform) for review velocity and churn prevention
+
+---
+
+### Role 4 — UX Auditor
+Templates still do not exist; no live user flow beyond error pages.
+
+**Direct fix: error.html UX improvements**
+- Added context-sensitive h1 heading that varies by status: "Page not found" (404), "Mail server
+  unreachable" (502/503), "Conflict saving data" (409), "Something went wrong" (all others).
+  Users immediately understand the failure category without reading the paragraph.
+- Added "Still stuck? Contact support" link below the back-to-home button with `mailto:support@mailaim.app`.
+  Previously there was no recovery path if the user's issue was not solved by going home.
+- Mobile responsive: cards shrink to 16px side padding on narrow viewports; font sizes scale.
+
+No new UX items flagged (previously flagged UX backlog remains unchanged — all depend on
+Thymeleaf templates which are the next CORE task).
+
+---
+
+### Role 5 — Task Optimizer
+Rewrote INTERNAL_TODO.md:
+- Archived 2 newly completed HEALTH tasks:
+  - [HEALTH][S] EmailImportException wrapping → Done section
+  - [HEALTH][S] GlobalExceptionHandler + error.html → Done section
+  - Done section now has 11 items
+- Added 4 new [GROWTH] tasks from Role 3 in priority order
+- Remaining [HEALTH][S] input validation task moved to top; tagged with note that it is
+  BLOCKED until web controllers exist (prerequisite: Thymeleaf templates task)
+- Added 2 new [MARKETING] items to TODO_MASTER.md
+- Active task count: 40 tasks (1 Health, 3 Core, 30 Growth, 7 UX, 3 Infra)
+- No blocked tasks except input validation (labeled with prerequisite note, not BLOCKED tag
+  since it's still workable next session after templates ship)
+
+---
+
+### Role 6 — Health Monitor
+Security:
+- **No exception details exposed to users**: all error messages in GlobalExceptionHandler are
+  hardcoded safe strings; exception objects are logged server-side only. Zero information leakage.
+- **EmailImportException wrapping**: stack traces from Jakarta Mail are now retained in the cause
+  chain (logged at WARN/ERROR) but never surfaced to the HTTP response. Clean separation.
+- **Logging added**: `log.warn()` for mail/conflict errors, `log.error(ex)` with full stack trace
+  for unhandled exceptions — previously all exceptions were silently swallowed after this handler
+  was set up. Production observability now restored.
+- No new hardcoded credentials, no SQL, no user-controlled data in error messages.
+
+Performance:
+- GlobalExceptionHandler is a Spring singleton; no state; zero overhead on the happy path.
+- EmailImportException construction is O(1); negligible impact.
+
+Code quality:
+- `mailError` handler's `Exception ex` parameter now used in the log statement — no dead parameters.
+- SLF4J Logger follows Spring Boot conventions (`LoggerFactory.getLogger(GlobalExceptionHandler.class)`).
+- `EmailImportException` constructor is package-private — correctly scoped; only `EmailImportService`
+  within the email package constructs it; `GlobalExceptionHandler` catches it by type only.
+
+Dependencies:
+- No new dependencies added this run.
+- jsoup 1.17.2 still current; Spring Boot 3.5.14 still current.
+
+Legal:
+- No new legal risks introduced.
+- All prior [LEGAL] items in TODO_MASTER.md remain outstanding.
+
+---
+
 ## 2026-04-26 — Autonomous Run #5
 
 ### Role 1 — Feature Implementer

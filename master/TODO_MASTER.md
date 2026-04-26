@@ -73,3 +73,11 @@ third-party accounts, marketing, or legal steps.
 - [ ] [MARKETING] List MailIM on AppSumo for a lifetime deal campaign: generates immediate lump-sum
       revenue, hundreds of reviews, and organic word-of-mouth. Best timed after the MVP is live and
       stable. Requires AppSumo partner application at appsumo.com/sell.
+- [ ] [MARKETING] Set up an affiliate program via Rewardful or PartnerStack: offer 30% recurring
+      commission to productivity bloggers, YouTubers, and Twitter/X influencers who drive signups.
+      Requires account creation, affiliate agreement, and payout setup. HIGH income impact
+      (commission-only customer acquisition = zero upfront ad spend).
+- [ ] [MARKETING] Set up an NPS survey (Delighted, Typeform, or Survicate) triggered 30 days after
+      signup: identify promoters (score 9-10) → ask for G2/Capterra reviews; identify detractors
+      (score 0-6) → trigger personal outreach to prevent churn. MEDIUM income impact (retention
+      + review velocity).
