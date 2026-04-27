@@ -1,5 +1,132 @@
 # Changelog
 
+## 2026-04-27 — Autonomous Run #14
+
+### Role 1 — Feature Implementer
+**Tasks completed**: Dockerfile + docker-compose.yml [CORE][M] + GitHub Actions CI [CORE][S]
+
+**What was built**:
+- `Dockerfile` — multi-stage build: Stage 1 (`eclipse-temurin:21-jdk-alpine`) runs `mvnw package -DskipTests`; Stage 2 (`eclipse-temurin:21-jre-alpine`) copies only the JAR, runs as non-root `appuser`. Minimal runtime image.
+- `docker-compose.yml` — two services: `postgres` (postgres:16-alpine, health-checked with `pg_isready`, named volume for persistence) and `app` (built from Dockerfile, `depends_on: postgres: condition: service_healthy`, all env vars wired from `.env` with safe defaults). Supports `docker compose up` one-liner.
+- `.dockerignore` — excludes `target/`, `.git/`, `*.md`, `master/` to keep build context small and fast.
+- `.env.example` — copy-paste template for all required env vars (DB, SMTP, IMAP); comment-documented; safe to commit.
+- `.github/workflows/ci.yml` — GitHub Actions CI: `actions/setup-java@v4` with `cache: maven`; runs `./mvnw verify -q` on every push and on PRs to main/master; uploads Surefire reports on failure.
+
+**Income relevance**: Docker Compose lets Master spin up the full app + postgres stack with a single command — prerequisite for deploying to any hosting platform (Render, Railway, Fly.io, VPS). CI ensures every push is verified before reaching production, preventing regressions that would break the paying-user experience.
+
+---
+
+### Role 2 — Test Examiner
+**Coverage audit**: Reviewed all test files for gaps since last run.
+
+**Gap found and fixed**:
+- `WaitlistController.submit()` has a race-condition path: `existsByEmail()` returns false but `save()` throws `DataIntegrityViolationException` (concurrent duplicate). This path was untested — it silently swallows the exception and returns `joined=true`. Added `postWithConcurrentDuplicateSaveStillReturnsJoinedFlash` to `WaitlistControllerTest` (7th test) to assert the redirect and flash attribute are correct even when a DB constraint fires.
+
+**Existing coverage confirmed good**:
+- `ReplyServiceTest`: 4 tests cover happy path, multi-message thread, empty thread, and SMTP failure — income-critical path fully covered.
+- `GlobalExceptionHandlerTest`: 4 tests cover all 4 exception types (502, 404, 409, 500).
+- `LandingControllerTest`: social proof count attribute tested with both positive and zero values.
+- `WaitlistControllerTest`: 7 tests now cover form display, valid submit, duplicate (db-level and existsByEmail-level), blank input, invalid email, whitespace trimming, and concurrent race condition.
+- No flaky or redundant tests found.
+
+**Test count**: 103 → 104. 0 failures.
+
+---
+
+### Role 3 — Growth Strategist
+**Opportunities identified (new, not previously in backlog)**:
+
+1. **Health-check endpoint at GET /health** [CORE][S] — Render, Railway, Fly.io, and Docker all need a readiness probe. Without it, rolling deploys fail and the platform marks instances unhealthy. HIGH income impact (prerequisite for reliable hosting). Added to top of No-Prerequisite section.
+
+2. **Refund policy stub page at /refund** [GROWTH][S] — Stripe requires a visible refund policy before enabling payouts. /privacy and /terms exist but /refund is missing. 30-minute task following existing LegalController pattern. HIGH income impact (Stripe billing blocker).
+
+3. **Admin notification email on new waitlist signup** [GROWTH][S] — Spring Mail POST to ADMIN_NOTIFY_EMAIL on each new entry; owner gets immediate growth signal without analytics setup. Uses existing dep. MEDIUM impact.
+
+4. **Landing page "How it works" 3-step section** [UX][S] — Hero → Feature Grid jumps without explaining product flow. A 3-step walkthrough reduces bounce for skeptical first-time visitors. HIGH conversion impact, no prerequisites.
+
+**TODO_MASTER update**: Added [DEPLOY] priority note that the app is now deployable and deploy actions should be executed immediately.
+
+---
+
+### Role 4 — UX Auditor
+**Flows audited**: `/` → `/waitlist` (all 3 states), `/demo`, `/pricing`, `/threads` (empty state), `/privacy`, `/terms`, `/error`.
+
+**Fixed directly**:
+- `pricing.html` header brand link: was `href="/threads"` — changed to `href="/"`. New visitors landing on /pricing who clicked the brand logo were sent to the empty thread list (confusing dead-end). Now they return to the landing page.
+- `waitlist.html` success state CTA: was `<a href="/pricing">See pricing →</a>` — changed to `<a href="/demo" class="btn btn-primary">Try the live demo →</a>`. After joining the waitlist the user is already a lead; pushing them to pricing risked post-join price anxiety. The demo is the next best action (no friction, builds confidence).
+- `waitlist.html` and `demo.html`: both pages ended without a footer, leaving users with no navigation to other pages after scrolling to the bottom. Added `pricing-footer` to both (Privacy, Terms, Support, and key nav links). Consistent with /privacy and /terms footer style.
+- `INTERNAL_TODO.md`: marked `/privacy` and `/terms` dead-end nav task DONE — both pages already have full header nav + footer (confirmed by file read; task was checked but not archived).
+
+**Flows confirmed clean**:
+- `/error` page: excellent — status code, friendly message, "← Back to MailIM" button, support email link, mobile responsive. No changes needed.
+- `/privacy` and `/terms`: header nav + footer present, no dead-ends.
+- `/` landing page: hero → feature grid → pricing preview → bottom CTA → footer. All CTAs lead somewhere meaningful. Social proof count in hero if waitlist > 0.
+- `/threads` empty state: CTA to /waitlist + demo hint. Clean.
+
+**Flagged in INTERNAL_TODO.md** (captured by existing items):
+- Thread list `+ Add mailbox` link still points to `/settings/mailboxes` (404). Already flagged as [BLOCKED] until auth.
+
+---
+
+### Role 5 — Task Optimizer
+**INTERNAL_TODO.md cleanup**:
+- Archived 6 items to Done section: Dockerfile, CI, /privacy+/terms nav, pricing brand link fix, waitlist success CTA fix, waitlist/demo footer additions.
+- Removed stale "prerequisite for Dockerfile/CI" section heading — those tasks are done.
+- Moved 3 BLOCKED tasks (+ Add mailbox link, CSRF, rate-limit) from inline [BLOCKED] notes scattered in UX/Health sections into a dedicated "Blocked" section at the bottom of Active.
+- No duplicate tasks found (waitlist confirmation email ≠ admin notification email — different recipients).
+- IMAP sync status indicator confirmed unblocked (IMAP polling done ✓).
+- No oversized tasks needing decomposition.
+- Auth-gated and Stripe-gated sections remain as written — correctly grouped, all unambiguously [BLOCKED] until user auth ships.
+
+**TODO_MASTER.md cleanup**:
+- Tagged `Set up a "waitlist" landing page` as [LIKELY DONE - verify] — /waitlist is live.
+- Tagged `Pricing page /pricing currently links to href="#"...` as [LIKELY DONE - verify] — /privacy and /terms stub pages are live.
+- Fixed the Sentry item which had stale prose from an older note appended to the LEGAL item — moved to its own [INFRASTRUCTURE] entry.
+
+---
+
+### Role 6 — Health Monitor
+**Audited**: security, performance, code quality, dependencies, legal.
+
+**Security**:
+- No hardcoded credentials found in any Java file or application.yml. All secrets use `${ENV_VAR:}` placeholders.
+- `.env.example` is a safe-to-commit template — no real values.
+- `th:utext` in `conversation.html` renders pre-sanitized HTML (Jsoup `Safelist.relaxed()`) — documented with comment at point of use; no XSS risk.
+- `innerHTML` in day-separator JS inserts only date-formatted strings from a structured `yyyy-MM-dd` server attribute (`data-date`); `formatDateLabel` returns only 'Today', 'Yesterday', or `toLocaleDateString` output — no user-controlled input reaches `innerHTML`. Safe.
+- CSRF: no Spring Security yet; POST endpoints are unprotected — flagged BLOCKED in TODO pending auth work.
+- Input validation present on all form objects (ReplyForm, WaitlistForm).
+- `DataIntegrityViolationException` caught at waitlist concurrent-duplicate path — new test confirms correct behavior.
+
+**Performance**:
+- All `@ManyToOne` relations use `FetchType.LAZY` — no eager cross-table fetches.
+- `EmailThreadRepository` uses a JOIN FETCH query to eliminate N+1 on conversation view.
+- Attachment N+1 still open (flagged in HEALTH backlog).
+- `LandingController` calls `count()` on every request — O(1) aggregation, acceptable at this scale.
+- `findAllByOrderByUpdatedAtDesc` uses `Pageable` — no unbounded list queries.
+
+**Code quality**:
+- No unused imports (grep returned empty).
+- No TODO/FIXME/HACK comments in production code.
+- No dead code.
+- No overly large files.
+
+**Dependencies** (no changes this run):
+- Spring Boot 3.5.14 (current 3.x stable).
+- jsoup 1.17.2 — current stable, no known CVEs.
+- jakarta.mail 2.0.1 — CDDL 1.1 + GPL v2 with Classpath Exception. Classpath Exception makes it safe for commercial use, but legal review recommended before charging customers (flagged in TODO_MASTER [LEGAL]).
+- H2 2.3 (bundled) — no known issues.
+- Testcontainers 1.20.4 — current stable.
+
+**Legal** (no change from prior runs):
+- /privacy and /terms are stubs — real content required before EU users or payments.
+- No Cookie consent banner — required for GDPR if targeting EU.
+- Refund policy page (/refund) missing — new dev task added to INTERNAL_TODO.
+- No Stripe integration yet — no PCI exposure.
+
+**No direct fixes needed** — all findings either confirmed clean or flagged in existing TODO items.
+
+---
+
 ## 2026-04-27 — Autonomous Run #13
 
 ### Role 1 — Feature Implementer

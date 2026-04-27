@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: emailmessenger
+      POSTGRES_USER: ${DB_USER:-mailaim}
+      POSTGRES_PASSWORD: ${DB_PASS:-mailaim}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-mailaim}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  app:
+    build: .
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgres:5432/emailmessenger
+      DB_USER: ${DB_USER:-mailaim}
+      DB_PASS: ${DB_PASS:-mailaim}
+      MAIL_HOST: ${MAIL_HOST:-localhost}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USER: ${MAIL_USER:-}
+      MAIL_PASS: ${MAIL_PASS:-}
+      IMAP_HOST: ${IMAP_HOST:-}
+      IMAP_PORT: ${IMAP_PORT:-993}
+      IMAP_SSL: ${IMAP_SSL:-true}
+      IMAP_FOLDER: ${IMAP_FOLDER:-INBOX}
+      IMAP_USER: ${IMAP_USER:-}
+      IMAP_PASS: ${IMAP_PASS:-}
+      IMAP_POLLING_ENABLED: ${IMAP_POLLING_ENABLED:-false}
+      IMAP_POLLING_INTERVAL_MS: ${IMAP_POLLING_INTERVAL_MS:-60000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

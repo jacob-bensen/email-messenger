@@ -14,6 +14,9 @@ third-party accounts, marketing, or legal steps.
 
 ## Infrastructure / Credentials
 
+- [ ] [DEPLOY] DEPLOYMENT UNBLOCKED: Docker Compose + CI are now ready. The app is deployable. Priority action: follow the steps below to get MailIM live. Once running, the waitlist URL can be shared publicly and revenue conversations can begin.
+- [ ] [DEPLOY] Docker Compose is ready. Run `cp .env.example .env`, fill in real values (DB_PASS, MAIL_*, IMAP_*), then `docker compose up -d` to start the app + postgres. The app will be available on port 8080 (or PORT env var). First boot runs Flyway migrations automatically.
+- [ ] [DEPLOY] GitHub Actions CI is configured in `.github/workflows/ci.yml`. To activate: push the repo to GitHub, ensure Java 21 and Maven cache are available on the runner. CI runs on every push and PR — no additional setup needed.
 - [ ] [DEPLOY] Enable IMAP polling in production: set these env vars once the app is deployed:
       IMAP_POLLING_ENABLED=true, IMAP_HOST=imap.gmail.com (or your IMAP host), IMAP_PORT=993,
       IMAP_SSL=true, IMAP_USER=your-email@domain.com, IMAP_PASS=your-app-password,
@@ -68,8 +71,7 @@ third-party accounts, marketing, or legal steps.
 - [ ] [MARKETING] Create a Twitter/X account and LinkedIn page for MailIM. Post launch updates.
 - [ ] [MARKETING] Post in communities: Indie Hackers, Hacker News (Show HN), Reddit r/productivity,
       r/selfhosted once a self-hosted Docker option is available.
-- [ ] [MARKETING] Set up a "waitlist" landing page (simple HTML or Carrd) before the MVP is done
-      to capture early interest and validate demand.
+- [x] [LIKELY DONE - verify] Set up a "waitlist" landing page: /waitlist is live with email capture, duplicate detection, social proof count, and success/already-joined states.
 - [ ] [MARKETING] Create a Slack community or Discord server for early MailIM users — builds
       word-of-mouth and gives a feedback channel. Link from the app footer and README.
 - [ ] [MARKETING] Once Slack/Discord webhook integration ships, post a targeted announcement in
@@ -114,7 +116,5 @@ third-party accounts, marketing, or legal steps.
 - [ ] [MARKETING] Once the /pricing page is live, update the project README, Indie Hackers profile, and any social media bios with the direct pricing URL. Link to it from the app's empty-state and thread list header.
 - [ ] [MARKETING] Now that /waitlist is live, post the waitlist URL on Twitter/X, Indie Hackers, LinkedIn, and any relevant Slack/Discord communities (r/productivity, remote-work channels). Include the /demo link so visitors can try before joining. Even 10–20 signups provide social proof and validate demand before auth ships.
 - [ ] [MARKETING] Set up a transactional email provider (Postmark, Resend, or SendGrid) so the waitlist confirmation email can fire automatically on signup. Configure MAIL_HOST / MAIL_USER / MAIL_PASS env vars accordingly. The waitlist confirmation email task in INTERNAL_TODO.md is blocked until this is done.
-- [ ] [LEGAL] Pricing page /pricing currently links to href="#" for Privacy Policy and Terms of Service in the FAQ and footer. These must be real pages before accepting any payments or EU users. Create /privacy and /terms stub pages as soon as possible (generators: Termly, Iubenda, or FreePrivacyPolicy.com).
-      IMAP polling runs on a background thread — uncaught exceptions are only visible in logs.
-      Sentry will catch and alert on IMAP connection failures, import errors, and Spring exceptions.
-      Sign up at sentry.io, add the sentry-spring-boot-starter dependency, set SENTRY_DSN env var.
+- [x] [LIKELY DONE - verify] Pricing page /privacy and /terms links: /privacy and /terms stub pages are now live, linked from pricing footer and FAQ. Verify content is sufficient before accepting EU users or payments.
+- [ ] [INFRASTRUCTURE] Set up Sentry error monitoring for the production deployment. IMAP polling runs on a background thread — uncaught exceptions are only visible in logs. Sentry will catch and alert on IMAP connection failures, import errors, and Spring exceptions. Sign up at sentry.io, add the sentry-spring-boot-starter dependency, set SENTRY_DSN env var.

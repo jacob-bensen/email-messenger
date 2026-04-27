@@ -7,12 +7,15 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
+import org.springframework.dao.DataIntegrityViolationException;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
@@ -105,6 +108,19 @@ class WaitlistControllerTest {
         mockMvc.perform(post("/waitlist")
                         .param("email", "  trimmed@example.com  "))
                 .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("joined", true));
+    }
+
+    @Test
+    void postWithConcurrentDuplicateSaveStillReturnsJoinedFlash() throws Exception {
+        // existsByEmail returns false (race condition window), but save() throws constraint violation
+        when(waitlistRepo.existsByEmail("race@example.com")).thenReturn(false);
+        doThrow(new DataIntegrityViolationException("unique constraint")).when(waitlistRepo).save(any());
+
+        mockMvc.perform(post("/waitlist")
+                        .param("email", "race@example.com"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("/waitlist*"))
                 .andExpect(flash().attribute("joined", true));
     }
 }

@@ -10,14 +10,16 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 
 ## Active / High Priority
 
-### Infrastructure (prerequisite for Dockerfile/CI)
+### Infrastructure
 
-- [ ] TODO [CORE] [M] Dockerfile + docker-compose.yml (app + postgres)
-- [ ] TODO [CORE] [S] GitHub Actions CI: build, test, cache Maven deps
 - [ ] TODO [CORE] [L] Integration tests with Testcontainers (Postgres) + GreenMail (SMTP/IMAP)
 
 ### No-Prerequisite Growth (ship next, highest ROI)
 
+- [ ] TODO [CORE] [S] Health-check endpoint at GET /health returning 200 JSON `{status:"UP"}`; required for Docker health probes, Render/Railway/Fly.io readiness checks, and uptime monitors. No deps — single controller, zero auth. HIGH income impact (prerequisite for reliable hosting).
+- [ ] TODO [GROWTH] [S] Refund policy stub page at /refund: add route in LegalController + minimal refund.html template (matching privacy/terms style); link from pricing footer. HIGH income impact — Stripe requires a visible refund policy before enabling payouts, and consumer law requires it before charging customers. 30-minute task, same pattern as /privacy and /terms.
+- [ ] TODO [GROWTH] [S] Admin notification email on new waitlist signup: after WaitlistController saves a new entry, fire Spring Mail to `${ADMIN_NOTIFY_EMAIL:}` (no-op if blank) with subject "New MailIM waitlist signup: {email}"; keeps owner aware of growth without requiring a dashboard. MEDIUM impact. No prerequisites beyond existing Spring Mail dep.
+- [ ] TODO [UX] [S] Landing page "How it works" 3-step section: add a numbered walkthrough (1. Connect your mailbox → 2. Threads auto-import → 3. Read as chat) between the hero and feature grid; reduces bounce rate for skeptical visitors who don't immediately understand the product. HIGH conversion impact. No prerequisites.
 - [ ] TODO [GROWTH] [S] Waitlist confirmation email: send a "you're on the list" transactional email immediately after a successful waitlist signup using Spring Mail (already in deps); keeps leads warm, confirms deliverability, includes /demo link. HIGH income impact. Prerequisite: waitlist (done ✓), transactional email provider credentials (see TODO_MASTER.md).
 - [ ] TODO [GROWTH] [M] Thread permalink sharing: generate a shareable read-only link to a thread view (e.g. /share/{token}); viral touchpoint, HIGH income impact.
 - [ ] TODO [GROWTH] [M] .mbox file import: upload a raw .mbox archive (Google Takeout / Thunderbird export) to import all threads in bulk; removes IMAP credential requirement for first-time users. HIGH impact, no prerequisites.
@@ -41,9 +43,7 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 
 ### UX
 
-- [ ] TODO [UX] [S] Add footer/nav to /privacy and /terms pages: currently dead-ends with no navigation back to app or home; add header nav consistent with other pages.
 - [ ] TODO [UX] [S] Thread list: show last-message-body preview (first 80 chars) below subject line — denormalize via query or add last_message_preview column to email_threads. MEDIUM impact.
-- [ ] TODO [UX] [S] Thread list "+ Add mailbox" nav link points to /settings/mailboxes (404); update to redirect to auth/onboarding once user auth ships. [BLOCKED] until user auth.
 - [ ] TODO [UX] [S] IMAP sync status indicator: show "last synced X minutes ago" in thread list header. Prerequisite: IMAP polling (done ✓).
 - [ ] TODO [UX] [M] Mobile layout pass: ensure thread list and conversation view are usable on 375px screens; bubbles must not overflow viewport.
 - [ ] TODO [UX] [S] Replace legal notice placeholder in /privacy and /terms with real legal copy before accepting any payments or EU users. No code needed — requires legal content generation (see TODO_MASTER.md).
@@ -51,8 +51,6 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 ### Health
 
 - [ ] TODO [HEALTH] [S] Attachment N+1 query: Message.attachments loaded lazily per message; add @BatchSize(size=50) to Message.attachments. Low priority until threads with many attachments are common.
-- [ ] TODO [HEALTH] [S] Add CSRF protection when Spring Security ships: CSRF filter must be enabled (default) on the reply and waitlist POST endpoints. [BLOCKED] until user auth task starts.
-- [ ] TODO [HEALTH] [S] Rate-limit POST /threads/{id}/reply and POST /waitlist to prevent form abuse; implement per-IP or per-user rate limiting. [BLOCKED] until auth ships (per-user limit) or via nginx/Cloudflare (per-IP, no code needed).
 
 ### Auth-Gated Growth (implement user auth first, then these unlock)
 
@@ -89,6 +87,12 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [ ] TODO [GROWTH] [M] Thread export (PDF/HTML): clean printable file; Personal/Team plan gate. MEDIUM impact.
 - [ ] TODO [GROWTH] [M] Send-later scheduling for replies: schedule reply at future date/time; Personal/Team plan gate. HIGH impact.
 
+### Blocked (prerequisite missing)
+
+- [ ] BLOCKED [UX] [S] Thread list "+ Add mailbox" nav link points to /settings/mailboxes (404). [BLOCKED] until user auth/onboarding route ships.
+- [ ] BLOCKED [HEALTH] [S] Add CSRF protection: CSRF filter must be enabled on reply and waitlist POST endpoints. [BLOCKED] until Spring Security / user auth task starts.
+- [ ] BLOCKED [HEALTH] [S] Rate-limit POST /threads/{id}/reply and POST /waitlist. [BLOCKED] until auth ships (per-user) or via nginx/Cloudflare (per-IP, no code needed).
+
 ---
 
 ## Done (archived)
@@ -121,3 +125,9 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [x] DONE [GROWTH] [M] SEO-friendly landing page at /: LandingController + index.html with hero (headline, subhead, dual CTA), feature grid (6 cards), pricing preview (3 plan cards), bottom CTA section, footer; JSON-LD SoftwareApplication schema; canonical tag; waitlistCount social proof in hero; replaces redirect:/threads
 - [x] DONE [GROWTH] [S] Waitlist count social proof: live "Join X others" count now shown on waitlist page (form state) via WaitlistController.waitlistCount model attribute, and in landing page hero; FOMO driver active on both entry points
 - [x] DONE [UX] [S] nav dead-ends fixed: waitlist.html brand link updated from /threads to /; waitlist.html header CTA changed from "Open App" (/threads) to "Try demo" (/demo); demo.html top banner CTA changed from "Connect your mailbox" (/threads) to "Join the waitlist" (/waitlist); threads.html brand upgraded from plain span to linked brand-link pointing to /
+- [x] DONE [CORE] [M] Dockerfile + docker-compose.yml (app + postgres): multi-stage build, non-root user, depends_on health check, .env.example
+- [x] DONE [CORE] [S] GitHub Actions CI: build, test, cache Maven deps; uploads Surefire reports on failure
+- [x] DONE [UX] [S] Add footer/nav to /privacy and /terms pages (confirmed present; task closed)
+- [x] DONE [UX] [S] Fix pricing page brand link: was href="/threads", changed to href="/" — dead-end for new visitors
+- [x] DONE [UX] [S] Waitlist success state CTA: changed from "See pricing →" to "Try the live demo →" — reduces post-join price anxiety
+- [x] DONE [UX] [S] Add site footer to waitlist.html and demo.html: both pages were missing bottom navigation
