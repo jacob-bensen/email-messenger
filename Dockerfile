@@ -14,4 +14,6 @@ WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 USER appuser
 EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
+  CMD wget -qO- http://localhost:8080/health || exit 1
 ENTRYPOINT ["java", "-jar", "app.jar"]

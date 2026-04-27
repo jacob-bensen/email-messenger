@@ -112,6 +112,17 @@ class WaitlistControllerTest {
     }
 
     @Test
+    void postWithInvalidEmailRepopulatesWaitlistCountInModel() throws Exception {
+        when(waitlistRepo.count()).thenReturn(17L);
+
+        mockMvc.perform(post("/waitlist")
+                        .param("email", "bad-email"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("waitlist"))
+                .andExpect(model().attribute("waitlistCount", 17L));
+    }
+
+    @Test
     void postWithConcurrentDuplicateSaveStillReturnsJoinedFlash() throws Exception {
         // existsByEmail returns false (race condition window), but save() throws constraint violation
         when(waitlistRepo.existsByEmail("race@example.com")).thenReturn(false);

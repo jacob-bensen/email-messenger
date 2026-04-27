@@ -33,8 +33,10 @@ class WaitlistController {
     @PostMapping
     String submit(@Valid @ModelAttribute("waitlistForm") WaitlistForm form,
                   BindingResult bindingResult,
+                  Model model,
                   RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
+            model.addAttribute("waitlistCount", waitlistRepo.count());
             return "waitlist";
         }
         if (waitlistRepo.existsByEmail(form.getEmail())) {

@@ -1154,3 +1154,48 @@ body {
   .preview-plan { background: #0d1117; }
   .preview-plan-highlight { background: var(--surface); }
 }
+
+/* How it works section */
+.landing-how-it-works {
+  background: var(--surface);
+  padding: 72px 16px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.how-steps {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 40px;
+  justify-content: center;
+}
+.how-step {
+  flex: 1;
+  max-width: 280px;
+  text-align: center;
+}
+.how-step-number {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+.how-step h3 { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
+.how-step p { color: var(--text-muted); font-size: 15px; line-height: 1.6; }
+.how-step-arrow {
+  font-size: 28px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-top: 16px;
+}
+@media (max-width: 700px) {
+  .how-steps { flex-direction: column; align-items: center; }
+  .how-step-arrow { transform: rotate(90deg); margin: 4px 0; }
+}

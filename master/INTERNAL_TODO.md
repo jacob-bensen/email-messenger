@@ -16,10 +16,8 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 
 ### No-Prerequisite Growth (ship next, highest ROI)
 
-- [ ] TODO [CORE] [S] Health-check endpoint at GET /health returning 200 JSON `{status:"UP"}`; required for Docker health probes, Render/Railway/Fly.io readiness checks, and uptime monitors. No deps — single controller, zero auth. HIGH income impact (prerequisite for reliable hosting).
 - [ ] TODO [GROWTH] [S] Refund policy stub page at /refund: add route in LegalController + minimal refund.html template (matching privacy/terms style); link from pricing footer. HIGH income impact — Stripe requires a visible refund policy before enabling payouts, and consumer law requires it before charging customers. 30-minute task, same pattern as /privacy and /terms.
 - [ ] TODO [GROWTH] [S] Admin notification email on new waitlist signup: after WaitlistController saves a new entry, fire Spring Mail to `${ADMIN_NOTIFY_EMAIL:}` (no-op if blank) with subject "New MailIM waitlist signup: {email}"; keeps owner aware of growth without requiring a dashboard. MEDIUM impact. No prerequisites beyond existing Spring Mail dep.
-- [ ] TODO [UX] [S] Landing page "How it works" 3-step section: add a numbered walkthrough (1. Connect your mailbox → 2. Threads auto-import → 3. Read as chat) between the hero and feature grid; reduces bounce rate for skeptical visitors who don't immediately understand the product. HIGH conversion impact. No prerequisites.
 - [ ] TODO [GROWTH] [S] Waitlist confirmation email: send a "you're on the list" transactional email immediately after a successful waitlist signup using Spring Mail (already in deps); keeps leads warm, confirms deliverability, includes /demo link. HIGH income impact. Prerequisite: waitlist (done ✓), transactional email provider credentials (see TODO_MASTER.md).
 - [ ] TODO [GROWTH] [M] Thread permalink sharing: generate a shareable read-only link to a thread view (e.g. /share/{token}); viral touchpoint, HIGH income impact.
 - [ ] TODO [GROWTH] [M] .mbox file import: upload a raw .mbox archive (Google Takeout / Thunderbird export) to import all threads in bulk; removes IMAP credential requirement for first-time users. HIGH impact, no prerequisites.
@@ -40,6 +38,10 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [ ] TODO [GROWTH] [S] Keyboard shortcut `?` to show help modal listing all keyboard shortcuts (j/k/Enter/r/Esc); power-user delight, retention driver. LOW-MEDIUM impact.
 - [ ] TODO [GROWTH] [S] Canonical URL `<link rel="canonical">` on remaining public pages (threads.html, conversation.html, demo.html, waitlist.html, pricing.html, error.html); prevents duplicate-content SEO penalties. LOW impact, no prerequisites. (index.html done ✓)
 - [ ] TODO [GROWTH] [S] "Sent via MailIM" branding footer in outgoing replies for Free plan users; disabled for Personal+. MEDIUM impact.
+- [ ] TODO [GROWTH] [S] Gzip compression: add `server.compression.enabled: true`, `server.compression.mime-types` (text/html, text/css, application/javascript, application/json), and `server.compression.min-response-size: 1024` to both profiles in application.yml. Reduces page payload 60-80%; directly improves Core Web Vitals (LCP) and Google search ranking. MEDIUM income impact. 5-minute task, no prerequisites.
+- [ ] TODO [HEALTH] [S] Security response headers: add `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` via a Spring `OncePerRequestFilter` (no Spring Security needed). Required for enterprise/B2B trust and basic security hygiene. MEDIUM income impact. No prerequisites.
+- [ ] TODO [HEALTH] [S] Cookie consent banner: add a dismissible `<div id="cookie-banner">` to all Thymeleaf layouts (shown once per browser session, hidden after click via localStorage); required before serving EU users (GDPR art. 7). HIGH legal/income impact (unblocks EU market). No prerequisites.
+- [ ] TODO [GROWTH] [S] JSON-LD FAQPage schema on /pricing: add `<script type="application/ld+json">` block with FAQPage schema for the pricing FAQ section; enables Google rich-result accordion in SERPs → higher CTR for "MailIM pricing" and "email chat app" queries. MEDIUM SEO impact. Prerequisite: pricing page (done ✓).
 
 ### UX
 
@@ -131,3 +133,8 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [x] DONE [UX] [S] Fix pricing page brand link: was href="/threads", changed to href="/" — dead-end for new visitors
 - [x] DONE [UX] [S] Waitlist success state CTA: changed from "See pricing →" to "Try the live demo →" — reduces post-join price anxiety
 - [x] DONE [UX] [S] Add site footer to waitlist.html and demo.html: both pages were missing bottom navigation
+- [x] DONE [CORE] [S] Health-check endpoint at GET /health: HealthController returns 200 JSON `{"status":"UP"}`; HEALTHCHECK added to Dockerfile; health check added to app service in docker-compose.yml; 3 tests added (107→108 total)
+- [x] DONE [UX] [S] Landing page "How it works" 3-step section: numbered 3-step walkthrough (Connect → Import → Read as chat) inserted between hero and feature grid in index.html; matching CSS added to main.css; mobile responsive (vertical stack on ≤700px)
+- [x] DONE [HEALTH] [S] noindex meta on private pages: `<meta name="robots" content="noindex,nofollow">` added to threads.html and conversation.html; prevents Google from indexing private email thread content
+- [x] DONE [UX] [S] Pricing page Free plan CTA fixed: was `href="/threads"` (dead-end for new visitors without auth), changed to `href="/waitlist"` with copy "Get early access →"
+- [x] DONE [HEALTH] [S] WaitlistController bug fix: `waitlistCount` not added to model on validation error; social proof count was invisible on form re-display after failed submission; fixed by calling `waitlistRepo.count()` in the error path; test added
