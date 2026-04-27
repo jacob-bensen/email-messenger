@@ -55,7 +55,7 @@ third-party accounts, marketing, or legal steps.
 - [ ] [LEGAL] Add a Privacy Policy page (required for GDPR/CCPA and for any OAuth or payment flow).
       Can use a generator like Termly or Iubenda initially.
 - [ ] [LEGAL] Add Terms of Service page.
-- [ ] [LEGAL] Add Refund Policy page (required by Stripe and consumer protection law).
+- [x] [LIKELY DONE - verify] Add Refund Policy page (required by Stripe and consumer protection law). /refund is live as a placeholder; replace with legally reviewed copy before accepting payments.
 - [ ] [LEGAL] Add Cookie banner / consent if targeting EU users (GDPR cookie consent).
 - [ ] [LEGAL] Review Google OAuth terms of service before launching SSO — ensure the app's
       privacy policy covers use of Google account data.

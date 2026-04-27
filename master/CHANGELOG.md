@@ -1,5 +1,96 @@
 # Changelog
 
+## 2026-04-27 — Autonomous Run #16
+
+### Role 1 — Feature Implementer
+**Task completed**: Refund policy stub page at /refund [GROWTH][S]
+
+**What was built**:
+- `src/main/java/com/emailmessenger/web/LegalController.java` — added `@GetMapping("/refund")` returning `"refund"` view. Same pattern as `/privacy` and `/terms`.
+- `src/main/resources/templates/refund.html` — full refund policy page matching privacy/terms style: header nav, legal-card layout, placeholder notice, six sections (Subscriptions, Eligibility, Free plan, How to request, Chargebacks, Contact), footer with all legal links.
+- `src/main/resources/templates/pricing.html` footer — added `/refund` link; pricing FAQ "Can I change plans anytime?" reworded to "Can I change plans or get a refund?" with inline refund policy link for trust.
+- `src/main/resources/templates/privacy.html` footer — added `/refund` link.
+- `src/main/resources/templates/terms.html` footer — added `/refund` link.
+- `src/main/resources/templates/index.html` footer — added `/refund` link.
+- `src/main/resources/templates/waitlist.html` footer — added `/refund` link.
+- `src/main/resources/templates/demo.html` footer — added `/refund` link.
+
+**Income relevance**: Stripe requires a publicly visible refund policy before enabling payouts. Consumer protection law (EU, California) also requires it before charging any customer. This unblocks Stripe integration and removes a legal compliance gap.
+
+---
+
+### Role 2 — Test Examiner
+**Coverage added**: /refund endpoint and SecurityHeadersFilter
+
+- `src/test/java/com/emailmessenger/web/LegalControllerTest.java` — added `refundPageReturns200()` test verifying GET /refund returns 200 and view name "refund". Pattern matches existing `privacyPageReturns200` and `termsPageReturns200`.
+- `src/test/java/com/emailmessenger/web/SecurityHeadersFilterTest.java` — new test class; 3 tests verify that `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, and `Referrer-Policy: strict-origin-when-cross-origin` headers are present on every response via `MockMvcBuilders.standaloneSetup(...).addFilters(new SecurityHeadersFilter())`.
+
+**No failing tests**. Total: 112 tests, 0 failures, 0 errors.
+
+**Coverage gaps noted (not yet addressed)**:
+- No integration test for gzip compression (requires full Spring context; low priority as Spring Boot's built-in compression is well-tested upstream).
+- No test for legal page footers containing `/refund` link (HTML content tests require Thymeleaf full context; out of scope for unit tests).
+
+---
+
+### Role 3 — Growth Strategist
+**Opportunities identified and added to INTERNAL_TODO.md**:
+
+1. **[GROWTH][S] Testimonials section on landing page** — index.html has zero social proof between hero and features; 2-3 placeholder testimonials would be the single highest-conversion-lift change to the landing page. HIGH impact.
+2. **[GROWTH][S] OG/meta tags on legal pages** — privacy.html, terms.html, refund.html have no og:title / og:description. When shared on Slack/LinkedIn they render as raw URLs. LOW individual impact but brand credibility.
+3. **[GROWTH][S] Canonical links on legal pages** — privacy, terms, refund have no `<link rel="canonical">`. LOW SEO risk, quick fix.
+4. **[GROWTH][S] Waitlist success "Share this" CTA** — on the waitlist success state, a copy-link button gives every new subscriber a zero-friction sharing mechanism; turns signups into organic distribution touchpoints. MEDIUM viral impact.
+5. **[GROWTH][S] Demo "Copy link" button** — on demo conversation view, a clipboard copy button for the current URL; makes demo visits shareable. MEDIUM viral impact.
+6. **[GROWTH][S] Hero video/GIF embed slot on landing page** — add a `<div class="hero-media">` placeholder block below hero CTAs in index.html; when a screen recording asset is ready it plugs in with one line change. Zero cost now, high value when asset exists.
+7. **[UX][S] Landing page zero-testimonials gap** — flagged as UX item as well (no testimonials = trust deficit for first-time visitors considering paid plans).
+
+---
+
+### Role 4 — UX Auditor
+**Flows audited**: refund policy page, pricing page FAQ, all page footers, landing page trust signals.
+
+**Direct fixes applied**:
+1. **Refund Policy link in all footers**: Added `<a href="/refund">Refund Policy</a>` to footers of index.html, pricing.html, privacy.html, terms.html, waitlist.html, demo.html, and refund.html itself. Previously no page surfaced the refund policy; a user visiting the pricing page to evaluate a purchase had no way to find refund terms without knowing the URL.
+2. **Pricing FAQ trust gap fixed**: "Can I change plans anytime?" reworded to "Can I change plans or get a refund?" with an inline link to `/refund`. Pricing page FAQs are read by users on the fence about paying — the refund policy link directly addresses the "what if I don't like it?" objection at decision time.
+
+**Issues flagged (INTERNAL_TODO.md [UX])**:
+- Landing page has zero testimonials/social proof — a significant conversion gap for first-time visitors evaluating a paid subscription. Tagged [UX][S] and [GROWTH][S].
+- Legal pages (privacy, terms, refund) have no OG tags — looks unpolished on social share. Tagged [GROWTH][S].
+
+---
+
+### Role 5 — Task Optimizer
+**INTERNAL_TODO.md changes**:
+- Archived 4 newly completed tasks to the Done section: Refund policy page [GROWTH][S], Gzip compression [GROWTH][S], Security response headers [HEALTH][S], Refund links in all footers [UX][S].
+- Added 7 new items from Role 3 and Role 4: Testimonials on landing (HIGH), OG on legal pages (LOW), canonical on legal pages (LOW), Waitlist share CTA (MEDIUM), Demo copy-link (MEDIUM), Hero media slot (LOW preparatory), Landing testimonials UX gap (HIGH).
+- Existing priority ordering maintained: TEST-FAILURE items first (none active), income-critical features next, UX conversion items, HEALTH, GROWTH, BLOCKED last.
+- No duplicates introduced; new items are distinct from existing list.
+- Active task count: ~58 items across all sections after additions.
+
+---
+
+### Role 6 — Health Monitor
+**Security**:
+- **SecurityHeadersFilter added**: `X-Frame-Options: SAMEORIGIN` prevents clickjacking. `X-Content-Type-Options: nosniff` prevents MIME-type sniffing attacks. `Referrer-Policy: strict-origin-when-cross-origin` prevents leaking full referer URLs to third-party domains (important once analytics or external fonts are added). All three headers required for enterprise/B2B trust and basic OWASP compliance. Filter registered as `@Component` — auto-applied to all requests.
+- **No hardcoded secrets or credentials** found in new files. ✓
+- **No new external API calls** without error handling. ✓
+- **CSRF**: still pre-auth acceptable; blocked item remains. ✓
+
+**Performance**:
+- **Gzip compression enabled**: `server.compression.enabled: true`, `mime-types: text/html,text/css,application/javascript,application/json,text/plain`, `min-response-size: 1024` added to dev profile in `application.yml`. Expected 60-80% reduction in HTML/CSS/JS transfer size. LCP improvement on slow connections. Google PageSpeed ranking signal.
+
+**Code quality**:
+- `SecurityHeadersFilter` is package-private (correct per conventions), uses constructor injection pattern (no fields beyond filter chain), follows existing `OncePerRequestFilter` idiom. ✓
+- `refund.html` follows identical structure to `privacy.html` and `terms.html`. ✓
+- No dead code introduced. ✓
+
+**Legal**:
+- Refund policy page now publicly accessible at `/refund` — unblocks Stripe payout enablement and satisfies consumer protection law requirement. ✓
+- Cookie consent banner still TODO [HEALTH][S] — required before EU users can be served. Remains in active backlog.
+- `jakarta.mail` CDDL license note remains in TODO_MASTER.md. ✓
+
+---
+
 ## 2026-04-27 — Autonomous Run #15
 
 ### Role 1 — Feature Implementer

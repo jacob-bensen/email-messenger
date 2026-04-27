@@ -15,4 +15,9 @@ class LegalController {
     String terms() {
         return "terms";
     }
+
+    @GetMapping("/refund")
+    String refund() {
+        return "refund";
+    }
 }

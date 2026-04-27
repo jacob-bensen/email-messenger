@@ -38,4 +38,11 @@ class LegalControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("terms"));
     }
+
+    @Test
+    void refundPageReturns200() throws Exception {
+        mockMvc.perform(get("/refund"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("refund"));
+    }
 }
