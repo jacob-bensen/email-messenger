@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Join the Waitlist — MailIM</title>
+  <meta name="description" content="Get early access to MailIM — the app that turns your email inbox into a modern chat-style conversation view. Join the waitlist for free.">
+  <meta property="og:title" content="Join the MailIM Waitlist — Email as instant messages">
+  <meta property="og:description" content="Be first to get MailIM — your email inbox reimagined as a chat app. Free early access.">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/threads" class="brand brand-link">MailIM</a>
+  <nav class="header-nav">
+    <a href="/demo">Demo</a>
+    <a href="/pricing">Pricing</a>
+    <a href="/threads" class="btn btn-primary btn-sm">Open App →</a>
+  </nav>
+</header>
+
+<main class="waitlist-page">
+
+  <!-- Success state -->
+  <div class="waitlist-card" th:if="${joined}">
+    <div class="waitlist-icon">✓</div>
+    <h1>You're on the list!</h1>
+    <p class="waitlist-subtitle">Thanks for joining. We'll email you as soon as early access opens.</p>
+    <p class="waitlist-note">In the meantime, <a href="/demo">try the live demo</a> to see MailIM in action — no signup required.</p>
+    <a href="/pricing" class="btn btn-outline">See pricing →</a>
+  </div>
+
+  <!-- Already-joined state -->
+  <div class="waitlist-card" th:if="${alreadyJoined}">
+    <div class="waitlist-icon">✓</div>
+    <h1>You're already on the list!</h1>
+    <p class="waitlist-subtitle">That email is already registered. We'll reach out when early access opens.</p>
+    <a href="/demo" class="btn btn-primary">Try the demo →</a>
+  </div>
+
+  <!-- Default form state -->
+  <div class="waitlist-card" th:if="${!joined and !alreadyJoined}">
+    <div class="waitlist-badge">Early Access</div>
+    <h1>Get early access to MailIM</h1>
+    <p class="waitlist-subtitle">
+      Turn your email inbox into a clean, chat-style conversation view.
+      Join the waitlist and be first to try it — free.
+    </p>
+
+    <ul class="waitlist-features">
+      <li>Email threads displayed as chat bubbles</li>
+      <li>Quoted-reply noise stripped automatically</li>
+      <li>Works with Gmail, Outlook, or any IMAP inbox</li>
+      <li>Free tier included — no credit card needed</li>
+    </ul>
+
+    <form th:action="@{/waitlist}" method="post" th:object="${waitlistForm}" class="waitlist-form">
+      <div class="form-group" th:classappend="${#fields.hasErrors('email')} ? 'has-error'">
+        <label for="email" class="sr-only">Email address</label>
+        <div class="waitlist-input-row">
+          <input type="email"
+                 id="email"
+                 th:field="*{email}"
+                 placeholder="you@example.com"
+                 class="form-input"
+                 autocomplete="email"
+                 required>
+          <button type="submit" class="btn btn-primary">Join waitlist →</button>
+        </div>
+        <p class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></p>
+      </div>
+    </form>
+
+    <p class="waitlist-privacy">No spam, ever. Unsubscribe any time.</p>
+    <p class="waitlist-demo-hint">Want to see it first? <a href="/demo">Try the live demo →</a></p>
+  </div>
+
+</main>
+
+</body>
+</html>

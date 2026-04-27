@@ -676,6 +676,144 @@ body {
 }
 .empty-state-demo a { color: var(--brand); }
 
+/* ── Waitlist page ──────────────────────────────────── */
+.waitlist-page {
+  max-width: 520px;
+  margin: 60px auto;
+  padding: 0 20px;
+}
+.waitlist-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 40px;
+  text-align: center;
+}
+.waitlist-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #d1fae5;
+  color: #065f46;
+  font-size: 24px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+.waitlist-badge {
+  display: inline-block;
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  margin-bottom: 20px;
+}
+.waitlist-card h1 {
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  line-height: 1.25;
+}
+.waitlist-subtitle {
+  font-size: 16px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+.waitlist-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+  text-align: left;
+  display: inline-block;
+}
+.waitlist-features li {
+  font-size: 14px;
+  color: var(--text-muted);
+  padding: 5px 0 5px 22px;
+  position: relative;
+}
+.waitlist-features li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #10b981;
+  font-weight: 700;
+}
+.waitlist-form { text-align: left; }
+.waitlist-input-row {
+  display: flex;
+  gap: 10px;
+}
+.waitlist-input-row .form-input {
+  flex: 1;
+  min-width: 0;
+}
+.waitlist-privacy {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 10px;
+  margin-bottom: 16px;
+}
+.waitlist-note {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.waitlist-note a { color: var(--brand); }
+.waitlist-demo-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 12px;
+}
+.waitlist-demo-hint a { color: var(--brand); }
+
+/* ── Legal pages (/privacy, /terms) ─────────────────── */
+.legal-page {
+  max-width: 680px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+.legal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 40px;
+}
+.legal-card h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.legal-card h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 28px;
+  margin-bottom: 8px;
+}
+.legal-card p, .legal-card li { font-size: 15px; line-height: 1.65; color: var(--text-muted); }
+.legal-card ul { padding-left: 20px; }
+.legal-card a { color: var(--brand); }
+.legal-updated { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+.legal-notice {
+  background: #fefce8;
+  border: 1px solid #fde047;
+  border-radius: 6px;
+  padding: 14px 16px;
+  font-size: 14px;
+  color: #713f12;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
 /* ── Screen-reader only ─────────────────────────────── */
 .sr-only {
   position: absolute;
@@ -741,5 +879,11 @@ body {
   .demo-badge {
     background: rgba(88, 166, 255, 0.1);
     border-color: rgba(88, 166, 255, 0.3);
+  }
+
+  .legal-notice {
+    background: #2d2a0d;
+    border-color: #7a6a00;
+    color: #fde68a;
   }
 }

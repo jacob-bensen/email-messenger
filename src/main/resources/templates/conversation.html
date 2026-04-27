@@ -12,7 +12,7 @@
   <a th:href="${isDemo != null and isDemo} ? '/demo' : '/threads'" class="back-link">← All threads</a>
   <h1 th:text="${conversation.thread().subject}">Thread subject</h1>
   <span class="kbd-hint" th:if="${isDemo != null and isDemo}">
-    Demo — <a href="/threads" class="demo-header-cta">Connect your mailbox →</a>
+    Demo — <a href="/waitlist" class="demo-header-cta">Join waitlist →</a>
   </span>
   <span class="kbd-hint" th:unless="${isDemo != null and isDemo}"><kbd>r</kbd> reply · <kbd>Esc</kbd> cancel</span>
   <span class="msg-count"
@@ -24,7 +24,7 @@
 <div class="demo-banner" th:if="${isDemo != null and isDemo}">
   <strong>You're in demo mode.</strong>
   This is a sample conversation showing how MailIM transforms emails into a chat view.
-  <a href="/demo">← More demo threads</a> · <a href="/threads">Connect your own mailbox →</a>
+  <a href="/demo">← More demo threads</a> · <a href="/waitlist">Join the waitlist →</a>
 </div>
 
 <div class="conv-body">

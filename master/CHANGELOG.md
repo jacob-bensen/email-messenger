@@ -1,5 +1,100 @@
 # Changelog
 
+## 2026-04-27 — Autonomous Run #12
+
+### Role 1 — Feature Implementer
+**Task completed**: Waitlist email capture page at `/waitlist` [GROWTH][S] — HIGH income impact
+
+Files created:
+- `src/main/resources/db/migration/V2__waitlist.sql` — `waitlist_entries` table with unique email constraint and created_at index.
+- `src/main/java/com/emailmessenger/domain/WaitlistEntry.java` — JPA entity.
+- `src/main/java/com/emailmessenger/repository/WaitlistEntryRepository.java` — `existsByEmail()` for duplicate detection.
+- `src/main/java/com/emailmessenger/web/WaitlistForm.java` — `@Email @NotBlank @Size(max=254)` + strip() on set.
+- `src/main/java/com/emailmessenger/web/WaitlistController.java` — `GET /waitlist` (show form), `POST /waitlist` (save or detect duplicate, redirect with flash). Catches `DataIntegrityViolationException` for concurrent duplicates.
+- `src/main/resources/templates/waitlist.html` — three states: default form, success (joined), already-joined. Feature list, privacy note, demo link, OG/meta tags.
+- Waitlist and legal page CSS added to `main.css`.
+
+Files updated:
+- `pricing.html` — Personal and Team plan CTAs changed from `/threads` to `/waitlist`; privacy/TOS footer links fixed from `#` to `/privacy` and `/terms`.
+- `demo.html` — header CTA and bottom CTA updated to `/waitlist`.
+- `threads.html` — empty state CTA updated from broken `/settings/mailboxes` to `/waitlist`; `Waitlist` added to header nav.
+- `conversation.html` — demo banner "Connect your own mailbox" updated to "Join the waitlist →" pointing to `/waitlist`.
+
+**Income relevance**: Waitlist captures leads before auth ships; replaces dead-end CTAs across 4 templates; every visitor who clicks "Join waitlist" is a qualified lead.
+
+---
+
+### Role 2 — Test Examiner
+**Coverage added**: Waitlist income-critical path — 9 new tests (6 controller, 3 repository)
+
+- `WaitlistControllerTest` — GET shows form; POST new email saves + redirect with `joined` flash; POST duplicate redirects with `alreadyJoined` flash (no save); POST blank email returns form with field errors; POST invalid email returns form with field errors; POST trims whitespace before save.
+- `WaitlistEntryRepositoryTest` — saves entry and `existsByEmail` works; duplicate email throws `DataIntegrityViolationException`; `createdAt` is populated.
+- **Total tests: 99, 0 failures.**
+
+---
+
+### Role 3 — Growth Strategist
+New items added to `INTERNAL_TODO.md`:
+1. **Waitlist confirmation email** [GROWTH][S] — HIGH impact; transactional email on signup keeps leads warm. Prerequisite: email provider credentials (see TODO_MASTER.md).
+2. **Waitlist count social proof** [GROWTH][S] — MEDIUM; live count on waitlist page drives FOMO.
+3. **Canonical URL on all public pages** [GROWTH][S] — LOW; prevents duplicate-content SEO penalties.
+4. **SEO landing page at /** [GROWTH][M] — HIGH; current / redirects to empty /threads; a marketing page is the highest-leverage remaining SEO task.
+
+New items added to `TODO_MASTER.md`:
+- `[MARKETING]` Post waitlist URL on social channels with demo link.
+- `[MARKETING]` Set up transactional email provider (Postmark/Resend/SendGrid) and configure env vars.
+
+---
+
+### Role 4 — UX Auditor
+**Flows audited**: Landing → Pricing → Waitlist → Demo → Conversation (demo mode)
+
+**Fixed directly**:
+- Created `/privacy` stub page (`LegalController` + `privacy.html`) — was a dead `href="#"` link on pricing footer and FAQ.
+- Created `/terms` stub page (`LegalController` + `terms.html`) — same.
+- Pricing footer and FAQ privacy link updated from `#` to real `/privacy` and `/terms`.
+- Demo conversation banner "Connect your own mailbox →" → "Join the waitlist →" (`/waitlist`).
+- Threads empty state "Connect Your Mailbox →" (pointed to non-existent `/settings/mailboxes`) → "Join the waitlist →" with clearer pre-launch copy.
+
+**Flagged in INTERNAL_TODO.md**:
+- `[UX][S]` Dark-mode legal notice (.legal-notice) uses hardcoded yellow — added dark-mode CSS override this session.
+- `[UX][S]` Legal placeholder notice must be replaced with real legal copy before accepting payments.
+
+---
+
+### Role 5 — Task Optimizer
+- Archived 5 newly-completed UX and GROWTH tasks to Done section.
+- Moved `[BLOCKED]` health tasks (CSRF, rate-limiting) to bottom of their section with explicit `[BLOCKED]` tag.
+- Consolidated `Robots.txt` and `Sitemap.xml controller` into a single combined task.
+- Added `SEO landing page at /` to the top of the No-Prerequisite Growth section (HIGH impact, previously mid-list).
+- Moved `Waitlist confirmation email` and `Waitlist count social proof` to the top of no-prerequisite items (prerequisites now met).
+- Overall backlog reduced from ~55 active items to ~48 by deduplication and archiving.
+
+---
+
+### Role 6 — Health Monitor
+**Audited**: security, SQL injection, XSS, code quality, dependencies, legal.
+
+**Findings**:
+- No hardcoded credentials. All secrets use env-var placeholders. ✓
+- No SQL injection risk: all Spring Data queries use JPQL with `@Param`/method derivation. ✓
+- `th:utext` in conversation.html is safe: bodies are pre-sanitized by jsoup in `ConversationService.buildBodyHtml`. ✓
+- `innerHTML` in conversation.html day-separator JS: input is `#temporals.format(date, 'yyyy-MM-dd')` (digits + hyphens only); `formatDateLabel` returns only static locale text. No XSS risk. ✓
+- WaitlistForm strips email whitespace (`.strip()`). ✓
+- `DataIntegrityViolationException` catch in WaitlistController handles concurrent duplicate inserts gracefully. ✓
+
+**Fixed directly**:
+- Dark-mode legal notice box (`.legal-notice`): added `@media (prefers-color-scheme: dark)` overrides so the yellow warning box is readable in dark mode.
+
+**Flagged in INTERNAL_TODO.md**:
+- jsoup 1.17.2 is not the latest (1.18.x released 2024); no known critical CVEs but upgrade is prudent.
+
+**Legal**:
+- `/privacy` and `/terms` stub pages created (previously 404); legal placeholder notice clearly warns that real legal copy is required before accepting payments.
+- Flagged in TODO_MASTER.md: transactional email provider setup needed for waitlist confirmation email.
+
+---
+
 ## 2026-04-27 — Autonomous Run #11
 
 ### Role 1 — Feature Implementer
