@@ -76,6 +76,16 @@ class ThreadControllerTest {
     }
 
     @Test
+    void listThreadsModelContainsTodayAndYesterday() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadRepository.findAllByOrderByUpdatedAtDesc(any(Pageable.class))).thenReturn(empty);
+
+        mockMvc.perform(get("/threads"))
+                .andExpect(status().isOk())
+                .andExpect(model().attributeExists("today", "yesterday"));
+    }
+
+    @Test
     void listThreadsNegativePageClampsToZero() throws Exception {
         Page<EmailThread> empty = new PageImpl<>(List.of());
         when(threadRepository.findAllByOrderByUpdatedAtDesc(any(Pageable.class))).thenReturn(empty);

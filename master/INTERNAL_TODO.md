@@ -24,7 +24,6 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 
 ### No-Prerequisite Growth (ship next, highest ROI)
 
-- [ ] TODO [GROWTH] [S] Static pricing page at /pricing: plan comparison table (Free/Personal/Team/Enterprise) with feature matrix and CTA buttons; no auth required; prerequisite for organic conversion from landing page. HIGH income impact.
 - [ ] TODO [GROWTH] [S] Demo mode: pre-seed 2–3 realistic sample threads visible at /demo without an account; lets visitors experience the IM view before signing up. HIGH income impact.
 - [ ] TODO [GROWTH] [S] Waitlist email capture page at /waitlist: one-field form (email) backed by a WaitlistEntry JPA entity; lead gen before auth ships. HIGH income impact, no prerequisites.
 - [ ] TODO [GROWTH] [M] SEO-friendly static landing page at / with features, pricing table, and CTA; serves organic traffic before users register. HIGH income impact.
@@ -40,6 +39,10 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [ ] TODO [GROWTH] [S] Outbound webhook trigger on new message: POST to a configured URL when a new thread message arrives (Zapier/Make integration); Team plan gate. MEDIUM impact. Prerequisite: IMAP polling (done ✓).
 - [ ] TODO [GROWTH] [S] Add unread thread tracking: mark-as-read on view, unread count badge in thread list (engagement driver). MEDIUM impact.
 - [ ] TODO [GROWTH] [S] In-app upgrade preview of locked features: show disabled/blurred Team-tier features with "Upgrade to unlock" CTA. HIGH income impact.
+- [ ] TODO [GROWTH] [S] Open Graph + meta description tags on all pages: add `og:title`, `og:description`, `og:type`, and `<meta name="description">` to threads.html, conversation.html, error.html; improves social-share previews every time someone posts a link. MEDIUM income impact. No prerequisites.
+- [ ] TODO [GROWTH] [S] Keyboard shortcut `?` to show help modal: client-side JS modal listing all keyboard shortcuts (j/k/Enter/r/Esc); power-user delight, increases retention. LOW-MEDIUM impact. No prerequisites.
+- [ ] TODO [GROWTH] [S] Sitemap.xml controller: Spring `@Controller` returning XML listing all public routes (`/`, `/pricing`, `/demo`, `/roadmap`); submit to Google Search Console; helps index pricing page faster. LOW impact, no prerequisites.
+- [ ] TODO [GROWTH] [S] Social proof section on pricing page: "Trusted by X teams" or 2–3 short testimonials below the plan cards; placeholder copy OK until real users provide quotes; highest-leverage conversion booster on a pricing page. MEDIUM impact. No prerequisites for placeholder version.
 - [ ] TODO [GROWTH] [S] "Sent via MailIM" branding footer in outgoing replies for Free plan users; disabled for Personal+. MEDIUM impact.
 
 ### UX
@@ -48,6 +51,8 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [ ] TODO [UX] [S] Thread list header navigation: the "+ Add mailbox" link points to /settings/mailboxes which doesn't exist; implement mailbox settings page or redirect to auth/onboarding once auth ships.
 - [ ] TODO [UX] [S] IMAP sync status indicator: show "last synced X minutes ago" in the thread list header; update via SSE. Prerequisite: IMAP polling (done ✓).
 - [ ] TODO [UX] [M] Mobile layout pass: ensure thread list and conversation view are usable on 375px screens; bubbles should not overflow viewport.
+- [ ] TODO [UX] [S] Pricing page CTAs link to /threads (the app) rather than a signup/waitlist page; new visitors land in the app in an empty state with no context. Fix: update plan CTA hrefs to /waitlist once waitlist ships, or /demo once demo ships. Prerequisite: waitlist or demo page.
+- [ ] TODO [UX] [S] Pricing page privacy/TOS links are href="#" placeholders — clicking them is a dead end. Fix: create /privacy and /terms static pages (stub pages sufficient until legal copy is ready). No prerequisites.
 
 ### Auth-Gated Growth (implement user auth first, then these unlock)
 
@@ -106,3 +111,4 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [x] DONE [CORE] [M] CSS for the IM look: day separators, dark mode, refined bubbles, header-nav and msg-count classes
 - [x] DONE [UX] [S] Keyboard shortcuts: j/k navigate, Enter open, r reply, Esc cancel
 - [x] DONE [CORE] [M] IMAP polling job: ImapPollingJob (@ConditionalOnProperty, @Scheduled), ImapPollingProperties (@ConfigurationProperties), feature flag app.imap.polling.enabled; 72 tests pass
+- [x] DONE [GROWTH] [S] Static pricing page at /pricing: PricingController + pricing.html with annual/monthly toggle (aria-labelled), plan comparison (Free/Personal/Team/Enterprise), feature matrix, FAQ section, OG/meta-description tags; 76 tests pass

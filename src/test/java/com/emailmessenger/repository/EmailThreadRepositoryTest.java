@@ -61,6 +61,28 @@ class EmailThreadRepositoryTest {
     }
 
     @Test
+    void findByIdWithMessagesJoinFetchesMessagesAndSenders() {
+        var sender = participantRepo.save(new Participant("fetch@example.com", "Fetch User"));
+        var thread = threadRepo.save(new EmailThread("Fetch test", "<fetch@example.com>"));
+        var msg = new Message(thread, sender, "Fetch", "body text", null, LocalDateTime.now());
+        msg.setMessageIdHeader("<fetch-msg@example.com>");
+        messageRepo.save(msg);
+        thread.addMessage(msg);
+        threadRepo.save(thread);
+
+        Optional<EmailThread> found = threadRepo.findByIdWithMessages(thread.getId());
+        assertThat(found).isPresent();
+        // Messages must be loaded (not proxied lazily) — JOIN FETCH guarantees this
+        assertThat(found.get().getMessages()).hasSize(1);
+        assertThat(found.get().getMessages().get(0).getSender().getEmail()).isEqualTo("fetch@example.com");
+    }
+
+    @Test
+    void findByIdWithMessagesReturnsEmptyForUnknownId() {
+        assertThat(threadRepo.findByIdWithMessages(-1L)).isEmpty();
+    }
+
+    @Test
     void findsByMessageIdHeader() {
         var sender = participantRepo.save(new Participant("find@example.com", "Find Test"));
         var thread = threadRepo.save(new EmailThread("Find test", "<find@example.com>"));

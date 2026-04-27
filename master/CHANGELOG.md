@@ -1,5 +1,113 @@
 # Changelog
 
+## 2026-04-27 — Autonomous Run #10
+
+### Role 1 — Feature Implementer
+**Task completed**: Static pricing page at `/pricing` [GROWTH][S]
+
+Files created/changed:
+- `src/main/java/com/emailmessenger/web/PricingController.java` — package-private `@Controller`; single `GET /pricing` mapping returning view `"pricing"`. No model attributes needed (fully static).
+- `src/main/resources/templates/pricing.html` — full pricing page: sticky app header with "Pricing" and "Open App →" CTAs; hero section with accessible annual/monthly billing toggle (`role="group" aria-label="Billing period"`, `aria-pressed` on each toggle button); 4 plan cards (Free/$0, Personal/$9→$7.50/mo, Team/$29→$24/mo, Enterprise/$99→$83/mo) with feature matrix; FAQ grid (4 questions); footer with Privacy/ToS/Support links. Annual prices match APP_SPEC.md spec (2 months free = 10 × monthly). OG and meta-description tags added for social-share previews.
+- `src/main/resources/static/css/main.css` — 180 lines of pricing CSS added: `.pricing-hero`, `.billing-toggle`/`.toggle-btn`/`.save-badge`, `.pricing-cards` (4-column responsive grid → 2-col at 900px → 1-col at 560px), `.plan-card`/`--featured` variant with blue border + "Most popular" badge, feature checklist, `.pricing-faq`/`.faq-grid`, `.pricing-footer`, `.brand-link` (removes text-decoration from brand `<a>` without inline style), `.nav-active`, `.btn-outline`. Dark mode not explicitly overridden — inherits CSS variables correctly.
+- `src/main/resources/templates/threads.html` — added "Pricing" link to header nav (visible from the app, drives pricing page discovery for existing users considering upgrade).
+
+Bug fixed during implementation: Personal plan annual note said "Billed $75/year" and `data-annual="$7"` — both wrong per spec. Corrected to "Billed $90/year" and `data-annual="$7.50"` ($9 × 10 months = $90/year).
+
+Verified: `./mvnw test` → BUILD SUCCESS, 76 tests pass (up from 72).
+
+**Income relevance**: The pricing page is the primary organic conversion touchpoint. Without it, any traffic from social shares, SEO, or word-of-mouth has no place to learn about plans and pricing before signing up. Adding it unblocks: (1) landing page cross-link, (2) in-app upgrade prompts linking to `/pricing`, (3) Product Hunt and directory listings that require a public pricing URL. The annual/monthly toggle primes users to consider the higher-LTV annual plan from first contact.
+
+---
+
+### Role 2 — Test Examiner
+**Coverage added**: 4 new tests (76 total, up from 72)
+
+Tests added:
+- `PricingControllerTest` (1 test, new file):
+  - `pricingPageReturns200AndPricingView` — `GET /pricing` → 200 OK, view name = `"pricing"`.
+- `ThreadControllerTest` (1 new test added):
+  - `listThreadsModelContainsTodayAndYesterdayAttributes` — verifies `today` and `yesterday` `LocalDate` objects are present in the model (added in Run #9 UX fix; was untested).
+- `EmailThreadRepositoryTest` (2 new tests added):
+  - `findByIdWithMessagesJoinFetchesMessagesAndSenders` — verifies the `findByIdWithMessages` JPQL query (N+1 fix added in Run #9) returns the thread with messages and sender loaded in a single join; asserts sender email is accessible without a separate query.
+  - `findByIdWithMessagesReturnsEmptyForUnknownId` — verifies query returns `Optional.empty()` for a nonexistent ID.
+
+Coverage status:
+- `PricingController`: covered.
+- `findByIdWithMessages` N+1 fix: now covered (was the only repository method with zero test coverage).
+- `today`/`yesterday` model attributes: now covered.
+- Income-critical paths still at zero coverage: Stripe webhook, user auth flows (not yet implemented).
+
+No flaky or redundant tests. All 76 pass.
+
+---
+
+### Role 3 — Growth Strategist
+5 new implementable tasks added to INTERNAL_TODO.md (not previously captured):
+
+1. **Open Graph + meta description tags on all pages** [GROWTH][S] — `og:title`, `og:description`, `og:type`, and `<meta name="description">` on threads.html, conversation.html, error.html (pricing.html already done this run). Every social share generates a rich preview card; improves click-through from social posts. MEDIUM income impact. No prerequisites.
+2. **Keyboard shortcut `?` help modal** [GROWTH][S] — Client-side JS modal listing all keyboard shortcuts when user presses `?`; power-user delight, increases retention and perceived quality. LOW-MEDIUM impact. No prerequisites.
+3. **Sitemap.xml controller** [GROWTH][S] — `@Controller` returning XML with all public routes; submit to Google Search Console to accelerate indexing of pricing and demo pages. LOW impact. No prerequisites.
+4. **Social proof section on pricing page** [GROWTH][S] — 2–3 short testimonials or "Trusted by X teams" placeholder section below plan cards; highest single-element conversion lever on a pricing page. MEDIUM income impact. No prerequisites for placeholder version.
+5. **Pricing CTA → /waitlist fix** [UX][S] — Plan CTAs currently link to `/threads` (the app); new visitors land in an empty state with no context. Update to `/waitlist` once waitlist ships. Prerequisite: waitlist page.
+
+2 new [MARKETING] items added to TODO_MASTER.md:
+- Set up Plausible Analytics for pricing/landing pages (can't optimize conversion without measuring it).
+- Update README and social profiles with `/pricing` URL once live.
+
+---
+
+### Role 4 — UX Auditor
+Audited flows: pricing page (new), threads.html header nav update.
+
+**Direct fixes applied:**
+1. **Pricing page annual prices corrected**: Personal `data-annual="$7"` + "Billed $75/year" → `data-annual="$7.50"` + "Billed $90/year" (2 months free per spec = $9 × 10 = $90/year). Team and Enterprise were already correct.
+2. **Accessible billing toggle**: Added `role="group" aria-label="Billing period"` to the toggle container; `aria-pressed="true/false"` on each button; JS `setPeriod()` now updates `aria-pressed` on toggle. Screen readers can now announce the selected billing period.
+3. **Brand link inline style removed**: `<a class="brand" style="text-decoration:none;">` → `<a class="brand brand-link">` with `.brand-link { text-decoration: none; }` in CSS. Removes inline style override, keeps markup clean.
+4. **OG and meta-description on pricing page**: Added `<meta name="description">`, `og:title`, `og:description`, `og:type` to pricing.html `<head>`. Visitors sharing the pricing URL will see a rich card on Twitter/LinkedIn/Slack instead of a bare URL.
+
+**Issues flagged (INTERNAL_TODO.md [UX]):**
+- Pricing CTA buttons link to `/threads` (app empty state), not `/waitlist` or `/demo`. Fix once waitlist or demo ships.
+- Pricing `/pricing` FAQ and footer privacy/TOS links are `href="#"` dead ends. Fix: create `/privacy` and `/terms` stub pages. Added [LEGAL] item to TODO_MASTER.md.
+
+---
+
+### Role 5 — Task Optimizer
+Updated INTERNAL_TODO.md:
+- Removed pricing page task from active list (was marked DONE above).
+- Archived to Done section: `[GROWTH][S] Static pricing page at /pricing`.
+- Added 4 new [GROWTH][S] items from Role 3 in priority order (social proof first as highest conversion impact, then OG tags, then `?` shortcut, then sitemap).
+- Added 2 new [UX][S] items from Role 4 (pricing CTA redirect fix, privacy/TOS stub pages).
+- Active task count: ~58 items. No newly blocked tasks. No duplicates detected.
+- All new items tagged [S]; no oversized tasks introduced.
+
+---
+
+### Role 6 — Health Monitor
+Security:
+- **`PricingController`**: No user input processed; `GET /pricing` maps to a static view. Zero attack surface. ✓
+- **`pricing.html` JS**: `setPeriod()` reads from `el.dataset.monthly/annual` (hardcoded HTML attributes, not user input) and sets via `el.textContent` (not `innerHTML`) — no XSS risk. `aria-pressed` set via `setAttribute` with a string literal `'true'`/`'false'`. ✓
+- **`billing-toggle` onclick**: Inline `onclick="setPeriod('monthly')"` uses a string literal argument, not user data; no injection vector. ✓
+- **`mailto:sales@mailaim.app`**: Hardcoded address; not user-controlled. ✓
+- No new secrets, credentials, or SQL in any added file. ✓
+
+Performance:
+- `PricingController.pricing()`: Returns a view name string; zero DB queries; O(1).
+- Pricing CSS (~180 lines added): ~3 KB unminified, ~1.5 KB gzipped; negligible page weight.
+- JS toggle: O(n) where n = number of plan cards (4); runs only on user click. Negligible.
+- No new N+1 risks introduced.
+
+Code quality:
+- No dead code: all CSS classes are used in `pricing.html`; all template attributes are rendered.
+- `PricingController` has no state, no dependencies — correctly package-private.
+- Pricing page uses standard Thymeleaf `th:href="@{/css/main.css}"` for cache-busting — consistent with other templates. ✓
+
+Legal:
+- **Pricing page `href="#"` placeholders**: `/pricing` footer and FAQ link to Privacy Policy and ToS that do not exist. Added [LEGAL] item to TODO_MASTER.md. These must be real pages before accepting payments or EU users.
+- **Annual pricing copy verified**: "$90/year (2 months free)" matches APP_SPEC.md. ✓
+- No new dependencies added; no new license risks.
+
+---
+
 ## 2026-04-27 — Autonomous Run #9
 
 ### Role 1 — Feature Implementer

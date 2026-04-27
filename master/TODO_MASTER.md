@@ -109,6 +109,9 @@ third-party accounts, marketing, or legal steps.
       demo asset for Product Hunt, landing page, and social media. Use LICEcap or Kap to capture;
       no code required. High viral potential in productivity communities.
 - [ ] [INFRASTRUCTURE] Set up error monitoring (Sentry free tier) for the production deployment.
+- [ ] [MARKETING] Set up Plausible Analytics (plausible.io, free tier) or Google Analytics 4 on the pricing page and thread list to measure conversion funnel. Without event tracking you cannot know whether visitors click "Start free trial" or which plan card they hover. Add the script snippet to all Thymeleaf templates once account is created.
+- [ ] [MARKETING] Once the /pricing page is live, update the project README, Indie Hackers profile, and any social media bios with the direct pricing URL. Link to it from the app's empty-state and thread list header.
+- [ ] [LEGAL] Pricing page /pricing currently links to href="#" for Privacy Policy and Terms of Service in the FAQ and footer. These must be real pages before accepting any payments or EU users. Create /privacy and /terms stub pages as soon as possible (generators: Termly, Iubenda, or FreePrivacyPolicy.com).
       IMAP polling runs on a background thread — uncaught exceptions are only visible in logs.
       Sentry will catch and alert on IMAP connection failures, import errors, and Spring exceptions.
       Sign up at sentry.io, add the sentry-spring-boot-starter dependency, set SENTRY_DSN env var.

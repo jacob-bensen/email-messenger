@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing — MailIM</title>
+  <meta name="description" content="MailIM turns your email inbox into a chat-style conversation view. Free for one mailbox. Upgrade for unlimited history, AI summaries, and team sharing.">
+  <meta property="og:title" content="MailIM Pricing — Email as instant messages">
+  <meta property="og:description" content="Simple, transparent pricing. Start free, upgrade when your team grows.">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/threads" class="brand brand-link">MailIM</a>
+  <nav class="header-nav">
+    <a href="/pricing" class="nav-active">Pricing</a>
+    <a href="/threads" class="btn btn-primary" style="padding:7px 18px;font-size:13px;">Open App →</a>
+  </nav>
+</header>
+
+<main class="pricing-page">
+
+  <section class="pricing-hero">
+    <h1>Simple, transparent pricing</h1>
+    <p>Start free. Upgrade when you need more mailboxes or history.</p>
+
+    <div class="billing-toggle" id="billingToggle" role="group" aria-label="Billing period">
+      <button class="toggle-btn active" data-period="monthly" onclick="setPeriod('monthly')" aria-pressed="true">Monthly</button>
+      <button class="toggle-btn" data-period="annual" onclick="setPeriod('annual')" aria-pressed="false">
+        Annual <span class="save-badge">Save 16%</span>
+      </button>
+    </div>
+  </section>
+
+  <section class="pricing-cards">
+
+    <!-- Free -->
+    <div class="plan-card">
+      <div class="plan-name">Free</div>
+      <div class="plan-price">
+        <span class="price-amount">$0</span>
+        <span class="price-period">/mo</span>
+      </div>
+      <div class="plan-desc">Perfect for trying out MailIM</div>
+      <a href="/threads" class="btn btn-outline plan-cta">Get started free</a>
+      <ul class="plan-features">
+        <li class="feature-item"><span class="check">✓</span> 1 mailbox</li>
+        <li class="feature-item"><span class="check">✓</span> 30-day history</li>
+        <li class="feature-item"><span class="check">✓</span> 500 threads</li>
+        <li class="feature-item"><span class="check">✓</span> IM-style chat view</li>
+        <li class="feature-item"><span class="check">✓</span> Dark mode</li>
+        <li class="feature-item"><span class="check">✓</span> Inline reply</li>
+        <li class="feature-item muted"><span class="cross">✗</span> AI thread summary</li>
+        <li class="feature-item muted"><span class="cross">✗</span> Team sharing</li>
+        <li class="feature-item muted"><span class="cross">✗</span> REST API</li>
+      </ul>
+    </div>
+
+    <!-- Personal -->
+    <div class="plan-card plan-card--featured">
+      <div class="plan-badge">Most popular</div>
+      <div class="plan-name">Personal</div>
+      <div class="plan-price">
+        <span class="price-amount" data-monthly="$9" data-annual="$7.50">$9</span>
+        <span class="price-period">/mo</span>
+      </div>
+      <div class="plan-annual-note" style="display:none;">Billed $90/year</div>
+      <div class="plan-desc">For individuals managing a real inbox</div>
+      <a href="/threads" class="btn btn-primary plan-cta">Start 14-day free trial</a>
+      <ul class="plan-features">
+        <li class="feature-item"><span class="check">✓</span> 3 mailboxes</li>
+        <li class="feature-item"><span class="check">✓</span> Unlimited history</li>
+        <li class="feature-item"><span class="check">✓</span> Unlimited threads</li>
+        <li class="feature-item"><span class="check">✓</span> IM-style chat view</li>
+        <li class="feature-item"><span class="check">✓</span> Dark mode</li>
+        <li class="feature-item"><span class="check">✓</span> Inline reply</li>
+        <li class="feature-item"><span class="check">✓</span> AI thread summary</li>
+        <li class="feature-item"><span class="check">✓</span> REST API access</li>
+        <li class="feature-item muted"><span class="cross">✗</span> Team sharing</li>
+      </ul>
+    </div>
+
+    <!-- Team -->
+    <div class="plan-card">
+      <div class="plan-name">Team</div>
+      <div class="plan-price">
+        <span class="price-amount" data-monthly="$29" data-annual="$24">$29</span>
+        <span class="price-period">/mo</span>
+      </div>
+      <div class="plan-annual-note" style="display:none;">Billed $290/year</div>
+      <div class="plan-desc">For support teams and small businesses</div>
+      <a href="/threads" class="btn btn-outline plan-cta">Start 14-day free trial</a>
+      <ul class="plan-features">
+        <li class="feature-item"><span class="check">✓</span> 10 mailboxes</li>
+        <li class="feature-item"><span class="check">✓</span> Unlimited history</li>
+        <li class="feature-item"><span class="check">✓</span> Unlimited threads</li>
+        <li class="feature-item"><span class="check">✓</span> IM-style chat view</li>
+        <li class="feature-item"><span class="check">✓</span> Dark mode</li>
+        <li class="feature-item"><span class="check">✓</span> Inline reply</li>
+        <li class="feature-item"><span class="check">✓</span> AI thread summary</li>
+        <li class="feature-item"><span class="check">✓</span> REST API access</li>
+        <li class="feature-item"><span class="check">✓</span> Team sharing</li>
+        <li class="feature-item"><span class="check">✓</span> Priority support</li>
+        <li class="feature-item"><span class="check">✓</span> Slack/Discord webhooks</li>
+      </ul>
+    </div>
+
+    <!-- Enterprise -->
+    <div class="plan-card">
+      <div class="plan-name">Enterprise</div>
+      <div class="plan-price">
+        <span class="price-amount" data-monthly="$99" data-annual="$83">$99</span>
+        <span class="price-period">/mo</span>
+      </div>
+      <div class="plan-annual-note" style="display:none;">Billed $990/year</div>
+      <div class="plan-desc">For large teams with security requirements</div>
+      <a href="mailto:sales@mailaim.app" class="btn btn-outline plan-cta">Contact sales</a>
+      <ul class="plan-features">
+        <li class="feature-item"><span class="check">✓</span> Unlimited mailboxes</li>
+        <li class="feature-item"><span class="check">✓</span> Unlimited history</li>
+        <li class="feature-item"><span class="check">✓</span> Unlimited threads</li>
+        <li class="feature-item"><span class="check">✓</span> Everything in Team</li>
+        <li class="feature-item"><span class="check">✓</span> SSO (Google, SAML)</li>
+        <li class="feature-item"><span class="check">✓</span> Audit logs</li>
+        <li class="feature-item"><span class="check">✓</span> Dedicated support</li>
+        <li class="feature-item"><span class="check">✓</span> Custom SLA</li>
+      </ul>
+    </div>
+
+  </section>
+
+  <section class="pricing-faq">
+    <h2>Common questions</h2>
+    <div class="faq-grid">
+      <div class="faq-item">
+        <h3>Do I need a credit card to start?</h3>
+        <p>No. The Free plan requires no payment info. Paid trials also start without a card.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Which email providers work?</h3>
+        <p>Any IMAP/SMTP mailbox — Gmail, Outlook, Fastmail, iCloud, ProtonMail Bridge, or self-hosted.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Can I change plans anytime?</h3>
+        <p>Yes. Upgrade or downgrade at any time. Downgrades take effect at the next billing cycle.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Is my email data safe?</h3>
+        <p>MailIM reads your emails to display them as conversations. We never sell or share your data. See our <a href="#">Privacy Policy</a>.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="pricing-footer">
+  <span>© 2026 MailIM</span>
+  <a href="#">Privacy Policy</a>
+  <a href="#">Terms of Service</a>
+  <a href="mailto:support@mailaim.app">Support</a>
+</footer>
+
+<script>
+function setPeriod(period) {
+  var isAnnual = period === 'annual';
+  document.querySelectorAll('.toggle-btn').forEach(function(btn) {
+    var active = btn.dataset.period === period;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+  document.querySelectorAll('.price-amount[data-monthly]').forEach(function(el) {
+    el.textContent = isAnnual ? el.dataset.annual : el.dataset.monthly;
+  });
+  document.querySelectorAll('.plan-annual-note').forEach(function(el) {
+    el.style.display = isAnnual ? 'block' : 'none';
+  });
+}
+</script>
+
+</body>
+</html>
