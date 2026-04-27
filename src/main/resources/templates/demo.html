@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo — MailIM</title>
+  <meta name="description" content="See how MailIM transforms email threads into instant-message-style conversations. No signup required.">
+  <meta property="og:title" content="MailIM Demo — Email as Instant Messages">
+  <meta property="og:description" content="See real email threads rendered as modern chat conversations. No signup required.">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/" class="brand brand-link">MailIM</a>
+  <nav class="header-nav">
+    <span class="demo-badge">DEMO</span>
+    <a href="/pricing">Pricing</a>
+    <a href="/threads" class="btn btn-primary btn-sm">Start free →</a>
+  </nav>
+</header>
+
+<main class="thread-page">
+
+  <div class="demo-page-banner">
+    <div class="demo-page-banner-text">
+      <strong>Live demo — no signup required.</strong>
+      Click any conversation below to see how MailIM transforms emails into a modern chat view.
+    </div>
+    <a href="/threads" class="btn btn-primary btn-sm">Connect your mailbox →</a>
+  </div>
+
+  <h2 class="section-title"
+      th:text="${demoThreads.size() + ' Demo Conversation' + (demoThreads.size() != 1 ? 's' : '')}">
+    2 Demo Conversations
+  </h2>
+
+  <div class="thread-list">
+    <a th:each="entry : ${demoThreads}"
+       th:href="@{/demo/{id}(id=${entry.id()})}"
+       class="thread-item">
+      <div class="thread-subject" th:text="${entry.subject()}">Thread subject</div>
+      <div class="thread-meta">
+        <span th:text="${entry.messageCount() + ' message' + (entry.messageCount() != 1 ? 's' : '')}">3 messages</span>
+        <span th:with="d=${entry.updatedAt().toLocalDate()}"
+              th:text="${d.equals(today) ? 'Today' : (d.equals(yesterday) ? 'Yesterday' : #temporals.format(entry.updatedAt(), 'MMM d'))}">
+          Today
+        </span>
+      </div>
+    </a>
+  </div>
+
+  <div class="demo-cta-section">
+    <h3>Ready to transform your own inbox?</h3>
+    <p>Connect any IMAP mailbox — Gmail, Outlook, or any email provider — and see your real threads as chat conversations.</p>
+    <div class="demo-cta-actions">
+      <a href="/threads" class="btn btn-primary">Get started free →</a>
+      <a href="/pricing" class="demo-cta-link">View pricing</a>
+    </div>
+  </div>
+
+</main>
+
+</body>
+</html>

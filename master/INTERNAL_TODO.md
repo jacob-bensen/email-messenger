@@ -24,7 +24,9 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 
 ### No-Prerequisite Growth (ship next, highest ROI)
 
-- [ ] TODO [GROWTH] [S] Demo mode: pre-seed 2–3 realistic sample threads visible at /demo without an account; lets visitors experience the IM view before signing up. HIGH income impact.
+- [x] DONE [GROWTH] [S] Demo mode: pre-seed 2–3 realistic sample threads visible at /demo without an account; lets visitors experience the IM view before signing up. HIGH income impact.
+- [ ] TODO [GROWTH] [S] Demo page SEO: add keyword-rich h2 sub-heading, feature bullet list, and JSON-LD SoftwareApplication schema to /demo; rank for "email as chat app" searches. MEDIUM impact. Prerequisite: demo page (done ✓).
+- [ ] TODO [GROWTH] [S] Robots.txt endpoint: Spring @Controller returning /robots.txt; Allow: /demo, /pricing, /; Disallow: /threads, /settings; submit sitemap.xml link. LOW impact, no prerequisites.
 - [ ] TODO [GROWTH] [S] Waitlist email capture page at /waitlist: one-field form (email) backed by a WaitlistEntry JPA entity; lead gen before auth ships. HIGH income impact, no prerequisites.
 - [ ] TODO [GROWTH] [M] SEO-friendly static landing page at / with features, pricing table, and CTA; serves organic traffic before users register. HIGH income impact.
 - [ ] TODO [GROWTH] [S] Basic thread search by subject/sender at GET /threads?q=: JPA LIKE query on email_threads.subject and participants.email; unblocks search use case today. MEDIUM impact, no prerequisites.
@@ -112,3 +114,4 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [x] DONE [UX] [S] Keyboard shortcuts: j/k navigate, Enter open, r reply, Esc cancel
 - [x] DONE [CORE] [M] IMAP polling job: ImapPollingJob (@ConditionalOnProperty, @Scheduled), ImapPollingProperties (@ConfigurationProperties), feature flag app.imap.polling.enabled; 72 tests pass
 - [x] DONE [GROWTH] [S] Static pricing page at /pricing: PricingController + pricing.html with annual/monthly toggle (aria-labelled), plan comparison (Free/Personal/Team/Enterprise), feature matrix, FAQ section, OG/meta-description tags; 76 tests pass
+- [x] DONE [GROWTH] [S] Demo mode: DemoService (2 hardcoded realistic conversations), DemoController (GET /demo + GET /demo/{id}), demo.html with CTA section; conversation.html isDemo flag (hides reply form, shows demo banner); "Demo" nav link in threads.html + pricing.html; "Try demo" link in pricing hero and empty state; OG/meta tags on demo.html; 14 new tests; 90 tests pass
