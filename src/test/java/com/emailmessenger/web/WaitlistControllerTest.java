@@ -40,10 +40,13 @@ class WaitlistControllerTest {
 
     @Test
     void getWaitlistReturns200AndWaitlistView() throws Exception {
+        when(waitlistRepo.count()).thenReturn(5L);
+
         mockMvc.perform(get("/waitlist"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("waitlist"))
-                .andExpect(model().attributeExists("waitlistForm"));
+                .andExpect(model().attributeExists("waitlistForm"))
+                .andExpect(model().attribute("waitlistCount", 5L));
     }
 
     @Test

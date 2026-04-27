@@ -13,11 +13,11 @@
 <body>
 
 <header class="app-header">
-  <a href="/threads" class="brand brand-link">MailIM</a>
+  <a href="/" class="brand brand-link">MailIM</a>
   <nav class="header-nav">
     <a href="/demo">Demo</a>
     <a href="/pricing">Pricing</a>
-    <a href="/threads" class="btn btn-primary btn-sm">Open App →</a>
+    <a href="/demo" class="btn btn-primary btn-sm">Try demo →</a>
   </nav>
 </header>
 
@@ -74,6 +74,9 @@
     </form>
 
     <p class="waitlist-privacy">No spam, ever. Unsubscribe any time.</p>
+    <p class="waitlist-count" th:if="${waitlistCount > 0}">
+      Join <strong th:text="${waitlistCount}">0</strong> others already on the waitlist.
+    </p>
     <p class="waitlist-demo-hint">Want to see it first? <a href="/demo">Try the live demo →</a></p>
   </div>
 

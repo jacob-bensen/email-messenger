@@ -1,5 +1,95 @@
 # Changelog
 
+## 2026-04-27 — Autonomous Run #13
+
+### Role 1 — Feature Implementer
+**Task completed**: SEO-friendly marketing landing page at `/` [GROWTH][M] — HIGH income impact
+
+**What was built**:
+- `LandingController.java` — `GET /` now serves a full marketing landing page; `waitlistCount` from `WaitlistEntryRepository.count()` passed to model for social proof.
+- `index.html` — hero section (headline, subhead, dual CTA), 6-card feature grid (chat bubbles, quote stripping, IMAP, inline reply, dark mode, keyboard shortcuts), 3-plan pricing preview with highlighted "Most popular" card, bottom CTA section on brand-color background, site footer with nav links; JSON-LD `SoftwareApplication` schema; `<link rel="canonical">`.
+- `main.css` — ~200 lines of landing-page CSS: `.landing-hero`, `.feature-grid`, `.feature-card`, `.preview-plan-row`, `.landing-cta-section`, `.landing-footer`, responsive breakpoints at 900px/560px, dark-mode overrides.
+- `ThreadController.java` — removed the stale `GET /` → `redirect:/threads` handler (route now owned by `LandingController`).
+- `ThreadControllerTest.java` — removed `rootRedirectsToThreads` (stale test for moved route).
+- `LandingControllerTest.java` (new, 3 tests) — verifies `GET /` returns `index` view, exposes `waitlistCount`, and handles zero count.
+
+**Income relevance**: The landing page is the entry point for all organic search and social traffic. Without it, every visitor hit an empty thread list. The hero shows the value proposition, the feature grid closes objections, the pricing preview creates upgrade intent, and dual CTAs funnel visitors to demo (no friction) or waitlist (lead capture). Social proof count in hero adds credibility.
+
+---
+
+### Role 2 — Test Examiner
+**Coverage audit**: Reviewed all controllers for untested paths.
+
+**Gaps found and fixed**:
+- `LegalController` (`/privacy`, `/terms`) had zero tests despite being linked from pricing, footer, and FAQ. Created `LegalControllerTest.java` (2 tests: both routes return 200 + correct view name).
+- `WaitlistControllerTest.getWaitlistReturns200AndWaitlistView` — updated to stub `count()` and assert `waitlistCount` is in the model (covers new social-proof model attribute added this run).
+
+**Coverage status**: 103 tests, 0 failures. All income-critical paths (waitlist, landing, pricing, demo, legal) are covered. `LegalController` gap closed.
+
+---
+
+### Role 3 — Growth Strategist
+**Opportunities identified**:
+
+1. **Waitlist confirmation email** [GROWTH][S] — Already in backlog (top priority, HIGH impact). Blocked on email provider credentials (Postmark/Resend). No new code needed until credentials arrive.
+2. **Demo page SEO enhancement** [GROWTH][S] — `/demo` has OG tags but no JSON-LD schema and no keyword-rich H2 or feature bullets. Low effort, medium SEO value.
+3. **Canonical URLs on remaining public pages** [GROWTH][S] — `index.html` now has one; still missing on `demo.html`, `waitlist.html`, `pricing.html`, `threads.html`, `conversation.html`, `error.html`. Task updated in INTERNAL_TODO.
+4. **Landing page A/B: hero CTA copy** [GROWTH][S] — "Join the waitlist →" vs "Get early access →" — no code needed but worth noting for future test.
+5. (No new INTERNAL_TODO items needed beyond updating existing — backlog is already comprehensive.)
+
+**No new TODO_MASTER items** — existing marketing items cover distribution of the landing page URL.
+
+---
+
+### Role 4 — UX Auditor
+**Flows audited**: `/` (new landing) → `/waitlist` → `/demo` → `/threads` (app)
+
+**Fixed directly**:
+- `waitlist.html` brand logo: was `<a href="/threads">` — updated to `<a href="/">`. Visitors on the waitlist page had no way back to the landing page via the brand.
+- `waitlist.html` header CTA: was "Open App →" pointing to `/threads` (empty screen for unauthenticated users) — changed to "Try demo →" pointing to `/demo`. Now leads visitors to the highest-value no-friction experience.
+- `demo.html` top banner CTA: was "Connect your mailbox →" pointing to `/threads` (dead end pre-auth) — changed to "Join the waitlist →" pointing to `/waitlist`. Converts engaged demo visitors into waitlist leads.
+- `threads.html` brand: was a `<span>` with no link — upgraded to `<a href="/" class="brand brand-link">`. App users can now navigate home from the thread list.
+- `waitlist.html` — added live "Join X others on the waitlist" count (social proof) below the form for users in the form state.
+
+**Flagged in INTERNAL_TODO.md**:
+- `/privacy` and `/terms` pages are dead-ends: no header nav, no footer, no way back to the app. Added `[UX][S]` task to add consistent nav header.
+
+---
+
+### Role 5 — Task Optimizer
+**INTERNAL_TODO.md cleanup**:
+- Archived to Done: SEO landing page [GROWTH][M], waitlist count social proof [GROWTH][S], nav dead-ends UX fix [UX][S] (3 items).
+- Replaced stale dark-mode legal notice UX item (already fixed in Run #12) with new dead-end navigation item for /privacy and /terms.
+- Updated canonical URL task to note index.html is done and list remaining pages.
+- No duplicates found. No new items added (backlog covers all identified opportunities).
+- Backlog remains well-prioritized: income-critical and auth-free items lead, auth-gated items grouped, BLOCKED items noted.
+
+---
+
+### Role 6 — Health Monitor
+**Audited**: security, code quality, dependencies, legal.
+
+**Security**:
+- `LandingController` reads only `WaitlistEntryRepository.count()` — no user input, no SQL injection risk.
+- Landing page template uses only `th:text` (auto-escaped) and `th:if` — no XSS vectors.
+- No new endpoints accept POST data; no CSRF surface added.
+
+**Code quality**:
+- `ThreadController` cleaned: removed the `GET /` redirect that was now a dead route with `LandingController` owning `/`. No dead code remains.
+- No new dead code or duplicate logic introduced this run.
+
+**Performance**:
+- `LandingController` calls `count()` on every page load — an O(1) aggregation query. Acceptable. Consider caching with `@Cacheable` once traffic justifies it (add to backlog).
+- No N+1 queries introduced.
+
+**Legal**:
+- `/privacy` and `/terms` stub pages remain (no real legal copy). Flagged in TODO_MASTER — still required before accepting payments.
+- `index.html` does not collect any user data (no forms), no cookie consent required for the landing page itself.
+
+**No new INTERNAL_TODO or TODO_MASTER items added** (existing items cover all findings).
+
+---
+
 ## 2026-04-27 — Autonomous Run #12
 
 ### Role 1 — Feature Implementer

@@ -18,9 +18,7 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 
 ### No-Prerequisite Growth (ship next, highest ROI)
 
-- [ ] TODO [GROWTH] [M] SEO-friendly landing page at /: the current / redirects to /threads (empty state for new visitors). Replace with a marketing page: hero, feature grid, pricing table preview, "Join waitlist" CTA. HIGH income impact — the entry point for all organic and social traffic.
 - [ ] TODO [GROWTH] [S] Waitlist confirmation email: send a "you're on the list" transactional email immediately after a successful waitlist signup using Spring Mail (already in deps); keeps leads warm, confirms deliverability, includes /demo link. HIGH income impact. Prerequisite: waitlist (done ✓), transactional email provider credentials (see TODO_MASTER.md).
-- [ ] TODO [GROWTH] [S] Waitlist count social proof: show live "Join X others on the waitlist" count on the waitlist page via WaitlistEntryRepository.count(); FOMO driver that improves form conversion. MEDIUM impact. Prerequisite: waitlist (done ✓).
 - [ ] TODO [GROWTH] [M] Thread permalink sharing: generate a shareable read-only link to a thread view (e.g. /share/{token}); viral touchpoint, HIGH income impact.
 - [ ] TODO [GROWTH] [M] .mbox file import: upload a raw .mbox archive (Google Takeout / Thunderbird export) to import all threads in bulk; removes IMAP credential requirement for first-time users. HIGH impact, no prerequisites.
 - [ ] TODO [GROWTH] [S] Demo page SEO: add keyword-rich h2 sub-heading, feature bullet list, and JSON-LD SoftwareApplication schema to /demo; rank for "email as chat app" searches. MEDIUM impact. Prerequisite: demo page (done ✓).
@@ -38,12 +36,12 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [ ] TODO [GROWTH] [S] "Copy conversation as Markdown" button: one-click copy of full thread as Markdown to clipboard. MEDIUM impact.
 - [ ] TODO [GROWTH] [S] Outbound webhook trigger on new message: POST to configured URL when new thread message arrives (Zapier/Make integration); Team plan gate. MEDIUM impact. Prerequisite: IMAP polling (done ✓).
 - [ ] TODO [GROWTH] [S] Keyboard shortcut `?` to show help modal listing all keyboard shortcuts (j/k/Enter/r/Esc); power-user delight, retention driver. LOW-MEDIUM impact.
-- [ ] TODO [GROWTH] [S] Canonical URL `<link rel="canonical">` on all public pages; prevents duplicate-content SEO penalties. LOW impact, no prerequisites.
+- [ ] TODO [GROWTH] [S] Canonical URL `<link rel="canonical">` on remaining public pages (threads.html, conversation.html, demo.html, waitlist.html, pricing.html, error.html); prevents duplicate-content SEO penalties. LOW impact, no prerequisites. (index.html done ✓)
 - [ ] TODO [GROWTH] [S] "Sent via MailIM" branding footer in outgoing replies for Free plan users; disabled for Personal+. MEDIUM impact.
 
 ### UX
 
-- [ ] TODO [UX] [S] Dark-mode legal notice box (.legal-notice in /privacy and /terms): hardcoded yellow colors are unreadable in dark mode; add @media (prefers-color-scheme: dark) overrides. [S]
+- [ ] TODO [UX] [S] Add footer/nav to /privacy and /terms pages: currently dead-ends with no navigation back to app or home; add header nav consistent with other pages.
 - [ ] TODO [UX] [S] Thread list: show last-message-body preview (first 80 chars) below subject line — denormalize via query or add last_message_preview column to email_threads. MEDIUM impact.
 - [ ] TODO [UX] [S] Thread list "+ Add mailbox" nav link points to /settings/mailboxes (404); update to redirect to auth/onboarding once user auth ships. [BLOCKED] until user auth.
 - [ ] TODO [UX] [S] IMAP sync status indicator: show "last synced X minutes ago" in thread list header. Prerequisite: IMAP polling (done ✓).
@@ -120,3 +118,6 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [x] DONE [UX] [S] Pricing page privacy/TOS links fixed: /privacy and /terms stub pages created (LegalController), linked from pricing footer and FAQ; 99 tests pass
 - [x] DONE [UX] [S] Demo conversation banner "Connect your own mailbox" updated to "Join the waitlist →" (/waitlist)
 - [x] DONE [UX] [S] Threads empty state CTA updated from non-existent /settings/mailboxes to /waitlist with better copy
+- [x] DONE [GROWTH] [M] SEO-friendly landing page at /: LandingController + index.html with hero (headline, subhead, dual CTA), feature grid (6 cards), pricing preview (3 plan cards), bottom CTA section, footer; JSON-LD SoftwareApplication schema; canonical tag; waitlistCount social proof in hero; replaces redirect:/threads
+- [x] DONE [GROWTH] [S] Waitlist count social proof: live "Join X others" count now shown on waitlist page (form state) via WaitlistController.waitlistCount model attribute, and in landing page hero; FOMO driver active on both entry points
+- [x] DONE [UX] [S] nav dead-ends fixed: waitlist.html brand link updated from /threads to /; waitlist.html header CTA changed from "Open App" (/threads) to "Try demo" (/demo); demo.html top banner CTA changed from "Connect your mailbox" (/threads) to "Join the waitlist" (/waitlist); threads.html brand upgraded from plain span to linked brand-link pointing to /

@@ -37,11 +37,6 @@ class ThreadController {
         this.replyService = replyService;
     }
 
-    @GetMapping("/")
-    String home() {
-        return "redirect:/threads";
-    }
-
     @GetMapping("/threads")
     String listThreads(@RequestParam(defaultValue = "0") int page, Model model) {
         Page<EmailThread> threads = threadRepository.findAllByOrderByUpdatedAtDesc(

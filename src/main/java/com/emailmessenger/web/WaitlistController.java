@@ -26,6 +26,7 @@ class WaitlistController {
     @GetMapping
     String showForm(Model model) {
         model.addAttribute("waitlistForm", new WaitlistForm());
+        model.addAttribute("waitlistCount", waitlistRepo.count());
         return "waitlist";
     }
 
