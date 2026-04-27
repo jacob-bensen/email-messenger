@@ -77,7 +77,7 @@ commit. Add follow-ups as they emerge.
 - [x] Thymeleaf templates: thread list, conversation view with chat bubbles,
       reply form.
 - [x] CSS for the IM look: avatars, bubbles, day separators, dark mode.
-- [ ] IMAP polling job (`@Scheduled`) behind a feature flag.
+- [x] IMAP polling job (`@Scheduled`) behind a feature flag.
 - [ ] Integration tests with Testcontainers (Postgres) + GreenMail (SMTP/IMAP).
 - [ ] `Dockerfile` + `docker-compose.yml` (app + postgres).
 - [ ] GitHub Actions CI: build, test, cache Maven deps.

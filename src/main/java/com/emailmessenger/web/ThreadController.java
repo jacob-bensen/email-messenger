@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.LocalDate;
 import java.util.NoSuchElementException;
 
 @Controller
@@ -46,6 +47,9 @@ class ThreadController {
         Page<EmailThread> threads = threadRepository.findAllByOrderByUpdatedAtDesc(
                 PageRequest.of(Math.max(0, page), PAGE_SIZE));
         model.addAttribute("threads", threads);
+        LocalDate today = LocalDate.now();
+        model.addAttribute("today", today);
+        model.addAttribute("yesterday", today.minusDays(1));
         return "threads";
     }
 

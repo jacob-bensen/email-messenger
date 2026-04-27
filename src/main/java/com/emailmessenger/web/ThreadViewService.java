@@ -23,7 +23,7 @@ class ThreadViewService {
 
     @Transactional(readOnly = true)
     Conversation getConversation(long threadId) {
-        EmailThread thread = threadRepository.findById(threadId)
+        EmailThread thread = threadRepository.findByIdWithMessages(threadId)
                 .orElseThrow(NoSuchElementException::new);
         return conversationService.buildConversation(thread);
     }

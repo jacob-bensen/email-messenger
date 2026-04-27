@@ -4,6 +4,18 @@ spring:
   profiles:
     active: dev
 
+app:
+  imap:
+    host: ""
+    port: 993
+    ssl: true
+    folder: INBOX
+    username: ""
+    password: ""
+    polling:
+      enabled: false
+      interval-ms: 60000
+
 ---
 spring:
   config:
@@ -85,6 +97,18 @@ spring:
           auth: true
           starttls:
             enable: true
+
+app:
+  imap:
+    host: ${IMAP_HOST:}
+    port: ${IMAP_PORT:993}
+    ssl: ${IMAP_SSL:true}
+    folder: ${IMAP_FOLDER:INBOX}
+    username: ${IMAP_USER:}
+    password: ${IMAP_PASS:}
+    polling:
+      enabled: ${IMAP_POLLING_ENABLED:false}
+      interval-ms: ${IMAP_POLLING_INTERVAL_MS:60000}
 
 logging:
   level:

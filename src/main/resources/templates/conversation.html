@@ -63,8 +63,10 @@
           th:object="${replyForm}"
           method="post"
           class="reply-form">
-      <textarea th:field="*{body}"
-                placeholder="Write a reply…"
+      <label for="body" class="sr-only">Your reply</label>
+      <textarea id="body"
+                th:field="*{body}"
+                placeholder="Write your reply here…"
                 rows="3"
                 th:classappend="${#fields.hasErrors('body')} ? ' error' : ''"></textarea>
       <div class="field-error"

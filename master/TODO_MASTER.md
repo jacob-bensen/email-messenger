@@ -14,6 +14,11 @@ third-party accounts, marketing, or legal steps.
 
 ## Infrastructure / Credentials
 
+- [ ] [DEPLOY] Enable IMAP polling in production: set these env vars once the app is deployed:
+      IMAP_POLLING_ENABLED=true, IMAP_HOST=imap.gmail.com (or your IMAP host), IMAP_PORT=993,
+      IMAP_SSL=true, IMAP_USER=your-email@domain.com, IMAP_PASS=your-app-password,
+      IMAP_FOLDER=INBOX, IMAP_POLLING_INTERVAL_MS=60000. For Gmail, generate an App Password
+      at myaccount.google.com/apppasswords (requires 2FA enabled).
 - [ ] [DEPLOY] Create a PostgreSQL 16 database (Supabase, Railway, Neon, or self-hosted).
       Set the connection details as environment variables: DB_URL, DB_USER, DB_PASS.
 - [ ] [DEPLOY] Choose a hosting platform (Heroku, Render, Railway, or VPS) and configure
@@ -38,6 +43,12 @@ third-party accounts, marketing, or legal steps.
 
 ## Legal
 
+- [ ] [LEGAL] Verify license compatibility of jakarta.mail (com.sun.mail:jakarta.mail:2.0.1). The
+      CDDL 1.1 + GPL v2 with Classpath Exception license is generally considered safe for use in
+      commercial applications (the Classpath Exception prevents GPL from propagating to the application
+      code), but confirm with legal counsel before charging customers. Alternative: migrate to
+      Eclipse Angus Mail (org.eclipse.angus:jakarta.mail) under EPL 2.0, which is unambiguously
+      commercial-friendly.
 - [ ] [LEGAL] Add a Privacy Policy page (required for GDPR/CCPA and for any OAuth or payment flow).
       Can use a generator like Termly or Iubenda initially.
 - [ ] [LEGAL] Add Terms of Service page.
@@ -93,3 +104,11 @@ third-party accounts, marketing, or legal steps.
       tip email at day 3, (3) upgrade prompt email at day 7 targeting active free-tier users.
       These 3 emails are the highest ROI re-engagement mechanism for early SaaS growth.
       Requires account creation and API key; dev will wire the triggers once user auth ships.
+- [ ] [MARKETING] Now that IMAP polling is live, record a 15-second screen recording showing a real
+      email arriving and appearing as a new chat bubble in MailIM — this is the single most persuasive
+      demo asset for Product Hunt, landing page, and social media. Use LICEcap or Kap to capture;
+      no code required. High viral potential in productivity communities.
+- [ ] [INFRASTRUCTURE] Set up error monitoring (Sentry free tier) for the production deployment.
+      IMAP polling runs on a background thread — uncaught exceptions are only visible in logs.
+      Sentry will catch and alert on IMAP connection failures, import errors, and Spring exceptions.
+      Sign up at sentry.io, add the sentry-spring-boot-starter dependency, set SENTRY_DSN env var.

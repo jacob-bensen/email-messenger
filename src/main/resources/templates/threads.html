@@ -19,7 +19,10 @@
 <main class="thread-page">
 
   <div th:if="${threads.totalElements > 0}">
-    <h2 class="section-title">Conversations</h2>
+    <h2 class="section-title"
+        th:text="${threads.totalElements + ' Conversation' + (threads.totalElements != 1 ? 's' : '')}">
+      Conversations
+    </h2>
     <div class="thread-list">
       <a th:each="thread : ${threads}"
          th:href="@{/threads/{id}(id=${thread.id})}"
@@ -27,7 +30,10 @@
         <div class="thread-subject" th:text="${thread.subject}">Thread subject</div>
         <div class="thread-meta">
           <span th:text="${thread.messageCount + ' message' + (thread.messageCount != 1 ? 's' : '')}">1 message</span>
-          <span th:text="${#temporals.format(thread.updatedAt, 'MMM d, yyyy')}">Jan 1, 2025</span>
+          <span th:with="d=${thread.updatedAt.toLocalDate()}"
+                th:text="${d.equals(today) ? 'Today' : (d.equals(yesterday) ? 'Yesterday' : #temporals.format(thread.updatedAt, 'MMM d'))}">
+            Jan 1
+          </span>
         </div>
       </a>
     </div>
@@ -46,8 +52,8 @@
 
   <div class="empty-state" th:if="${threads.totalElements == 0}">
     <h2>No conversations yet</h2>
-    <p>Connect your first mailbox to see email threads as chat.</p>
-    <a href="#" class="btn btn-primary">Connect a mailbox</a>
+    <p>Connect an IMAP mailbox to see your email threads as a modern chat view.</p>
+    <a href="/settings/mailboxes" class="btn btn-primary">Connect Your Mailbox →</a>
   </div>
 
 </main>
