@@ -1211,3 +1211,45 @@ body {
   .how-steps { flex-direction: column; align-items: center; }
   .how-step-arrow { transform: rotate(90deg); margin: 4px 0; }
 }
+
+/* Cookie consent banner (GDPR) */
+.cookie-banner {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+  padding: 14px 18px;
+}
+.cookie-banner[hidden] { display: none; }
+.cookie-banner-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.cookie-banner-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.cookie-banner-text a {
+  color: var(--brand);
+  text-decoration: underline;
+}
+.cookie-banner-actions {
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .cookie-banner { left: 8px; right: 8px; bottom: 8px; padding: 12px 14px; }
+  .cookie-banner-inner { flex-direction: column; align-items: stretch; gap: 10px; }
+  .cookie-banner-actions { display: flex; justify-content: flex-end; }
+}

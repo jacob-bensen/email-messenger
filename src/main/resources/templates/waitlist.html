@@ -40,7 +40,7 @@
   </div>
 
   <!-- Default form state -->
-  <div class="waitlist-card" th:if="${!joined and !alreadyJoined}">
+  <div class="waitlist-card" th:unless="${(joined ?: false) or (alreadyJoined ?: false)}">
     <div class="waitlist-badge">Early Access</div>
     <h1>Get early access to MailIM</h1>
     <p class="waitlist-subtitle">
@@ -88,6 +88,8 @@
   <a href="/refund">Refund Policy</a>
   <a href="mailto:support@mailaim.app">Support</a>
 </footer>
+
+<div th:replace="~{fragments/cookie-banner :: banner}"></div>
 
 </body>
 </html>

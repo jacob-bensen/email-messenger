@@ -56,7 +56,7 @@ third-party accounts, marketing, or legal steps.
       Can use a generator like Termly or Iubenda initially.
 - [ ] [LEGAL] Add Terms of Service page.
 - [x] [LIKELY DONE - verify] Add Refund Policy page (required by Stripe and consumer protection law). /refund is live as a placeholder; replace with legally reviewed copy before accepting payments.
-- [ ] [LEGAL] Add Cookie banner / consent if targeting EU users (GDPR cookie consent).
+- [x] [LIKELY DONE - verify] Add Cookie banner / consent if targeting EU users (GDPR cookie consent). Banner is live on every public page (templates/fragments/cookie-banner.html + /js/cookie-banner.js + .cookie-banner CSS). 7 integration tests verify presence. Run #18. Verify in production with a real EU user before declaring fully shipped.
 - [ ] [LEGAL] Review Google OAuth terms of service before launching SSO — ensure the app's
       privacy policy covers use of Google account data.
 
@@ -123,3 +123,7 @@ third-party accounts, marketing, or legal steps.
 - [ ] [MARKETING] Submit the /compare page (once built) to "best Superhuman alternatives" roundup posts on Medium, Reddit r/productivity, and IndieHackers. Contact the authors of existing "top email client" posts and suggest MailIM as an addition. Each backlink from a high-DA page is an organic growth multiplier.
 - [ ] [MARKETING] Collect 3 real user quotes from waitlist signups (via a follow-up email: "In one sentence, what made you join the waitlist?"). Use verbatim quotes as testimonials on index.html and pricing.html. Real quotes outperform placeholder copy 5:1 on conversion.
 - [ ] [MARKETING] Set APP_LAUNCH_DATE env var once a target launch date is decided. The dev-side waitlist position estimator (INTERNAL_TODO.md) uses this to show "Estimated access: [month]" on the waitlist success page — creates urgency and reduces churn from the pre-launch list.
+- [ ] [MARKETING] Pick a transactional email provider this week (Postmark recommended for SaaS — flat $15/mo, simple API, good deliverability; Resend is the cheaper modern alternative). Three dev tasks (waitlist confirmation email, admin signup notification, future welcome series) are blocked on this single decision. Sign up, get an API key, set MAIL_HOST/MAIL_USER/MAIL_PASS env vars.
+- [ ] [MARKETING] Once UTM-source capture is wired into /waitlist (see INTERNAL_TODO.md [GROWTH][S]), use unique utm_source URLs for every channel post (e.g. ?utm_source=twitter, ?utm_source=indiehackers, ?utm_source=reddit_productivity). This is how you'll know which channel actually drives signups vs. which just drives traffic. Free, no tooling needed.
+- [ ] [MARKETING] Once the demo embed widget ships (see INTERNAL_TODO.md [GROWTH][S]), email the top 5 productivity-newsletter authors (Refind, Superorganizers, Make Time, etc.) offering a free embed of MailIM in their next "tools we love" issue. Embedded demos in newsletters convert at 3-8× a plain link.
+- [ ] [MARKETING] Cookie consent banner is now live — this unblocks marketing to EU audiences. Re-evaluate distribution channels with EU reach (LinkedIn EU, Heise.de, Productivity-focused subreddits with strong EU traffic).

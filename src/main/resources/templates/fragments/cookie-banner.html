@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<th:block th:fragment="banner">
+  <div id="cookie-banner"
+       class="cookie-banner"
+       role="region"
+       aria-label="Cookie consent"
+       hidden>
+    <div class="cookie-banner-inner">
+      <p class="cookie-banner-text">
+        MailIM uses only essential cookies needed to keep you signed in and to remember your preferences.
+        We don't use tracking or advertising cookies.
+        See our <a th:href="@{/privacy}">Privacy Policy</a>.
+      </p>
+      <div class="cookie-banner-actions">
+        <button type="button"
+                id="cookie-banner-accept"
+                class="btn btn-primary btn-sm">
+          Got it
+        </button>
+      </div>
+    </div>
+  </div>
+  <script th:src="@{/js/cookie-banner.js}" defer></script>
+</th:block>
+
+</body>
+</html>

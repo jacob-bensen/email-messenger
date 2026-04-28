@@ -71,3 +71,5 @@ Annual billing: 2 months free (16% discount).
 - Docker + Docker Compose (app + postgres)
 - Heroku / Render / Railway for hosted SaaS
 - GitHub Actions CI/CD
+
+_Last synced: 2026-04-28 (Run #18 — verified against codebase: landing/pricing/demo/waitlist/privacy/terms/refund pages live; IMAP polling + Testcontainers + GreenMail integration tests in place; security headers filter active; gzip on; auth + Stripe + AI summary still planned)_

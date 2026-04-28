@@ -1,157 +1,145 @@
 # Internal TODO
 
-Format: [STATUS] [TAG] [SIZE] Description
+Format: `[STATUS] [TAG] [SIZE] Description (EPIC-N)`
 
 Statuses: TODO, IN-PROGRESS, DONE, BLOCKED
 Tags: CORE, GROWTH, HEALTH, TEST-FAILURE, UX
 Sizes: S=< 2h, M=2-4h, L=4-8h
+Epics: see master/EPICS.md
+Done items get archived to master/DONE_ARCHIVE.md
+
+Priority order (top to bottom):
+TEST-FAILURE → income-critical → UX-conversion → HEALTH → GROWTH → BLOCKED
 
 ---
 
-## Active / High Priority
+## Test Failures
 
-### Infrastructure
-
-- [x] DONE [CORE] [L] Integration tests with Testcontainers (Postgres) + GreenMail (SMTP/IMAP): EmailImportIntegrationTest (6 tests, PG container, skips gracefully when Docker unavailable) + GreenMailSmtpImapIntegrationTest (4 tests, full SMTP→import pipeline). GreenMail 2.1.2 dep added. RequiresDocker ExecutionCondition prevents spurious CI failures. 124 tests total (6 skipped).
-
-### No-Prerequisite Growth (ship next, highest ROI)
-
-- [x] DONE [GROWTH] [S] Refund policy stub page at /refund: LegalController.java + refund.html; linked from all 6 footers (pricing, privacy, terms, index, waitlist, demo); pricing FAQ updated to reference refund policy with link. 112 tests pass.
-- [ ] TODO [GROWTH] [S] Admin notification email on new waitlist signup: after WaitlistController saves a new entry, fire Spring Mail to `${ADMIN_NOTIFY_EMAIL:}` (no-op if blank) with subject "New MailIM waitlist signup: {email}"; keeps owner aware of growth without requiring a dashboard. MEDIUM impact. No prerequisites beyond existing Spring Mail dep.
-- [ ] TODO [GROWTH] [S] Waitlist confirmation email: send a "you're on the list" transactional email immediately after a successful waitlist signup using Spring Mail (already in deps); keeps leads warm, confirms deliverability, includes /demo link. HIGH income impact. Prerequisite: waitlist (done ✓), transactional email provider credentials (see TODO_MASTER.md).
-- [ ] TODO [GROWTH] [M] Thread permalink sharing: generate a shareable read-only link to a thread view (e.g. /share/{token}); viral touchpoint, HIGH income impact.
-- [ ] TODO [GROWTH] [M] .mbox file import: upload a raw .mbox archive (Google Takeout / Thunderbird export) to import all threads in bulk; removes IMAP credential requirement for first-time users. HIGH impact, no prerequisites.
-- [ ] TODO [GROWTH] [S] Demo page SEO: add keyword-rich h2 sub-heading, feature bullet list, and JSON-LD SoftwareApplication schema to /demo; rank for "email as chat app" searches. MEDIUM impact. Prerequisite: demo page (done ✓).
-- [ ] TODO [GROWTH] [S] Open Graph + meta description tags on threads.html, conversation.html, and error.html: add `og:title`, `og:description`, `og:type`, `<meta name="description">`; improves social-share previews. MEDIUM impact. (waitlist.html, pricing.html, demo.html already have OG tags.)
-- [ ] TODO [GROWTH] [S] SEO tags on legal pages (privacy.html, terms.html, refund.html): add `og:title`, `og:description`, `og:type`, `<meta name="description">`, and `<link rel="canonical">` to all three; prevents duplicate-content SEO penalties and improves social-share previews. LOW individual impact, one 15-min task. No prerequisites.
-- [ ] TODO [GROWTH] [S] Waitlist success "Share this" CTA: on waitlist.html success state, add a pre-filled copy-able share URL `/waitlist` with a "📋 Copy link to share" button; zero-code viral loop — every signup becomes a potential sharer. MEDIUM virality impact. No prerequisites.
-- [ ] TODO [GROWTH] [S] Demo "Share this demo" button: on demo.html conversation view, add a "Copy link" button that copies the current demo conversation URL to clipboard; makes each demo visit a shareability touchpoint. MEDIUM viral impact. No prerequisites.
-- [ ] TODO [GROWTH] [S] Hero video/GIF embed slot on landing page: add a `<div class="hero-media">` placeholder block below the hero CTA buttons in index.html with a "📽️ See it in action" caption and a link to /demo; when a screen recording is ready, it can be dropped into the slot with one line change. Zero cost to add the layout slot now. Prerequisite: video/GIF asset (see TODO_MASTER.md).
-- [ ] TODO [GROWTH] [S] Basic thread search at GET /threads?q=: JPA LIKE query on email_threads.subject and participants.email; unblocks search use case. MEDIUM impact, no prerequisites.
-- [ ] TODO [GROWTH] [M] Add Gravatar + initials avatar fallback for Participant display in conversation view. MEDIUM impact.
-- [ ] TODO [GROWTH] [S] Robots.txt + sitemap.xml: single controller serving /robots.txt (Allow: /, /demo, /pricing, /waitlist, /roadmap; Disallow: /threads, /h2-console) and /sitemap.xml listing all public routes; submit sitemap to Google Search Console. LOW impact individually, HIGH SEO leverage long-term.
-- [ ] TODO [GROWTH] [S] Public roadmap page at /roadmap: static HTML listing upcoming features with rough ETA; reduces "is this abandoned?" churn. MEDIUM impact.
-- [ ] TODO [GROWTH] [S] EML file upload: upload a raw .eml file to seed threads; useful for demos and offline testing. MEDIUM impact.
-- [ ] TODO [GROWTH] [S] PWA web app manifest: manifest.json + apple-touch-icon; installs as PWA → 3× higher 30-day retention. MEDIUM impact.
-- [ ] TODO [GROWTH] [M] SSE live conversation refresh: Spring SseEmitter pushes "new-message" event to the open conversation page when ImapPollingJob imports new emails; makes app feel real-time. MEDIUM impact. Prerequisite: IMAP polling (done ✓).
-- [ ] TODO [GROWTH] [S] Add unread thread tracking: mark-as-read on view, unread count badge in thread list. MEDIUM impact.
-- [ ] TODO [GROWTH] [S] In-app upgrade preview of locked features: show disabled/blurred Team-tier features with "Upgrade to unlock" CTA. HIGH income impact.
-- [ ] TODO [GROWTH] [S] "Copy conversation as Markdown" button: one-click copy of full thread as Markdown to clipboard. MEDIUM impact.
-- [ ] TODO [GROWTH] [S] Outbound webhook trigger on new message: POST to configured URL when new thread message arrives (Zapier/Make integration); Team plan gate. MEDIUM impact. Prerequisite: IMAP polling (done ✓).
-- [ ] TODO [GROWTH] [S] Keyboard shortcut `?` to show help modal listing all keyboard shortcuts (j/k/Enter/r/Esc); power-user delight, retention driver. LOW-MEDIUM impact.
-- [ ] TODO [GROWTH] [S] Canonical URL `<link rel="canonical">` on remaining public pages (threads.html, conversation.html, demo.html, waitlist.html, pricing.html, error.html); prevents duplicate-content SEO penalties. LOW impact, no prerequisites. (index.html done ✓)
-- [ ] TODO [GROWTH] [S] "Sent via MailIM" branding footer in outgoing replies for Free plan users; disabled for Personal+. MEDIUM impact.
-- [x] DONE [GROWTH] [S] Gzip compression: `server.compression.enabled: true` + mime-types + min-response-size: 1024 added to application.yml (dev profile). Reduces page payload 60-80%; improves Core Web Vitals. 112 tests pass.
-- [x] DONE [HEALTH] [S] Security response headers: SecurityHeadersFilter.java (OncePerRequestFilter) sets X-Frame-Options: SAMEORIGIN, X-Content-Type-Options: nosniff, Referrer-Policy: strict-origin-when-cross-origin on every response. 3 tests added. 112 tests pass.
-- [ ] TODO [HEALTH] [S] Cookie consent banner: add a dismissible `<div id="cookie-banner">` to all Thymeleaf layouts (shown once per browser session, hidden after click via localStorage); required before serving EU users (GDPR art. 7). HIGH legal/income impact (unblocks EU market). No prerequisites.
-- [ ] TODO [GROWTH] [S] JSON-LD FAQPage schema on /pricing: add `<script type="application/ld+json">` block with FAQPage schema for the pricing FAQ section; enables Google rich-result accordion in SERPs → higher CTR for "MailIM pricing" and "email chat app" queries. MEDIUM SEO impact. Prerequisite: pricing page (done ✓).
-- [x] DONE [GROWTH] [S] Trust microcopy on pricing page: "Free forever · No credit card required" below Free plan CTA; "14-day free trial · Cancel anytime" below Personal and Team CTAs; .plan-trust-note CSS class added.
-- [x] DONE [GROWTH] [S] Objection-handling FAQ on /pricing: "Do I need a credit card to start?", "Can I change plans or get a refund?", and "Is my email data safe?" FAQ entries already present. No additional entries required.
-- [ ] TODO [GROWTH] [S] Comparison landing page at /compare: static Thymeleaf page with a feature-comparison table (MailIM vs Superhuman vs HEY vs Gmail); targets high-intent "email client alternative" search queries; internal link from /pricing and /demo. MEDIUM SEO + conversion impact. No prerequisites.
-- [ ] TODO [GROWTH] [S] Waitlist position + launch ETA on success state: after signup, show "You're #N on the waitlist" (using waitlist count) and an estimated access date calculated from a configurable `APP_LAUNCH_DATE` env var (default: blank/hidden); reduces post-signup anxiety and lowers waitlist churn. MEDIUM retention impact. No prerequisites.
-- [ ] TODO [GROWTH] [S] Sticky "Get early access" CTA bar on /pricing: add a `position: sticky; bottom: 0` bar that appears after the user scrolls past the hero section, containing "Get early access free →" button linked to /waitlist; eliminates the friction of scrolling back up to convert. MEDIUM conversion impact. No prerequisites.
-- [ ] TODO [GROWTH] [M] EML + .mbox drag-and-drop import zone on demo page: enhance /demo with a drag-and-drop zone that accepts .eml files, parses them client-side (or server-side via a POST /demo/upload endpoint), and previews the email as a chat bubble in the demo conversation; lowers the barrier to "aha moment" for first-time visitors who want to see their own email in the IM view. HIGH conversion impact. No prerequisites beyond existing DemoService + EmailImportService.
-
-### UX
-
-- [x] DONE [UX] [S] Trust microcopy under pricing CTA buttons: "Free forever · No credit card required" added below Free plan CTA; "14-day free trial · Cancel anytime" added below Personal and Team CTAs. Hero CTA on landing page now shows "Free to join · No credit card required · Cancel anytime". Dead-end "/settings/mailboxes" nav link in threads.html replaced with "Get early access →" → /waitlist CTA.
-- [ ] TODO [UX] [S] Testimonials on landing page and pricing page: add 2-3 placeholder quote blocks to index.html (between "How it works" and pricing preview) and below the plan cards in pricing.html; highest-leverage social proof touchpoints. HIGH conversion impact. No prerequisites. (Consolidated from duplicate GROWTH + UX entries.)
-- [ ] TODO [UX] [S] Thread list: show last-message-body preview (first 80 chars) below subject line — denormalize via query or add last_message_preview column to email_threads. MEDIUM impact.
-- [ ] TODO [UX] [S] IMAP sync status indicator: show "last synced X minutes ago" in thread list header. Prerequisite: IMAP polling (done ✓).
-- [ ] TODO [UX] [M] Mobile layout pass: ensure thread list and conversation view are usable on 375px screens; bubbles must not overflow viewport.
-- [ ] TODO [UX] [S] Replace legal notice placeholder in /privacy and /terms with real legal copy before accepting any payments or EU users. No code needed — requires legal content generation (see TODO_MASTER.md).
-
-### Health
-
-- [ ] TODO [HEALTH] [M] Content-Security-Policy header: SecurityHeadersFilter is missing a CSP header. Prerequisite: move all inline `<script>` blocks from threads.html, pricing.html, and conversation.html into `/static/js/` external files; then add `Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: https:` in SecurityHeadersFilter. Removes largest XSS escalation vector.
-- [ ] TODO [HEALTH] [S] Upgrade jsoup from 1.17.2 to latest release (1.19.x or newer): check jsoup changelog for security fixes since 1.17.2; update version in pom.xml and run tests. jsoup is the sole HTML sanitization dependency; staying current on it is critical.
-- [ ] TODO [HEALTH] [S] Attachment N+1 query: Message.attachments loaded lazily per message; add @BatchSize(size=50) to Message.attachments. Low priority until threads with many attachments are common.
-
-### Auth-Gated Growth (implement user auth first, then these unlock)
-
-- [ ] TODO [GROWTH] [M] User registration and authentication (Spring Security + email/password + remember-me) — prerequisite for billing, multi-tenancy, and all auth-gated features below.
-- [ ] TODO [GROWTH] [M] First-run onboarding wizard: guided "connect your first mailbox" flow after signup; reduces signup-to-value drop-off. HIGH impact. Prerequisite: user auth.
-- [ ] TODO [GROWTH] [S] Add Google OAuth single sign-on: lower signup friction, auto-populate Gmail mailbox. HIGH impact. Prerequisite: user auth.
-- [ ] TODO [GROWTH] [S] Custom SMTP/from-address settings per user: configure "From" email for outgoing replies. HIGH impact. Prerequisite: user auth.
-- [ ] TODO [GROWTH] [M] AI-generated thread summary: one-sentence summary per thread; Claude API; Personal+ tier gate. HIGH impact (unique differentiator). Prerequisite: user auth + ANTHROPIC_API_KEY.
-- [ ] TODO [GROWTH] [S] Reply signature: per-user configurable HTML/text signature appended to replies. MEDIUM impact. Prerequisite: user auth.
-- [ ] TODO [GROWTH] [S] Referral link "Invite a teammate" — awards 1 month free on conversion. Prerequisite: user auth.
-- [ ] TODO [GROWTH] [S] In-app referral prompt: after user imports 10+ threads show "Loving MailIM? Invite a colleague" modal. MEDIUM impact. Prerequisite: user auth.
-- [ ] TODO [GROWTH] [M] Email digest notifications (daily/weekly unread thread summary) — re-engagement driver. Prerequisite: user auth.
-- [ ] TODO [GROWTH] [M] Thread labels/tags: user-defined labels (e.g. "Client", "Urgent"); Team plan gate. Prerequisite: user auth.
-- [ ] TODO [GROWTH] [S] Thread snooze: re-surface thread at a set time. Prerequisite: user auth.
-- [ ] TODO [GROWTH] [S] Thread archiving: "Archive" action per thread; /archived route. Prerequisite: user auth.
-- [ ] TODO [GROWTH] [S] Conversation pinning: pin up to 3 threads to top of list; per-user state. Prerequisite: user auth.
-- [ ] TODO [GROWTH] [S] Browser push notifications via Web Push API: notify on new email in watched thread. Requires service worker. Prerequisite: user auth.
-
-### Stripe-Gated Growth (implement user auth + Stripe billing first)
-
-- [ ] TODO [GROWTH] [M] Add Stripe billing integration: subscription plans (Free/Personal/Team), checkout flow, webhook handler. HIGH income impact. Prerequisite: user auth.
-- [ ] TODO [GROWTH] [S] Stripe customer portal integration: self-service upgrade/downgrade/cancellation. HIGH impact. Prerequisite: Stripe billing.
-- [ ] TODO [GROWTH] [S] Plan-limit enforcement: max mailboxes per plan, max thread history, upgrade prompt at limit. Prerequisite: Stripe billing.
-- [ ] TODO [GROWTH] [S] Upgrade prompt inline in thread list when user hits free tier limit; plan comparison modal. HIGH impact. Prerequisite: Stripe billing.
-- [ ] TODO [GROWTH] [S] Annual/monthly billing toggle on pricing/settings page with "Save 16%" label. Prerequisite: Stripe billing.
-- [ ] TODO [GROWTH] [S] 14-day free trial on Personal tier: trial_period_days=14, no credit card at signup. HIGH impact. Prerequisite: Stripe billing.
-
-### Larger Post-Auth Features
-
-- [ ] TODO [GROWTH] [M] REST API for Personal+ tier: JSON endpoints for thread/message/reply; Zapier/Make integrations. HIGH impact.
-- [ ] TODO [GROWTH] [M] Full-text search across threads (PostgreSQL tsvector) — Personal/Team upgrade gate. Prerequisite: basic thread search (LIKE fallback).
-- [ ] TODO [GROWTH] [M] Slack/Discord webhook integration: POST to Slack when new email arrives in a thread; Team plan gate. HIGH impact. Prerequisite: IMAP polling (done ✓).
-- [ ] TODO [GROWTH] [M] Email forwarding address: assign each user a unique @mailaim.app address; email forwarded there auto-imported. HIGH impact. Prerequisite: user auth.
-- [ ] TODO [GROWTH] [M] Thread export (PDF/HTML): clean printable file; Personal/Team plan gate. MEDIUM impact.
-- [ ] TODO [GROWTH] [M] Send-later scheduling for replies: schedule reply at future date/time; Personal/Team plan gate. HIGH impact.
-
-### Blocked (prerequisite missing)
-
-- [ ] BLOCKED [UX] [S] Thread list "+ Add mailbox" nav link points to /settings/mailboxes (404). [BLOCKED] until user auth/onboarding route ships.
-- [ ] BLOCKED [HEALTH] [S] Add CSRF protection: CSRF filter must be enabled on reply and waitlist POST endpoints. [BLOCKED] until Spring Security / user auth task starts.
-- [ ] BLOCKED [HEALTH] [S] Rate-limit POST /threads/{id}/reply and POST /waitlist. [BLOCKED] until auth ships (per-user) or via nginx/Cloudflare (per-IP, no code needed).
+_(none open this session — full suite green, 131 passing, 6 skipped without Docker)_
 
 ---
 
-## Done (archived)
+## Income-Critical Path (highest leverage public funnel and trust)
 
-- [x] DONE [CORE] Rewrite README.md into proper README
-- [x] DONE [CORE] [L] Scaffold Maven project: pom.xml, mvnw, application.yml, EmailMessengerApplication.java
-- [x] DONE [CORE] [M] Add all Spring Boot starters: web, thymeleaf, data-jpa, validation, mail, flyway, postgresql, h2, testcontainers
-- [x] DONE [CORE] [M] Add Flyway migration V1__init.sql: EmailThread, Message, Participant, Attachment, MessageRecipient tables with indexes
-- [x] DONE [CORE] [M] Implement domain entities (EmailThread, Message, Participant, MessageRecipient, Attachment) and Spring Data repositories
-- [x] DONE [CORE] [L] Email-import service: parse RFC 822 via Jakarta Mail, build threads from Message-ID / In-Reply-To / References
-- [x] DONE [CORE] [M] IM transform: IMTransformService (stripQuotes + renderMarkdown), ConversationService (BubbleRun grouping), Conversation/BubbleRun/BubbleMessage view model records
-- [x] DONE [HEALTH] [M] Sanitize HTML email bodies: jsoup 1.17.2 added; ConversationService.buildBodyHtml calls Jsoup.clean(bodyHtml, Safelist.relaxed()) — closes CRITICAL XSS vector
-- [x] DONE [UX] [S] Participant initials utility: added initials() method to Participant entity
-- [x] DONE [HEALTH] [S] EmailImportService: wrap MessagingException and IOException in EmailImportException (unchecked)
-- [x] DONE [HEALTH] [S] Add global exception handler: GlobalExceptionHandler handles 404/409/502/500; disables Whitelabel error page
-- [x] DONE [CORE] [L] Thymeleaf templates: threads.html, conversation.html, main.css, ThreadController, ThreadViewService, ReplyService
-- [x] DONE [HEALTH] [S] Add input validation for all web form objects: ReplyForm @NotBlank + @Size; ThreadController uses @Valid
-- [x] DONE [UX] [S] Thread list empty state, conversation empty state, reply button primary CTA
-- [x] DONE [UX] [S] Bubble body HTML rendering: th:utext with sanitization contract comment
-- [x] DONE [CORE] [M] CSS for the IM look: day separators, dark mode, refined bubbles, header-nav and msg-count classes
-- [x] DONE [UX] [S] Keyboard shortcuts: j/k navigate, Enter open, r reply, Esc cancel
-- [x] DONE [CORE] [M] IMAP polling job: ImapPollingJob (@ConditionalOnProperty, @Scheduled), ImapPollingProperties (@ConfigurationProperties), feature flag app.imap.polling.enabled; 72 tests pass
-- [x] DONE [GROWTH] [S] Static pricing page at /pricing: PricingController + pricing.html with annual/monthly toggle, plan comparison (Free/Personal/Team/Enterprise), feature matrix, FAQ section, OG/meta tags; 76 tests pass
-- [x] DONE [GROWTH] [S] Demo mode: DemoService (2 realistic conversations), DemoController (GET /demo + GET /demo/{id}), demo.html with CTA; conversation.html isDemo flag; "Demo" nav link; OG/meta tags; 14 new tests; 90 tests pass
-- [x] DONE [GROWTH] [S] Waitlist email capture at /waitlist: WaitlistEntry JPA entity, V2__waitlist.sql migration, WaitlistEntryRepository (existsByEmail), WaitlistForm (@Email @NotBlank), WaitlistController (GET + POST with duplicate detection), waitlist.html (form / success / already-joined states), waitlist CSS; pricing CTAs updated to /waitlist; demo and conversation CTAs updated; 99 tests pass
-- [x] DONE [UX] [S] Pricing page CTAs (Personal, Team) updated from /threads to /waitlist
-- [x] DONE [UX] [S] Pricing page privacy/TOS links fixed: /privacy and /terms stub pages created (LegalController), linked from pricing footer and FAQ; 99 tests pass
-- [x] DONE [UX] [S] Demo conversation banner "Connect your own mailbox" updated to "Join the waitlist →" (/waitlist)
-- [x] DONE [UX] [S] Threads empty state CTA updated from non-existent /settings/mailboxes to /waitlist with better copy
-- [x] DONE [GROWTH] [M] SEO-friendly landing page at /: LandingController + index.html with hero (headline, subhead, dual CTA), feature grid (6 cards), pricing preview (3 plan cards), bottom CTA section, footer; JSON-LD SoftwareApplication schema; canonical tag; waitlistCount social proof in hero; replaces redirect:/threads
-- [x] DONE [GROWTH] [S] Waitlist count social proof: live "Join X others" count now shown on waitlist page (form state) via WaitlistController.waitlistCount model attribute, and in landing page hero; FOMO driver active on both entry points
-- [x] DONE [UX] [S] nav dead-ends fixed: waitlist.html brand link updated from /threads to /; waitlist.html header CTA changed from "Open App" (/threads) to "Try demo" (/demo); demo.html top banner CTA changed from "Connect your mailbox" (/threads) to "Join the waitlist" (/waitlist); threads.html brand upgraded from plain span to linked brand-link pointing to /
-- [x] DONE [CORE] [M] Dockerfile + docker-compose.yml (app + postgres): multi-stage build, non-root user, depends_on health check, .env.example
-- [x] DONE [CORE] [S] GitHub Actions CI: build, test, cache Maven deps; uploads Surefire reports on failure
-- [x] DONE [UX] [S] Add footer/nav to /privacy and /terms pages (confirmed present; task closed)
-- [x] DONE [UX] [S] Fix pricing page brand link: was href="/threads", changed to href="/" — dead-end for new visitors
-- [x] DONE [UX] [S] Waitlist success state CTA: changed from "See pricing →" to "Try the live demo →" — reduces post-join price anxiety
-- [x] DONE [UX] [S] Add site footer to waitlist.html and demo.html: both pages were missing bottom navigation
-- [x] DONE [CORE] [S] Health-check endpoint at GET /health: HealthController returns 200 JSON `{"status":"UP"}`; HEALTHCHECK added to Dockerfile; health check added to app service in docker-compose.yml; 3 tests added (107→108 total)
-- [x] DONE [UX] [S] Landing page "How it works" 3-step section: numbered 3-step walkthrough (Connect → Import → Read as chat) inserted between hero and feature grid in index.html; matching CSS added to main.css; mobile responsive (vertical stack on ≤700px)
-- [x] DONE [HEALTH] [S] noindex meta on private pages: `<meta name="robots" content="noindex,nofollow">` added to threads.html and conversation.html; prevents Google from indexing private email thread content
-- [x] DONE [UX] [S] Pricing page Free plan CTA fixed: was `href="/threads"` (dead-end for new visitors without auth), changed to `href="/waitlist"` with copy "Get early access →"
-- [x] DONE [HEALTH] [S] WaitlistController bug fix: `waitlistCount` not added to model on validation error; social proof count was invisible on form re-display after failed submission; fixed by calling `waitlistRepo.count()` in the error path; test added
-- [x] DONE [GROWTH] [S] Refund policy stub page at /refund: LegalController.java + refund.html; linked from all 6 footers; pricing FAQ updated to reference refund policy. 112 tests pass.
-- [x] DONE [GROWTH] [S] Gzip compression: server.compression.enabled + mime-types + min-response-size: 1024 added to application.yml. 112 tests pass.
-- [x] DONE [HEALTH] [S] Security response headers: SecurityHeadersFilter.java (OncePerRequestFilter) — X-Frame-Options, X-Content-Type-Options, Referrer-Policy on every response. 3 new tests. 112 tests pass.
-- [x] DONE [UX] [S] Refund Policy link added to all footers (index.html, pricing.html, privacy.html, terms.html, waitlist.html, demo.html, refund.html itself); pricing FAQ question updated to mention refund policy with direct link.
+- [ ] TODO [GROWTH] [S] Admin notification email on new waitlist signup: after WaitlistController saves a new entry, fire Spring Mail to `${ADMIN_NOTIFY_EMAIL:}` (no-op if blank) with subject "New MailIM waitlist signup: {email}". MEDIUM impact. No prerequisites beyond existing Spring Mail dep. (EPIC-1)
+- [ ] TODO [GROWTH] [M] EML + .mbox drag-and-drop import zone on demo page: enhance /demo with a drag-and-drop zone that accepts .eml files, parses them via a POST /demo/upload endpoint, and previews the email as a chat bubble; lowers the barrier to "aha moment" for first-time visitors. HIGH conversion impact. No prerequisites beyond existing DemoService + EmailImportService. (EPIC-1)
+- [ ] TODO [GROWTH] [S] EML file upload: upload a raw .eml file to seed threads; useful for demos and offline testing. MEDIUM impact. (EPIC-1)
+- [ ] TODO [GROWTH] [M] .mbox file import: upload a raw .mbox archive (Google Takeout / Thunderbird export) to import all threads in bulk; removes IMAP credential requirement for first-time users. HIGH impact, no prerequisites. (EPIC-1)
+- [ ] TODO [GROWTH] [S] "Why MailIM" section on landing page: 3-bullet "Inbox vs MailIM" comparison table or side-by-side mock-up below the hero, before features grid. MEDIUM-HIGH conversion impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Comparison landing page at /compare: static Thymeleaf page with a feature-comparison table (MailIM vs Superhuman vs HEY vs Gmail). MEDIUM SEO + conversion impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] UTM-source capture on /waitlist signup: extend WaitlistEntry with a `source` column (V3__waitlist_source.sql), read `?utm_source=` query param into a hidden form field, persist. MEDIUM growth-analytics impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Exit-intent waitlist modal on /demo and /pricing. MEDIUM conversion impact (5-15% lift typical). (EPIC-1)
+- [ ] TODO [GROWTH] [S] Sticky "Get early access" CTA bar on /pricing (`position: sticky; bottom: 0`). MEDIUM conversion impact. (EPIC-1)
+- [ ] TODO [GROWTH] [M] Thread permalink sharing: generate a shareable read-only link (e.g. /share/{token}); viral touchpoint. HIGH income impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] "Self-serve embed" widget for the demo: emit `<iframe src="/demo/{id}/embed">` HTML on /demo with a "Copy embed code" button. MEDIUM-HIGH distribution impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Waitlist position + launch ETA on success state: show "You're #N on the waitlist" using waitlist count and `APP_LAUNCH_DATE` env var. MEDIUM retention impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Waitlist success "Share this" CTA: pre-filled copy-able share URL `/waitlist` with a "📋 Copy link to share" button. MEDIUM virality impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Show waitlist count milestones on landing hero: switch hero subhead at 100 / 500 / 1000 to "Join 1,000+ people getting early access". LOW-MEDIUM impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] "Only takes 30 seconds" trust microcopy on the waitlist form CTA. LOW-MEDIUM impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Demo "Share this demo" button: "Copy link" button on demo.html conversation view. MEDIUM viral impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Hero video/GIF embed slot on landing page: add `<div class="hero-media">` placeholder; one-line update once asset is recorded. (EPIC-1)
+- [ ] TODO [GROWTH] [S] PWA web app manifest: manifest.json + apple-touch-icon; installs as PWA → 3× higher 30-day retention. MEDIUM impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Public roadmap page at /roadmap: static HTML listing upcoming features with rough ETA; reduces "is this abandoned?" churn. MEDIUM impact. (EPIC-1)
+
+---
+
+## UX (conversion-blocking surface polish)
+
+- [ ] TODO [UX] [S] Testimonials on landing page and pricing page: 2-3 placeholder quote blocks in index.html (between "How it works" and pricing preview) and below plan cards in pricing.html. HIGH conversion impact. (EPIC-1)
+- [ ] TODO [UX] [M] Mobile layout pass: ensure thread list and conversation view are usable on 375px screens; bubbles must not overflow viewport. (EPIC-3)
+- [ ] TODO [UX] [S] Thread list: show last-message-body preview (first 80 chars) below subject line — denormalize via query or add `last_message_preview` column to email_threads. MEDIUM impact. (EPIC-3)
+- [ ] TODO [UX] [S] IMAP sync status indicator: show "last synced X minutes ago" in thread list header. (EPIC-3)
+- [ ] TODO [UX] [S] Replace legal notice placeholder in /privacy and /terms with real legal copy before accepting any payments or EU users. No code needed — requires legal content generation (see TODO_MASTER.md). (EPIC-2)
+
+---
+
+## Health (security, perf, deps)
+
+- [ ] TODO [HEALTH] [M] Content-Security-Policy header: SecurityHeadersFilter is missing a CSP. Prerequisite: move all inline `<script>` blocks from threads.html, pricing.html, conversation.html into `/static/js/` external files; then add `Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: https:` in SecurityHeadersFilter. Removes largest XSS escalation vector. (EPIC-2)
+- [ ] TODO [HEALTH] [S] Upgrade jsoup from 1.17.2 to latest release (1.19.x or newer): jsoup is the sole HTML sanitization dependency; staying current is critical. (EPIC-2)
+- [ ] TODO [HEALTH] [S] Attachment N+1 query: Message.attachments loaded lazily per message; add `@BatchSize(size=50)` to Message.attachments. Low priority until threads with many attachments are common. (EPIC-2)
+
+---
+
+## Growth — SEO & polish
+
+- [ ] TODO [GROWTH] [S] JSON-LD FAQPage schema on /pricing: `<script type="application/ld+json">` block; enables Google rich-result accordion in SERPs. MEDIUM SEO impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Demo page SEO: add keyword-rich h2 sub-heading, feature bullet list, JSON-LD SoftwareApplication schema to /demo. MEDIUM impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Open Graph + meta description tags on threads.html, conversation.html, error.html (already done on waitlist/pricing/demo). MEDIUM impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] SEO tags on legal pages (privacy, terms, refund): add og:title, og:description, og:type, meta description, canonical to all three. LOW individual impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Canonical URL `<link rel="canonical">` on remaining public pages (threads.html, conversation.html, demo.html, waitlist.html, pricing.html, error.html). LOW impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Robots.txt + sitemap.xml: single controller serving /robots.txt and /sitemap.xml. HIGH SEO leverage long-term. (EPIC-1)
+
+---
+
+## Growth — Core IM Reading Experience (EPIC-3)
+
+- [ ] TODO [GROWTH] [S] Basic thread search at GET /threads?q=: JPA LIKE query on email_threads.subject and participants.email. MEDIUM impact. (EPIC-3)
+- [ ] TODO [GROWTH] [M] Add Gravatar + initials avatar fallback for Participant display in conversation view. MEDIUM impact. (EPIC-3)
+- [ ] TODO [GROWTH] [M] SSE live conversation refresh: Spring SseEmitter pushes "new-message" event to the open conversation page. MEDIUM impact. (EPIC-3)
+- [ ] TODO [GROWTH] [S] Add unread thread tracking: mark-as-read on view, unread count badge in thread list. MEDIUM impact. (EPIC-3)
+- [ ] TODO [GROWTH] [S] "Copy conversation as Markdown" button: one-click copy of full thread to clipboard. MEDIUM impact. (EPIC-3)
+- [ ] TODO [GROWTH] [S] Keyboard shortcut `?` to show help modal listing all keyboard shortcuts (j/k/Enter/r/Esc); power-user delight. LOW-MEDIUM impact. (EPIC-3)
+
+---
+
+## Growth — Plan/Tier monetization hooks
+
+- [ ] TODO [GROWTH] [S] In-app upgrade preview of locked features: show disabled/blurred Team-tier features with "Upgrade to unlock" CTA. HIGH income impact. (EPIC-5 prep)
+- [ ] TODO [GROWTH] [S] Outbound webhook trigger on new message: POST to configured URL when new thread message arrives (Zapier/Make integration); Team plan gate. MEDIUM impact. (EPIC-6)
+- [ ] TODO [GROWTH] [S] "Sent via MailIM" branding footer in outgoing replies for Free plan users; disabled for Personal+. MEDIUM impact. (EPIC-1)
+
+---
+
+## Growth — Blocked on transactional email provider (TODO_MASTER.md)
+
+- [ ] TODO [GROWTH] [S] Waitlist confirmation email: send a "you're on the list" transactional email immediately after a successful waitlist signup. HIGH income impact. Prerequisite: transactional email provider credentials. (EPIC-1)
+
+---
+
+## Auth-Gated Growth (EPIC-4 prerequisite)
+
+- [ ] TODO [GROWTH] [M] User registration and authentication (Spring Security + email/password + remember-me) — prerequisite for billing, multi-tenancy, all features below. (EPIC-4)
+- [ ] TODO [GROWTH] [M] First-run onboarding wizard: guided "connect your first mailbox" flow after signup. HIGH impact. (EPIC-4)
+- [ ] TODO [GROWTH] [S] Add Google OAuth single sign-on: lower signup friction, auto-populate Gmail mailbox. HIGH impact. (EPIC-4)
+- [ ] TODO [GROWTH] [S] Custom SMTP/from-address settings per user: configure "From" email for outgoing replies. HIGH impact. (EPIC-4)
+- [ ] TODO [GROWTH] [M] AI-generated thread summary: one-sentence summary per thread; Claude API; Personal+ tier gate. HIGH impact. (EPIC-4 + EPIC-5)
+- [ ] TODO [GROWTH] [S] Reply signature: per-user configurable HTML/text signature. MEDIUM impact. (EPIC-4)
+- [ ] TODO [GROWTH] [S] Referral link "Invite a teammate" — awards 1 month free on conversion. (EPIC-4)
+- [ ] TODO [GROWTH] [S] In-app referral prompt after user imports 10+ threads. MEDIUM impact. (EPIC-4)
+- [ ] TODO [GROWTH] [M] Email digest notifications (daily/weekly unread thread summary). (EPIC-4)
+- [ ] TODO [GROWTH] [M] Thread labels/tags: Team plan gate. (EPIC-4)
+- [ ] TODO [GROWTH] [S] Thread snooze: re-surface thread at a set time. (EPIC-4)
+- [ ] TODO [GROWTH] [S] Thread archiving: "Archive" action per thread; /archived route. (EPIC-4)
+- [ ] TODO [GROWTH] [S] Conversation pinning: pin up to 3 threads to top of list. (EPIC-4)
+- [ ] TODO [GROWTH] [S] Browser push notifications via Web Push API: notify on new email in watched thread. (EPIC-4)
+
+---
+
+## Stripe-Gated Growth (EPIC-5)
+
+- [ ] TODO [GROWTH] [M] Add Stripe billing integration: subscription plans (Free/Personal/Team), checkout flow, webhook handler. HIGH income impact. Prerequisite: user auth. (EPIC-5)
+- [ ] TODO [GROWTH] [S] Stripe customer portal integration: self-service upgrade/downgrade/cancellation. HIGH impact. (EPIC-5)
+- [ ] TODO [GROWTH] [S] Plan-limit enforcement: max mailboxes per plan, max thread history, upgrade prompt at limit. (EPIC-5)
+- [ ] TODO [GROWTH] [S] Upgrade prompt inline in thread list when user hits free tier limit. HIGH impact. (EPIC-5)
+- [ ] TODO [GROWTH] [S] Annual/monthly billing toggle on pricing/settings page with "Save 16%" label. (EPIC-5)
+- [ ] TODO [GROWTH] [S] 14-day free trial on Personal tier. HIGH impact. (EPIC-5)
+
+---
+
+## Larger Post-Auth Features (EPIC-6)
+
+- [ ] TODO [GROWTH] [M] REST API for Personal+ tier: JSON endpoints for thread/message/reply; Zapier/Make integrations. HIGH impact. (EPIC-6)
+- [ ] TODO [GROWTH] [M] Full-text search across threads (PostgreSQL tsvector) — Personal/Team upgrade gate. (EPIC-6)
+- [ ] TODO [GROWTH] [M] Slack/Discord webhook integration: POST to Slack when new email arrives. HIGH impact. (EPIC-6)
+- [ ] TODO [GROWTH] [M] Email forwarding address: assign each user a unique @mailaim.app address. HIGH impact. (EPIC-6)
+- [ ] TODO [GROWTH] [M] Thread export (PDF/HTML): clean printable file; Personal/Team plan gate. MEDIUM impact. (EPIC-6)
+- [ ] TODO [GROWTH] [M] Send-later scheduling for replies. HIGH impact. (EPIC-6)
+
+---
+
+## Blocked
+
+- [ ] BLOCKED [UX] [S] Thread list "+ Add mailbox" nav link points to /settings/mailboxes (404). [BLOCKED] until user auth/onboarding route ships. (EPIC-4)
+- [ ] BLOCKED [HEALTH] [S] Add CSRF protection: CSRF filter must be enabled on reply and waitlist POST endpoints. [BLOCKED] until Spring Security / user auth task starts. (EPIC-4)
+- [ ] BLOCKED [HEALTH] [S] Rate-limit POST /threads/{id}/reply and POST /waitlist. [BLOCKED] until auth ships (per-user) or via nginx/Cloudflare (per-IP, no code needed). (EPIC-2)
