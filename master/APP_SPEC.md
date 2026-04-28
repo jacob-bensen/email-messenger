@@ -72,4 +72,4 @@ Annual billing: 2 months free (16% discount).
 - Heroku / Render / Railway for hosted SaaS
 - GitHub Actions CI/CD
 
-_Last synced: 2026-04-28 (Run #18 — verified against codebase: landing/pricing/demo/waitlist/privacy/terms/refund pages live; IMAP polling + Testcontainers + GreenMail integration tests in place; security headers filter active; gzip on; auth + Stripe + AI summary still planned)_
+_Last synced: 2026-04-28 (Run #19 — verified against codebase: landing page now includes "Why MailIM" inbox-vs-MailIM comparison section above the fold; error page has dual-CTA recovery; cookie consent banner active on all 9 public templates; landing/pricing/demo/waitlist/privacy/terms/refund pages live; IMAP polling + Testcontainers + GreenMail integration tests in place; security headers filter active; gzip on; auth + Stripe + AI summary still planned)_

@@ -5,6 +5,11 @@ active backlog focused. Format mirrors `INTERNAL_TODO.md`.
 
 ---
 
+## Archived 2026-04-28 (Run #19)
+
+- [x] DONE [GROWTH] [S] "Why MailIM" comparison section on landing page — completion date: 2026-04-28 (Run #19). New `<section class="landing-why">` block placed between hero and "How it works"; two-column "Your inbox today" (3 ✕ pain bullets) vs. "Your inbox with MailIM" (3 ✓ solution bullets). New `.landing-why` / `.why-grid` / `.why-col` / `.why-icon` CSS using existing `--surface` / `--brand` / `--border` tokens (dark mode automatic). Mobile breakpoint at 720px stacks columns. 3 new integration tests (LandingPageContentIntegrationTest) verify the rendered HTML contains the heading, both column labels, both icon classes, and the pain/solution bullet text. MEDIUM-HIGH conversion impact — single-screen above-the-fold "why this product exists" answer for a skeptical visitor. (EPIC-1)
+- [x] DONE [GROWTH] [S] 404 / error page conversion CTAs — completion date: 2026-04-28 (Run #19). `templates/error.html` now renders a `.err-ctas` row with the original "← Back to MailIM" primary CTA plus a secondary "Try the demo →" outline button. Self-contained inline CSS (no main.css dependency on the error page is intentional for resilience). Eliminates the dead-end where a 404 visitor only had one path back. (EPIC-1)
+
 ## Archived 2026-04-28 (Run #18)
 
 - [x] DONE [HEALTH] [S] Cookie consent banner — completion date: 2026-04-28 (Run #18). `templates/fragments/cookie-banner.html` (`th:fragment="banner"`), `static/js/cookie-banner.js` (localStorage `mailim.cookieConsent.v1`, accessible-banner pattern, role=region + aria-label), `.cookie-banner` CSS (light + dark mode), included on all 9 public templates (index, pricing, demo, waitlist, privacy, terms, refund, threads, conversation). 7 new integration tests. Unblocks EU/GDPR market. (EPIC-2)
