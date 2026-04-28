@@ -23,6 +23,7 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -141,5 +142,33 @@ class ThreadControllerTest {
         // Validation error path triggers getConversation — should result in 404 via exception handler
         mockMvc.perform(post("/threads/999/reply").param("body", ""))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void replyWithBodyExceedingMaxLengthShowsValidationError() throws Exception {
+        EmailThread thread = new EmailThread("Test", "<root@test>");
+        Conversation conv = new Conversation(thread, List.of());
+        when(threadViewService.getConversation(1L)).thenReturn(conv);
+
+        String oversizedBody = "x".repeat(100_001);
+
+        mockMvc.perform(post("/threads/1/reply").param("body", oversizedBody))
+                .andExpect(status().isOk())
+                .andExpect(view().name("conversation"))
+                .andExpect(model().attributeHasFieldErrors("replyForm", "body"));
+
+        verify(replyService, never()).sendReply(anyLong(), anyString(), anyString());
+    }
+
+    @Test
+    void replySuccessRedirectContainsSuccessFlashAttribute() throws Exception {
+        EmailThread thread = new EmailThread("Test Subject", "<root@test>");
+        when(threadRepository.findById(1L)).thenReturn(Optional.of(thread));
+        doNothing().when(replyService).sendReply(anyLong(), anyString(), anyString());
+
+        mockMvc.perform(post("/threads/1/reply").param("body", "Hello there!"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/threads/1"))
+                .andExpect(flash().attributeExists("successMessage"));
     }
 }

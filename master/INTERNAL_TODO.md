@@ -12,7 +12,7 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 
 ### Infrastructure
 
-- [ ] TODO [CORE] [L] Integration tests with Testcontainers (Postgres) + GreenMail (SMTP/IMAP)
+- [x] DONE [CORE] [L] Integration tests with Testcontainers (Postgres) + GreenMail (SMTP/IMAP): EmailImportIntegrationTest (6 tests, PG container, skips gracefully when Docker unavailable) + GreenMailSmtpImapIntegrationTest (4 tests, full SMTP→import pipeline). GreenMail 2.1.2 dep added. RequiresDocker ExecutionCondition prevents spurious CI failures. 124 tests total (6 skipped).
 
 ### No-Prerequisite Growth (ship next, highest ROI)
 
@@ -23,10 +23,7 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [ ] TODO [GROWTH] [M] .mbox file import: upload a raw .mbox archive (Google Takeout / Thunderbird export) to import all threads in bulk; removes IMAP credential requirement for first-time users. HIGH impact, no prerequisites.
 - [ ] TODO [GROWTH] [S] Demo page SEO: add keyword-rich h2 sub-heading, feature bullet list, and JSON-LD SoftwareApplication schema to /demo; rank for "email as chat app" searches. MEDIUM impact. Prerequisite: demo page (done ✓).
 - [ ] TODO [GROWTH] [S] Open Graph + meta description tags on threads.html, conversation.html, and error.html: add `og:title`, `og:description`, `og:type`, `<meta name="description">`; improves social-share previews. MEDIUM impact. (waitlist.html, pricing.html, demo.html already have OG tags.)
-- [ ] TODO [GROWTH] [S] Social proof section on pricing page: 2–3 short testimonials (placeholder copy) below the plan cards; highest-leverage conversion booster on a pricing page. MEDIUM impact. No prerequisites.
-- [ ] TODO [GROWTH] [S] Testimonials section on landing page (index.html): add 2–3 short placeholder quotes between "How it works" and the pricing preview; landing page currently has zero social proof. HIGH conversion impact. No prerequisites.
-- [ ] TODO [GROWTH] [S] OG/meta tags on legal pages (privacy.html, terms.html, refund.html): add `og:title`, `og:description`, `og:type`, `<meta name="description">` to improve social-share previews when legal URLs are shared. LOW individual impact, brand credibility signal. No prerequisites.
-- [ ] TODO [GROWTH] [S] Canonical `<link rel="canonical">` on legal pages (privacy.html, terms.html, refund.html): prevents duplicate-content penalties if syndicated. LOW SEO impact. No prerequisites.
+- [ ] TODO [GROWTH] [S] SEO tags on legal pages (privacy.html, terms.html, refund.html): add `og:title`, `og:description`, `og:type`, `<meta name="description">`, and `<link rel="canonical">` to all three; prevents duplicate-content SEO penalties and improves social-share previews. LOW individual impact, one 15-min task. No prerequisites.
 - [ ] TODO [GROWTH] [S] Waitlist success "Share this" CTA: on waitlist.html success state, add a pre-filled copy-able share URL `/waitlist` with a "📋 Copy link to share" button; zero-code viral loop — every signup becomes a potential sharer. MEDIUM virality impact. No prerequisites.
 - [ ] TODO [GROWTH] [S] Demo "Share this demo" button: on demo.html conversation view, add a "Copy link" button that copies the current demo conversation URL to clipboard; makes each demo visit a shareability touchpoint. MEDIUM viral impact. No prerequisites.
 - [ ] TODO [GROWTH] [S] Hero video/GIF embed slot on landing page: add a `<div class="hero-media">` placeholder block below the hero CTA buttons in index.html with a "📽️ See it in action" caption and a link to /demo; when a screen recording is ready, it can be dropped into the slot with one line change. Zero cost to add the layout slot now. Prerequisite: video/GIF asset (see TODO_MASTER.md).
@@ -48,10 +45,17 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 - [x] DONE [HEALTH] [S] Security response headers: SecurityHeadersFilter.java (OncePerRequestFilter) sets X-Frame-Options: SAMEORIGIN, X-Content-Type-Options: nosniff, Referrer-Policy: strict-origin-when-cross-origin on every response. 3 tests added. 112 tests pass.
 - [ ] TODO [HEALTH] [S] Cookie consent banner: add a dismissible `<div id="cookie-banner">` to all Thymeleaf layouts (shown once per browser session, hidden after click via localStorage); required before serving EU users (GDPR art. 7). HIGH legal/income impact (unblocks EU market). No prerequisites.
 - [ ] TODO [GROWTH] [S] JSON-LD FAQPage schema on /pricing: add `<script type="application/ld+json">` block with FAQPage schema for the pricing FAQ section; enables Google rich-result accordion in SERPs → higher CTR for "MailIM pricing" and "email chat app" queries. MEDIUM SEO impact. Prerequisite: pricing page (done ✓).
+- [x] DONE [GROWTH] [S] Trust microcopy on pricing page: "Free forever · No credit card required" below Free plan CTA; "14-day free trial · Cancel anytime" below Personal and Team CTAs; .plan-trust-note CSS class added.
+- [x] DONE [GROWTH] [S] Objection-handling FAQ on /pricing: "Do I need a credit card to start?", "Can I change plans or get a refund?", and "Is my email data safe?" FAQ entries already present. No additional entries required.
+- [ ] TODO [GROWTH] [S] Comparison landing page at /compare: static Thymeleaf page with a feature-comparison table (MailIM vs Superhuman vs HEY vs Gmail); targets high-intent "email client alternative" search queries; internal link from /pricing and /demo. MEDIUM SEO + conversion impact. No prerequisites.
+- [ ] TODO [GROWTH] [S] Waitlist position + launch ETA on success state: after signup, show "You're #N on the waitlist" (using waitlist count) and an estimated access date calculated from a configurable `APP_LAUNCH_DATE` env var (default: blank/hidden); reduces post-signup anxiety and lowers waitlist churn. MEDIUM retention impact. No prerequisites.
+- [ ] TODO [GROWTH] [S] Sticky "Get early access" CTA bar on /pricing: add a `position: sticky; bottom: 0` bar that appears after the user scrolls past the hero section, containing "Get early access free →" button linked to /waitlist; eliminates the friction of scrolling back up to convert. MEDIUM conversion impact. No prerequisites.
+- [ ] TODO [GROWTH] [M] EML + .mbox drag-and-drop import zone on demo page: enhance /demo with a drag-and-drop zone that accepts .eml files, parses them client-side (or server-side via a POST /demo/upload endpoint), and previews the email as a chat bubble in the demo conversation; lowers the barrier to "aha moment" for first-time visitors who want to see their own email in the IM view. HIGH conversion impact. No prerequisites beyond existing DemoService + EmailImportService.
 
 ### UX
 
-- [ ] TODO [UX] [S] Landing page zero-testimonials gap: index.html has no social proof; add a testimonials section (2-3 placeholder quotes) between "How it works" and pricing preview. HIGH conversion impact. No prerequisites. (Also listed under [GROWTH].)
+- [x] DONE [UX] [S] Trust microcopy under pricing CTA buttons: "Free forever · No credit card required" added below Free plan CTA; "14-day free trial · Cancel anytime" added below Personal and Team CTAs. Hero CTA on landing page now shows "Free to join · No credit card required · Cancel anytime". Dead-end "/settings/mailboxes" nav link in threads.html replaced with "Get early access →" → /waitlist CTA.
+- [ ] TODO [UX] [S] Testimonials on landing page and pricing page: add 2-3 placeholder quote blocks to index.html (between "How it works" and pricing preview) and below the plan cards in pricing.html; highest-leverage social proof touchpoints. HIGH conversion impact. No prerequisites. (Consolidated from duplicate GROWTH + UX entries.)
 - [ ] TODO [UX] [S] Thread list: show last-message-body preview (first 80 chars) below subject line — denormalize via query or add last_message_preview column to email_threads. MEDIUM impact.
 - [ ] TODO [UX] [S] IMAP sync status indicator: show "last synced X minutes ago" in thread list header. Prerequisite: IMAP polling (done ✓).
 - [ ] TODO [UX] [M] Mobile layout pass: ensure thread list and conversation view are usable on 375px screens; bubbles must not overflow viewport.
@@ -59,6 +63,8 @@ Sizes: S=< 2h, M=2-4h, L=4-8h
 
 ### Health
 
+- [ ] TODO [HEALTH] [M] Content-Security-Policy header: SecurityHeadersFilter is missing a CSP header. Prerequisite: move all inline `<script>` blocks from threads.html, pricing.html, and conversation.html into `/static/js/` external files; then add `Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: https:` in SecurityHeadersFilter. Removes largest XSS escalation vector.
+- [ ] TODO [HEALTH] [S] Upgrade jsoup from 1.17.2 to latest release (1.19.x or newer): check jsoup changelog for security fixes since 1.17.2; update version in pom.xml and run tests. jsoup is the sole HTML sanitization dependency; staying current on it is critical.
 - [ ] TODO [HEALTH] [S] Attachment N+1 query: Message.attachments loaded lazily per message; add @BatchSize(size=50) to Message.attachments. Low priority until threads with many attachments are common.
 
 ### Auth-Gated Growth (implement user auth first, then these unlock)

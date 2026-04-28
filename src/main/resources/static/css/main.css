@@ -513,8 +513,14 @@ body {
 .plan-cta {
   display: block;
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 8px;
   padding: 10px 16px;
+}
+.plan-trust-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 20px;
 }
 .btn-outline {
   border: 1.5px solid var(--border);
@@ -945,6 +951,12 @@ body {
   color: #fff;
 }
 .btn-outline-inv:hover { background: rgba(255,255,255,0.12); }
+.hero-trust-note {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  margin-bottom: 0;
+}
 .hero-social-proof {
   font-size: 14px;
   color: var(--text-muted);
