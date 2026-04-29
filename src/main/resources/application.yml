@@ -5,6 +5,7 @@ spring:
     active: dev
 
 app:
+  base-url: ${APP_BASE_URL:https://mailaim.app}
   imap:
     host: ""
     port: 993

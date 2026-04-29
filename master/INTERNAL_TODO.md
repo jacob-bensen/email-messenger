@@ -43,6 +43,11 @@ _(none open this session — full suite green, 131 passing, 6 skipped without Do
 - [ ] TODO [GROWTH] [S] Press kit page at /press: static Thymeleaf page with founder bio, product screenshots, logo files (light + dark), brand colors, one-line elevator pitch, contact email. Drives organic backlinks from journalists, podcasters, and roundup-post authors. LOW-MEDIUM impact. Prerequisite: Master uploads founder photo + logo SVG (see TODO_MASTER.md). (EPIC-1)
 - [ ] TODO [GROWTH] [S] Twitter/X share-card meta tags on demo conversation pages: per-conversation `og:title`, `og:description`, `twitter:card=summary_large_image`, `twitter:image` so shared `/demo/{id}` URLs preview as eye-catching cards rather than plain links. LOW-MEDIUM virality. (EPIC-1)
 - [ ] TODO [GROWTH] [S] Public status page at /status: static "All systems operational" page with last-deploy timestamp and `/health` check result. Even before real monitoring exists, a status page is a trust signal that the team is operating professionally. LOW impact, but cheap to ship. (EPIC-2)
+- [ ] TODO [GROWTH] [S] Submit /sitemap.xml to Google Search Console + Bing Webmaster: now that the sitemap endpoint exists, register the property and submit it. Without registration, the sitemap is invisible to search engines for weeks. MEDIUM SEO impact. Master action — added to TODO_MASTER.md. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Auto-include each new public page in `SeoController.PUBLIC_PATHS` when shipping it (/compare, /roadmap, /press, /status). Cheap discipline — every additional indexable URL is a long-tail SEO surface. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Add `<link rel="sitemap" type="application/xml" href="/sitemap.xml">` and `<link rel="canonical">` to landing/pricing/demo/waitlist `<head>` (canonical already on `/`; missing on others). Helps crawlers and de-dupes URL variants (e.g. ?utm_source=). LOW-MEDIUM SEO impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Visible "Why now?" urgency copy on /waitlist hero: "Spots in the early-access cohort are limited" or "Beta cohort #1 closes when we hit 500 signups". Scarcity is the cheapest conversion lever before billing exists. LOW-MEDIUM impact. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Pricing page social-proof bar above plan cards: "Trusted by 500+ early-access users" (read live from `WaitlistEntryRepository.count()`); falls back gracefully when count < 100. LOW-MEDIUM impact, no prerequisites. (EPIC-1)
 
 ---
 
@@ -71,7 +76,7 @@ _(none open this session — full suite green, 131 passing, 6 skipped without Do
 - [ ] TODO [GROWTH] [S] Open Graph + meta description tags on threads.html, conversation.html, error.html (already done on waitlist/pricing/demo). MEDIUM impact. (EPIC-1)
 - [ ] TODO [GROWTH] [S] SEO tags on legal pages (privacy, terms, refund): add og:title, og:description, og:type, meta description, canonical to all three. LOW individual impact. (EPIC-1)
 - [ ] TODO [GROWTH] [S] Canonical URL `<link rel="canonical">` on remaining public pages (threads.html, conversation.html, demo.html, waitlist.html, pricing.html, error.html). LOW impact. (EPIC-1)
-- [ ] TODO [GROWTH] [S] Robots.txt + sitemap.xml: single controller serving /robots.txt and /sitemap.xml. HIGH SEO leverage long-term. (EPIC-1)
+- [x] DONE [GROWTH] [S] Robots.txt + sitemap.xml: SeoController serves /robots.txt and /sitemap.xml; sitemap lists all 7 public URLs (/, /demo, /pricing, /waitlist, /privacy, /terms, /refund) with priority + changefreq + today's lastmod; baseUrl driven by APP_BASE_URL env var. 11 tests added. (EPIC-1) — Run #20
 
 ---
 

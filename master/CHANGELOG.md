@@ -1,5 +1,142 @@
 # Changelog
 
+## 2026-04-29 — Autonomous Run #20
+
+### Session Briefing (Role 1 — Epic Manager)
+
+**Active epics this session** (cap of 3, all earning their slot):
+1. **EPIC-1: Pre-Launch Conversion Funnel** — still the only revenue lever before Master ships hosting + auth. Highest leverage per dev hour right now.
+2. **EPIC-2: Production Readiness & Trust** — CSP, jsoup upgrade, attachment N+1, real legal copy still open; the cookie banner closed last session but the rest is the long pole to a paid-plan launch.
+3. **EPIC-3: Core IM Reading Experience** — search, avatars, unread, sync indicator, mobile pass still uncovered; the differentiator that makes paid plans defensible once auth ships.
+
+No epic completed this session — all three still have unchecked child tasks. EPIC-4 (Auth) and EPIC-5 (Billing) remain `[PLANNED]` until either Master picks a transactional email provider or decides to start auth without external prerequisites. EPIC-6 (Integrations & API) is `[PLANNED]` and largely auth-gated.
+
+**Most important thing this session**: Ship `/robots.txt` + `/sitemap.xml` (EPIC-1, tagged HIGH SEO leverage long-term in INTERNAL_TODO). It's foundational — every other SEO task on the backlog (FAQPage schema, demo SEO, OG/canonical tags, /compare, /press, /roadmap) underperforms without these two endpoints existing. Search engines need a discoverable sitemap to crawl efficiently and a robots.txt to know which URL space is public. Cheap to implement, infinite half-life, compounds with every additional public page added in future sessions.
+
+**Risks / blockers to flag before work begins**:
+- Master still hasn't picked a transactional email provider — single decision unblocks waitlist confirmation email + admin signup notification + future welcome drip.
+- EPIC-2 cannot fully close until Master replaces placeholder copy on /privacy, /terms, /refund.
+- EPIC-4 (auth) still the linchpin for ~15 backlog items; deferred again this session in favor of harvesting the high-leverage public-funnel SEO win.
+
+---
+
+### Role 2 — Feature Implementer
+
+**Task completed**: Robots.txt + sitemap.xml [GROWTH][S] (EPIC-1).
+
+Files created:
+- `src/main/java/com/emailmessenger/web/SeoController.java` — `@Controller` (not `@RestController`, so the existing security headers filter still applies via the standard MVC chain). Two endpoints: `@GetMapping("/robots.txt", produces = TEXT_PLAIN)` returns a multi-line text body via Java text block (`User-agent: *`, `Allow: /`, `Disallow: /h2-console/` + `/threads` to keep auth-gated app surface out of the index, and an absolute `Sitemap:` URL). `@GetMapping("/sitemap.xml", produces = APPLICATION_XML)` builds a sitemap.org-schema-compliant `<urlset>` over the seven public paths (`/`, `/demo`, `/pricing`, `/waitlist`, `/privacy`, `/terms`, `/refund`) with per-URL `<lastmod>` (today, UTC), `<changefreq>` (weekly for high-churn, monthly for legal), and `<priority>` (1.0 landing → 0.9 waitlist/pricing → 0.8 demo → 0.5 legal). Constructor accepts `@Value("${app.base-url:https://mailaim.app}")` so the absolute URL is environment-driven. Trailing slash on the configured value is stripped to prevent `https://example.test//demo` malformations.
+- `src/test/java/com/emailmessenger/web/SeoControllerTest.java` — 9 standalone MockMvc unit tests verifying content-type, robots structure (`User-agent: *`, `Sitemap:` reference, `Disallow:` rules), sitemap structure (XML prolog, `<urlset>` schema attribute, every public URL present, today's `<lastmod>`, landing priority `1.0`, trailing-slash sanitation).
+- `src/test/java/com/emailmessenger/web/SeoIntegrationTest.java` — 2 `@SpringBootTest`+`@AutoConfigureMockMvc` tests confirming the controller is wired into the Spring context, the `app.base-url` property resolves correctly, and the `SecurityHeadersFilter` does in fact run on these new endpoints (`X-Content-Type-Options: nosniff` asserted on the robots.txt response — meaningful since SEO endpoints return non-HTML content where `nosniff` matters most).
+
+Files modified:
+- `src/main/resources/application.yml` — added top-level `app.base-url: ${APP_BASE_URL:https://mailaim.app}` so prod can override via env var; the dev profile picks up the same default.
+- `.env.example` — appended `APP_BASE_URL=https://mailaim.app` with a one-line comment so the deploy-side knows to set it.
+
+**Income relevance**: SEO is asynchronous customer acquisition — every indexed page is a 24/7 ad that costs zero recurring spend. Robots.txt + sitemap.xml is the table-stakes foundation that lets every existing public page (and every future one — /compare, /roadmap, /press, /status) actually show up in Google. The half-life of a sitemap submission is years; this is one of the rare features whose ROI strictly increases over time. Once Master registers the production domain in Search Console, organic discovery starts compounding.
+
+Test count: 134 → 145 (+ 11 new). BUILD SUCCESS.
+
+---
+
+### Role 3 — Test Examiner
+
+**Coverage added**: 11 new tests across `SeoControllerTest` (9 standalone) and `SeoIntegrationTest` (2 Spring-context).
+
+Critical new tests:
+- `robotsAllowsAllUserAgentsAndReferencesSitemap` — verifies the canonical structure `User-agent: *`, `Allow: /`, and an absolute `Sitemap: https://mailaim.app/sitemap.xml` line. Crawlers parse robots.txt strictly; a missing `User-agent:` line is a silent no-op.
+- `robotsDisallowsAuthGatedAndDevPaths` — guards against accidentally indexing `/h2-console/` (dev-only DB UI) or the auth-gated `/threads` thread list. A future template change cannot accidentally expose these to Google without breaking this test.
+- `sitemapIncludesEveryPublicUrl` — verifies all 7 public URLs are present with absolute `<loc>` entries. Catches future regressions where a developer removes a path from `PUBLIC_PATHS` without replacement.
+- `sitemapHasUrlsetWrapperAndSchema` — verifies the `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` declaration. Search engines reject sitemaps without the correct schema; a malformed XML namespace is a silent crawl failure.
+- `baseUrlConfigStripsTrailingSlash` — regression guard for the `https://example.test/` → `https://example.test` normalization. Without this, a deploy that sets `APP_BASE_URL=https://mailaim.app/` (with trailing slash) would emit `<loc>https://mailaim.app//demo</loc>`, which most validators reject.
+- `robotsTxtIsServedWithSecurityHeaders` (integration) — verifies the new endpoints inherit `X-Content-Type-Options: nosniff` from `SecurityHeadersFilter`. Critical for non-HTML responses.
+
+**Income-critical paths still well-covered**: XSS sanitization (4 tests), MailSendException → 502 (GlobalExceptionHandlerTest), duplicate waitlist signup race (WaitlistControllerTest), IMAP polling skip/marks-seen (ImapPollingJobTest), reply body 100K size constraint (ThreadControllerTest), security headers on every response (SecurityHeadersFilterTest), cookie banner presence on all 9 public templates (CookieBannerIntegrationTest), landing page "Why MailIM" comparison block (LandingPageContentIntegrationTest).
+
+Test count: 134 → 145 passing, 6 skipped (Docker absent). BUILD SUCCESS.
+
+---
+
+### Role 4 — Growth Strategist
+
+**5 new tasks** added to INTERNAL_TODO.md — all no-prerequisite, all `[GROWTH][S]`:
+
+1. **Submit /sitemap.xml to Google Search Console + Bing Webmaster** [S] — added to TODO_MASTER.md as the corresponding [MARKETING] action; without registration, the sitemap is invisible to search engines for weeks. MEDIUM SEO impact. (EPIC-1)
+2. **Auto-include each new public page in `SeoController.PUBLIC_PATHS`** [S] — discipline reminder for every future static page (/compare, /roadmap, /press, /status). Each additional indexable URL is a long-tail SEO surface. (EPIC-1)
+3. **`<link rel="sitemap">` + canonical on remaining public templates** [S] — `<link rel="sitemap" type="application/xml" href="/sitemap.xml">` and `<link rel="canonical">` on landing/pricing/demo/waitlist `<head>`. De-dupes URL variants like `?utm_source=`. LOW-MEDIUM SEO impact. (EPIC-1)
+4. **"Why now?" urgency copy on /waitlist hero** [S] — "Spots in the early-access cohort are limited" or "Beta cohort #1 closes when we hit 500 signups". Scarcity is the cheapest conversion lever before billing exists. LOW-MEDIUM impact. (EPIC-1)
+5. **Pricing page social-proof bar above plan cards** [S] — "Trusted by 500+ early-access users" sourced live from `WaitlistEntryRepository.count()`; falls back gracefully when count < 100. LOW-MEDIUM impact, no prerequisites. (EPIC-1)
+
+**2 [MARKETING] tasks** added to TODO_MASTER.md:
+- Register the property and submit the sitemap URL in Google Search Console + Bing Webmaster Tools once the production domain is up. Set `APP_BASE_URL` to the production canonical URL for accurate `<loc>` entries.
+- Monitor Search Console "Coverage" and "Performance" reports weekly for the first 30 days post-launch. The first month of organic search data should drive every subsequent SEO blog post topic.
+
+---
+
+### Role 5 — UX Auditor
+
+**Flows audited**: landing → demo → pricing → waitlist (success state) → error pages.
+
+**Direct fixes shipped**:
+- `templates/error.html` — added `<meta name="robots" content="noindex,nofollow">`. Error pages were previously eligible for Google indexing; a crawler hitting any 404/500 path could persist that into search results, embarrassing the brand. Inline meta is the lightweight fix; complements the new robots.txt by making the no-index intent explicit at the page level.
+- The new `/sitemap.xml` itself is a UX win for search-engine "users" — the human-equivalent of removing friction between MailIM and the people Googling for "email to chat" or "Superhuman alternative".
+
+**Flagged**: The recurring UX backlog items (testimonials, mobile layout pass, last-message preview, IMAP sync indicator, "Self-serve embed" widget) remain valid and prioritized. The waitlist success state still lacks a "Share this" / "You're #N on the list" CTA — those are existing backlog items not pre-empted by this session's SEO focus.
+
+---
+
+### Role 6 — Task Optimizer
+
+**Archived to DONE_ARCHIVE.md** (Run #20 section):
+- Robots.txt + sitemap.xml [GROWTH][S] (EPIC-1) — shipped in Role 2.
+- `<meta name="robots" content="noindex,nofollow">` on error.html [GROWTH][S] (EPIC-1) — shipped in Role 5.
+
+**Backlog state after cleanup**:
+- INTERNAL_TODO.md priority order intact (Test Failures → Income-Critical → UX → Health → Growth → Auth-Gated → Stripe-Gated → Larger Post-Auth → Blocked).
+- Every task carries a complexity tag (`[S]`/`[M]`/`[L]`) and an Epic ID.
+- 5 new EPIC-1 tasks added (all no-prerequisite, all `[S]`).
+- `[BLOCKED]` items unchanged (`+ Add mailbox` 404, CSRF protection, rate limiting — all blocked on auth or platform-edge rate limiting).
+
+**TODO_MASTER.md audit**:
+- All `[LIKELY DONE - verify]` flags from Run #18/#19 still standing — Master hasn't yet confirmed cookie banner / refund stub / waitlist landing in production.
+- 2 new [MARKETING] tasks added (sitemap submission, Search Console monitoring).
+- Critical-blocking item unchanged: pick a transactional email provider this week.
+
+### Session Close Summary
+
+Run #20 shipped one foundational piece of SEO infrastructure plus a small UX/SEO complement:
+1. **Robots.txt + sitemap.xml endpoints** (EPIC-1) — closes the highest-leverage SEO gap on the backlog. Foundational because every existing and future public page now becomes discoverable. Environment-driven base URL means production deploys don't require code changes; just set `APP_BASE_URL`. 11 new tests cover content type, schema, URL coverage, security-header propagation, and trailing-slash normalization.
+2. **`noindex` on error.html** (EPIC-1) — tiny corrective fix that prevents 4xx/5xx pages from polluting search results.
+
+Five new growth tasks added (sitemap submission [Master], auto-include discipline, canonical/sitemap link tags on remaining templates, "Why now?" urgency on waitlist, pricing social-proof bar). Two new Master marketing actions added (Search Console + Bing registration, weekly Coverage report monitoring).
+
+**Most important open item heading into next session**: Either ship the **pre-launch waitlist referral "skip the line"** feature (HIGH virality, [M], EPIC-1) — the cheapest acquisition channel before Stripe exists — or start **EPIC-4 (user auth)** which unlocks ~15 backlog tasks and is the linchpin for revenue. Recommend EPIC-4 only if Master can commit to picking a transactional email provider in parallel; otherwise stay in EPIC-1.
+
+**Risks / blockers needing Master attention**:
+- Pick a transactional email provider this week — blocks 3 backlog items, gates EPIC-4 readiness.
+- Replace placeholder legal copy on /privacy, /terms, /refund before Stripe goes live.
+- Once production domain is up, set `APP_BASE_URL` and register `/sitemap.xml` with Search Console + Bing Webmaster.
+
+---
+
+### Role 7 — Health Monitor
+
+**Security audit**: SeoController serves only static-shape responses (no user input flows into either endpoint, so no injection surface). The `app.base-url` value flows into output via plain string concatenation — if a future deploy sets a malformed value (e.g. with HTML-special characters), it would render literally inside `<loc>` tags. Acceptable for now since `app.base-url` is operator-controlled, but flagged below for hardening if we ever expose it to user-driven configuration.
+
+`SecurityHeadersFilter` still applies to every response, including the two new endpoints — explicitly verified by `SeoIntegrationTest.robotsTxtIsServedWithSecurityHeaders`. `Disallow: /h2-console/` in robots.txt also discourages opportunistic crawlers from probing the dev-only DB console, though the H2 console itself remains a `dev`-profile-only feature.
+
+**Performance**: Both endpoints build their bodies in memory using `StringBuilder` / text blocks — well under 1 KB each. `LocalDate.now(ZoneOffset.UTC)` is called once per `/sitemap.xml` request. No DB queries. No external requests. Gzip already configured for `application/xml` and `text/plain` (see `server.compression.mime-types` in application.yml), so even at scale these endpoints add negligible bandwidth or latency. Crawler volume is the bottleneck consideration; even Googlebot at peak hits a sitemap a few times per hour.
+
+**Code quality**: SeoController is package-private (matches other controllers); `PUBLIC_PATHS` is `private static final List.of(...)` (immutable). Switch expressions for `changefreqFor` / `priorityFor` keep the URL→metadata mapping declarative. No new dependencies added to pom.xml. No new inline scripts on any templates (CSP work in EPIC-2 stays unblocked).
+
+**Dependencies**: No additions, no upgrades. Pre-existing flagged items unchanged (jsoup 1.17.2 upgrade still pending, jakarta.mail CDDL still flagged for legal review — both already in INTERNAL_TODO.md / TODO_MASTER.md).
+
+**Legal**: No new third-party tracking, no new cookies, no new analytics. The `/sitemap.xml` does expose every public URL on the app, but those URLs are already public — no information leakage. Cookie banner remains active.
+
+No new findings to file. Audit clean.
+
+---
+
 ## 2026-04-28 — Autonomous Run #19
 
 ### Session Briefing (Role 1 — Epic Manager)

@@ -5,6 +5,11 @@ active backlog focused. Format mirrors `INTERNAL_TODO.md`.
 
 ---
 
+## Archived 2026-04-29 (Run #20)
+
+- [x] DONE [GROWTH] [S] Robots.txt + sitemap.xml — completion date: 2026-04-29 (Run #20). New `SeoController` serves `/robots.txt` (text/plain) and `/sitemap.xml` (application/xml). robots.txt allows all user-agents, disallows `/h2-console/` and `/threads`, and references the sitemap absolute URL. sitemap.xml lists every public URL (/, /demo, /pricing, /waitlist, /privacy, /terms, /refund) with `<lastmod>` (today, UTC), `<changefreq>` (weekly for high-traffic / monthly for legal), `<priority>` (1.0 landing → 0.5 legal). Base URL driven by new `app.base-url` property + `APP_BASE_URL` env var (default `https://mailaim.app`); `.env.example` updated. 11 new tests (9 standalone unit tests in `SeoControllerTest`, 2 Spring-context integration tests in `SeoIntegrationTest`). Foundational SEO leverage — every other SEO task underperforms without it. (EPIC-1)
+- [x] DONE [GROWTH] [S] `<meta name="robots" content="noindex,nofollow">` on `error.html` — completion date: 2026-04-29 (Run #20). Prevents 4xx/5xx pages from being indexed by Google when crawlers stumble on them. Tiny but corrective. (EPIC-1)
+
 ## Archived 2026-04-28 (Run #19)
 
 - [x] DONE [GROWTH] [S] "Why MailIM" comparison section on landing page — completion date: 2026-04-28 (Run #19). New `<section class="landing-why">` block placed between hero and "How it works"; two-column "Your inbox today" (3 ✕ pain bullets) vs. "Your inbox with MailIM" (3 ✓ solution bullets). New `.landing-why` / `.why-grid` / `.why-col` / `.why-icon` CSS using existing `--surface` / `--brand` / `--border` tokens (dark mode automatic). Mobile breakpoint at 720px stacks columns. 3 new integration tests (LandingPageContentIntegrationTest) verify the rendered HTML contains the heading, both column labels, both icon classes, and the pain/solution bullet text. MEDIUM-HIGH conversion impact — single-screen above-the-fold "why this product exists" answer for a skeptical visitor. (EPIC-1)
