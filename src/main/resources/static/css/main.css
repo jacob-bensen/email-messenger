@@ -788,6 +788,61 @@ body {
 }
 .waitlist-demo-hint a { color: var(--brand); }
 
+/* ── Waitlist referral / share block ─────────────────── */
+.waitlist-referral {
+  margin-top: 28px;
+  padding: 20px;
+  background: var(--surface-2, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: left;
+}
+.waitlist-referral-heading {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.waitlist-referral-copy {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+.waitlist-share-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.waitlist-share-input {
+  flex: 1 1 auto;
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--bg);
+  cursor: text;
+}
+.waitlist-share-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.waitlist-share-btn.is-copied {
+  background: var(--success, #16a34a);
+  border-color: var(--success, #16a34a);
+}
+@media (max-width: 480px) {
+  .waitlist-share-row { flex-direction: column; }
+  .waitlist-share-btn { width: 100%; }
+}
+.waitlist-referral-banner {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: var(--text);
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  margin: 0 0 16px;
+}
+.waitlist-demo-link { margin-top: 20px; }
+
 /* ── Legal pages (/privacy, /terms) ─────────────────── */
 .legal-page {
   max-width: 680px;

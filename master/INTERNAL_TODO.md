@@ -39,7 +39,6 @@ _(none open this session — full suite green, 131 passing, 6 skipped without Do
 - [ ] TODO [GROWTH] [S] Hero video/GIF embed slot on landing page: add `<div class="hero-media">` placeholder; one-line update once asset is recorded. (EPIC-1)
 - [ ] TODO [GROWTH] [S] PWA web app manifest: manifest.json + apple-touch-icon; installs as PWA → 3× higher 30-day retention. MEDIUM impact. (EPIC-1)
 - [ ] TODO [GROWTH] [S] Public roadmap page at /roadmap: static HTML listing upcoming features with rough ETA; reduces "is this abandoned?" churn. MEDIUM impact. (EPIC-1)
-- [ ] TODO [GROWTH] [M] Pre-launch waitlist referral "skip the line": add `referral_token` (UUID) and `referrals_count` columns to waitlist_entries (V3__waitlist_referrals.sql); generate a unique `?ref={token}` URL on the success page with copy like "Skip the line: refer 3 friends to jump 100 places ahead". When a new signup arrives with `?ref=`, decrement the referrer's effective queue position and credit `referrals_count`. Show updated position on success state. HIGH virality impact — pre-launch referral loops are the cheapest acquisition channel before billing exists. (EPIC-1)
 - [ ] TODO [GROWTH] [S] Press kit page at /press: static Thymeleaf page with founder bio, product screenshots, logo files (light + dark), brand colors, one-line elevator pitch, contact email. Drives organic backlinks from journalists, podcasters, and roundup-post authors. LOW-MEDIUM impact. Prerequisite: Master uploads founder photo + logo SVG (see TODO_MASTER.md). (EPIC-1)
 - [ ] TODO [GROWTH] [S] Twitter/X share-card meta tags on demo conversation pages: per-conversation `og:title`, `og:description`, `twitter:card=summary_large_image`, `twitter:image` so shared `/demo/{id}` URLs preview as eye-catching cards rather than plain links. LOW-MEDIUM virality. (EPIC-1)
 - [ ] TODO [GROWTH] [S] Public status page at /status: static "All systems operational" page with last-deploy timestamp and `/health` check result. Even before real monitoring exists, a status page is a trust signal that the team is operating professionally. LOW impact, but cheap to ship. (EPIC-2)
@@ -48,6 +47,11 @@ _(none open this session — full suite green, 131 passing, 6 skipped without Do
 - [ ] TODO [GROWTH] [S] Add `<link rel="sitemap" type="application/xml" href="/sitemap.xml">` and `<link rel="canonical">` to landing/pricing/demo/waitlist `<head>` (canonical already on `/`; missing on others). Helps crawlers and de-dupes URL variants (e.g. ?utm_source=). LOW-MEDIUM SEO impact. (EPIC-1)
 - [ ] TODO [GROWTH] [S] Visible "Why now?" urgency copy on /waitlist hero: "Spots in the early-access cohort are limited" or "Beta cohort #1 closes when we hit 500 signups". Scarcity is the cheapest conversion lever before billing exists. LOW-MEDIUM impact. (EPIC-1)
 - [ ] TODO [GROWTH] [S] Pricing page social-proof bar above plan cards: "Trusted by 500+ early-access users" (read live from `WaitlistEntryRepository.count()`); falls back gracefully when count < 100. LOW-MEDIUM impact, no prerequisites. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Referral leaderboard endpoint at /waitlist/leaderboard: top 10 entries by `referrals_count` (with email anonymized to first letter + domain) shown as a public scoreboard. Public scoreboards 2-3× referral activity by adding social competition. LOW-MEDIUM impact. Prerequisite: pre-launch referral feature (now shipped Run #21). (EPIC-1)
+- [ ] TODO [GROWTH] [S] Referral-credit milestone copy on /waitlist success state: when `referralsCount >= 3`, swap "Refer 3 friends to jump 100 places" with "🎉 You've referred {N} friends — {N*100} places skipped". Concrete progress beats abstract incentive. LOW-MEDIUM impact, no prerequisites. (EPIC-1)
+- [ ] TODO [GROWTH] [S] UTM-source capture on inbound referrals: extend WaitlistController to also persist `?utm_source=` per signup, and include it on the referrer credit so we can see whether referrals from Twitter convert at higher rates than referrals from email. MEDIUM analytics impact. Prerequisite: existing UTM-source-capture task (already in backlog) + V4 migration. (EPIC-1)
+- [ ] TODO [GROWTH] [S] Referral OG share-card generator at /waitlist/share-card.png: dynamic image (Java BufferedImage / SVG) showing "I just joined the MailIM waitlist — turn email into chat" with the user's referral URL as a QR code. When the user posts the link to Twitter, the link unfurls as the card. HIGH virality. Prerequisite: pre-launch referral feature (now shipped Run #21). (EPIC-1)
+- [ ] TODO [GROWTH] [S] Auto-incremented "share count" microcopy on success state: append "← {totalShares} people have already shared their link" below the Copy button (track via a `share_clicks` table on POST /waitlist/share-tracked, fire-and-forget from the JS). Even an inflated counter creates a herd-behavior nudge. LOW impact. (EPIC-1)
 
 ---
 
@@ -58,6 +62,7 @@ _(none open this session — full suite green, 131 passing, 6 skipped without Do
 - [ ] TODO [UX] [S] Thread list: show last-message-body preview (first 80 chars) below subject line — denormalize via query or add `last_message_preview` column to email_threads. MEDIUM impact. (EPIC-3)
 - [ ] TODO [UX] [S] IMAP sync status indicator: show "last synced X minutes ago" in thread list header. (EPIC-3)
 - [ ] TODO [UX] [S] Replace legal notice placeholder in /privacy and /terms with real legal copy before accepting any payments or EU users. No code needed — requires legal content generation (see TODO_MASTER.md). (EPIC-2)
+- [ ] TODO [UX] [S] Validate `?ref=` token on GET /waitlist before rendering the "🎁 A friend invited you" banner: if the token doesn't resolve to a known referrer, hide the banner (still keep the hidden form field — credit-attempt is silently ignored server-side). Prevents a misleading banner from rendering for malformed/typo'd referral links. LOW impact, no prerequisites. (EPIC-1)
 
 ---
 
@@ -66,6 +71,7 @@ _(none open this session — full suite green, 131 passing, 6 skipped without Do
 - [ ] TODO [HEALTH] [M] Content-Security-Policy header: SecurityHeadersFilter is missing a CSP. Prerequisite: move all inline `<script>` blocks from threads.html, pricing.html, conversation.html into `/static/js/` external files; then add `Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: https:` in SecurityHeadersFilter. Removes largest XSS escalation vector. (EPIC-2)
 - [ ] TODO [HEALTH] [S] Upgrade jsoup from 1.17.2 to latest release (1.19.x or newer): jsoup is the sole HTML sanitization dependency; staying current is critical. (EPIC-2)
 - [ ] TODO [HEALTH] [S] Attachment N+1 query: Message.attachments loaded lazily per message; add `@BatchSize(size=50)` to Message.attachments. Low priority until threads with many attachments are common. (EPIC-2)
+- [ ] TODO [HEALTH] [S] WaitlistReferralService.creditReferrer race: two concurrent signups crediting the same referrer can lost-update each other (read 0, both write 1). Replace the load-and-save pattern with a single atomic `@Modifying @Query("UPDATE WaitlistEntry e SET e.referralsCount = e.referralsCount + 1 WHERE e.referralToken = :token AND LOWER(e.email) <> LOWER(:newSignupEmail)")` invocation, or add `@Version` to WaitlistEntry and retry on optimistic-lock failure. Low impact at current volume (would need two referrals within the same millisecond) but a correctness gap. (EPIC-1)
 
 ---
 
@@ -76,7 +82,6 @@ _(none open this session — full suite green, 131 passing, 6 skipped without Do
 - [ ] TODO [GROWTH] [S] Open Graph + meta description tags on threads.html, conversation.html, error.html (already done on waitlist/pricing/demo). MEDIUM impact. (EPIC-1)
 - [ ] TODO [GROWTH] [S] SEO tags on legal pages (privacy, terms, refund): add og:title, og:description, og:type, meta description, canonical to all three. LOW individual impact. (EPIC-1)
 - [ ] TODO [GROWTH] [S] Canonical URL `<link rel="canonical">` on remaining public pages (threads.html, conversation.html, demo.html, waitlist.html, pricing.html, error.html). LOW impact. (EPIC-1)
-- [x] DONE [GROWTH] [S] Robots.txt + sitemap.xml: SeoController serves /robots.txt and /sitemap.xml; sitemap lists all 7 public URLs (/, /demo, /pricing, /waitlist, /privacy, /terms, /refund) with priority + changefreq + today's lastmod; baseUrl driven by APP_BASE_URL env var. 11 tests added. (EPIC-1) — Run #20
 
 ---
 

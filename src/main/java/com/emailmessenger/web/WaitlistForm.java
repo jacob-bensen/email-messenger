@@ -11,6 +11,12 @@ class WaitlistForm {
     @Size(max = 254, message = "Email must be 254 characters or fewer")
     private String email = "";
 
+    @Size(max = 36, message = "Invalid referral token")
+    private String ref = "";
+
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email == null ? "" : email.strip(); }
+
+    public String getRef() { return ref; }
+    public void setRef(String ref) { this.ref = ref == null ? "" : ref.strip(); }
 }

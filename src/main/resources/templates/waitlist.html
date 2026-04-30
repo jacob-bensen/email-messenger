@@ -27,16 +27,68 @@
   <div class="waitlist-card" th:if="${joined}">
     <div class="waitlist-icon">✓</div>
     <h1>You're on the list!</h1>
-    <p class="waitlist-subtitle">Thanks for joining. We'll email you as soon as early access opens.</p>
-    <a href="/demo" class="btn btn-primary">Try the live demo →</a>
+    <p class="waitlist-subtitle" th:if="${position != null}">
+      You're <strong>#<span th:text="${position}">1</span></strong> in the queue. We'll email you as soon as early access opens.
+    </p>
+    <p class="waitlist-subtitle" th:if="${position == null}">
+      Thanks for joining. We'll email you as soon as early access opens.
+    </p>
+
+    <div class="waitlist-referral" th:if="${referralUrl != null}">
+      <h2 class="waitlist-referral-heading">Skip the line</h2>
+      <p class="waitlist-referral-copy">
+        Each friend who joins from your link bumps you <strong>100 places</strong> up the queue.
+      </p>
+      <div class="waitlist-share-row">
+        <input type="text"
+               id="referralUrl"
+               class="form-input waitlist-share-input"
+               th:value="${referralUrl}"
+               readonly
+               aria-label="Your personal referral link">
+        <button type="button"
+                class="btn btn-primary waitlist-share-btn"
+                data-copy-target="referralUrl"
+                data-copy-success="Copied!"
+                data-copy-default="Copy link">Copy link</button>
+      </div>
+    </div>
+
+    <a href="/demo" class="btn btn-secondary waitlist-demo-link">Try the live demo →</a>
   </div>
 
   <!-- Already-joined state -->
   <div class="waitlist-card" th:if="${alreadyJoined}">
     <div class="waitlist-icon">✓</div>
     <h1>You're already on the list!</h1>
-    <p class="waitlist-subtitle">That email is already registered. We'll reach out when early access opens.</p>
-    <a href="/demo" class="btn btn-primary">Try the demo →</a>
+    <p class="waitlist-subtitle" th:if="${position != null}">
+      You're <strong>#<span th:text="${position}">1</span></strong> in the queue. We'll reach out when early access opens.
+    </p>
+    <p class="waitlist-subtitle" th:if="${position == null}">
+      That email is already registered. We'll reach out when early access opens.
+    </p>
+
+    <div class="waitlist-referral" th:if="${referralUrl != null}">
+      <h2 class="waitlist-referral-heading">Skip the line</h2>
+      <p class="waitlist-referral-copy">
+        Each friend who joins from your link bumps you <strong>100 places</strong> up the queue.
+      </p>
+      <div class="waitlist-share-row">
+        <input type="text"
+               id="referralUrl"
+               class="form-input waitlist-share-input"
+               th:value="${referralUrl}"
+               readonly
+               aria-label="Your personal referral link">
+        <button type="button"
+                class="btn btn-primary waitlist-share-btn"
+                data-copy-target="referralUrl"
+                data-copy-success="Copied!"
+                data-copy-default="Copy link">Copy link</button>
+      </div>
+    </div>
+
+    <a href="/demo" class="btn btn-secondary waitlist-demo-link">Try the demo →</a>
   </div>
 
   <!-- Default form state -->
@@ -55,7 +107,13 @@
       <li>Free tier included — no credit card needed</li>
     </ul>
 
+    <p class="waitlist-referral-banner"
+       th:if="${waitlistForm.ref != null and !#strings.isEmpty(waitlistForm.ref)}">
+      🎁 A friend invited you. Sign up below — they'll jump <strong>100 places</strong>, and you'll get your own link to share.
+    </p>
+
     <form th:action="@{/waitlist}" method="post" th:object="${waitlistForm}" class="waitlist-form">
+      <input type="hidden" th:field="*{ref}">
       <div class="form-group" th:classappend="${#fields.hasErrors('email')} ? 'has-error'">
         <label for="email" class="sr-only">Email address</label>
         <div class="waitlist-input-row">
@@ -89,6 +147,7 @@
   <a href="mailto:support@mailaim.app">Support</a>
 </footer>
 
+<script th:src="@{/js/copy-button.js}" defer></script>
 <div th:replace="~{fragments/cookie-banner :: banner}"></div>
 
 </body>
