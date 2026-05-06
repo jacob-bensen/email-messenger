@@ -27,18 +27,32 @@ format.
 
 Annual billing: 2 months free (16% discount).
 
-## Core Features (MVP)
+## Core Features
 
-1. **IMAP connection** — connect any IMAP/SMTP mailbox (Gmail, Outlook, etc.)
-2. **Thread view** — email threads displayed as IM-style chat bubbles
-3. **Quoted-reply stripping** — removes `> ` and "On … wrote:" noise
-4. **Same-sender grouping** — consecutive messages from the same person
-   are collapsed into a bubble run
-5. **Reply inline** — compose and send replies from the conversation view
-6. **Participant avatars** — Gravatar-based or initials fallback
-7. **Dark mode** — full CSS dark-mode support
+### Built (current state)
 
-## Planned Features (Post-MVP)
+1. **Thread view** — email threads rendered as IM-style chat bubbles
+2. **Quoted-reply stripping** — removes `> ` and "On … wrote:" noise via `IMTransformService`
+3. **Same-sender grouping** — consecutive messages from the same person collapsed into bubble runs
+4. **Reply inline** — compose and send replies from the conversation view (validated, sanitized)
+5. **Participant initials avatar** — `Participant.initials()` helper drives a circle avatar fallback
+6. **Dark mode** — CSS `prefers-color-scheme: dark` with full palette override
+7. **Day separators** — JS-inserted "Today" / "Yesterday" / dated separators between bubble runs
+8. **Keyboard shortcuts** — `j`/`k`/`Enter` thread navigation, `r`/`Esc` reply focus
+9. **Email import (programmatic)** — `EmailImportService` parses RFC 822 via Jakarta Mail and
+   threads via `Message-ID` / `In-Reply-To` / `References`
+10. **HTML sanitization** — jsoup `Safelist.relaxed()` prevents XSS in HTML email bodies
+11. **Validation + global error pages** — `ReplyForm` `@Valid`, `GlobalExceptionHandler` 404/502/500
+
+### Planned (not yet built)
+
+- **IMAP polling** — automatic mailbox sync via a `@Scheduled` job (only programmatic import works)
+- **User authentication** — Spring Security login (prerequisite for billing & multi-tenancy)
+- **Stripe billing** — subscription plans, checkout flow, webhook handler
+- **Gravatar avatars** — currently only initials are rendered
+- **Pricing / landing page** — `/` redirects straight to `/threads` (no marketing surface yet)
+
+## Other Planned Features (Post-MVP)
 
 - Attachment preview (images inline, download link for others)
 - Unread badge and read/unread tracking per thread
@@ -71,3 +85,5 @@ Annual billing: 2 months free (16% discount).
 - Docker + Docker Compose (app + postgres)
 - Heroku / Render / Railway for hosted SaaS
 - GitHub Actions CI/CD
+
+_Last synced: 2026-05-06_

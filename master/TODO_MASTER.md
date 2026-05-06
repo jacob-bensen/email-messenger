@@ -88,6 +88,12 @@ third-party accounts, marketing, or legal steps.
 - [ ] [MARKETING] Configure an Anthropic API key (ANTHROPIC_API_KEY env var) once the AI thread
       summary feature ships — needed to enable the Personal+ tier differentiator. Sign up at
       console.anthropic.com if no account exists.
+- [ ] [MARKETING] Submit MailIM to BetaList (betalist.com) and the Indie Hackers products page
+      once the pricing page is live. Both directories deliver targeted SaaS-curious traffic and
+      generate organic backlinks. MailIM URL → /pricing as the landing target. Free; ~30 min.
+- [ ] [MARKETING] Test a $50–$100 Reddit ads campaign targeting r/productivity, r/freelance, and
+      r/remotework with creative referencing "stop reading email, start having conversations".
+      Land traffic on /pricing. Pause if CPC > $1 or CTR < 1%. Sign up at ads.reddit.com.
 - [ ] [MARKETING] Set up a transactional email provider (Postmark, SendGrid, or Resend) and
       configure three automated emails: (1) welcome email sent at signup, (2) "getting started"
       tip email at day 3, (3) upgrade prompt email at day 7 targeting active free-tier users.

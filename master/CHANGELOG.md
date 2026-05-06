@@ -1,6 +1,294 @@
 # Changelog
 
-## 2026-04-26 — Autonomous Run #8
+## 2026-05-06 — Autonomous Run #9
+
+### Session Briefing (Role 1 — Epic Manager)
+
+**Active epics this session**:
+- `EPIC-01 Conversion Surface` (HIGH) — landing/pricing/demo pages so any
+  organic traffic has somewhere to land. `/` currently redirects straight
+  to `/threads`, which is the single biggest conversion gap.
+- `EPIC-02 Monetization Plumbing` (HIGH) — auth + Stripe; the path to
+  actual revenue. Blocked on Master credentials (Stripe, OAuth).
+- `EPIC-03 Mailbox Onboarding` (HIGH) — IMAP polling + onboarding wizard;
+  the path from signup to "aha" moment.
+
+**Most important thing this session**: Build the static pricing page at
+`/pricing`. It is the highest-priority unblocked task in EPIC-01, requires
+no auth or external credentials, no DB schema changes, and unlocks every
+marketing/distribution effort by giving traffic a real conversion target.
+Every dollar of Master's eventual ad/SEO/social spend funnels through
+pricing — without it, those dollars vaporize.
+
+**Risks / blockers flagged**:
+- EPIC-02 is gated on Master configuring Stripe (already in TODO_MASTER.md).
+- EPIC-03's IMAP polling needs at least one test mailbox credential to be
+  end-to-end verifiable; can be built behind a feature flag without one.
+- 39 [GROWTH] tasks are queued; backlog needs Role 6 prioritization to
+  surface the next-session pick clearly.
+
+**Bootstrap notes**: Created `master/EPICS.md` (didn't exist). Synced
+`master/APP_SPEC.md` to mark IMAP and Gravatar as planned (not built).
+
+---
+
+### Role 2 — Feature Implementer
+**Task completed**: Static `/pricing` page [GROWTH][S] (EPIC-01 Conversion Surface)
+
+Files created:
+- `src/main/java/com/emailmessenger/web/MarketingController.java` — package-private
+  `@Controller` exposing `GET /pricing` → `"pricing"` view. Separated from
+  `ThreadController` so marketing surface routing stays orthogonal to app routes.
+- `src/main/resources/templates/pricing.html` — full plan comparison page:
+  hero with H1 "Simple, predictable pricing" + sub; monthly/annual billing
+  toggle (annual prices `$7 / $24 / $83` derived from APP_SPEC's "2 months
+  free" rule); 4-column plan grid (Free / Personal *Most Popular* / Team /
+  Enterprise) with check-marked feature lists, plan blurbs, and CTAs (Free
+  → `/threads`, Personal/Team → "Start 14-day free trial" → `/threads` for
+  now since auth/Stripe aren't wired, Enterprise → `mailto:sales@`); 4-item
+  FAQ (`<details>` accordion: switching plans, free trial, mailbox limit,
+  data handling); marketing footer with brand + nav links. SEO `<meta
+  description>` set for the page.
+
+Files changed:
+- `src/main/resources/static/css/main.css` — +200 lines:
+  - `.marketing` page container, `.hero-narrow` H1/sub
+  - `.billing-toggle`/`.billing-option` segmented control with
+    `.is-active` + brand-colored fill; `.save-badge` for "Save 16%"
+  - `.plan-grid` responsive auto-fit (220px min); `.plan-card` with the
+    `.plan-card-featured` variant getting brand border + lift transform +
+    shadow + a "Most popular" `.plan-tag` ribbon
+  - `.plan-name`, `.plan-price`/`.price-amount`/`.price-period`,
+    `.plan-blurb` (40px min-height to align grid), `.plan-features` with
+    ✓ pseudo-bullets, `.plan-cta` full-width button
+  - `.faq` + `.faq-item` `<details>` styling (custom summary marker hidden)
+  - `.marketing-footer` with link nav
+  - `.nav-active` for current-page indicator
+  - Dark-mode overrides for plan card, billing option, faq item, footer
+  - Mobile `@media (max-width: 640px)` resets the featured-card lift and
+    scales hero H1 down to 28px
+- `src/main/resources/templates/threads.html` — added `<a href="/pricing">Pricing</a>`
+  to the header nav so the new page is reachable from the inbox.
+
+Inline JS on pricing page wires the billing toggle: clicking Monthly/Annual
+swaps `.is-active` and rewrites every `.price-amount` from `data-monthly`
+or `data-annual` attributes — pure attribute lookup, no template injection
+risk. Uses `var` for IE-compat consistency with sibling templates.
+
+Verified: `./mvnw test` → BUILD SUCCESS, 63 tests pass.
+
+**Income relevance**: Pricing page is the entry point of every paid
+conversion. Without it, marketing/SEO/social touchpoints have nowhere to
+land. With it, every visitor who arrives via `/pricing` (the most common
+top-of-funnel SaaS route) sees plan tiers, a featured "Most Popular"
+anchor, a clear "Start 14-day free trial" CTA, and FAQ that pre-empts the
+top objections. This unlocks every downstream conversion task in EPIC-01
+and gives Master a real URL to share when posting in marketing channels.
+
+**Note for next session**: CTAs currently route to `/threads` because auth
++ Stripe checkout aren't wired yet. Once user auth ships (EPIC-02), update
+the CTA hrefs to `/signup?plan=personal` etc. so the pricing page becomes
+a true conversion funnel.
+
+---
+
+### Role 3 — Test Examiner
+**Coverage added**: 3 new tests, 66 total (up from 63)
+
+New tests:
+- `MarketingControllerTest.pricingPageReturnsPricingView` — covers the new
+  `GET /pricing` route added this session (200 OK, view name `"pricing"`).
+  Standalone MockMvc with the same `InternalResourceViewResolver` pattern
+  used by `ThreadControllerTest`.
+- `ReplyServiceTest.sendReplySetsInReplyToAndReferencesHeadersFromLastMessageId`
+  — verifies that when the last message in a thread has a Message-ID
+  header, the outgoing reply's `In-Reply-To` and `References` headers are
+  set to that exact value. **Income-critical**: without correct threading
+  headers, replies arrive at the recipient's inbox as orphan emails — they
+  break out of the conversation thread, look like spam, and destroy the
+  product's value. Previously untested; the existing tests only verified
+  Subject/To routing.
+- `ReplyServiceTest.sendReplyOmitsThreadingHeadersWhenLastMessageHasNoMessageId`
+  — verifies that when `messageIdHeader` is null (e.g. an imported message
+  with a missing or malformed Message-ID), `In-Reply-To` and `References`
+  are *not* set (rather than being set to the literal string "null", which
+  would be a silent corruption bug).
+
+**Risk reduced**: Email threading correctness for outgoing replies — a
+class of bug that would have shipped silently and only surfaced via user
+churn ("my replies aren't threading, I'm cancelling").
+
+**Still uncovered (not actionable this session)**:
+- Stripe webhook handler — code not written yet (EPIC-02).
+- User auth flows — code not written yet (EPIC-02).
+- IMAP polling job — code not written yet (EPIC-03).
+- Day-separator JS and keyboard shortcut JS — client-side; out of JUnit scope.
+- Pricing page billing-toggle JS — client-side; out of JUnit scope.
+
+---
+
+### Role 4 — Growth Strategist
+Identified 5 implementable growth ideas not previously captured, plus 2 Master
+marketing actions:
+
+1. **Smart reply suggestions** [GROWTH][M] (EPIC-05) — Claude-generated 2–3
+   one-tap reply suggestions under each conversation; Personal+ tier gate;
+   the strongest "wow" demo asset for screenshots and recording. HIGH income
+   impact. Prereq: auth + ANTHROPIC_API_KEY.
+2. **Exit-intent email capture modal** [GROWTH][S] (EPIC-01) — on `/pricing`
+   and future landing, detect close/back intent and show "Get launch updates"
+   modal; captures leads before Stripe is wired. MEDIUM income impact.
+3. **Add-on extra mailbox at $3/mo** [GROWTH][S] (EPIC-02) — expansion
+   revenue without forcing a tier upgrade. MEDIUM income impact.
+4. **Auto-categorize threads** [GROWTH][M] (EPIC-04) — Newsletter / Personal
+   / Work via List-Id + sender-domain heuristics; reduces "overwhelming"
+   churn that hits at the 100+ thread mark. MEDIUM income impact.
+5. **Public stats page at `/stats`** [GROWTH][S] (EPIC-01) — live
+   server-rendered counters as a trust signal; compounds with pricing page.
+   LOW–MEDIUM income impact.
+
+Master actions added to TODO_MASTER.md:
+- Submit MailIM to BetaList + Indie Hackers products page once pricing
+  page is live (free, ~30 min, targeted SaaS-curious traffic).
+- $50–$100 Reddit ads test on r/productivity / r/freelance / r/remotework
+  landing on `/pricing`; pause-criteria included.
+
+---
+
+### Role 5 — UX Auditor
+**Flows audited**: landing-equivalent (`/` → `/threads`), thread list, empty
+state, conversation header, pricing page (just shipped), reply form.
+
+**Direct fixes applied**:
+1. **Empty-state dead-end** (`threads.html`): the "Connect a mailbox" button
+   was `href="#"` — clicking it did nothing. Replaced with "See plans &
+   get started" linking to `/pricing`. Empty state now drives every
+   first-time visitor with no data toward the conversion surface instead
+   of bouncing. Also rewrote the heading from "No conversations yet" to
+   "Your inbox is empty" — clearer subject/object framing.
+2. **SEO hygiene**: added `<meta name="robots" content="noindex, nofollow">`
+   to both `threads.html` and `conversation.html`. App pages should not
+   appear in Google results both because they're per-user (no value to
+   anonymous searchers) and because conversation subjects could be
+   sensitive. `/pricing` deliberately has no robots tag (defaults to
+   indexable) — it's the only page Google should rank.
+
+**Issues flagged (added to INTERNAL_TODO.md [UX])**:
+- Pricing page CTAs route to `/threads`; needs `/signup?plan=...` once
+  EPIC-02 ships.
+- Pricing footer needs `/privacy` `/terms` `/refund-policy` links once
+  those pages exist (Stripe go-live blocker).
+- Conversation page should also expose `/pricing` in the header.
+- Mobile layout pass should also hide `.kbd-hint` below 640px.
+
+---
+
+### Role 6 — Task Optimizer
+**Backlog hygiene:**
+- Created `master/DONE_ARCHIVE.md` (didn't exist); migrated 19 completed
+  tasks out of `INTERNAL_TODO.md` (the `## Done (archived)` section is
+  now empty/removed) plus this run's pricing page completion.
+- Rewrote `INTERNAL_TODO.md` from scratch with the prescribed priority
+  ordering: `TEST-FAILURE → income-critical → UX(conversion) → HEALTH →
+  GROWTH → BLOCKED`.
+- Tagged **every** open task with its Epic ID (EPIC-01 through EPIC-08).
+- Grouped GROWTH items by epic so the next session can read down a single
+  epic's backlog without filtering.
+- 0 `TEST-FAILURE` items; 0 `BLOCKED` items.
+- Active task count: 47 tasks (1 CORE income-critical, 12 income-critical
+  GROWTH, 7 UX, 24 GROWTH non-critical, 3 Infra). Down from 50 by way of
+  the pricing-page completion plus 2 net adds (5 new growth – 1 done –
+  some absorbed by existing slots; previous count likely undercounted).
+- `TODO_MASTER.md` audit: the only `[LIKELY DONE - verify]` item is the
+  HTML XSS sanitization, already verified in test suite (4 XSS tests in
+  `ConversationServiceTest`); leaving the verify-in-production note as-is.
+
+**Session Close Summary:**
+
+What was accomplished Run #9:
+- Shipped `/pricing` page (EPIC-01) — first marketing surface; 4 plans, monthly/
+  annual toggle, FAQ, dark-mode + responsive CSS, SEO meta description.
+- Added `MarketingController` with test coverage; reply-threading-header
+  correctness now tested (income-critical anti-churn coverage).
+- Bootstrap: created `EPICS.md` (8 epics; 3 active) and synced `APP_SPEC.md`
+  to mark IMAP/Gravatar as planned (not built).
+- Backlog: created `DONE_ARCHIVE.md`, rewrote `INTERNAL_TODO.md` with epic
+  tagging and priority ordering. Added 5 new growth tasks + 2 marketing
+  Master actions. Fixed 1 dead-end empty-state CTA. Added robots metas to
+  app pages.
+- Test suite: 63 → 66 tests, BUILD SUCCESS.
+
+Most important open item heading into next session:
+- **EPIC-02 user authentication** is the unblocker for at least 9 plan-gated
+  GROWTH tasks (Stripe billing, plan limits, archiving, pinning, signature,
+  custom from-address, AI summary, smart replies, Google OAuth). It is a
+  single-session [M] task and once shipped opens the floodgates of revenue
+  features. Recommend that be Run #10's Role-2 pick.
+
+Risks / blockers needing Master attention:
+- `TODO_MASTER.md` Stripe + DB + domain items remain outstanding. Without
+  a Stripe account, EPIC-02 can be coded but not end-to-end tested with
+  real checkouts.
+- Reddit ads + BetaList submissions (added this run) are zero-cost and
+  unblocked; can be done as soon as Master has a public URL.
+
+---
+
+### Role 7 — Health Monitor
+
+**Security**:
+- Hardcoded-secret scan across `src/**`: clean. Only references are the
+  `application.yml` env-var placeholders (`${DB_PASS}`, `${MAIL_PASS:}`)
+  and the empty H2 dev password — all expected.
+- New `MarketingController` and `pricing.html` introduce no DB query, no
+  user input, no `th:utext`, and no `eval`-style JS. Billing-toggle JS
+  reads only `data-monthly` / `data-annual` attributes from the page's
+  own DOM — no injection vector.
+- **Pre-emptive flag added** to `INTERNAL_TODO.md` [HEALTH]: CSRF token
+  must be wired into `conversation.html`'s reply form when Spring Security
+  arrives in EPIC-02 (without it, existing POSTs will start returning
+  403). Currently no Spring Security on classpath so no enforcement
+  exists — known gap.
+- **Pre-emptive flag added**: `/h2-console` is correctly gated by the dev
+  profile in `application.yml`, but a CI/prod smoke check should verify
+  it returns 404 in prod so a bad `SPRING_PROFILES_ACTIVE` can't silently
+  expose the DB browser.
+
+**Performance**:
+- `/pricing` is fully static — zero DB queries, sub-millisecond render.
+- CSS file grew from 412 → ~610 lines (~12 KB unminified). Still
+  manageable; flag to watch as future marketing pages add more.
+- No new dependencies; `pom.xml` unchanged.
+
+**Code quality**:
+- `MarketingController`: 11 lines, package-private — no over-engineering.
+- `pricing.html` uses semantic HTML (`<article>` per plan, `<details>`
+  for FAQ accordion); no inline styles; no template-injection risk.
+- One small JS dead-branch was removed during implementation
+  (`'period' === 'annual' ? ...` was a literal-string compare).
+- CSS additions are namespaced (`.marketing`, `.plan-*`, `.billing-*`,
+  `.faq-*`); no global selector pollution.
+
+**Legal**:
+- **Direct fix applied**: `pricing.html` FAQ originally contained
+  forward-looking claims ("Mailbox credentials are encrypted at rest",
+  "delete all your data with one click") that aren't yet implemented.
+  Misrepresentation of un-shipped features is actionable under FTC and
+  EU consumer-protection rules. Rewrote to factual scope-limited copy:
+  "Email content is stored only to render your conversation view — we
+  never read it for advertising or sell it to third parties. Full details
+  are in our privacy policy (coming with launch)."
+- Dependency licenses audited: spring-boot (Apache 2.0), jsoup (MIT),
+  jakarta.mail (EPL 2.0 + GPL 2.0 with classpath exception, commercial-
+  friendly), flyway (Apache 2.0), postgresql (PostgreSQL License,
+  BSD-like), testcontainers (MIT), h2 (MPL 2.0 / EPL 1.0 dual). No
+  GPL / copyleft contamination.
+- Outstanding `[LEGAL]` items in `TODO_MASTER.md` (privacy policy, ToS,
+  refund policy, cookie consent, OAuth ToS review) remain unchanged.
+
+---
+
+
 
 ### Role 1 — Feature Implementer
 **Task completed**: CSS polish — day separators, dark mode, refined bubbles, hover states [CORE][M]
