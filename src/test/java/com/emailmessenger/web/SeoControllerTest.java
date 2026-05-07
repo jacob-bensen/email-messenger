@@ -70,6 +70,7 @@ class SeoControllerTest {
                 .andExpect(content().string(containsString("<loc>https://mailaim.app/demo</loc>")))
                 .andExpect(content().string(containsString("<loc>https://mailaim.app/pricing</loc>")))
                 .andExpect(content().string(containsString("<loc>https://mailaim.app/waitlist</loc>")))
+                .andExpect(content().string(containsString("<loc>https://mailaim.app/waitlist/leaderboard</loc>")))
                 .andExpect(content().string(containsString("<loc>https://mailaim.app/privacy</loc>")))
                 .andExpect(content().string(containsString("<loc>https://mailaim.app/terms</loc>")))
                 .andExpect(content().string(containsString("<loc>https://mailaim.app/refund</loc>")));

@@ -18,6 +18,7 @@ class SeoController {
             "/demo",
             "/pricing",
             "/waitlist",
+            "/waitlist/leaderboard",
             "/privacy",
             "/terms",
             "/refund"
@@ -70,6 +71,7 @@ class SeoController {
         return switch (path) {
             case "/" -> "weekly";
             case "/pricing", "/demo", "/waitlist" -> "weekly";
+            case "/waitlist/leaderboard" -> "daily";
             default -> "monthly";
         };
     }
@@ -79,6 +81,7 @@ class SeoController {
             case "/" -> "1.0";
             case "/waitlist", "/pricing" -> "0.9";
             case "/demo" -> "0.8";
+            case "/waitlist/leaderboard" -> "0.6";
             default -> "0.5";
         };
     }

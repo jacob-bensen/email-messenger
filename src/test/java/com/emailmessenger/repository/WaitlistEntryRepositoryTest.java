@@ -79,4 +79,47 @@ class WaitlistEntryRepositoryTest {
         assertThat(repo.countByIdLessThan(first.getId())).isZero();
         assertThat(repo.countByIdLessThan(third.getId())).isEqualTo(2);
     }
+
+    @Test
+    void findTopReferrersReturnsEmptyWhenNoReferralsExist() {
+        repo.saveAndFlush(new WaitlistEntry("a@example.com"));
+        repo.saveAndFlush(new WaitlistEntry("b@example.com"));
+
+        assertThat(repo.findTop10ByReferralsCountGreaterThanOrderByReferralsCountDescIdAsc(0))
+                .isEmpty();
+    }
+
+    @Test
+    void findTopReferrersOrdersByCountDescThenIdAsc() {
+        var a = repo.saveAndFlush(new WaitlistEntry("a@example.com"));
+        var b = repo.saveAndFlush(new WaitlistEntry("b@example.com"));
+        var c = repo.saveAndFlush(new WaitlistEntry("c@example.com"));
+        var d = repo.saveAndFlush(new WaitlistEntry("d@example.com"));
+        // Boost referrals: a=2, b=5, c=2 (tie with a; older id wins), d=0 (excluded)
+        for (int i = 0; i < 2; i++) a.incrementReferralsCount();
+        for (int i = 0; i < 5; i++) b.incrementReferralsCount();
+        for (int i = 0; i < 2; i++) c.incrementReferralsCount();
+        repo.saveAll(java.util.List.of(a, b, c, d));
+        repo.flush();
+
+        var top = repo.findTop10ByReferralsCountGreaterThanOrderByReferralsCountDescIdAsc(0);
+
+        assertThat(top).hasSize(3);
+        assertThat(top.get(0).getEmail()).isEqualTo("b@example.com"); // 5 referrals
+        assertThat(top.get(1).getEmail()).isEqualTo("a@example.com"); // 2, lower id
+        assertThat(top.get(2).getEmail()).isEqualTo("c@example.com"); // 2, higher id
+    }
+
+    @Test
+    void findTopReferrersIsCappedAtTen() {
+        for (int i = 0; i < 12; i++) {
+            var e = repo.saveAndFlush(new WaitlistEntry("u" + i + "@example.com"));
+            // Each entry gets a strictly decreasing referral count so order is deterministic
+            for (int j = 0; j < 12 - i; j++) e.incrementReferralsCount();
+            repo.saveAndFlush(e);
+        }
+
+        assertThat(repo.findTop10ByReferralsCountGreaterThanOrderByReferralsCountDescIdAsc(0))
+                .hasSize(10);
+    }
 }

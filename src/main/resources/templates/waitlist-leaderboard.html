@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Referral Leaderboard — MailIM Waitlist</title>
+  <meta name="description" content="Top referrers on the MailIM waitlist. Each referral skips 100 places — share your link and climb the board.">
+  <meta property="og:title" content="MailIM Waitlist — Referral Leaderboard">
+  <meta property="og:description" content="Top referrers on the MailIM waitlist. Each referral skips 100 places.">
+  <meta property="og:type" content="website">
+  <link rel="canonical" th:href="@{/waitlist/leaderboard}">
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/" class="brand brand-link">MailIM</a>
+  <nav class="header-nav">
+    <a href="/demo">Demo</a>
+    <a href="/pricing">Pricing</a>
+    <a href="/waitlist" class="btn btn-primary btn-sm">Get early access →</a>
+  </nav>
+</header>
+
+<main class="waitlist-page leaderboard-page">
+
+  <div class="waitlist-card leaderboard-card">
+    <div class="waitlist-badge">Leaderboard</div>
+    <h1>Top referrers</h1>
+    <p class="waitlist-subtitle">
+      Each friend you refer to the waitlist bumps you <strong>100 places</strong> up the queue.
+      The board updates as new signups arrive.
+    </p>
+
+    <table class="leaderboard-table" th:if="${not #lists.isEmpty(entries)}">
+      <thead>
+        <tr>
+          <th scope="col" class="lb-col-rank">#</th>
+          <th scope="col" class="lb-col-email">Referrer</th>
+          <th scope="col" class="lb-col-count">Referrals</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="entry : ${entries}">
+          <td class="lb-col-rank">
+            <span class="lb-rank" th:text="${entry.rank()}">1</span>
+          </td>
+          <td class="lb-col-email">
+            <span class="lb-email" th:text="${entry.anonymizedEmail()}">a***@example.com</span>
+          </td>
+          <td class="lb-col-count">
+            <span class="lb-count" th:text="${entry.referralsCount()}">0</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="leaderboard-empty" th:if="${#lists.isEmpty(entries)}">
+      <p class="leaderboard-empty-emoji">🥇</p>
+      <p class="leaderboard-empty-headline">No referrers yet — be the first.</p>
+      <p class="leaderboard-empty-copy">
+        Join the waitlist, share your link, and your name (well, the first letter
+        of it) lands at the top of the board.
+      </p>
+    </div>
+
+    <div class="leaderboard-cta">
+      <a href="/waitlist" class="btn btn-primary">Join the waitlist →</a>
+      <a href="/demo" class="btn btn-secondary">Try the live demo</a>
+    </div>
+  </div>
+
+</main>
+
+<footer class="pricing-footer">
+  <span>© 2026 MailIM</span>
+  <a href="/privacy">Privacy Policy</a>
+  <a href="/terms">Terms of Service</a>
+  <a href="/refund">Refund Policy</a>
+  <a href="mailto:support@mailaim.app">Support</a>
+</footer>
+
+<div th:replace="~{fragments/cookie-banner :: banner}"></div>
+
+</body>
+</html>

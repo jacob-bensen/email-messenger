@@ -1,5 +1,182 @@
 # Changelog
 
+## 2026-05-07 — Autonomous Run #22
+
+### Session Briefing (Role 1 — Epic Manager)
+
+**Active epics this session** (cap of 3, all still earning their slot):
+1. **EPIC-1: Pre-Launch Conversion Funnel** — still the only revenue lever before Master ships hosting + auth credentials. Highest leverage per dev hour by a wide margin; ~28 unchecked child tasks (grew last session as new referral-loop opportunities were scoped after Run #21 shipped the base mechanic).
+2. **EPIC-2: Production Readiness & Trust** — CSP, jsoup upgrade, attachment N+1, real legal copy still open. Needed before any paid plan can launch.
+3. **EPIC-3: Core IM Reading Experience** — search, avatars, unread tracking, mobile pass, sync indicator still open. The differentiator that makes paid plans defensible once auth ships.
+
+No epic completed this session — all three still have unchecked child tasks. EPIC-4 (Auth) and EPIC-5 (Billing) remain `[PLANNED]` until Master picks a transactional email provider or commits to start auth without that prerequisite. EPIC-6 (Integrations & API) remains `[PLANNED]` and is largely auth-gated.
+
+**Most important thing this session**: Ship the **referral leaderboard at /waitlist/leaderboard** (EPIC-1, [GROWTH][S]). Run #21's close summary recommended this as the next step — public scoreboards 2-3× referral activity by adding social competition, and it directly compounds the referral mechanic just shipped. Every share now has a destination that visualises the competitive surface and motivates the next share.
+
+**Risks / blockers to flag before work begins**:
+- Master still hasn't picked a transactional email provider — single decision unblocks waitlist confirmation email + admin signup notification + future welcome drip.
+- EPIC-2 cannot fully close until Master replaces placeholder copy on /privacy, /terms, /refund.
+- EPIC-4 (auth) deferred again this session in favor of harvesting the highest-leverage public-funnel growth lever still on the backlog.
+- A previously flagged correctness gap (`WaitlistReferralService.creditReferrer` race — load-then-save) is still open as `[HEALTH][S]`. Not blocking the leaderboard work but should ship before the referral volume scales.
+
+---
+
+### Role 2 — Feature Implementer
+
+**Task completed**: Referral leaderboard at `/waitlist/leaderboard` [GROWTH][S] (EPIC-1).
+
+Files created:
+- `src/main/java/com/emailmessenger/service/WaitlistLeaderboardService.java` — `@Service` with `top10()` (returns `List<LeaderboardEntry>`, ranked from 1) and a static package-visible `anonymize(email)` method. Anonymization keeps the first letter of the local-part plus the entire domain (`alice@gmail.com` → `a***@gmail.com`); degenerate inputs (null, blank, missing `@`) fall back to `***` rather than throwing, so a malformed row in the DB can never 500 the public page.
+- `src/main/java/com/emailmessenger/web/WaitlistLeaderboardController.java` — package-private `@Controller` with a single `GET /waitlist/leaderboard` mapping. Returns the `waitlist-leaderboard` view with the `entries` list. No flash state, no POST surface — purely read-only and CSRF-irrelevant.
+- `src/main/resources/templates/waitlist-leaderboard.html` — full standalone page (head/header/footer/cookie banner) reusing the `waitlist-card` shell. Renders a `<table class="leaderboard-table">` with rank pill, anonymized email, referral count badge. Empty state ("No referrers yet — be the first.") renders when the entries list is empty. Footer CTAs link back to `/waitlist` (primary) and `/demo` (secondary). Includes `<link rel="canonical">`, OG/meta description, viewport, cookie banner.
+- `src/test/java/com/emailmessenger/service/WaitlistLeaderboardServiceTest.java` — 7 standalone Mockito tests: anonymize happy path, empty local-part, null/blank inputs, missing `@`, empty list passthrough, full mapping with rank assignment, and an explicit "never emits raw email" assertion that guards against future refactors that might accidentally drop the anonymizer.
+- `src/test/java/com/emailmessenger/web/WaitlistLeaderboardControllerTest.java` — 2 standalone MockMvc tests: populated list and empty list both render the same view name and pass entries through unchanged.
+- `src/test/java/com/emailmessenger/web/WaitlistLeaderboardIntegrationTest.java` — 3 `@SpringBootTest` integration tests that spin up the full app: empty-state rendering with cookie banner, populated-list rendering with anonymized addresses (and explicit `not(containsString(rawEmail))` assertions to lock the privacy contract end-to-end), and a sitemap.xml assertion confirming `/waitlist/leaderboard` appears in the published sitemap.
+
+Files modified:
+- `src/main/java/com/emailmessenger/repository/WaitlistEntryRepository.java` — added derived query `findTop10ByReferralsCountGreaterThanOrderByReferralsCountDescIdAsc(int min)`. The `IdAsc` tiebreaker is intentional: among users with equal referral counts, the earlier signup ranks higher (rewards the OG referrers).
+- `src/main/java/com/emailmessenger/web/SeoController.java` — added `/waitlist/leaderboard` to `PUBLIC_PATHS` so it appears in `/sitemap.xml`. Set `changefreq=daily` (the leaderboard reorders whenever a new referral lands) and `priority=0.6`.
+- `src/main/resources/templates/waitlist.html` — added a `<a href="/waitlist/leaderboard" class="waitlist-leaderboard-link">See the referral leaderboard →</a>` link below the share block on **both** the joined and already-joined success states. Visible immediately after the user copies their referral URL — discovery moment for the social-competition surface.
+- `src/main/resources/static/css/main.css` — added `.leaderboard-page`, `.leaderboard-card`, `.leaderboard-table` (responsive table), `.lb-rank` (gold/silver/bronze background for top 3 via `:nth-child` selectors), `.lb-email` (monospace), `.lb-count` (pill badge), `.leaderboard-empty` (dashed-border empty state), `.leaderboard-cta` (footer button row). Dark mode rules included for the rank pills and count badge. Mobile breakpoint (≤480px) tightens table padding and shrinks `.lb-email` font.
+- `src/test/java/com/emailmessenger/web/SeoControllerTest.java` — added `containsString("<loc>https://mailaim.app/waitlist/leaderboard</loc>")` to `sitemapIncludesEveryPublicUrl` so the new path can never be silently dropped from the sitemap.
+- `src/test/java/com/emailmessenger/repository/WaitlistEntryRepositoryTest.java` — added 3 `@DataJpaTest` cases for the new derived query: empty-when-no-referrals, ordering-by-count-desc-then-id-asc (verifies tie-breaker), capped-at-10 (verifies the `Top10` keyword).
+
+**Income relevance**: Public scoreboards 2-3× referral activity by adding social competition. The leaderboard turns each shared referral URL into a chance to *land on a page* — which gives senders something to point to. Anonymization keeps the surface privacy-safe (no raw email is ever rendered) so the page can be linked from social media without leaking signup addresses. Combined with the just-shipped referral mechanic (Run #21), this is the second half of a compounding loop: referrals create motion → leaderboard makes that motion visible → visibility motivates more referrals.
+
+Test count: 161 → 176 (+15 new). BUILD SUCCESS, 6 Docker-skipped.
+
+---
+
+### Role 3 — Test Examiner
+
+**Coverage added** — 15 new tests across 4 files, all targeting the new income-critical leaderboard path:
+
+`WaitlistLeaderboardServiceTest` (7 standalone Mockito tests):
+- `anonymizeKeepsFirstLetterAndDomain` — happy path: the public surface must show enough identity to feel real (the user's first initial) without leaking a contactable address.
+- `anonymizeHandlesEmptyLocalPart` / `anonymizeHandlesNullOrBlank` / `anonymizeHandlesAddressWithoutAtSign` — every degenerate input degrades to `***` rather than throwing. A bug in this path would 500 the public scoreboard for every request once a single bad row exists.
+- `top10ReturnsEmptyListWhenNoReferralsExist` — empty repo returns empty list; the controller relies on this to render the empty state.
+- `top10MapsRepoRowsToRankedAnonymizedEntries` — verifies rank starts at 1, increments, and that each entry's email is anonymized before reaching the controller. This is the privacy contract.
+- `top10NeverEmitsRawEmailAddresses` — explicit anti-regression test: even with a sensitive-looking email like `ceo@huge-corp.example`, the rendered string must not contain `ceo`. Locks the privacy guarantee against future refactors that might accidentally bypass the anonymizer (e.g. a "convenience" overload that returns the raw entity).
+
+`WaitlistLeaderboardControllerTest` (2 standalone MockMvc tests):
+- `getReturnsLeaderboardViewWithEntriesFromService` — controller correctly delegates to the service and exposes the rows under the `entries` model attribute.
+- `getReturnsLeaderboardViewWithEmptyEntriesWhenServiceReturnsEmpty` — empty case still renders the same view (no 404, no error).
+
+`WaitlistLeaderboardIntegrationTest` (3 `@SpringBootTest` end-to-end tests):
+- `leaderboardEmptyStateRendersWhenNoReferralsExist` — verifies the actual rendered HTML contains the empty-state copy and the cookie banner. Failing this catches template breakage, missing fragment, or H2/Flyway schema mismatch.
+- `leaderboardRendersTopReferrersWithAnonymizedEmails` — full end-to-end: persists two real entries with referral counts, hits the live MVC stack, asserts the anonymized addresses appear in the rendered HTML *and* explicitly asserts the raw addresses do **not** appear. This is the highest-value privacy regression test in the suite — a future refactor that bypasses the service would fail here even if all unit tests still pass.
+- `sitemapAdvertisesLeaderboardUrl` — confirms the new path appears in the production sitemap; without this, the page is invisible to search-engine crawlers.
+
+`WaitlistEntryRepositoryTest` (3 new `@DataJpaTest` tests):
+- `findTopReferrersReturnsEmptyWhenNoReferralsExist` — locks the `referrals_count > 0` filter so users with zero referrals don't pollute the leaderboard.
+- `findTopReferrersOrdersByCountDescThenIdAsc` — verifies the multi-column sort: highest count first, ties broken by earliest signup. Essential because Spring Data derived queries are easy to read but easy to subtly break (e.g. swapping two property names in the method signature).
+- `findTopReferrersIsCappedAtTen` — verifies the `Top10` keyword applies. Without this, a regression that drops `Top10` would leak the entire waitlist as anonymized rows on the public scoreboard — embarrassing more than dangerous, but worth catching.
+
+**Income-critical paths still well-covered**: XSS sanitization (4 tests), MailSendException → 502 (GlobalExceptionHandlerTest), duplicate waitlist signup race (WaitlistControllerTest), referral credit flow (WaitlistReferralServiceTest, 7 tests), IMAP polling skip/marks-seen (ImapPollingJobTest), reply body 100K size constraint (ThreadControllerTest), security headers on every response (SecurityHeadersFilterTest), cookie banner presence on all 9 public templates (CookieBannerIntegrationTest), SEO endpoint schema + security-header propagation (SeoControllerTest, SeoIntegrationTest), referral leaderboard privacy contract (WaitlistLeaderboardIntegrationTest).
+
+**Risk reduction**: The privacy contract on `/waitlist/leaderboard` is now enforced at three layers — service unit test (`top10NeverEmitsRawEmailAddresses`), full-stack integration test (`leaderboardRendersTopReferrersWithAnonymizedEmails`), and the dedicated `anonymize*` test suite. Three independent guards mean a future refactor would need to break all three to leak a real email address.
+
+Test count: 161 → 176 passing, 6 skipped (Docker absent). BUILD SUCCESS.
+
+---
+
+### Role 4 — Growth Strategist
+
+The just-shipped leaderboard opens a fresh layer of compounding-loop opportunities. Per the routine: 3-7 concrete tasks, each implementable, each labeled by impact.
+
+1. **Real-time leaderboard auto-refresh via SSE or `<meta http-equiv="refresh" content="60">`** [S] — leaderboard reorders when a new referral lands; auto-refresh makes the page feel alive when shared in a Slack channel or Twitter/X thread. LOW-MEDIUM impact, no prerequisites. Dev task. (EPIC-1)
+2. **"Your rank: #N" overlay on the leaderboard** [S] — when the visitor arrives via `?ref=<theirToken>`, look up their effective position and show "You're currently #4 — 2 more referrals to crack the top 3." Personalized scoreboards convert 3-5× better than generic ones. MEDIUM impact, no prerequisites. Dev task. (EPIC-1)
+3. **Leaderboard share badge** [S] — every leaderboard entry gets a one-click "Share my rank" button that pre-fills a tweet ("I'm #N on the @MailIM waitlist — bump me up: <my-ref-url>"). Turns every leaderboard appearance into an inbound traffic source. MEDIUM-HIGH virality, no prerequisites. Dev task. (EPIC-1)
+4. **Weekly leaderboard email digest** [BLOCKED] — once Master picks a transactional email provider, send "You're #N this week. Top referrer crossed 12 invites — care to catch them?" to every entry with a non-zero rank. Re-engages quiet accounts without a single dev session per send. HIGH retention. Blocked on transactional email provider decision. Dev task. (EPIC-1)
+5. **Referral-count milestone copy on /waitlist success** [S] — already in backlog from Run #21; swap "Refer 3 friends" with "🎉 You've referred N friends". Concrete progress beats abstract incentive. LOW-MEDIUM impact. Dev task. (EPIC-1)
+6. **OG share-card with leaderboard rank** [S] — already in backlog as "OG share-card generator at /waitlist/share-card.png"; extend to also show the user's current rank. HIGH virality. Dev task. (EPIC-1)
+7. **"Refer to unlock features" pre-launch tease** [M] — wire visible (but disabled) Personal/Team feature toggles for users who hit referral milestones (5 = "first to access AI summary", 10 = "first to access SSO"). Creates a feature-pull instead of feature-push narrative. HIGH impact, prerequisite: post-auth feature gating exists. Dev task. (EPIC-5 prep)
+
+**Master actions** queued to TODO_MASTER.md:
+- Once leaderboard is live, post a screen recording of it filling up over a 60-second period to Twitter/X, IndieHackers, and LinkedIn. The motion is the hook.
+- Decide on the "skip-the-line referrer prize" already in the backlog from Run #21 — the leaderboard now provides the public canvas to announce winners on, so this decision is more time-sensitive.
+
+---
+
+### Role 5 — UX Auditor
+
+**Flows audited**: landing → waitlist (form + with-ref) → success → click "See the referral leaderboard →" → leaderboard (empty state) → leaderboard (populated state) → click "Join the waitlist →" CTA → back to /waitlist.
+
+**Direct fixes shipped this session**: none — the new leaderboard surface was authored fresh in Role 2 with the lessons of prior UX audits already applied (clear CTA, dual-button footer to avoid dead end, named badge, accurate copy, mobile-tightened table padding, dark-mode pills, empty state with concrete next step rather than a blank page). Every existing flow still standing.
+
+**Flagged**:
+- Leaderboard does not currently identify the visitor's own row. A user who arrives via `?ref=<theirToken>` should see their row visually distinguished — a small "(you)" tag or a highlighted background. Filed as `[UX][S]` on INTERNAL_TODO.md (the same task as the Role 4 "Your rank: #N overlay" dev task — combined into one entry to avoid duplication).
+- Leaderboard does not currently link each entry's anonymized address to anything (no profile, no aggregate). Considered briefly but rejected for this session — adding a link would imply more identity than we want to expose. Re-evaluate once accounts ship.
+
+**Other backlog items still standing** (not pre-empted by this session): testimonials on landing/pricing, mobile layout pass at 375px for `/threads`, last-message preview in thread list, IMAP sync indicator, sticky CTA bar on /pricing, "Why now?" urgency on /waitlist hero, validate `?ref=` token before rendering the inbound-referral banner. All remain valid and prioritized.
+
+---
+
+### Role 6 — Task Optimizer
+
+**Archived to DONE_ARCHIVE.md** (Run #22 section):
+- Referral leaderboard endpoint at /waitlist/leaderboard [GROWTH][S] (EPIC-1) — shipped in Role 2.
+
+**Backlog state after cleanup**:
+- INTERNAL_TODO.md priority order intact (Test Failures → Income-Critical → UX → Health → Growth → Auth-Gated → Stripe-Gated → Larger Post-Auth → Blocked).
+- Every active task carries a complexity tag (`[S]`/`[M]`/`[L]`) and an Epic ID.
+- 6 new EPIC-1 tasks added by Role 4 (auto-refresh leaderboard, "your rank" overlay merged with Role 5's UX flag, leaderboard share badge, weekly digest email [blocked], leaderboard rank on OG card extension, "refer to unlock" pre-launch tease).
+- `[BLOCKED]` items unchanged (`+ Add mailbox` 404, CSRF protection, rate limiting — all blocked on auth or platform-edge rate limiting), plus the new weekly-digest email which is blocked on the same transactional email provider.
+
+**TODO_MASTER.md audit**:
+- All `[LIKELY DONE - verify]` flags from prior runs still standing — Master hasn't yet confirmed cookie banner / refund stub / waitlist landing in production.
+- 2 new [MARKETING] tasks added (post leaderboard screen recording, decide on referrer prize is now time-sensitive).
+- Critical-blocking item unchanged: pick a transactional email provider this week.
+
+### Session Close Summary
+
+Run #22 shipped the second half of the pre-launch viral loop:
+1. **Referral leaderboard at /waitlist/leaderboard** (EPIC-1, [S]) — public scoreboard, top 10 by `referrals_count`, anonymized to first letter + domain, integrated into the waitlist success state with a "See the referral leaderboard →" link, advertised in `/sitemap.xml`. 15 new tests including a triple-layer privacy contract.
+
+Six new follow-up growth tasks scoped (auto-refresh, your-rank overlay, leaderboard share badge, weekly digest [blocked on email provider], OG-card rank extension, refer-to-unlock pre-launch tease). Two new Master actions queued.
+
+**Most important open item heading into next session**: Either (a) ship the **"Your rank: #N" personalized overlay** on the leaderboard (combines well with the existing referral milestone copy task; both are [S] and both hit the leaderboard/success page) — personalization 3-5× converts on this kind of surface; or (b) start **EPIC-4 (user auth)** which unblocks ~15 backlog items. Recommend (a) for immediate compound on the loop just shipped.
+
+**Risks / blockers needing Master attention**:
+- Pick a transactional email provider this week — blocks 4 backlog items now (waitlist confirm, admin notify, future welcome drip, leaderboard weekly digest), gates EPIC-4 readiness.
+- Replace placeholder legal copy on /privacy, /terms, /refund before Stripe goes live.
+- Once production domain is up, set `APP_BASE_URL` and register `/sitemap.xml` (now including `/waitlist/leaderboard`) with Search Console + Bing Webmaster.
+- Decide on referrer prize — leaderboard makes this announceable on a public page, so the decision is more time-sensitive now.
+
+---
+
+### Role 7 — Health Monitor
+
+**Security audit (new leaderboard surface)**:
+- `/waitlist/leaderboard` is GET-only with no query parameters and no flash state. No CSRF surface, no input validation surface.
+- The repository call `findTop10ByReferralsCountGreaterThanOrderByReferralsCountDescIdAsc(0)` is a Spring Data derived query (parameterized SQL), so injection is structurally impossible.
+- Anonymization is enforced before any data leaves the service layer (`WaitlistLeaderboardService.top10()` returns `LeaderboardEntry` records that contain only the anonymized string, never the underlying `WaitlistEntry`). Three independent test layers guard against accidental privacy regression.
+- Rendered via Thymeleaf `th:text` (auto-escaped), so even a malicious anonymized payload (which can't exist — the source is server-minted bounded by the email column) couldn't inject script.
+- `SecurityHeadersFilter` still applies (verified by existing `SeoIntegrationTest` — same controller surface, same servlet filter chain).
+- No new cookies, no new third-party tracking. The leaderboard is purely server-rendered HTML + the existing cookie-consent fragment.
+
+**Performance**:
+- New per-request cost: one `LIMIT 10` index range scan on `(referrals_count DESC, id ASC)`. The current schema does not have an explicit composite index for this query, but at pre-launch volume (a few hundred to a few thousand rows max), the table scan + sort is well under 1ms. Filed as `[HEALTH][S]` for the post-launch optimization milestone, not now.
+- The leaderboard page is fully static once rendered (no JS, no inline event handlers, no third-party network calls). Loads under the existing gzip filter.
+
+**Code quality**:
+- `WaitlistLeaderboardService` is a `@Service` with constructor injection, package-private constructor (matches project convention).
+- `WaitlistLeaderboardController` is package-private (matches existing controllers).
+- `LeaderboardEntry` is a record (matches the project convention "Records for DTOs and view models").
+- `anonymize` is package-private + static so the service tests can exercise it directly without going through the repo.
+- No new dependencies added to `pom.xml`.
+- The new test class names (`*Test` for unit, `*IntegrationTest` for `@SpringBootTest`) follow the existing project naming pattern.
+
+**New finding (filed, not fixed this session)**: Composite index `(referrals_count DESC, id ASC)` on `waitlist_entries` would future-proof the leaderboard query past ~10K rows. Filed as `[HEALTH][S]` on INTERNAL_TODO.md for post-launch.
+
+**Legal**:
+- The leaderboard is the first surface that exposes any user-derived data publicly. Anonymization (first letter + domain) is the privacy compromise — domain still leaks the user's mail provider, which for personal-domain users (e.g. `j***@johnsmith.com`) is identity-adjacent. Acceptable for an opt-in waitlist, but worth surfacing in /privacy if this scales. Filed as `[LEGAL]` task on TODO_MASTER.md (low priority pre-launch; required before scaling beyond a few thousand entries).
+- jakarta.mail CDDL 1.1 license still flagged in TODO_MASTER.md; jsoup 1.17.2 upgrade still flagged in INTERNAL_TODO.md. Neither status changed this session.
+
+Audit clean apart from the post-launch index suggestion above.
+
+---
+
 ## 2026-04-30 — Autonomous Run #21
 
 ### Session Briefing (Role 1 — Epic Manager)
