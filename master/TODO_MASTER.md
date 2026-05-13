@@ -45,6 +45,12 @@ third-party accounts, marketing, or legal steps.
 - [ ] [LEGAL] Add Cookie banner / consent if targeting EU users (GDPR cookie consent).
 - [ ] [LEGAL] Review Google OAuth terms of service before launching SSO — ensure the app's
       privacy policy covers use of Google account data.
+- [ ] [LEGAL] /pricing page makes two promissory statements that become legally binding once
+      we accept payments: (1) "Cancel anytime — no questions asked" requires Stripe customer
+      portal cancellation to be functional at launch, no retention dark patterns. (2) "We never
+      sell, share, or train models on your email content" must be reflected verbatim in the
+      privacy policy and respected operationally (e.g. excluded from any future AI/analytics
+      pipelines unless privacy policy is updated and users re-consented). Audit before launch.
 
 ## Marketing
 
@@ -88,6 +94,15 @@ third-party accounts, marketing, or legal steps.
 - [ ] [MARKETING] Configure an Anthropic API key (ANTHROPIC_API_KEY env var) once the AI thread
       summary feature ships — needed to enable the Personal+ tier differentiator. Sign up at
       console.anthropic.com if no account exists.
+- [ ] [MARKETING] Commission a 1500-word "Mimestream alternative" comparison post for the /blog
+      (once /blog ships) — include 3 annotated screenshots of the MailIM IM-bubble view next to
+      Mimestream's traditional thread view, target keyword "best Mimestream alternative". A single
+      post ranking on page 1 of Google for that keyword would cover the cost of writing in one
+      month of organic conversions.
+- [ ] [MARKETING] Open Bluesky (mailaim.bsky.social) and Mastodon (@mailaim@indie.social)
+      accounts in addition to Twitter/X. Indie SaaS audience is increasingly fragmented across
+      ActivityPub-style networks — owning the handles now costs nothing and prevents cybersquatting
+      while opening parallel distribution channels for the launch GIF.
 - [ ] [MARKETING] Set up a transactional email provider (Postmark, SendGrid, or Resend) and
       configure three automated emails: (1) welcome email sent at signup, (2) "getting started"
       tip email at day 3, (3) upgrade prompt email at day 7 targeting active free-tier users.

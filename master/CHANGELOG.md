@@ -1,5 +1,268 @@
 # Changelog
 
+## 2026-05-13 — Autonomous Run #9
+
+### Session Briefing (Role 1 — Epic Manager)
+
+**Active epics** (3 max, focus is a feature):
+- **E1 — Auth & Account Foundation**: gates billing, multi-tenancy, custom
+  SMTP, signatures, archiving, pinning. Until users register, the product is
+  single-tenant and unmonetizable.
+- **E2 — Marketing Surface & Conversion**: the no-auth public surface
+  (landing, pricing, demo, roadmap). Independently shippable and immediately
+  compounding for SEO + top-of-funnel.
+- **E3 — Billing & Plan Enforcement**: Stripe + plan limits. The literal
+  revenue path; depends partly on E1.
+
+**Most important goal this session**: ship the static **pricing page at
+/pricing** from E2 — only top-priority task with zero prerequisites and a
+direct conversion impact. Sets the table for every subsequent landing-page
+CTA and unblocks the SEO-comparison page roadmap.
+
+**Risks/blockers flagged for Master**:
+- Entire monetization chain still gated on Master completing the credentials
+  in TODO_MASTER.md (Postgres host, Stripe account, domain registration).
+- E1 (auth) is the next critical-path code task; until it lands, every
+  feature in the backlog is groundwork rather than revenue.
+
+EPICS.md created this session with 8 epics catalogued (E1–E8); 3 [ACTIVE],
+5 [PLANNED]. No epics yet [COMPLETE].
+
+---
+
+### Role 2 — Feature Implementer
+**Task completed**: Static pricing page at /pricing  [GROWTH][S][E2]
+
+Files added:
+- `src/main/java/com/emailmessenger/web/MarketingController.java` —
+  package-private `@Controller`, single `GET /pricing → "pricing"` mapping.
+- `src/main/resources/templates/pricing.html` — full pricing page template:
+  - 4 plan cards (Free / Personal / Team / Enterprise) in a responsive grid,
+    matching APP_SPEC plan table ($0 / $9 / $29 / $99).
+  - **Monthly/annual billing toggle** (pill-shaped buttons): JS swaps each
+    `.price-amount` span's `textContent` from `data-monthly` to `data-annual`;
+    swaps caption text from `data-monthly-note` to `data-annual-note`. Annual
+    prices: $7.50 / $24 / $82 (= 16% saving, 2 months free, matches APP_SPEC).
+    "Save 16%" badge on the annual button.
+  - Personal tier marked "Most popular" with elevated border + "Most popular"
+    badge + brand-color shadow.
+  - Per-plan feature list (8 items each) with ✓ glyph.
+  - **CTA strategy**: Free → "Get started" (secondary); Personal → "Start
+    14-day free trial" (primary, with "No credit card required" trial-note);
+    Team → "Start 14-day free trial" (secondary); Enterprise → "Contact
+    sales" (mailto link).
+  - 5-question FAQ (switch plans, no card, data on cancel, IMAP support,
+    privacy).
+  - Closing CTA section with primary "Start free" button.
+  - SEO `<meta name="description">` plus tab-friendly `<title>`.
+
+Files modified:
+- `src/main/resources/templates/threads.html` — added `<a href="/pricing">
+  Pricing</a>` to header nav so the page is discoverable from /threads.
+- `src/main/resources/static/css/main.css` — ~180 new lines for pricing-page
+  layout: `.pricing-page`, `.pricing-hero`, `.billing-toggle`/`.billing-opt`,
+  `.plan-grid` (auto-fit grid), `.plan-card`, `.plan-featured`, `.plan-badge`,
+  `.plan-features` with ✓ marker, `.btn-secondary`, `.btn-large`,
+  `.pricing-faq`, `.pricing-cta`, plus dark-mode overrides for the same.
+- `.brand-link` class (small) — header brand is now an `<a>` linking to /
+  with a hover treatment.
+
+Verified: `./mvnw test` → BUILD SUCCESS. 72 tests pass (was 63; +9 new).
+
+**Why it matters for income**: /pricing is the single most-clicked link on
+any SaaS site after the landing page; until it existed, every funnel
+calculation upstream had a literal void at the conversion step. The page is
+SEO-indexable (long meta description + semantic structure), share-friendly
+(once OG tags are added per the new growth task), and bilingual on
+billing-frequency without requiring a server round-trip. Sets up the next
+two highest-leverage tasks: SEO comparison pages and exit-intent modal.
+
+---
+
+### Role 3 — Test Examiner
+**Coverage added**: 9 new tests in `MarketingControllerTest`. Suite now
+72 tests, up from 63.
+
+`src/test/java/com/emailmessenger/web/MarketingControllerTest.java` —
+`@WebMvcTest(MarketingController.class)` with `@MockitoBean` shims for
+`EmailThreadRepository`, `ThreadViewService`, `ReplyService` (needed because
+`@WebMvcTest` discovers neighbor controllers in the same package and tries to
+construct them):
+
+1. `pricingRouteReturnsOkAndPricingView` — basic 200 + view name.
+2. `pricingPageRendersAllFourPlans` — guards against accidental tier removal.
+3. `pricingPageShowsCanonicalMonthlyPrices` — `$0/$9/$29/$99` all present.
+4. `pricingPageExposesAnnualPricesForJsToggle` — `data-annual="$7.50"`,
+   `$24`, `$82` rendered server-side; if these regress, the JS toggle
+   silently breaks without throwing — this catches it.
+5. `pricingPageHasTrialCtaPointingToProduct` — guards "Start 14-day free
+   trial" copy + `/threads` href.
+6. `pricingPageHasNoCreditCardCopy` — known conversion-killer if removed.
+7. `pricingPageBillingToggleRendersBothOptions` — guards toggle button
+   `data-period` attributes + "Save 16%" badge.
+8. `pricingPageDeclaresSeoDescription` — guards meta description for SEO.
+9. `pricingPageDoesNotLeakWhitelabelError` — sanity check that the
+   GlobalExceptionHandler / template aren't producing a Spring error page.
+
+**Coverage status:**
+- New `/pricing` surface: full route + content invariants. ✓
+- Income-critical paths still uncovered (no code yet to test):
+  - Stripe webhook handler (E3, blocked on auth)
+  - User authentication flows (E1)
+  - IMAP polling job (E4)
+  - Custom SMTP/from-address per user (E1, blocked on auth)
+- No tests deleted. No vacuous tests added — every assertion targets a
+  conversion- or content-regression risk.
+
+---
+
+### Role 4 — Growth Strategist
+Identified 5 new implementable growth tasks not previously captured + 2 new
+[MARKETING] items for Master:
+
+1. **SEO comparison pages** [GROWTH][M] [E2] — `/compare/superhuman`,
+   `/compare/hey`, `/compare/mimestream`. Each is a templated landing page
+   with a feature-matrix and pricing snippet. Targets long-tail "vs" search
+   intent. HIGH income impact. No prerequisites.
+2. **Site footer fragment** [GROWTH][S] [E7] — Thymeleaf fragment included
+   across templates with /pricing, /roadmap, /blog links + "Trusted by N"
+   social-proof line. Closes the dead-end at the bottom of every page.
+   MEDIUM income impact.
+3. **Open Graph + Twitter Card metadata** [GROWTH][S] [E2] — `og:title`,
+   `og:description`, `og:image`, `twitter:card` on /pricing and /. Currently
+   any share renders as a bare URL. MEDIUM income impact.
+4. **/blog index + 3 seed SEO posts** [GROWTH][M] [E2] — markdown-rendered
+   blog with seed posts ("Why email feels like work in 2026", "Email-as-chat:
+   the case", "MailIM vs Superhuman"). Compounding SEO. MEDIUM income impact.
+5. **Exit-intent modal on /pricing** [GROWTH][S] [E3] — JS catches cursor
+   leaving viewport top, fires one-time modal with extended-trial CTA. HIGH
+   income impact. Prerequisite: Stripe trial logic.
+
+Added 2 [MARKETING] items to TODO_MASTER.md:
+- Commission a 1500-word "Mimestream alternative" post for /blog with 3
+  annotated screenshots, target "best Mimestream alternative" keyword.
+- Open Bluesky and Mastodon accounts in addition to X — indie SaaS audience
+  is fragmenting; owning the handles costs nothing now.
+
+---
+
+### Role 5 — UX Auditor
+Audited flows: /pricing top-to-bottom; landing → /pricing → trial CTA →
+/threads empty state → settings; /threads → conversation header → reply.
+
+**Direct fixes applied:**
+1. **Empty-state CTA was a literal dead-end** (`threads.html`): the
+   "Connect a mailbox" button on the empty state was `<a href="#">` — broken
+   for the most important first-visit moment. Fixed:
+   - "Connect a mailbox" now points to `/settings/mailboxes` (matching the
+     header link; tracked as a UX item to actually build the page).
+   - Added a secondary "See plans & pricing" CTA next to it so a brand-new
+     user has a path to the just-shipped /pricing page.
+   - New `.empty-actions` flex container with gap + flex-wrap for mobile.
+   - Updated copy: "Connect your first mailbox to see email threads as chat
+     — or take a 60-second tour first."
+2. **Header brand `<span>` → `<a href="/">`** on /pricing — clicking the
+   logo now does what every web user expects.
+
+**Issues flagged (added to INTERNAL_TODO.md [UX]):**
+- Reply success flash never auto-dismisses + no close button — clutters
+  long threads. Specific fix proposed.
+- /pricing JS-disabled fallback: `<noscript>` block to hide toggle and show
+  monthly + "annual saves 16%" caption.
+
+(The header `+ Add mailbox` and IMAP sync indicator items remain open from
+prior runs; both depend on E1 / E4 work.)
+
+---
+
+### Role 6 — Task Optimizer
+- Created **`master/EPICS.md`** with 8 epics (E1–E8); 3 [ACTIVE], 5 [PLANNED];
+  every active backlog item is now epic-tagged.
+- Created **`master/DONE_ARCHIVE.md`**; moved all DONE items out of
+  INTERNAL_TODO.md (keeps the active file scannable).
+- **Rewrote INTERNAL_TODO.md** in strict priority order (income-critical CORE
+  → UX-conversion → HEALTH → GROWTH → BLOCKED), each task tagged with size
+  ([S]/[M]/[L]) and Epic ID ([E1]–[E8]).
+- Added Epic IDs to the 5 new growth tasks from Role 4 + the 2 new UX items
+  from Role 5.
+- Active task count: ~50 items. No [BLOCKED] tasks. No duplicates remain.
+- Reviewed TODO_MASTER.md — only the XSS item is already flagged
+  `[LIKELY DONE - verify]`. Nothing else newly resolved.
+
+---
+
+### Role 7 — Health Monitor
+Audited the new code surface (`MarketingController`, `pricing.html`, CSS,
+`MarketingControllerTest`).
+
+**Security**:
+- `MarketingController`: no user input, no DB, no path/query params; static
+  view name only. No injection vector. ✓
+- `pricing.html`: every visible value is hardcoded. The JS toggle reads
+  `data-monthly`/`data-annual` from the DOM and writes via `textContent`
+  (not `innerHTML`) — XSS-safe even if a future template variable is wired
+  into a `data-` attribute. ✓
+- No third-party requests, fonts, scripts, analytics, or images. Zero
+  external data leaks from /pricing. ✓
+- `mailto:` link: hardcoded subject; no injection vector. ✓
+
+**Performance**:
+- /pricing is template-only; no DB hit. Trivially cacheable behind a CDN.
+- Page weight: ~5 KB HTML + ~30 lines JS + ~180 lines new CSS — negligible.
+- CSS additions use no expensive properties (no `filter:`, no compositing
+  layers); `position:absolute` only on the `.plan-badge` (small, single).
+
+**Code quality**:
+- `MarketingController` is package-private (matches CLAUDE.md convention). ✓
+- No comments restating code. ✓
+- `@MockitoBean` triple in the test is documented inline (required because
+  `@WebMvcTest` includes neighbor controllers' constructor deps). ✓
+
+**Dependencies**: none added. Spring Boot 3.5.14, jsoup 1.17.2 unchanged.
+
+**Legal — flagged to Master**:
+- Added a [LEGAL] item to TODO_MASTER.md: the /pricing copy contains two
+  promissory statements that become binding once we accept payments —
+  (1) "Cancel anytime — no questions asked" requires functional Stripe
+  Customer Portal cancellation at launch and no retention dark patterns;
+  (2) "We never sell, share, or train models on your email content" must be
+  reflected verbatim in the privacy policy and respected operationally
+  (excluded from any AI/analytics pipelines absent re-consent).
+
+---
+
+### Role 6 — Session Close Summary
+
+**Accomplished this session:**
+- Shipped /pricing — first revenue-conversion page, JS billing-frequency
+  toggle, FAQ, monthly+annual prices, 14-day trial CTA. (Role 2)
+- 9 new tests covering route + content invariants on the new surface, all
+  passing alongside the 63 prior tests = 72 total. (Role 3)
+- Created `master/EPICS.md` with 8 epics; rewrote INTERNAL_TODO.md
+  in strict priority order with Epic IDs; created
+  `master/DONE_ARCHIVE.md` and moved completed items there. (Role 1, 6)
+- Added 5 new growth tasks (SEO comparison pages, footer, OG metadata, /blog,
+  exit-intent modal) and 2 marketing items for Master (Mimestream comparison
+  post + Bluesky/Mastodon accounts). (Role 4)
+- Fixed dead-end empty-state CTA on /threads; added secondary CTA to
+  /pricing from the same empty state. Made the header brand a real link.
+  (Role 5)
+- Flagged the binding legal claims in /pricing copy. (Role 7)
+
+**Most important open item heading into next session**: the **User
+registration & authentication** task ([GROWTH][M][E1]) is the critical
+path — every other revenue feature in the backlog depends on it. Recommend
+it be the next session's Feature Implementer pick.
+
+**Risks / Master attention needed before next run**:
+- Domain registration (`mailaim.app` or alternative) — referenced in two
+  CTAs now (`mailto:sales@…`); broken until purchased.
+- Stripe account creation must precede E3 work.
+- Privacy policy + terms of service must precede launching auth (Google
+  OAuth requires the URL fields populated).
+
+---
+
 ## 2026-04-26 — Autonomous Run #8
 
 ### Role 1 — Feature Implementer

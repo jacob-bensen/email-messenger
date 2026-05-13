@@ -12,6 +12,7 @@
   <span class="brand">MailIM</span>
   <nav class="header-nav">
     <span class="kbd-hint"><kbd>j</kbd><kbd>k</kbd> navigate · <kbd>Enter</kbd> open</span>
+    <a href="/pricing">Pricing</a>
     <a href="/settings/mailboxes">+ Add mailbox</a>
   </nav>
 </header>
@@ -46,8 +47,11 @@
 
   <div class="empty-state" th:if="${threads.totalElements == 0}">
     <h2>No conversations yet</h2>
-    <p>Connect your first mailbox to see email threads as chat.</p>
-    <a href="#" class="btn btn-primary">Connect a mailbox</a>
+    <p>Connect your first mailbox to see email threads as chat — or take a 60-second tour first.</p>
+    <div class="empty-actions">
+      <a href="/settings/mailboxes" class="btn btn-primary">Connect a mailbox</a>
+      <a href="/pricing" class="btn btn-secondary">See plans &amp; pricing</a>
+    </div>
   </div>
 
 </main>

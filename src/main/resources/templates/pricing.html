@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing — MailIM</title>
+  <meta name="description"
+        content="MailIM turns your email into chat. Free for one mailbox. Personal $9/mo, Team $29/mo, Enterprise $99/mo. Annual billing saves 16%.">
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a class="brand brand-link" href="/">MailIM</a>
+  <nav class="header-nav">
+    <a href="/threads">Open inbox</a>
+  </nav>
+</header>
+
+<main class="pricing-page">
+
+  <section class="pricing-hero">
+    <h1>Simple, transparent pricing</h1>
+    <p class="pricing-sub">
+      Start free. Upgrade when your inbox grows. Cancel anytime — no questions asked.
+    </p>
+    <div class="billing-toggle" role="group" aria-label="Billing period">
+      <button type="button" class="billing-opt is-active" data-period="monthly">Monthly</button>
+      <button type="button" class="billing-opt" data-period="annual">
+        Annual <span class="save-badge">Save 16%</span>
+      </button>
+    </div>
+  </section>
+
+  <section class="plan-grid">
+
+    <article class="plan-card">
+      <h2 class="plan-name">Free</h2>
+      <p class="plan-tagline">Try MailIM with one mailbox.</p>
+      <div class="plan-price">
+        <span class="price-amount">$0</span>
+        <span class="price-period">/forever</span>
+      </div>
+      <ul class="plan-features">
+        <li>1 connected mailbox</li>
+        <li>30-day thread history</li>
+        <li>Up to 500 threads</li>
+        <li>Chat-bubble conversation view</li>
+        <li>Inline replies</li>
+        <li>Dark mode</li>
+      </ul>
+      <a href="/threads" class="btn btn-secondary plan-cta">Get started</a>
+    </article>
+
+    <article class="plan-card plan-featured">
+      <span class="plan-badge">Most popular</span>
+      <h2 class="plan-name">Personal</h2>
+      <p class="plan-tagline">For freelancers and solo professionals.</p>
+      <div class="plan-price">
+        <span class="price-amount" data-monthly="$9" data-annual="$7.50">$9</span>
+        <span class="price-period">/month</span>
+      </div>
+      <p class="price-note" data-monthly-note="Billed monthly"
+                          data-annual-note="$90 billed annually — 2 months free">
+        Billed monthly
+      </p>
+      <ul class="plan-features">
+        <li>Up to 3 mailboxes</li>
+        <li>Unlimited thread history</li>
+        <li>Full-text search across all threads</li>
+        <li>AI-generated thread summaries</li>
+        <li>Custom reply signature</li>
+        <li>Send-later scheduling</li>
+        <li>Thread export (PDF, HTML, Markdown)</li>
+        <li>Email support</li>
+      </ul>
+      <a href="/threads" class="btn btn-primary plan-cta">Start 14-day free trial</a>
+      <p class="trial-note">No credit card required.</p>
+    </article>
+
+    <article class="plan-card">
+      <h2 class="plan-name">Team</h2>
+      <p class="plan-tagline">For teams that share an inbox.</p>
+      <div class="plan-price">
+        <span class="price-amount" data-monthly="$29" data-annual="$24">$29</span>
+        <span class="price-period">/month</span>
+      </div>
+      <p class="price-note" data-monthly-note="Billed monthly per team"
+                          data-annual-note="$290 billed annually — 2 months free">
+        Billed monthly per team
+      </p>
+      <ul class="plan-features">
+        <li>Up to 10 mailboxes</li>
+        <li>Everything in Personal</li>
+        <li>Slack &amp; Discord webhooks</li>
+        <li>Outbound webhook on new message</li>
+        <li>Thread labels &amp; assignment</li>
+        <li>Shared team inbox</li>
+        <li>REST API access</li>
+        <li>Priority support</li>
+      </ul>
+      <a href="/threads" class="btn btn-secondary plan-cta">Start 14-day free trial</a>
+    </article>
+
+    <article class="plan-card">
+      <h2 class="plan-name">Enterprise</h2>
+      <p class="plan-tagline">For organizations with advanced needs.</p>
+      <div class="plan-price">
+        <span class="price-amount" data-monthly="$99" data-annual="$82">$99</span>
+        <span class="price-period">/month</span>
+      </div>
+      <p class="price-note" data-monthly-note="Billed monthly"
+                          data-annual-note="$990 billed annually — 2 months free">
+        Billed monthly
+      </p>
+      <ul class="plan-features">
+        <li>Unlimited mailboxes</li>
+        <li>Everything in Team</li>
+        <li>SAML &amp; Google Workspace SSO</li>
+        <li>Audit logs &amp; admin dashboard</li>
+        <li>Self-hosted deployment option</li>
+        <li>SLA &amp; dedicated success manager</li>
+        <li>Custom data retention</li>
+      </ul>
+      <a href="mailto:sales@mailaim.app?subject=Enterprise%20plan%20inquiry"
+         class="btn btn-secondary plan-cta">Contact sales</a>
+    </article>
+
+  </section>
+
+  <section class="pricing-faq">
+    <h2>Frequently asked</h2>
+
+    <div class="faq-item">
+      <h3>Can I switch plans later?</h3>
+      <p>Yes. Upgrade, downgrade, or cancel anytime from your account settings.
+         Annual subscribers can change tier mid-cycle and we&rsquo;ll prorate the
+         difference.</p>
+    </div>
+
+    <div class="faq-item">
+      <h3>Do I need a credit card to try MailIM?</h3>
+      <p>No. The Free plan is free forever and the 14-day Personal trial requires
+         no card. Add one only when you&rsquo;re ready to keep going.</p>
+    </div>
+
+    <div class="faq-item">
+      <h3>What happens to my data if I cancel?</h3>
+      <p>Your account and threads stay accessible on the Free plan. Upgrade
+         anytime to restore full features. Hard delete is one click in Settings.</p>
+    </div>
+
+    <div class="faq-item">
+      <h3>Does MailIM work with Gmail and Outlook?</h3>
+      <p>Yes. Any IMAP/SMTP mailbox is supported &mdash; Gmail, Outlook, iCloud,
+         Fastmail, and self-hosted servers.</p>
+    </div>
+
+    <div class="faq-item">
+      <h3>Is my email private?</h3>
+      <p>Your messages stay in your account. We never sell, share, or train models
+         on your email content.</p>
+    </div>
+  </section>
+
+  <section class="pricing-cta">
+    <h2>Ready to clean up your inbox?</h2>
+    <a href="/threads" class="btn btn-primary btn-large">Start free</a>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  var buttons = document.querySelectorAll('.billing-opt');
+  var amounts = document.querySelectorAll('.price-amount[data-monthly]');
+  var notes = document.querySelectorAll('.price-note[data-monthly-note]');
+
+  buttons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var period = btn.getAttribute('data-period');
+      buttons.forEach(function (b) { b.classList.toggle('is-active', b === btn); });
+
+      amounts.forEach(function (el) {
+        var v = el.getAttribute('data-' + period);
+        if (v) el.textContent = v;
+      });
+      notes.forEach(function (el) {
+        var v = el.getAttribute('data-' + period + '-note');
+        if (v) el.textContent = v;
+      });
+    });
+  });
+}());
+</script>
+
+</body>
+</html>
