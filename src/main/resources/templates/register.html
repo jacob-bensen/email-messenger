@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Create your account — MailIM</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/" class="brand">MailIM</a>
+  <nav class="header-nav">
+    <a href="/pricing">Pricing</a>
+    <a href="/login">Sign in</a>
+  </nav>
+</header>
+
+<main class="auth-page">
+  <section class="auth-card">
+    <h1>Create your account</h1>
+    <p class="auth-sub">Start your 14-day Personal trial — no credit card required.</p>
+
+    <form method="post" th:action="@{/register}" th:object="${registrationForm}"
+          class="auth-form" autocomplete="on">
+
+      <label class="auth-label">
+        <span>Email</span>
+        <input type="email" th:field="*{email}" required autofocus
+               autocomplete="username"
+               th:classappend="${#fields.hasErrors('email')} ? ' error' : ''">
+        <small class="field-error"
+               th:if="${#fields.hasErrors('email')}"
+               th:errors="*{email}">Email error</small>
+      </label>
+
+      <label class="auth-label">
+        <span>Display name <em class="auth-optional">(optional)</em></span>
+        <input type="text" th:field="*{displayName}" autocomplete="name"
+               th:classappend="${#fields.hasErrors('displayName')} ? ' error' : ''">
+        <small class="field-error"
+               th:if="${#fields.hasErrors('displayName')}"
+               th:errors="*{displayName}">Name error</small>
+      </label>
+
+      <label class="auth-label">
+        <span>Password</span>
+        <input type="password" th:field="*{password}" required minlength="8"
+               autocomplete="new-password"
+               th:classappend="${#fields.hasErrors('password')} ? ' error' : ''">
+        <small class="auth-hint">At least 8 characters.</small>
+        <small class="field-error"
+               th:if="${#fields.hasErrors('password')}"
+               th:errors="*{password}">Password error</small>
+      </label>
+
+      <button type="submit" class="btn btn-primary auth-submit">Create account</button>
+    </form>
+
+    <p class="auth-alt">
+      Already have an account? <a href="/login">Sign in</a>.
+    </p>
+  </section>
+</main>
+
+</body>
+</html>

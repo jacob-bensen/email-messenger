@@ -15,6 +15,11 @@
     <span class="kbd-hint"><kbd>j</kbd><kbd>k</kbd> navigate · <kbd>Enter</kbd> open</span>
     <a href="/pricing">Pricing</a>
     <a href="/settings/mailboxes">+ Add mailbox</a>
+    <form th:action="@{/logout}" method="post" class="header-logout">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button type="submit" class="link-button">Sign out</button>
+    </form>
   </nav>
 </header>
 

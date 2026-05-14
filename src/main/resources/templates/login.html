@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Sign in — MailIM</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/" class="brand">MailIM</a>
+  <nav class="header-nav">
+    <a href="/pricing">Pricing</a>
+    <a href="/register">Create account</a>
+  </nav>
+</header>
+
+<main class="auth-page">
+  <section class="auth-card">
+    <h1>Sign in</h1>
+
+    <div th:if="${param.error}" class="alert alert-error">
+      Incorrect email or password.
+    </div>
+    <div th:if="${param.logout}" class="alert alert-success">
+      You have been signed out.
+    </div>
+
+    <form method="post" th:action="@{/login}" class="auth-form" autocomplete="on">
+      <label class="auth-label">
+        <span>Email</span>
+        <input type="email" name="email" required autofocus autocomplete="username">
+      </label>
+
+      <label class="auth-label">
+        <span>Password</span>
+        <input type="password" name="password" required autocomplete="current-password">
+      </label>
+
+      <label class="auth-checkbox">
+        <input type="checkbox" name="remember-me" value="true">
+        <span>Stay signed in for 30 days</span>
+      </label>
+
+      <button type="submit" class="btn btn-primary auth-submit">Sign in</button>
+    </form>
+
+    <p class="auth-alt">
+      No account yet? <a href="/register">Create one</a>.
+    </p>
+  </section>
+</main>
+
+</body>
+</html>
