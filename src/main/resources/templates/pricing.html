@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing — MailIM</title>
+  <meta name="description"
+        content="Simple, transparent pricing for MailIM. Free for personal use. $9/mo Personal, $29/mo Team, $99/mo Enterprise. Save 16% with annual billing.">
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/" class="brand">MailIM</a>
+  <nav class="header-nav">
+    <a href="/threads">Inbox</a>
+    <a href="/pricing" class="nav-active">Pricing</a>
+  </nav>
+</header>
+
+<main class="marketing">
+
+  <section class="hero-narrow">
+    <h1>Simple, predictable pricing</h1>
+    <p class="hero-sub">Start free. Upgrade when your inbox grows. Cancel anytime.</p>
+
+    <div class="billing-toggle" role="group" aria-label="Billing period">
+      <button type="button" class="billing-option is-active" data-period="monthly">Monthly</button>
+      <button type="button" class="billing-option" data-period="annual">
+        Annual <span class="save-badge">Save 16%</span>
+      </button>
+    </div>
+  </section>
+
+  <section class="plan-grid">
+
+    <article class="plan-card">
+      <h2 class="plan-name">Free</h2>
+      <p class="plan-price">
+        <span class="price-amount">$0</span>
+        <span class="price-period">/ forever</span>
+      </p>
+      <p class="plan-blurb">Try MailIM with one mailbox. No credit card.</p>
+      <ul class="plan-features">
+        <li>1 mailbox</li>
+        <li>30-day thread history</li>
+        <li>Up to 500 threads</li>
+        <li>IM-style conversation view</li>
+        <li>Dark mode</li>
+      </ul>
+      <a href="/threads" class="btn btn-secondary plan-cta">Get started</a>
+    </article>
+
+    <article class="plan-card plan-card-featured">
+      <span class="plan-tag">Most popular</span>
+      <h2 class="plan-name">Personal</h2>
+      <p class="plan-price">
+        <span class="price-amount" data-monthly="$9" data-annual="$7">$9</span>
+        <span class="price-period">/ month</span>
+      </p>
+      <p class="plan-blurb">For freelancers and individual professionals.</p>
+      <ul class="plan-features">
+        <li>3 mailboxes</li>
+        <li>Unlimited thread history</li>
+        <li>Full-text search</li>
+        <li>Custom from-address &amp; signature</li>
+        <li>Reply send-later scheduling</li>
+        <li>Priority email support</li>
+      </ul>
+      <a href="/threads" class="btn btn-primary plan-cta">Start 14-day free trial</a>
+    </article>
+
+    <article class="plan-card">
+      <h2 class="plan-name">Team</h2>
+      <p class="plan-price">
+        <span class="price-amount" data-monthly="$29" data-annual="$24">$29</span>
+        <span class="price-period">/ month</span>
+      </p>
+      <p class="plan-blurb">For support and sales teams that share an inbox.</p>
+      <ul class="plan-features">
+        <li>10 mailboxes</li>
+        <li>Shared team inbox view</li>
+        <li>Slack &amp; Discord webhooks</li>
+        <li>Thread labels &amp; pinning</li>
+        <li>REST API access</li>
+        <li>Priority chat support</li>
+      </ul>
+      <a href="/threads" class="btn btn-secondary plan-cta">Start 14-day free trial</a>
+    </article>
+
+    <article class="plan-card">
+      <h2 class="plan-name">Enterprise</h2>
+      <p class="plan-price">
+        <span class="price-amount" data-monthly="$99" data-annual="$83">$99</span>
+        <span class="price-period">/ month</span>
+      </p>
+      <p class="plan-blurb">For organizations with strict security needs.</p>
+      <ul class="plan-features">
+        <li>Unlimited mailboxes</li>
+        <li>SSO (Google, SAML)</li>
+        <li>Audit logs</li>
+        <li>Dedicated onboarding</li>
+        <li>99.9% uptime SLA</li>
+        <li>Annual invoicing available</li>
+      </ul>
+      <a href="mailto:sales@mailaim.app" class="btn btn-secondary plan-cta">Contact sales</a>
+    </article>
+
+  </section>
+
+  <section class="faq">
+    <h2>Frequently asked questions</h2>
+    <details class="faq-item">
+      <summary>Can I switch plans later?</summary>
+      <p>Yes — upgrade, downgrade, or cancel anytime from your account settings.
+         Annual subscribers get a prorated refund on downgrade.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Is there a free trial on paid plans?</summary>
+      <p>Personal and Team plans include a 14-day free trial. No credit card
+         is required to start the trial.</p>
+    </details>
+    <details class="faq-item">
+      <summary>What happens if I exceed my plan's mailbox limit?</summary>
+      <p>You'll see a prompt to upgrade in-app. Existing mailboxes keep
+         working — you just can't add more until you upgrade.</p>
+    </details>
+    <details class="faq-item">
+      <summary>How is my email data handled?</summary>
+      <p>Email content is stored only to render your conversation view —
+         we never read it for advertising or sell it to third parties.
+         Full details, including data retention and deletion, are in our
+         privacy policy (coming with launch).</p>
+    </details>
+  </section>
+
+</main>
+
+<footer class="marketing-footer">
+  <span>&copy; MailIM</span>
+  <nav>
+    <a href="/pricing">Pricing</a>
+    <a href="/threads">Inbox</a>
+  </nav>
+</footer>
+
+<script>
+(function () {
+  var toggles = document.querySelectorAll('.billing-option');
+  var amounts = document.querySelectorAll('.price-amount[data-monthly]');
+  if (!toggles.length || !amounts.length) return;
+
+  toggles.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var period = btn.getAttribute('data-period');
+      toggles.forEach(function (b) { b.classList.toggle('is-active', b === btn); });
+      amounts.forEach(function (el) {
+        var v = el.getAttribute('data-' + period);
+        if (v) el.textContent = v;
+      });
+    });
+  });
+}());
+</script>
+
+</body>
+</html>
