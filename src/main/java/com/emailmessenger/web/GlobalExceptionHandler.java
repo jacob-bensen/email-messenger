@@ -1,5 +1,6 @@
 package com.emailmessenger.web;
 
+import com.emailmessenger.billing.BillingException;
 import com.emailmessenger.email.EmailImportException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -43,6 +44,27 @@ class GlobalExceptionHandler {
         model.addAttribute("status", 502);
         model.addAttribute("message",
                 "Could not connect to the mail server. Please check your mailbox settings and try again.");
+        return "error";
+    }
+
+    @ExceptionHandler(BillingException.class)
+    String billingError(BillingException ex, HttpServletRequest request,
+                        Model model, HttpServletResponse response) {
+        log.warn("Billing operation failed for {}: {}", request.getRequestURI(), ex.getMessage());
+        response.setStatus(HttpStatus.BAD_GATEWAY.value());
+        model.addAttribute("status", 502);
+        model.addAttribute("message",
+                "We couldn't reach our payment provider. Please try again in a moment.");
+        return "error";
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    String badArgument(IllegalArgumentException ex, HttpServletRequest request,
+                       Model model, HttpServletResponse response) {
+        log.warn("Bad request for {}: {}", request.getRequestURI(), ex.getMessage());
+        response.setStatus(HttpStatus.BAD_REQUEST.value());
+        model.addAttribute("status", 400);
+        model.addAttribute("message", "That request looked malformed. Please try again.");
         return "error";
     }
 

@@ -47,10 +47,14 @@
 <body>
 <div class="card">
   <div class="status" th:text="${status}">500</div>
-  <h1 th:text="${status == 404} ? 'Page not found'
-                  : (status == 502 or status == 503) ? 'Mail server unreachable'
-                  : (status == 409) ? 'Conflict saving data'
-                  : 'Something went wrong'">Something went wrong</h1>
+  <h1 th:switch="${status}">
+    <span th:case="404">Page not found</span>
+    <span th:case="400">Bad request</span>
+    <span th:case="409">Conflict saving data</span>
+    <span th:case="502">Mail server unreachable</span>
+    <span th:case="503">Service unavailable</span>
+    <span th:case="*">Something went wrong</span>
+  </h1>
   <p th:text="${message}">An unexpected error occurred. Please try again in a moment.</p>
   <a href="/" class="home-link">← Back to MailIM</a>
   <p style="margin-top:16px;font-size:13px;color:#888;">

@@ -1,6 +1,11 @@
 # Changelog
 
 ## 2026-05-15
+Shipped: Stripe Checkout integration — added `com.stripe:stripe-java:32.1.0`, Flyway V4 `subscriptions` table (1:1 with users, unique stripe_customer_id/stripe_subscription_id), `Subscription` JPA entity + `Plan` enum (PERSONAL/TEAM/ENTERPRISE), `SubscriptionRepository`, `BillingProperties` (@ConfigurationProperties for secret key, four price IDs, success/cancel URLs, trial days), `StripeCheckoutGateway` interface with Stripe-SDK impl (subscription mode, 14-day trial, allow promo codes, reuses Stripe customer on repeat checkouts), `BillingService.startCheckout(user, plan)` that upserts a local Subscription row in `incomplete` state, and `BillingController POST /billing/checkout` that 302s to the Stripe-hosted URL; `BillingException` + `IllegalArgumentException` handlers wired into `GlobalExceptionHandler`; `/billing/cancel` is public, checkout requires auth. 7 new tests (gateway-mocked service flow + controller redirect/auth/unknown-plan), 90 total pass.
+Advances: Milestone 2 (Stripe billing) of EPIC-02 Monetization Plumbing.
+Master action: Stripe credentials still required — `STRIPE_SECRET_KEY` and four price IDs (already tracked in MASTER_ACTIONS.md).
+
+## 2026-05-15
 Shipped: Made `EmailThread` user-owned end-to-end — Flyway V3 adds NOT NULL `owner_id` FK with index, scopes `root_message_id` and `message_id_header` uniqueness per-owner; `EmailThread.owner` JPA mapping; `EmailThreadRepository` gains `findByOwnerOrderByUpdatedAtDesc` / `findByIdAndOwner` / `findByRootMessageIdAndOwner` and `MessageRepository.findByMessageIdHeaderAndOwner` (JPQL join through thread); `ThreadController` resolves the current `User` via `Principal` + `UserService.requireByEmail` and filters list, view, and reply paths so one user cannot see or reply to another's threads; `EmailImportService.importMessage` now takes a `User owner` and threads stay isolated even when two users receive the same Message-ID. 9 new tests (cross-owner isolation in repo + controller + import), 83 total pass.
 Advances: Milestone 1 (Auth foundation) of EPIC-02 Monetization Plumbing.
 Master action: none

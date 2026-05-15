@@ -84,6 +84,13 @@
       <version>2.0.1</version>
     </dependency>
 
+    <!-- Stripe Java SDK: Checkout Sessions, subscriptions, webhook signing. -->
+    <dependency>
+      <groupId>com.stripe</groupId>
+      <artifactId>stripe-java</artifactId>
+      <version>32.1.0</version>
+    </dependency>
+
     <!-- Flyway -->
     <dependency>
       <groupId>org.flywaydb</groupId>

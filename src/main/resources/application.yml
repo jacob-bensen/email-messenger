@@ -36,6 +36,17 @@ spring:
     port: 1025
     protocol: smtp
 
+billing:
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    personal-price-id: ${STRIPE_PERSONAL_PRICE_ID:}
+    team-price-id: ${STRIPE_TEAM_PRICE_ID:}
+    enterprise-price-id: ${STRIPE_ENTERPRISE_PRICE_ID:}
+    success-url: ${BILLING_SUCCESS_URL:http://localhost:8080/billing/success?session_id={CHECKOUT_SESSION_ID}}
+    cancel-url: ${BILLING_CANCEL_URL:http://localhost:8080/billing/cancel}
+    trial-days: 14
+
 logging:
   level:
     com.emailmessenger: DEBUG
@@ -85,6 +96,17 @@ spring:
           auth: true
           starttls:
             enable: true
+
+billing:
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    personal-price-id: ${STRIPE_PERSONAL_PRICE_ID:}
+    team-price-id: ${STRIPE_TEAM_PRICE_ID:}
+    enterprise-price-id: ${STRIPE_ENTERPRISE_PRICE_ID:}
+    success-url: ${BILLING_SUCCESS_URL:}
+    cancel-url: ${BILLING_CANCEL_URL:}
+    trial-days: ${BILLING_TRIAL_DAYS:14}
 
 logging:
   level:
