@@ -1,6 +1,7 @@
 package com.emailmessenger.web;
 
 import com.emailmessenger.domain.EmailThread;
+import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.service.Conversation;
 import com.emailmessenger.service.ConversationService;
@@ -22,8 +23,8 @@ class ThreadViewService {
     }
 
     @Transactional(readOnly = true)
-    Conversation getConversation(long threadId) {
-        EmailThread thread = threadRepository.findById(threadId)
+    Conversation getConversation(long threadId, User owner) {
+        EmailThread thread = threadRepository.findByIdAndOwner(threadId, owner)
                 .orElseThrow(NoSuchElementException::new);
         return conversationService.buildConversation(thread);
     }

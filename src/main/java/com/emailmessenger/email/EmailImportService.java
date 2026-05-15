@@ -5,6 +5,7 @@ import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.Participant;
 import com.emailmessenger.domain.RecipientType;
+import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.repository.MessageRepository;
 import com.emailmessenger.repository.ParticipantRepository;
@@ -34,12 +35,13 @@ public class EmailImportService {
     }
 
     /**
-     * Parses and persists a MimeMessage. Returns empty if the message was already imported
-     * (idempotent on Message-ID). Thread assignment follows RFC 5322: References newest-first,
-     * then In-Reply-To, then rootMessageId lookup, then new thread.
+     * Parses and persists a MimeMessage into the given owner's mailbox. Returns empty
+     * if the owner has already imported this message (idempotent per-owner on Message-ID).
+     * Thread assignment follows RFC 5322: References newest-first, then In-Reply-To, then
+     * rootMessageId lookup — all scoped to the owner so threads never cross tenants.
      */
     @Transactional
-    public Optional<Message> importMessage(MimeMessage mimeMessage) {
+    public Optional<Message> importMessage(MimeMessage mimeMessage, User owner) {
         ParsedEmail parsed;
         try {
             parsed = parser.parse(mimeMessage);
@@ -48,12 +50,12 @@ public class EmailImportService {
         }
 
         if (parsed.messageId() != null
-                && messageRepo.findByMessageIdHeader(parsed.messageId()).isPresent()) {
+                && messageRepo.findByMessageIdHeaderAndOwner(parsed.messageId(), owner).isPresent()) {
             return Optional.empty();
         }
 
         Participant sender = resolveParticipant(parsed.fromEmail(), parsed.fromName());
-        EmailThread thread = resolveThread(parsed);
+        EmailThread thread = resolveThread(parsed, owner);
 
         Message message = new Message(thread, sender, parsed.subject(),
                 parsed.bodyPlain(), parsed.bodyHtml(), parsed.sentAt());
@@ -87,24 +89,24 @@ public class EmailImportService {
                 .orElseGet(() -> participantRepo.save(new Participant(email, displayName)));
     }
 
-    private EmailThread resolveThread(ParsedEmail parsed) {
+    private EmailThread resolveThread(ParsedEmail parsed, User owner) {
         // Walk References newest-first (RFC 5322 lists oldest first, newest last)
         List<String> refs = parsed.references();
         for (int i = refs.size() - 1; i >= 0; i--) {
-            Optional<Message> ref = messageRepo.findByMessageIdHeader(refs.get(i));
+            Optional<Message> ref = messageRepo.findByMessageIdHeaderAndOwner(refs.get(i), owner);
             if (ref.isPresent()) return ref.get().getThread();
         }
 
         if (parsed.inReplyTo() != null) {
-            Optional<Message> parent = messageRepo.findByMessageIdHeader(parsed.inReplyTo());
+            Optional<Message> parent = messageRepo.findByMessageIdHeaderAndOwner(parsed.inReplyTo(), owner);
             if (parent.isPresent()) return parent.get().getThread();
         }
 
         if (parsed.messageId() != null) {
-            Optional<EmailThread> existing = threadRepo.findByRootMessageId(parsed.messageId());
+            Optional<EmailThread> existing = threadRepo.findByRootMessageIdAndOwner(parsed.messageId(), owner);
             if (existing.isPresent()) return existing.get();
         }
 
-        return threadRepo.save(new EmailThread(parsed.subject(), parsed.messageId()));
+        return threadRepo.save(new EmailThread(owner, parsed.subject(), parsed.messageId()));
     }
 }

@@ -35,6 +35,13 @@ public class UserService {
         return users.findByEmail(normalizeEmail(email));
     }
 
+    @Transactional(readOnly = true)
+    public User requireByEmail(String email) {
+        return users.findByEmail(normalizeEmail(email))
+                .orElseThrow(() -> new IllegalStateException(
+                        "Authenticated principal has no User record: " + email));
+    }
+
     static String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
     }

@@ -3,6 +3,7 @@ package com.emailmessenger.service;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.Participant;
+import com.emailmessenger.domain.User;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 
@@ -13,9 +14,10 @@ class ConversationServiceTest {
     private final ConversationService svc = new ConversationService(new IMTransformService());
 
     private static final LocalDateTime BASE_TIME = LocalDateTime.of(2025, 1, 1, 10, 0);
+    private static final User OWNER = new User("owner@test.com", "h", null);
 
     private EmailThread thread(String subject) {
-        return new EmailThread(subject, "<root@test>");
+        return new EmailThread(OWNER, subject, "<root@test>");
     }
 
     private Message message(EmailThread t, Participant sender, String bodyPlain, int minuteOffset) {

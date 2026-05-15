@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-05-15
+Shipped: Made `EmailThread` user-owned end-to-end — Flyway V3 adds NOT NULL `owner_id` FK with index, scopes `root_message_id` and `message_id_header` uniqueness per-owner; `EmailThread.owner` JPA mapping; `EmailThreadRepository` gains `findByOwnerOrderByUpdatedAtDesc` / `findByIdAndOwner` / `findByRootMessageIdAndOwner` and `MessageRepository.findByMessageIdHeaderAndOwner` (JPQL join through thread); `ThreadController` resolves the current `User` via `Principal` + `UserService.requireByEmail` and filters list, view, and reply paths so one user cannot see or reply to another's threads; `EmailImportService.importMessage` now takes a `User owner` and threads stay isolated even when two users receive the same Message-ID. 9 new tests (cross-owner isolation in repo + controller + import), 83 total pass.
+Advances: Milestone 1 (Auth foundation) of EPIC-02 Monetization Plumbing.
+Master action: none
+
 ## 2026-05-14
 Shipped: Spring Security email/password auth — `User` entity + Flyway V2 (users + persistent_logins), BCrypt-hashed registration via `/register`, form login via `/login` with persistent remember-me, logout, CSRF enabled site-wide and wired into the existing reply form; `/threads/**` now redirects anonymous users to login. 13 new tests, 79 total pass.
 Advances: Milestone 1 (Auth foundation) of EPIC-02 Monetization Plumbing.

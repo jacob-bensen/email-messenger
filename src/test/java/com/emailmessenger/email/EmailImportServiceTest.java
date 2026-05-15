@@ -2,12 +2,15 @@ package com.emailmessenger.email;
 
 import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.RecipientType;
+import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.repository.MessageRepository;
 import com.emailmessenger.repository.ParticipantRepository;
+import com.emailmessenger.repository.UserRepository;
 import jakarta.mail.Session;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,13 +32,21 @@ class EmailImportServiceTest {
     @Autowired MessageRepository messageRepo;
     @Autowired EmailThreadRepository threadRepo;
     @Autowired ParticipantRepository participantRepo;
+    @Autowired UserRepository userRepo;
+
+    private User owner;
+
+    @BeforeEach
+    void setUp() {
+        owner = userRepo.save(new User("import-owner@test.com", "hash", "Owner"));
+    }
 
     @Test
     void importCreatesThreadAndMessage() throws Exception {
         MimeMessage mail = plainMessage("<root@test.com>", "Hello project", "alice@test.com", null, null,
                 "Hey team, kicking off the project.");
 
-        Optional<Message> result = importService.importMessage(mail);
+        Optional<Message> result = importService.importMessage(mail, owner);
 
         assertThat(result).isPresent();
         Message msg = result.get();
@@ -44,21 +55,23 @@ class EmailImportServiceTest {
         assertThat(msg.getBodyPlain()).isEqualTo("Hey team, kicking off the project.");
         assertThat(msg.getThread()).isNotNull();
         assertThat(msg.getThread().getRootMessageId()).isEqualTo("<root@test.com>");
+        assertThat(msg.getThread().getOwner().getId()).isEqualTo(owner.getId());
         assertThat(msg.getSender().getEmail()).isEqualTo("alice@test.com");
     }
 
     @Test
     void replyViaInReplyToJoinsExistingThread() throws Exception {
         importService.importMessage(
-                plainMessage("<root@test.com>", "Project update", "alice@test.com", null, null, "First."));
+                plainMessage("<root@test.com>", "Project update", "alice@test.com", null, null, "First."),
+                owner);
 
         MimeMessage reply = plainMessage("<reply@test.com>", "Re: Project update", "bob@test.com",
                 "<root@test.com>", null, "Got it.");
-        Optional<Message> result = importService.importMessage(reply);
+        Optional<Message> result = importService.importMessage(reply, owner);
 
         assertThat(result).isPresent();
         Message replyMsg = result.get();
-        Message rootMsg = messageRepo.findByMessageIdHeader("<root@test.com>").orElseThrow();
+        Message rootMsg = messageRepo.findByMessageIdHeaderAndOwner("<root@test.com>", owner).orElseThrow();
         assertThat(replyMsg.getThread().getId()).isEqualTo(rootMsg.getThread().getId());
         assertThat(replyMsg.getThread().getMessageCount()).isEqualTo(2);
     }
@@ -66,22 +79,23 @@ class EmailImportServiceTest {
     @Test
     void replyViaReferencesJoinsExistingThread() throws Exception {
         importService.importMessage(
-                plainMessage("<msg1@test.com>", "Topic", "alice@test.com", null, null, "Original."));
+                plainMessage("<msg1@test.com>", "Topic", "alice@test.com", null, null, "Original."),
+                owner);
 
         MimeMessage reply = plainMessage("<msg2@test.com>", "Re: Topic", "carol@test.com",
                 null, "<msg1@test.com>", "Following up.");
-        Optional<Message> result = importService.importMessage(reply);
+        Optional<Message> result = importService.importMessage(reply, owner);
 
         assertThat(result).isPresent();
-        Message rootMsg = messageRepo.findByMessageIdHeader("<msg1@test.com>").orElseThrow();
+        Message rootMsg = messageRepo.findByMessageIdHeaderAndOwner("<msg1@test.com>", owner).orElseThrow();
         assertThat(result.get().getThread().getId()).isEqualTo(rootMsg.getThread().getId());
     }
 
     @Test
     void duplicateMessageIdIsSkipped() throws Exception {
         MimeMessage mail = plainMessage("<dup@test.com>", "Dupe", "alice@test.com", null, null, "Body.");
-        importService.importMessage(mail);
-        Optional<Message> second = importService.importMessage(mail);
+        importService.importMessage(mail, owner);
+        Optional<Message> second = importService.importMessage(mail, owner);
 
         assertThat(second).isEmpty();
         assertThat(messageRepo.findAll().stream()
@@ -91,12 +105,52 @@ class EmailImportServiceTest {
     @Test
     void senderParticipantIsDeduplicated() throws Exception {
         importService.importMessage(
-                plainMessage("<m1@test.com>", "First", "alice@test.com", null, null, "A."));
+                plainMessage("<m1@test.com>", "First", "alice@test.com", null, null, "A."), owner);
         importService.importMessage(
-                plainMessage("<m2@test.com>", "Second", "alice@test.com", null, null, "B."));
+                plainMessage("<m2@test.com>", "Second", "alice@test.com", null, null, "B."), owner);
 
         assertThat(participantRepo.findAll().stream()
                 .filter(p -> "alice@test.com".equals(p.getEmail())).count()).isEqualTo(1);
+    }
+
+    @Test
+    void sameMessageIdInTwoOwnersStaysIsolated() throws Exception {
+        User other = userRepo.save(new User("other-owner@test.com", "h", null));
+
+        importService.importMessage(
+                plainMessage("<shared@test.com>", "Shared", "alice@test.com", null, null, "A."), owner);
+        importService.importMessage(
+                plainMessage("<shared@test.com>", "Shared", "alice@test.com", null, null, "A."), other);
+
+        // Each owner gets their own thread for the same shared Message-ID.
+        assertThat(messageRepo.findByMessageIdHeaderAndOwner("<shared@test.com>", owner))
+                .isPresent();
+        assertThat(messageRepo.findByMessageIdHeaderAndOwner("<shared@test.com>", other))
+                .isPresent();
+        assertThat(threadRepo.findByRootMessageIdAndOwner("<shared@test.com>", owner).orElseThrow()
+                .getOwner().getId()).isEqualTo(owner.getId());
+        assertThat(threadRepo.findByRootMessageIdAndOwner("<shared@test.com>", other).orElseThrow()
+                .getOwner().getId()).isEqualTo(other.getId());
+    }
+
+    @Test
+    void replyInOtherOwnersThreadStartsNewThread() throws Exception {
+        User other = userRepo.save(new User("other-owner2@test.com", "h", null));
+
+        // Owner has the root message.
+        importService.importMessage(
+                plainMessage("<root2@test.com>", "Topic", "alice@test.com", null, null, "First."), owner);
+
+        // Different user receives a reply to the same Message-ID — must NOT join owner's thread.
+        MimeMessage reply = plainMessage("<reply2@test.com>", "Re: Topic", "bob@test.com",
+                "<root2@test.com>", null, "Got it.");
+        Optional<Message> result = importService.importMessage(reply, other);
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getThread().getOwner().getId()).isEqualTo(other.getId());
+        // The reply opened its own (orphan) thread for the other user.
+        assertThat(threadRepo.findByOwnerOrderByUpdatedAtDesc(other,
+                org.springframework.data.domain.PageRequest.of(0, 10)).getContent()).hasSize(1);
     }
 
     @Test
@@ -113,7 +167,7 @@ class EmailImportServiceTest {
         mail.setText("Body.");
         mail.setSentDate(new Date());
 
-        Optional<Message> result = importService.importMessage(mail);
+        Optional<Message> result = importService.importMessage(mail, owner);
 
         assertThat(result).isPresent();
         Message msg = result.get();
@@ -139,15 +193,13 @@ class EmailImportServiceTest {
         mail.setText("Body.");
         mail.setSentDate(new Date());
 
-        Optional<Message> result = importService.importMessage(mail);
+        Optional<Message> result = importService.importMessage(mail, owner);
 
         assertThat(result).isPresent();
         long bccCount = result.get().getRecipients().stream()
                 .filter(r -> RecipientType.BCC == r.getRecipientType()).count();
         assertThat(bccCount).isEqualTo(1);
     }
-
-    // ---- helper ----
 
     private MimeMessage plainMessage(String messageId, String subject, String from,
                                      String inReplyTo, String references, String body)

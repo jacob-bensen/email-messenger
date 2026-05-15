@@ -1,6 +1,8 @@
 package com.emailmessenger.web;
 
+import com.emailmessenger.auth.UserService;
 import com.emailmessenger.domain.EmailThread;
+import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.service.Conversation;
 import com.emailmessenger.service.ReplyService;
@@ -16,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -23,7 +26,9 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,12 +45,18 @@ class ThreadControllerTest {
     @Mock EmailThreadRepository threadRepository;
     @Mock ThreadViewService threadViewService;
     @Mock ReplyService replyService;
+    @Mock UserService userService;
 
     MockMvc mockMvc;
 
+    private final User owner = new User("owner@example.com", "hash", "Owner");
+    private final Principal principal = () -> "owner@example.com";
+
     @BeforeEach
     void setUp() {
-        ThreadController controller = new ThreadController(threadRepository, threadViewService, replyService);
+        ThreadController controller = new ThreadController(
+                threadRepository, threadViewService, replyService, userService);
+        lenient().when(userService.requireByEmail("owner@example.com")).thenReturn(owner);
         // Prefix/suffix prevents InternalResourceViewResolver from producing a path that
         // matches the request URL (which would cause a circular-dispatch error in standalone mode).
         InternalResourceViewResolver viewResolver = new InternalResourceViewResolver();
@@ -59,7 +70,7 @@ class ThreadControllerTest {
 
     @Test
     void rootRedirectsToThreads() throws Exception {
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/").principal(principal))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/threads"));
     }
@@ -67,9 +78,10 @@ class ThreadControllerTest {
     @Test
     void listThreadsReturnsThreadsViewWithModel() throws Exception {
         Page<EmailThread> empty = new PageImpl<>(List.of());
-        when(threadRepository.findAllByOrderByUpdatedAtDesc(any(Pageable.class))).thenReturn(empty);
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(empty);
 
-        mockMvc.perform(get("/threads"))
+        mockMvc.perform(get("/threads").principal(principal))
                 .andExpect(status().isOk())
                 .andExpect(view().name("threads"))
                 .andExpect(model().attributeExists("threads"));
@@ -78,20 +90,21 @@ class ThreadControllerTest {
     @Test
     void listThreadsNegativePageClampsToZero() throws Exception {
         Page<EmailThread> empty = new PageImpl<>(List.of());
-        when(threadRepository.findAllByOrderByUpdatedAtDesc(any(Pageable.class))).thenReturn(empty);
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(empty);
 
-        mockMvc.perform(get("/threads").param("page", "-5"))
+        mockMvc.perform(get("/threads").principal(principal).param("page", "-5"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("threads"));
     }
 
     @Test
     void viewConversationReturnsConversationView() throws Exception {
-        EmailThread thread = new EmailThread("Test Subject", "<root@test>");
+        EmailThread thread = new EmailThread(owner, "Test Subject", "<root@test>");
         Conversation conv = new Conversation(thread, List.of());
-        when(threadViewService.getConversation(1L)).thenReturn(conv);
+        when(threadViewService.getConversation(1L, owner)).thenReturn(conv);
 
-        mockMvc.perform(get("/threads/1"))
+        mockMvc.perform(get("/threads/1").principal(principal))
                 .andExpect(status().isOk())
                 .andExpect(view().name("conversation"))
                 .andExpect(model().attributeExists("conversation", "replyForm"));
@@ -99,20 +112,20 @@ class ThreadControllerTest {
 
     @Test
     void viewConversationWithUnknownIdReturns404() throws Exception {
-        when(threadViewService.getConversation(999L)).thenThrow(new NoSuchElementException());
+        when(threadViewService.getConversation(999L, owner)).thenThrow(new NoSuchElementException());
 
-        mockMvc.perform(get("/threads/999"))
+        mockMvc.perform(get("/threads/999").principal(principal))
                 .andExpect(status().isNotFound())
                 .andExpect(view().name("error"));
     }
 
     @Test
     void replyWithEmptyBodyShowsValidationErrorAndConversationView() throws Exception {
-        EmailThread thread = new EmailThread("Test", "<root@test>");
+        EmailThread thread = new EmailThread(owner, "Test", "<root@test>");
         Conversation conv = new Conversation(thread, List.of());
-        when(threadViewService.getConversation(1L)).thenReturn(conv);
+        when(threadViewService.getConversation(1L, owner)).thenReturn(conv);
 
-        mockMvc.perform(post("/threads/1/reply").param("body", ""))
+        mockMvc.perform(post("/threads/1/reply").principal(principal).param("body", ""))
                 .andExpect(status().isOk())
                 .andExpect(view().name("conversation"))
                 .andExpect(model().attributeHasFieldErrors("replyForm", "body"));
@@ -122,21 +135,24 @@ class ThreadControllerTest {
 
     @Test
     void replyWithValidBodyRedirectsWithSuccessFlash() throws Exception {
-        EmailThread thread = new EmailThread("Test Subject", "<root@test>");
-        when(threadRepository.findById(1L)).thenReturn(Optional.of(thread));
+        EmailThread thread = new EmailThread(owner, "Test Subject", "<root@test>");
+        when(threadRepository.findByIdAndOwner(1L, owner)).thenReturn(Optional.of(thread));
         doNothing().when(replyService).sendReply(anyLong(), anyString(), anyString());
 
-        mockMvc.perform(post("/threads/1/reply").param("body", "Thanks for your message!"))
+        mockMvc.perform(post("/threads/1/reply").principal(principal)
+                        .param("body", "Thanks for your message!"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/threads/1"));
     }
 
     @Test
-    void replyWithUnknownThreadIdReturns404() throws Exception {
-        when(threadViewService.getConversation(999L)).thenThrow(new NoSuchElementException());
+    void replyToOtherUsersThreadReturns404() throws Exception {
+        when(threadRepository.findByIdAndOwner(42L, owner)).thenReturn(Optional.empty());
 
-        // Validation error path triggers getConversation — should result in 404 via exception handler
-        mockMvc.perform(post("/threads/999/reply").param("body", ""))
+        mockMvc.perform(post("/threads/42/reply").principal(principal)
+                        .param("body", "Trying to reply to someone else's thread"))
                 .andExpect(status().isNotFound());
+
+        verify(replyService, never()).sendReply(anyLong(), anyString(), anyString());
     }
 }

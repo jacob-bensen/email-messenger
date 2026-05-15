@@ -1,6 +1,8 @@
 package com.emailmessenger.web;
 
+import com.emailmessenger.auth.UserService;
 import com.emailmessenger.domain.EmailThread;
+import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.service.Conversation;
 import com.emailmessenger.service.ReplyService;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.security.Principal;
 import java.util.NoSuchElementException;
 
 @Controller
@@ -27,13 +30,16 @@ class ThreadController {
     private final EmailThreadRepository threadRepository;
     private final ThreadViewService threadViewService;
     private final ReplyService replyService;
+    private final UserService userService;
 
     ThreadController(EmailThreadRepository threadRepository,
                      ThreadViewService threadViewService,
-                     ReplyService replyService) {
+                     ReplyService replyService,
+                     UserService userService) {
         this.threadRepository = threadRepository;
         this.threadViewService = threadViewService;
         this.replyService = replyService;
+        this.userService = userService;
     }
 
     @GetMapping("/")
@@ -42,16 +48,20 @@ class ThreadController {
     }
 
     @GetMapping("/threads")
-    String listThreads(@RequestParam(defaultValue = "0") int page, Model model) {
-        Page<EmailThread> threads = threadRepository.findAllByOrderByUpdatedAtDesc(
-                PageRequest.of(Math.max(0, page), PAGE_SIZE));
+    String listThreads(@RequestParam(defaultValue = "0") int page,
+                       Principal principal,
+                       Model model) {
+        User owner = userService.requireByEmail(principal.getName());
+        Page<EmailThread> threads = threadRepository.findByOwnerOrderByUpdatedAtDesc(
+                owner, PageRequest.of(Math.max(0, page), PAGE_SIZE));
         model.addAttribute("threads", threads);
         return "threads";
     }
 
     @GetMapping("/threads/{id}")
-    String viewConversation(@PathVariable Long id, Model model) {
-        Conversation conversation = threadViewService.getConversation(id);
+    String viewConversation(@PathVariable Long id, Principal principal, Model model) {
+        User owner = userService.requireByEmail(principal.getName());
+        Conversation conversation = threadViewService.getConversation(id, owner);
         model.addAttribute("conversation", conversation);
         model.addAttribute("replyForm", new ReplyForm());
         return "conversation";
@@ -61,14 +71,16 @@ class ThreadController {
     String reply(@PathVariable Long id,
                  @Valid @ModelAttribute("replyForm") ReplyForm replyForm,
                  BindingResult bindingResult,
+                 Principal principal,
                  RedirectAttributes redirectAttributes,
                  Model model) {
+        User owner = userService.requireByEmail(principal.getName());
         if (bindingResult.hasErrors()) {
-            Conversation conversation = threadViewService.getConversation(id);
+            Conversation conversation = threadViewService.getConversation(id, owner);
             model.addAttribute("conversation", conversation);
             return "conversation";
         }
-        EmailThread thread = threadRepository.findById(id)
+        EmailThread thread = threadRepository.findByIdAndOwner(id, owner)
                 .orElseThrow(NoSuchElementException::new);
         replyService.sendReply(id, thread.getSubject(), replyForm.getBody());
         redirectAttributes.addFlashAttribute("successMessage", "Reply sent successfully.");

@@ -6,6 +6,7 @@ import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.MessageRecipient;
 import com.emailmessenger.domain.Participant;
 import com.emailmessenger.domain.RecipientType;
+import com.emailmessenger.domain.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,13 +24,15 @@ class AttachmentRepositoryTest {
     @Autowired MessageRepository messageRepo;
     @Autowired EmailThreadRepository threadRepo;
     @Autowired ParticipantRepository participantRepo;
+    @Autowired UserRepository userRepo;
 
     private Message savedMessage;
 
     @BeforeEach
     void setUp() {
+        var owner = userRepo.save(new User("attach-owner@example.com", "h", null));
         var sender = participantRepo.save(new Participant("attach-sender@example.com", "Sender"));
-        var thread = threadRepo.save(new EmailThread("Attachment test thread", "<attach@example.com>"));
+        var thread = threadRepo.save(new EmailThread(owner, "Attachment test thread", "<attach@example.com>"));
         savedMessage = messageRepo.save(
                 new Message(thread, sender, "Has attachments", "body", null, LocalDateTime.now()));
     }
