@@ -35,7 +35,7 @@ class SecurityConfig {
                         .requestMatchers(
                                 "/", "/pricing",
                                 "/login", "/register",
-                                "/billing/cancel",
+                                "/billing/cancel", "/billing/webhook",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/error", "/h2-console/**")
                         .permitAll()
@@ -66,7 +66,8 @@ class SecurityConfig {
                 .headers(h -> h.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
                 // Spring Security enables CSRF by default; we keep it on. The H2 console
                 // ships its own forms and would 403 with our CsrfToken, so exempt it.
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**"));
+                // Stripe webhooks POST raw JSON with a signature header, not a CSRF token.
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/billing/webhook"));
         return http.build();
     }
 }
