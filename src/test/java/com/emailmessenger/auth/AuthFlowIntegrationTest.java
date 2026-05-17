@@ -1,5 +1,8 @@
 package com.emailmessenger.auth;
 
+import com.emailmessenger.billing.BillingService;
+import com.emailmessenger.domain.Plan;
+import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +18,11 @@ import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.service.ReplyService;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
@@ -35,6 +43,9 @@ class AuthFlowIntegrationTest {
     // The mail-sending side path is irrelevant to auth and avoids a real SMTP host.
     @MockBean ReplyService replyService;
     @MockBean EmailThreadRepository threadRepository;
+    // Stripe is unconfigured in the dev profile; mock so happy-path checkout
+    // is deterministic without hitting the real gateway.
+    @MockBean BillingService billingService;
 
     @Test
     void loginPageIsPublic() throws Exception {
@@ -128,5 +139,36 @@ class AuthFlowIntegrationTest {
                         .param("password", "wrongpass"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login?error"));
+    }
+
+    @Test
+    void registrationWithPlanStartsCheckoutAndRedirectsToStripe() throws Exception {
+        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL)))
+                .thenReturn("https://checkout.stripe.com/c/pay/cs_test_funnel");
+
+        mockMvc.perform(post("/register")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("email", "trial@example.com")
+                        .param("password", "password1")
+                        .param("plan", "personal"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("https://checkout.stripe.com/c/pay/cs_test_funnel"));
+
+        assertThat(users.findByEmail("trial@example.com")).isPresent();
+        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL));
+    }
+
+    @Test
+    void registrationWithUnknownPlanFallsThroughToThreads() throws Exception {
+        mockMvc.perform(post("/register")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("email", "tampered@example.com")
+                        .param("password", "password1")
+                        .param("plan", "platinum"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/threads"));
+
+        assertThat(users.findByEmail("tampered@example.com")).isPresent();
+        verify(billingService, never()).startCheckout(any(User.class), any(Plan.class));
     }
 }
