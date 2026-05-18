@@ -142,6 +142,45 @@ class AuthFlowIntegrationTest {
     }
 
     @Test
+    void loginWithPlanRedirectsToCheckout() throws Exception {
+        userService.register("funnel@example.com", "password1", null);
+        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL)))
+                .thenReturn("https://checkout.stripe.com/c/pay/cs_test_login_funnel");
+
+        mockMvc.perform(post("/login")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("email", "funnel@example.com")
+                        .param("password", "password1")
+                        .param("plan", "personal"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("https://checkout.stripe.com/c/pay/cs_test_login_funnel"));
+
+        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL));
+    }
+
+    @Test
+    void loginWithUnknownPlanFallsThroughToThreads() throws Exception {
+        userService.register("funnel2@example.com", "password1", null);
+
+        mockMvc.perform(post("/login")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("email", "funnel2@example.com")
+                        .param("password", "password1")
+                        .param("plan", "platinum"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/threads"));
+
+        verify(billingService, never()).startCheckout(any(User.class), any(Plan.class));
+    }
+
+    @Test
+    void loginPageRendersHiddenPlanInput() throws Exception {
+        mockMvc.perform(get("/login").param("plan", "personal"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("login"));
+    }
+
+    @Test
     void registrationWithPlanStartsCheckoutAndRedirectsToStripe() throws Exception {
         when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL)))
                 .thenReturn("https://checkout.stripe.com/c/pay/cs_test_funnel");

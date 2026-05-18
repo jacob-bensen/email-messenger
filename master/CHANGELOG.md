@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-05-18
+Shipped: Closed the login-funnel gap so an existing user who arrives at `/login?plan=personal` (via the register page's "Sign in" link or any plan-tagged pricing CTA) is taken to Stripe Checkout after sign-in instead of `/threads` — added `PlanCheckoutSuccessHandler` (a `SavedRequestAwareAuthenticationSuccessHandler`) that reads the `plan` form param, calls `BillingService.startCheckout(user, Plan)`, and 302s straight to the returned URL, falling through to `/threads` on missing/unknown plan or `BillingException`; wired it into `SecurityConfig`'s `formLogin` in place of `defaultSuccessUrl`; `login.html` now renders a hidden `plan` input when present and its "Create one" link forwards the plan into `/register?plan=…`. 4 new integration tests (plan → Stripe URL, unknown plan → `/threads` with billing never called, login page renders with plan param) cover the funnel; 105 total pass.
+Advances: Milestone 2 (Stripe billing) of EPIC-02 Monetization Plumbing.
+Master action: none
+
 ## 2026-05-17
 Shipped: Wired pricing-page CTAs into the funnel — `/pricing` Personal/Team CTAs now go to `/register?plan=personal|team` (Free goes to `/register`), `AuthController` accepts an optional `plan` query/form param on GET/POST `/register`, propagates it through binding errors and email-already-registered re-renders into a hidden form field, and after the existing `request.login(...)` auto-login it invokes `BillingService.startCheckout(user, Plan.parse(plan))` and `302`s straight to the returned Stripe Checkout URL; unknown/tampered plans and `BillingException` from an unconfigured Stripe fall through silently to `/threads` so a freshly-registered user is never stranded on an error page; `register.html` hidden plan input + plan-aware sub-headline + "Sign in" link now carries `?plan=` through, plus a `/login` GET handler stashes `plan` in the model so the follow-up login funnel work has a hook. 2 new integration tests (plan→Stripe URL redirect, bogus plan → `/threads` with `BillingService` never called), 102 total pass.
 Advances: Milestone 2 (Stripe billing) of EPIC-02 Monetization Plumbing.

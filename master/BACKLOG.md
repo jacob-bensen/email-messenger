@@ -18,8 +18,3 @@ Up to 10 items, each advancing a PLAN.md milestone. Pick from the top.
 4. **Upgrade modal at free-tier limit** — when `PlanLimitExceededException`
    is thrown, render a plan-comparison modal over the thread list with a
    one-click "Upgrade to Personal" CTA into Checkout. (Milestone 4)
-
-5. **Carry plan param through the login funnel** — pricing → register's
-   "Sign in" link now passes `?plan=…`, but `/login` ignores it; wire a
-   `SimpleUrlAuthenticationSuccessHandler` that redirects to
-   `/billing/checkout?plan=…` after login. (Milestone 2)

@@ -29,7 +29,8 @@ class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                            PersistentTokenRepository tokenRepository) throws Exception {
+                                            PersistentTokenRepository tokenRepository,
+                                            PlanCheckoutSuccessHandler planCheckoutSuccessHandler) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -46,7 +47,7 @@ class SecurityConfig {
                         .loginProcessingUrl("/login")
                         .usernameParameter("email")
                         .passwordParameter("password")
-                        .defaultSuccessUrl("/threads", false)
+                        .successHandler(planCheckoutSuccessHandler)
                         .failureUrl("/login?error")
                         .permitAll()
                 )

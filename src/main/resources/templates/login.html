@@ -29,6 +29,8 @@
     </div>
 
     <form method="post" th:action="@{/login}" class="auth-form" autocomplete="on">
+      <input type="hidden" name="plan" th:if="${plan != null}" th:value="${plan}">
+
       <label class="auth-label">
         <span>Email</span>
         <input type="email" name="email" required autofocus autocomplete="username">
@@ -48,7 +50,9 @@
     </form>
 
     <p class="auth-alt">
-      No account yet? <a href="/register">Create one</a>.
+      No account yet?
+      <a th:if="${plan == null}" href="/register">Create one</a>
+      <a th:if="${plan != null}" th:href="@{/register(plan=${plan})}">Create one</a>.
     </p>
   </section>
 </main>
