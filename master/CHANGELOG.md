@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-05-19
+Shipped: Trial-status banner inside the inbox — `BillingBannerService` reads the user's `Subscription`, emits a `TRIAL_ENDING` banner with ceiling-divided days remaining (so 36h reads as "2 days") when status is `trialing`, a `SUBSCRIPTION_ENDED` lockout banner when status is `canceled`, and nothing otherwise; `ThreadController.listThreads` short-circuits the thread-list query when canceled so a lapsed user lands on a "Your subscription has ended — Reactivate plan" panel pointing at `/pricing` instead of seeing their old threads, and trialing users get a "Trial ends in N days — add card" callout (urgent styling ≤ 3 days, "today/tomorrow" copy at 0/1) on both `threads.html` and `conversation.html`; added a `Clock` bean so day-math is deterministic in tests. 10 new tests (7 unit tests across no-sub / active / trialing / partial-day / past-trial / missing-end-date / canceled, 3 controller tests for trial banner, lockout short-circuit, and conversation banner attribute); 115 total pass.
+Advances: Milestone 3 (Trial + self-serve) of EPIC-02 Monetization Plumbing.
+Master action: none
+
 ## 2026-05-18
 Shipped: Closed the login-funnel gap so an existing user who arrives at `/login?plan=personal` (via the register page's "Sign in" link or any plan-tagged pricing CTA) is taken to Stripe Checkout after sign-in instead of `/threads` — added `PlanCheckoutSuccessHandler` (a `SavedRequestAwareAuthenticationSuccessHandler`) that reads the `plan` form param, calls `BillingService.startCheckout(user, Plan)`, and 302s straight to the returned URL, falling through to `/threads` on missing/unknown plan or `BillingException`; wired it into `SecurityConfig`'s `formLogin` in place of `defaultSuccessUrl`; `login.html` now renders a hidden `plan` input when present and its "Create one" link forwards the plan into `/register?plan=…`. 4 new integration tests (plan → Stripe URL, unknown plan → `/threads` with billing never called, login page renders with plan param) cover the funnel; 105 total pass.
 Advances: Milestone 2 (Stripe billing) of EPIC-02 Monetization Plumbing.

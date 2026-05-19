@@ -75,6 +75,68 @@ body {
   justify-content: space-between;
 }
 
+/* ── Billing Banners ────────────────────────────────── */
+.trial-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #eef3ff;
+  border: 1px solid #c8d6ff;
+  color: #1d2d5c;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+.trial-banner-text { flex: 1; }
+.trial-banner-cta {
+  padding: 7px 14px;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.trial-banner-link {
+  color: var(--brand-dark);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.trial-banner-link:hover { text-decoration: underline; }
+.trial-banner-urgent {
+  background: #fff4e5;
+  border-color: #ffd9a8;
+  color: #6b3a00;
+}
+.trial-banner-compact {
+  margin: 0;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  font-size: 13px;
+  padding: 8px 24px;
+}
+
+.lockout-banner {
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 48px 24px;
+}
+.lockout-banner h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.lockout-banner p {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  max-width: 460px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* ── Empty State ────────────────────────────────────── */
 .empty-state {
   text-align: center;
@@ -432,6 +494,22 @@ body {
   }
   .marketing-footer {
     border-top-color: var(--border);
+  }
+
+  .trial-banner {
+    background: #14233f;
+    border-color: #1f3a73;
+    color: #cfe0ff;
+  }
+  .trial-banner-link { color: #8ab4ff; }
+  .trial-banner-urgent {
+    background: #3a2410;
+    border-color: #7a4a18;
+    color: #ffd9a8;
+  }
+  .lockout-banner {
+    background: var(--surface);
+    border-color: var(--border);
   }
 }
 

@@ -25,7 +25,30 @@
 
 <main class="thread-page">
 
-  <div th:if="${threads.totalElements > 0}">
+  <div th:if="${billingBanner != null and billingBanner.trialEnding}"
+       class="trial-banner"
+       th:classappend="${billingBanner.daysLeft <= 3} ? ' trial-banner-urgent' : ''">
+    <span class="trial-banner-text">
+      <strong th:if="${billingBanner.daysLeft == 0}">Your trial ends today.</strong>
+      <strong th:if="${billingBanner.daysLeft == 1}">Your trial ends tomorrow.</strong>
+      <strong th:if="${billingBanner.daysLeft > 1}"
+              th:text="|Trial ends in ${billingBanner.daysLeft} days.|">Trial ends in 14 days.</strong>
+      Add a card to keep MailIM after the trial.
+    </span>
+    <a href="/pricing" class="btn btn-primary trial-banner-cta">Add card</a>
+  </div>
+
+  <div th:if="${billingBanner != null and billingBanner.subscriptionEnded}"
+       class="lockout-banner">
+    <h2>Your subscription has ended</h2>
+    <p>
+      Your inbox is paused. Reactivate to access your threads, send replies,
+      and sync new mail.
+    </p>
+    <a href="/pricing" class="btn btn-primary">Reactivate plan</a>
+  </div>
+
+  <div th:if="${threads != null and threads.totalElements > 0}">
     <h2 class="section-title">Conversations</h2>
     <div class="thread-list">
       <a th:each="thread : ${threads}"
@@ -51,7 +74,7 @@
     </nav>
   </div>
 
-  <div class="empty-state" th:if="${threads.totalElements == 0}">
+  <div class="empty-state" th:if="${threads != null and threads.totalElements == 0}">
     <h2>Your inbox is empty</h2>
     <p>Connect a mailbox to see your email threads as IM-style conversations.</p>
     <a href="/pricing" class="btn btn-primary">See plans &amp; get started</a>

@@ -1,6 +1,8 @@
 package com.emailmessenger.web;
 
 import com.emailmessenger.auth.UserService;
+import com.emailmessenger.billing.BillingBanner;
+import com.emailmessenger.billing.BillingBannerService;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
@@ -31,15 +33,18 @@ class ThreadController {
     private final ThreadViewService threadViewService;
     private final ReplyService replyService;
     private final UserService userService;
+    private final BillingBannerService billingBannerService;
 
     ThreadController(EmailThreadRepository threadRepository,
                      ThreadViewService threadViewService,
                      ReplyService replyService,
-                     UserService userService) {
+                     UserService userService,
+                     BillingBannerService billingBannerService) {
         this.threadRepository = threadRepository;
         this.threadViewService = threadViewService;
         this.replyService = replyService;
         this.userService = userService;
+        this.billingBannerService = billingBannerService;
     }
 
     @GetMapping("/")
@@ -52,6 +57,11 @@ class ThreadController {
                        Principal principal,
                        Model model) {
         User owner = userService.requireByEmail(principal.getName());
+        BillingBanner banner = billingBannerService.bannerFor(owner).orElse(null);
+        model.addAttribute("billingBanner", banner);
+        if (banner != null && banner.isSubscriptionEnded()) {
+            return "threads";
+        }
         Page<EmailThread> threads = threadRepository.findByOwnerOrderByUpdatedAtDesc(
                 owner, PageRequest.of(Math.max(0, page), PAGE_SIZE));
         model.addAttribute("threads", threads);
@@ -64,6 +74,7 @@ class ThreadController {
         Conversation conversation = threadViewService.getConversation(id, owner);
         model.addAttribute("conversation", conversation);
         model.addAttribute("replyForm", new ReplyForm());
+        model.addAttribute("billingBanner", billingBannerService.bannerFor(owner).orElse(null));
         return "conversation";
     }
 

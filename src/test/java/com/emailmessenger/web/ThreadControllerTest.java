@@ -1,6 +1,8 @@
 package com.emailmessenger.web;
 
 import com.emailmessenger.auth.UserService;
+import com.emailmessenger.billing.BillingBanner;
+import com.emailmessenger.billing.BillingBannerService;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
@@ -23,6 +25,9 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -46,6 +51,7 @@ class ThreadControllerTest {
     @Mock ThreadViewService threadViewService;
     @Mock ReplyService replyService;
     @Mock UserService userService;
+    @Mock BillingBannerService billingBannerService;
 
     MockMvc mockMvc;
 
@@ -55,8 +61,9 @@ class ThreadControllerTest {
     @BeforeEach
     void setUp() {
         ThreadController controller = new ThreadController(
-                threadRepository, threadViewService, replyService, userService);
+                threadRepository, threadViewService, replyService, userService, billingBannerService);
         lenient().when(userService.requireByEmail("owner@example.com")).thenReturn(owner);
+        lenient().when(billingBannerService.bannerFor(owner)).thenReturn(Optional.empty());
         // Prefix/suffix prevents InternalResourceViewResolver from producing a path that
         // matches the request URL (which would cause a circular-dispatch error in standalone mode).
         InternalResourceViewResolver viewResolver = new InternalResourceViewResolver();
@@ -154,5 +161,51 @@ class ThreadControllerTest {
                 .andExpect(status().isNotFound());
 
         verify(replyService, never()).sendReply(anyLong(), anyString(), anyString());
+    }
+
+    @Test
+    void trialingUserSeesBannerOnInbox() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(empty);
+        when(billingBannerService.bannerFor(owner))
+                .thenReturn(Optional.of(BillingBanner.trialEnding(7)));
+
+        mockMvc.perform(get("/threads").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(view().name("threads"))
+                .andExpect(model().attribute("billingBanner",
+                        new BillingBanner(BillingBanner.Kind.TRIAL_ENDING, 7)))
+                .andExpect(model().attributeExists("threads"));
+    }
+
+    @Test
+    void canceledUserGetsLockoutWithoutLoadingThreads() throws Exception {
+        when(billingBannerService.bannerFor(owner))
+                .thenReturn(Optional.of(BillingBanner.subscriptionEnded()));
+
+        mockMvc.perform(get("/threads").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(view().name("threads"))
+                .andExpect(model().attribute("billingBanner", notNullValue()))
+                .andExpect(model().attribute("threads", nullValue()));
+
+        verify(threadRepository, never())
+                .findByOwnerOrderByUpdatedAtDesc(any(User.class), any(Pageable.class));
+    }
+
+    @Test
+    void conversationViewIncludesBillingBannerAttribute() throws Exception {
+        EmailThread thread = new EmailThread(owner, "Test Subject", "<root@test>");
+        Conversation conv = new Conversation(thread, List.of());
+        when(threadViewService.getConversation(1L, owner)).thenReturn(conv);
+        when(billingBannerService.bannerFor(owner))
+                .thenReturn(Optional.of(BillingBanner.trialEnding(2)));
+
+        mockMvc.perform(get("/threads/1").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(view().name("conversation"))
+                .andExpect(model().attribute("billingBanner",
+                        is(new BillingBanner(BillingBanner.Kind.TRIAL_ENDING, 2))));
     }
 }

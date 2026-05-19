@@ -21,6 +21,18 @@
 
 <div class="conv-body">
 
+  <div th:if="${billingBanner != null and billingBanner.trialEnding}"
+       class="trial-banner trial-banner-compact"
+       th:classappend="${billingBanner.daysLeft <= 3} ? ' trial-banner-urgent' : ''">
+    <span class="trial-banner-text">
+      <strong th:if="${billingBanner.daysLeft == 0}">Trial ends today.</strong>
+      <strong th:if="${billingBanner.daysLeft == 1}">Trial ends tomorrow.</strong>
+      <strong th:if="${billingBanner.daysLeft > 1}"
+              th:text="|Trial ends in ${billingBanner.daysLeft} days.|">Trial ends in 14 days.</strong>
+    </span>
+    <a href="/pricing" class="trial-banner-link">Add card →</a>
+  </div>
+
   <!-- Messages area -->
   <div class="messages" id="messages">
 
