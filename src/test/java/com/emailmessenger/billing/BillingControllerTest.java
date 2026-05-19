@@ -15,6 +15,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -71,5 +73,40 @@ class BillingControllerTest {
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .param("plan", "platinum"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void portalWithoutAuthRedirectsToLogin() throws Exception {
+        mockMvc.perform(post("/billing/portal")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("**/login"));
+    }
+
+    @Test
+    void portalForUserWithStripeCustomerRedirectsToStripeUrl() throws Exception {
+        User registered = userService.register("manage@example.com", "password1", null);
+        when(billingService.startPortal(any(User.class)))
+                .thenReturn(Optional.of("https://billing.stripe.com/p/session/xyz"));
+
+        mockMvc.perform(post("/billing/portal")
+                        .with(user(registered.getEmail()))
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("https://billing.stripe.com/p/session/xyz"));
+
+        verify(billingService).startPortal(any(User.class));
+    }
+
+    @Test
+    void portalForUserWithoutSubscriptionRedirectsToPricing() throws Exception {
+        User registered = userService.register("nostripe@example.com", "password1", null);
+        when(billingService.startPortal(any(User.class))).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/billing/portal")
+                        .with(user(registered.getEmail()))
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/pricing"));
     }
 }

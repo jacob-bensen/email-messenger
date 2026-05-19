@@ -3,6 +3,7 @@ package com.emailmessenger.web;
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.billing.BillingBanner;
 import com.emailmessenger.billing.BillingBannerService;
+import com.emailmessenger.billing.BillingService;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
@@ -34,17 +35,20 @@ class ThreadController {
     private final ReplyService replyService;
     private final UserService userService;
     private final BillingBannerService billingBannerService;
+    private final BillingService billingService;
 
     ThreadController(EmailThreadRepository threadRepository,
                      ThreadViewService threadViewService,
                      ReplyService replyService,
                      UserService userService,
-                     BillingBannerService billingBannerService) {
+                     BillingBannerService billingBannerService,
+                     BillingService billingService) {
         this.threadRepository = threadRepository;
         this.threadViewService = threadViewService;
         this.replyService = replyService;
         this.userService = userService;
         this.billingBannerService = billingBannerService;
+        this.billingService = billingService;
     }
 
     @GetMapping("/")
@@ -59,6 +63,7 @@ class ThreadController {
         User owner = userService.requireByEmail(principal.getName());
         BillingBanner banner = billingBannerService.bannerFor(owner).orElse(null);
         model.addAttribute("billingBanner", banner);
+        model.addAttribute("hasBilling", billingService.hasManagedBilling(owner));
         if (banner != null && banner.isSubscriptionEnded()) {
             return "threads";
         }

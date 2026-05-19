@@ -16,6 +16,7 @@ public class BillingProperties {
     private String enterprisePriceId = "";
     private String successUrl = "";
     private String cancelUrl = "";
+    private String portalReturnUrl = "";
     private int trialDays = 14;
 
     public String getSecretKey() { return secretKey; }
@@ -38,6 +39,9 @@ public class BillingProperties {
 
     public String getCancelUrl() { return cancelUrl; }
     public void setCancelUrl(String v) { this.cancelUrl = v; }
+
+    public String getPortalReturnUrl() { return portalReturnUrl; }
+    public void setPortalReturnUrl(String v) { this.portalReturnUrl = v; }
 
     public int getTrialDays() { return trialDays; }
     public void setTrialDays(int v) { this.trialDays = v; }

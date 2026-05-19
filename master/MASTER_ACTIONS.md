@@ -22,6 +22,11 @@ asset delivery — that the agent cannot complete in code. Group by area.
       Hand over the four price IDs.
 - [ ] Configure the Stripe webhook endpoint at `/billing/webhook` after
       deploy and provide `STRIPE_WEBHOOK_SECRET`.
+- [ ] In the Stripe Dashboard, enable the Customer Billing Portal and
+      configure the customer-facing features (update payment method,
+      cancel, switch plans between Personal/Team); set the portal default
+      return URL to `https://<prod-domain>/threads` and supply
+      `BILLING_PORTAL_RETURN_URL` to the deploy.
 
 ## OAuth & third-party APIs
 

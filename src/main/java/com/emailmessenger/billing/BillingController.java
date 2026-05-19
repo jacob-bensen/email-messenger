@@ -30,6 +30,14 @@ class BillingController {
         return "redirect:" + checkoutUrl;
     }
 
+    @PostMapping("/billing/portal")
+    String openPortal(Principal principal) {
+        User user = userService.requireByEmail(principal.getName());
+        return billingService.startPortal(user)
+                .map(url -> "redirect:" + url)
+                .orElse("redirect:/pricing");
+    }
+
     @GetMapping("/billing/success")
     String success(@RequestParam(name = "session_id", required = false) String sessionId,
                    Model model) {

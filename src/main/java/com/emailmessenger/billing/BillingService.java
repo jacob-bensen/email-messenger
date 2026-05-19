@@ -22,13 +22,16 @@ public class BillingService {
 
     private final SubscriptionRepository subscriptions;
     private final StripeCheckoutGateway gateway;
+    private final StripePortalGateway portalGateway;
     private final BillingProperties properties;
 
     BillingService(SubscriptionRepository subscriptions,
                    StripeCheckoutGateway gateway,
+                   StripePortalGateway portalGateway,
                    BillingProperties properties) {
         this.subscriptions = subscriptions;
         this.gateway = gateway;
+        this.portalGateway = portalGateway;
         this.properties = properties;
     }
 
@@ -62,6 +65,36 @@ public class BillingService {
             subscriptions.save(sub);
         }
         return result.url();
+    }
+
+    /**
+     * Returns a Stripe Billing Portal URL the user can be redirected to for
+     * self-serve plan changes, payment-method updates, invoices and
+     * cancellation. Empty when the user has not yet completed a Checkout
+     * (no Stripe customer to manage) — caller should send them to /pricing.
+     */
+    @Transactional(readOnly = true)
+    public Optional<String> startPortal(User user) {
+        Subscription sub = subscriptions.findByUser(user).orElse(null);
+        if (sub == null || !StringUtils.hasText(sub.getStripeCustomerId())) {
+            return Optional.empty();
+        }
+        String url = portalGateway.createPortalSession(
+                sub.getStripeCustomerId(), properties.getPortalReturnUrl());
+        return Optional.of(url);
+    }
+
+    /**
+     * True when the user has completed at least one Stripe Checkout (a
+     * customer id exists) so a "Manage billing" UI affordance has somewhere
+     * meaningful to point at.
+     */
+    @Transactional(readOnly = true)
+    public boolean hasManagedBilling(User user) {
+        return subscriptions.findByUser(user)
+                .map(Subscription::getStripeCustomerId)
+                .filter(StringUtils::hasText)
+                .isPresent();
     }
 
     /**

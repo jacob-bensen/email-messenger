@@ -45,6 +45,7 @@ billing:
     enterprise-price-id: ${STRIPE_ENTERPRISE_PRICE_ID:}
     success-url: ${BILLING_SUCCESS_URL:http://localhost:8080/billing/success?session_id={CHECKOUT_SESSION_ID}}
     cancel-url: ${BILLING_CANCEL_URL:http://localhost:8080/billing/cancel}
+    portal-return-url: ${BILLING_PORTAL_RETURN_URL:http://localhost:8080/threads}
     trial-days: 14
 
 logging:
@@ -106,6 +107,7 @@ billing:
     enterprise-price-id: ${STRIPE_ENTERPRISE_PRICE_ID:}
     success-url: ${BILLING_SUCCESS_URL:}
     cancel-url: ${BILLING_CANCEL_URL:}
+    portal-return-url: ${BILLING_PORTAL_RETURN_URL:}
     trial-days: ${BILLING_TRIAL_DAYS:14}
 
 logging:

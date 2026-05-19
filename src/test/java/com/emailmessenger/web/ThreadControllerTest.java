@@ -3,6 +3,7 @@ package com.emailmessenger.web;
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.billing.BillingBanner;
 import com.emailmessenger.billing.BillingBannerService;
+import com.emailmessenger.billing.BillingService;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
@@ -52,6 +53,7 @@ class ThreadControllerTest {
     @Mock ReplyService replyService;
     @Mock UserService userService;
     @Mock BillingBannerService billingBannerService;
+    @Mock BillingService billingService;
 
     MockMvc mockMvc;
 
@@ -61,7 +63,8 @@ class ThreadControllerTest {
     @BeforeEach
     void setUp() {
         ThreadController controller = new ThreadController(
-                threadRepository, threadViewService, replyService, userService, billingBannerService);
+                threadRepository, threadViewService, replyService, userService,
+                billingBannerService, billingService);
         lenient().when(userService.requireByEmail("owner@example.com")).thenReturn(owner);
         lenient().when(billingBannerService.bannerFor(owner)).thenReturn(Optional.empty());
         // Prefix/suffix prevents InternalResourceViewResolver from producing a path that

@@ -34,6 +34,7 @@ class BillingServiceTest {
     @Autowired SubscriptionRepository subscriptions;
 
     @MockBean StripeCheckoutGateway gateway;
+    @MockBean StripePortalGateway portalGateway;
     @MockBean ReplyService replyService;
 
     @BeforeEach
@@ -42,6 +43,7 @@ class BillingServiceTest {
         properties.setTeamPriceId("price_team_test");
         properties.setSuccessUrl("http://localhost:8080/billing/success");
         properties.setCancelUrl("http://localhost:8080/billing/cancel");
+        properties.setPortalReturnUrl("http://localhost:8080/threads");
         properties.setTrialDays(14);
     }
 
@@ -114,5 +116,40 @@ class BillingServiceTest {
         assertThatThrownBy(() -> billingService.startCheckout(user, Plan.PERSONAL))
                 .isInstanceOf(BillingException.class)
                 .hasMessageContaining("price");
+    }
+
+    @Test
+    void startPortalReturnsGatewayUrlForUserWithStripeCustomer() {
+        User user = newUser("portal@example.com");
+        when(gateway.createSubscriptionSession(eq(null), any(), any(), any(), any(), any()))
+                .thenReturn(new CheckoutSessionResult(
+                        "https://checkout.stripe.com/c/pay/cs_p", "cs_p", "cus_portal"));
+        billingService.startCheckout(user, Plan.PERSONAL);
+
+        when(portalGateway.createPortalSession(eq("cus_portal"),
+                eq("http://localhost:8080/threads")))
+                .thenReturn("https://billing.stripe.com/p/session/abc");
+
+        assertThat(billingService.startPortal(user))
+                .contains("https://billing.stripe.com/p/session/abc");
+    }
+
+    @Test
+    void startPortalReturnsEmptyWhenUserHasNoSubscription() {
+        User user = newUser("nosub@example.com");
+        assertThat(billingService.startPortal(user)).isEmpty();
+    }
+
+    @Test
+    void hasManagedBillingTrueOnlyAfterCheckoutAttachesCustomerId() {
+        User user = newUser("hasbilling@example.com");
+        assertThat(billingService.hasManagedBilling(user)).isFalse();
+
+        when(gateway.createSubscriptionSession(eq(null), any(), any(), any(), any(), any()))
+                .thenReturn(new CheckoutSessionResult(
+                        "https://checkout.stripe.com/c/pay/cs_q", "cs_q", "cus_q"));
+        billingService.startCheckout(user, Plan.PERSONAL);
+
+        assertThat(billingService.hasManagedBilling(user)).isTrue();
     }
 }
