@@ -14,4 +14,6 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
     Page<EmailThread> findByOwnerOrderByUpdatedAtDesc(User owner, Pageable pageable);
 
     Optional<EmailThread> findByIdAndOwner(Long id, User owner);
+
+    long countByOwner(User owner);
 }

@@ -50,13 +50,23 @@
   <h1 th:switch="${status}">
     <span th:case="404">Page not found</span>
     <span th:case="400">Bad request</span>
+    <span th:case="402">You've reached your plan limit</span>
     <span th:case="409">Conflict saving data</span>
     <span th:case="502">Mail server unreachable</span>
     <span th:case="503">Service unavailable</span>
     <span th:case="*">Something went wrong</span>
   </h1>
   <p th:text="${message}">An unexpected error occurred. Please try again in a moment.</p>
-  <a href="/" class="home-link">← Back to MailIM</a>
+  <form th:if="${upgradePlan}" th:action="@{/billing/checkout}" method="post" style="margin-top:28px;">
+    <input type="hidden" name="plan" th:value="${upgradePlan}">
+    <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+    <button type="submit" class="home-link" style="border:0;cursor:pointer;font-family:inherit;font-size:inherit;">
+      Upgrade to Personal
+    </button>
+  </form>
+  <a href="/" class="home-link" th:if="${upgradePlan == null}">← Back to MailIM</a>
+  <a href="/threads" class="home-link" th:if="${upgradePlan != null}"
+     style="background:transparent;color:#4f80ff;margin-top:12px;">Back to inbox</a>
   <p style="margin-top:16px;font-size:13px;color:#888;">
     Still stuck? <a href="mailto:support@mailaim.app" style="color:#4f80ff;">Contact support</a>
   </p>

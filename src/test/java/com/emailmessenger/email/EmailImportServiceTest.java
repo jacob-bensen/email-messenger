@@ -1,6 +1,10 @@
 package com.emailmessenger.email;
 
+import com.emailmessenger.billing.PlanLimitExceededException;
+import com.emailmessenger.billing.PlanLimitKind;
+import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Message;
+import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.RecipientType;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
@@ -22,6 +26,7 @@ import java.util.Optional;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 @SpringBootTest
 @ActiveProfiles("dev")
@@ -199,6 +204,47 @@ class EmailImportServiceTest {
         long bccCount = result.get().getRecipients().stream()
                 .filter(r -> RecipientType.BCC == r.getRecipientType()).count();
         assertThat(bccCount).isEqualTo(1);
+    }
+
+    @Test
+    void importingNewThreadAtFreeCapThrowsPlanLimitExceeded() throws Exception {
+        for (int i = 0; i < 500; i++) {
+            threadRepo.save(new EmailThread(owner, "seeded " + i, "<seed" + i + "@t>"));
+        }
+
+        MimeMessage mail = plainMessage("<over@test.com>", "Over the cap",
+                "alice@test.com", null, null, "Body.");
+
+        PlanLimitExceededException ex = catchThrowableOfType(
+                () -> importService.importMessage(mail, owner),
+                PlanLimitExceededException.class);
+
+        assertThat(ex).isNotNull();
+        assertThat(ex.getCurrentPlan()).isEqualTo(Plan.FREE);
+        assertThat(ex.getKind()).isEqualTo(PlanLimitKind.THREAD_COUNT);
+        assertThat(ex.getLimit()).isEqualTo(500);
+        // The over-the-cap import didn't insert anything.
+        assertThat(messageRepo.findByMessageIdHeaderAndOwner("<over@test.com>", owner)).isEmpty();
+    }
+
+    @Test
+    void replyToExistingThreadAtFreeCapStillSucceeds() throws Exception {
+        // Seed 499 throwaway threads, then a real root we'll reply to (500 total).
+        for (int i = 0; i < 499; i++) {
+            threadRepo.save(new EmailThread(owner, "seeded " + i, "<seed" + i + "@t>"));
+        }
+        importService.importMessage(
+                plainMessage("<root-at-cap@test.com>", "At cap", "alice@test.com", null, null, "First."),
+                owner);
+
+        // Replying joins the existing thread — no new-thread creation, so the cap doesn't apply.
+        MimeMessage reply = plainMessage("<reply-at-cap@test.com>", "Re: At cap", "bob@test.com",
+                "<root-at-cap@test.com>", null, "Got it.");
+        Optional<Message> result = importService.importMessage(reply, owner);
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getThread().getMessageCount()).isEqualTo(2);
+        assertThat(threadRepo.count()).isEqualTo(500L);
     }
 
     private MimeMessage plainMessage(String messageId, String subject, String from,

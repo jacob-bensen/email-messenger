@@ -1,5 +1,6 @@
 package com.emailmessenger.email;
 
+import com.emailmessenger.billing.PlanLimitService;
 import com.emailmessenger.domain.Attachment;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Message;
@@ -24,14 +25,17 @@ public class EmailImportService {
     private final EmailThreadRepository threadRepo;
     private final MessageRepository messageRepo;
     private final ParticipantRepository participantRepo;
+    private final PlanLimitService planLimitService;
     private final MimeMessageParser parser = new MimeMessageParser();
 
     EmailImportService(EmailThreadRepository threadRepo,
                        MessageRepository messageRepo,
-                       ParticipantRepository participantRepo) {
+                       ParticipantRepository participantRepo,
+                       PlanLimitService planLimitService) {
         this.threadRepo = threadRepo;
         this.messageRepo = messageRepo;
         this.participantRepo = participantRepo;
+        this.planLimitService = planLimitService;
     }
 
     /**
@@ -107,6 +111,8 @@ public class EmailImportService {
             if (existing.isPresent()) return existing.get();
         }
 
+        // Brand-new thread — gate on the owner's plan cap before persisting.
+        planLimitService.enforceCanCreateThread(owner);
         return threadRepo.save(new EmailThread(owner, parsed.subject(), parsed.messageId()));
     }
 }

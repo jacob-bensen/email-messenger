@@ -1,5 +1,8 @@
 package com.emailmessenger.web;
 
+import com.emailmessenger.billing.PlanLimitExceededException;
+import com.emailmessenger.billing.PlanLimitKind;
+import com.emailmessenger.domain.Plan;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -29,6 +32,11 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/test/server-error")
         void server() { throw new RuntimeException("unexpected error"); }
+
+        @GetMapping("/test/plan-limit")
+        void planLimit() {
+            throw new PlanLimitExceededException(Plan.FREE, PlanLimitKind.THREAD_COUNT, 500, 500);
+        }
     }
 
     MockMvc mockMvc;
@@ -74,6 +82,16 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(view().name("error"))
                 .andExpect(model().attribute("status", 500))
+                .andExpect(model().attributeExists("message"));
+    }
+
+    @Test
+    void planLimitExceededReturns402WithUpgradeCta() throws Exception {
+        mockMvc.perform(get("/test/plan-limit"))
+                .andExpect(status().isPaymentRequired())
+                .andExpect(view().name("error"))
+                .andExpect(model().attribute("status", 402))
+                .andExpect(model().attribute("upgradePlan", "personal"))
                 .andExpect(model().attributeExists("message"));
     }
 }

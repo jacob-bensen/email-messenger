@@ -110,6 +110,14 @@ class BillingServiceTest {
     }
 
     @Test
+    void freePlanIsRejectedForCheckout() {
+        User user = newUser("free@example.com");
+        assertThatThrownBy(() -> billingService.startCheckout(user, Plan.FREE))
+                .isInstanceOf(BillingException.class)
+                .hasMessageContaining("Free");
+    }
+
+    @Test
     void missingPriceIdRaisesBillingException() {
         properties.setPersonalPriceId("");
         User user = newUser("noprice@example.com");

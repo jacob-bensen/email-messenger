@@ -37,6 +37,9 @@ public class BillingService {
 
     @Transactional
     public String startCheckout(User user, Plan plan) {
+        if (plan == Plan.FREE) {
+            throw new BillingException("Free plan does not require checkout.");
+        }
         if (plan == Plan.ENTERPRISE) {
             throw new BillingException("Enterprise is sales-assisted; use the contact link.");
         }

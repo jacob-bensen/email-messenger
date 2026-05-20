@@ -3,6 +3,7 @@ package com.emailmessenger.domain;
 import java.util.Locale;
 
 public enum Plan {
+    FREE,
     PERSONAL,
     TEAM,
     ENTERPRISE;

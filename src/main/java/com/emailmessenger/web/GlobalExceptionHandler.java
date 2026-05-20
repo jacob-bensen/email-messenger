@@ -1,6 +1,7 @@
 package com.emailmessenger.web;
 
 import com.emailmessenger.billing.BillingException;
+import com.emailmessenger.billing.PlanLimitExceededException;
 import com.emailmessenger.email.EmailImportException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -55,6 +56,19 @@ class GlobalExceptionHandler {
         model.addAttribute("status", 502);
         model.addAttribute("message",
                 "We couldn't reach our payment provider. Please try again in a moment.");
+        return "error";
+    }
+
+    @ExceptionHandler(PlanLimitExceededException.class)
+    String planLimit(PlanLimitExceededException ex, HttpServletRequest request,
+                     Model model, HttpServletResponse response) {
+        log.info("Plan limit hit for {} ({} {}/{})", request.getRequestURI(),
+                ex.getKind(), ex.getCurrent(), ex.getLimit());
+        response.setStatus(HttpStatus.PAYMENT_REQUIRED.value());
+        model.addAttribute("status", 402);
+        model.addAttribute("message",
+                "You've hit your Free plan limit. Upgrade to Personal to keep importing.");
+        model.addAttribute("upgradePlan", "personal");
         return "error";
     }
 
