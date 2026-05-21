@@ -30,6 +30,56 @@
 
 <main class="thread-page">
 
+  <div th:if="${upgradeModal != null}"
+       id="upgrade-modal-overlay"
+       class="modal-overlay"
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="upgrade-modal-title">
+    <div class="modal-card">
+      <button type="button" class="modal-close" aria-label="Dismiss"
+              onclick="document.getElementById('upgrade-modal-overlay').remove();">×</button>
+      <h2 id="upgrade-modal-title" class="modal-title">You've hit your Free plan limit</h2>
+      <p class="modal-sub"
+         th:text="|Your inbox holds ${upgradeModal.current} of ${upgradeModal.limit} threads on the Free plan. Upgrade to keep importing without losing a message.|">
+        Your inbox holds 500 of 500 threads on the Free plan. Upgrade to keep importing without losing a message.
+      </p>
+      <div class="plan-compare">
+        <div class="plan-compare-col">
+          <div class="plan-compare-tag">Current</div>
+          <div class="plan-compare-name">Free</div>
+          <ul class="plan-compare-features">
+            <li>1 mailbox</li>
+            <li>500 threads</li>
+            <li>30-day history</li>
+          </ul>
+        </div>
+        <div class="plan-compare-col plan-compare-featured">
+          <div class="plan-compare-tag">Recommended</div>
+          <div class="plan-compare-name">Personal — $9/mo</div>
+          <ul class="plan-compare-features">
+            <li>3 mailboxes</li>
+            <li>Unlimited threads</li>
+            <li>Unlimited history</li>
+            <li>14-day free trial · no card today</li>
+          </ul>
+        </div>
+      </div>
+      <form th:action="@{/billing/checkout}" method="post" class="modal-cta-form">
+        <input type="hidden" name="plan" th:value="${upgradeModal.upgradeTargetParam()}">
+        <input type="hidden" th:if="${_csrf != null}"
+               th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <button type="submit" class="btn btn-primary modal-cta">
+          Upgrade to Personal
+        </button>
+      </form>
+      <button type="button" class="modal-dismiss-link"
+              onclick="document.getElementById('upgrade-modal-overlay').remove();">
+        Not now
+      </button>
+    </div>
+  </div>
+
   <div th:if="${billingBanner != null and billingBanner.trialEnding}"
        class="trial-banner"
        th:classappend="${billingBanner.daysLeft <= 3} ? ' trial-banner-urgent' : ''">

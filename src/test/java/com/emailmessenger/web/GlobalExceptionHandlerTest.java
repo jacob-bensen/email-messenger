@@ -2,6 +2,7 @@ package com.emailmessenger.web;
 
 import com.emailmessenger.billing.PlanLimitExceededException;
 import com.emailmessenger.billing.PlanLimitKind;
+import com.emailmessenger.billing.UpgradeModal;
 import com.emailmessenger.domain.Plan;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.NoSuchElementException;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -86,12 +88,21 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void planLimitExceededReturns402WithUpgradeCta() throws Exception {
-        mockMvc.perform(get("/test/plan-limit"))
-                .andExpect(status().isPaymentRequired())
-                .andExpect(view().name("error"))
-                .andExpect(model().attribute("status", 402))
-                .andExpect(model().attribute("upgradePlan", "personal"))
-                .andExpect(model().attributeExists("message"));
+    void planLimitExceededRedirectsToThreadsWithUpgradeModalFlash() throws Exception {
+        UpgradeModal modal = (UpgradeModal) mockMvc.perform(get("/test/plan-limit"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/threads"))
+                .andExpect(flash().attributeExists("upgradeModal"))
+                .andReturn()
+                .getFlashMap()
+                .get("upgradeModal");
+
+        assertThat(modal).isNotNull();
+        assertThat(modal.currentPlan()).isEqualTo(Plan.FREE);
+        assertThat(modal.kind()).isEqualTo(PlanLimitKind.THREAD_COUNT);
+        assertThat(modal.limit()).isEqualTo(500);
+        assertThat(modal.current()).isEqualTo(500);
+        assertThat(modal.upgradeTarget()).isEqualTo(Plan.PERSONAL);
+        assertThat(modal.upgradeTargetParam()).isEqualTo("personal");
     }
 }

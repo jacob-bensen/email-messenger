@@ -2,6 +2,7 @@ package com.emailmessenger.web;
 
 import com.emailmessenger.billing.BillingException;
 import com.emailmessenger.billing.PlanLimitExceededException;
+import com.emailmessenger.billing.UpgradeModal;
 import com.emailmessenger.email.EmailImportException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -13,7 +14,9 @@ import org.springframework.mail.MailException;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.FlashMap;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.servlet.support.RequestContextUtils;
 
 import java.util.NoSuchElementException;
 
@@ -60,16 +63,12 @@ class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(PlanLimitExceededException.class)
-    String planLimit(PlanLimitExceededException ex, HttpServletRequest request,
-                     Model model, HttpServletResponse response) {
+    String planLimit(PlanLimitExceededException ex, HttpServletRequest request) {
         log.info("Plan limit hit for {} ({} {}/{})", request.getRequestURI(),
                 ex.getKind(), ex.getCurrent(), ex.getLimit());
-        response.setStatus(HttpStatus.PAYMENT_REQUIRED.value());
-        model.addAttribute("status", 402);
-        model.addAttribute("message",
-                "You've hit your Free plan limit. Upgrade to Personal to keep importing.");
-        model.addAttribute("upgradePlan", "personal");
-        return "error";
+        FlashMap flash = RequestContextUtils.getOutputFlashMap(request);
+        flash.put("upgradeModal", UpgradeModal.fromException(ex));
+        return "redirect:/threads";
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

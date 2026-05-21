@@ -4,7 +4,10 @@ import com.emailmessenger.auth.UserService;
 import com.emailmessenger.billing.BillingBanner;
 import com.emailmessenger.billing.BillingBannerService;
 import com.emailmessenger.billing.BillingService;
+import com.emailmessenger.billing.PlanLimitKind;
+import com.emailmessenger.billing.UpgradeModal;
 import com.emailmessenger.domain.EmailThread;
+import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.service.Conversation;
@@ -195,6 +198,20 @@ class ThreadControllerTest {
 
         verify(threadRepository, never())
                 .findByOwnerOrderByUpdatedAtDesc(any(User.class), any(Pageable.class));
+    }
+
+    @Test
+    void upgradeModalFlashAttributeIsRenderedOnInbox() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(empty);
+        UpgradeModal modal = new UpgradeModal(Plan.FREE, PlanLimitKind.THREAD_COUNT,
+                500L, 500L, Plan.PERSONAL);
+
+        mockMvc.perform(get("/threads").principal(principal).flashAttr("upgradeModal", modal))
+                .andExpect(status().isOk())
+                .andExpect(view().name("threads"))
+                .andExpect(model().attribute("upgradeModal", modal));
     }
 
     @Test

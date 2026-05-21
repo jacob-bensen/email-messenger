@@ -137,6 +137,127 @@ body {
   margin-right: auto;
 }
 
+/* ── Upgrade Modal ──────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 1000;
+  animation: modalFadeIn 140ms ease-out;
+}
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.modal-card {
+  position: relative;
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  padding: 36px 32px 28px;
+  max-width: 560px;
+  width: 100%;
+  text-align: center;
+}
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  border: 0;
+  background: transparent;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.modal-close:hover { color: var(--text); }
+.modal-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.modal-sub {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 22px;
+  line-height: 1.5;
+}
+.plan-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 22px;
+  text-align: left;
+}
+.plan-compare-col {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--bg);
+}
+.plan-compare-featured {
+  border-color: var(--brand);
+  background: var(--surface);
+  box-shadow: 0 2px 12px rgba(79, 128, 255, 0.12);
+}
+.plan-compare-tag {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.plan-compare-featured .plan-compare-tag { color: var(--brand); }
+.plan-compare-name {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.plan-compare-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+.plan-compare-features li::before {
+  content: "✓";
+  color: var(--brand);
+  margin-right: 6px;
+  font-weight: 700;
+}
+.modal-cta-form { margin: 0; }
+.modal-cta {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  border: 0;
+  cursor: pointer;
+}
+.modal-dismiss-link {
+  display: inline-block;
+  margin-top: 12px;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.modal-dismiss-link:hover { color: var(--text); text-decoration: underline; }
+@media (max-width: 520px) {
+  .modal-card { padding: 28px 20px 20px; }
+  .plan-compare { grid-template-columns: 1fr; }
+}
+
 /* ── Empty State ────────────────────────────────────── */
 .empty-state {
   text-align: center;
@@ -510,6 +631,13 @@ body {
   .lockout-banner {
     background: var(--surface);
     border-color: var(--border);
+  }
+  .modal-overlay { background: rgba(0, 0, 0, 0.65); }
+  .modal-card { box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55); }
+  .plan-compare-col { background: #0d1117; }
+  .plan-compare-featured {
+    background: var(--surface);
+    box-shadow: 0 2px 12px rgba(79, 128, 255, 0.2);
   }
 }
 
