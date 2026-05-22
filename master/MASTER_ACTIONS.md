@@ -3,6 +3,12 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
+[PLAN-REVIEW] EPIC-02 "Done means" is code-complete as of 2026-05-22.
+Recommended next Primary Objective: EPIC-03 Mailbox Onboarding
+(scheduled IMAP polling + onboarding wizard) so newly-arrived mail keeps
+showing up post-signup. Confirm the switch before the next session edits
+`master/PLAN.md`.
+
 ## Infrastructure
 
 - [ ] Provision a PostgreSQL 16 database (Supabase / Neon / Railway /
@@ -27,6 +33,14 @@ asset delivery — that the agent cannot complete in code. Group by area.
       cancel, switch plans between Personal/Team); set the portal default
       return URL to `https://<prod-domain>/threads` and supply
       `BILLING_PORTAL_RETURN_URL` to the deploy.
+
+## Mailbox encryption (blocks safe prod deploy)
+
+- [ ] Generate `MAILBOX_ENCRYPTION_PASSWORD` (a strong random string) and
+      `MAILBOX_ENCRYPTION_SALT` (hex-encoded 8 bytes,
+      e.g. `openssl rand -hex 8`) and supply both to the deploy. Without
+      these the app boots with a known dev-fallback key (warned in logs)
+      that leaves every stored IMAP password trivially decryptable.
 
 ## OAuth & third-party APIs
 

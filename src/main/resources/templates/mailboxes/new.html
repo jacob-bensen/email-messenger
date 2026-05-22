@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Connect a mailbox — MailIM</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/" class="brand">MailIM</a>
+  <nav class="header-nav">
+    <a href="/threads">Inbox</a>
+    <a href="/pricing">Pricing</a>
+    <form th:action="@{/logout}" method="post" class="header-logout">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button type="submit" class="link-button">Sign out</button>
+    </form>
+  </nav>
+</header>
+
+<main class="auth-page">
+  <section class="auth-card">
+    <h1>Connect your mailbox</h1>
+    <p class="auth-sub">
+      MailIM logs in over IMAP and pulls your most recent threads. Use an
+      app password rather than your main account password — Gmail, iCloud
+      and Fastmail all support them.
+    </p>
+
+    <form method="post" th:action="@{/mailboxes}" th:object="${mailboxForm}" class="auth-form" autocomplete="off">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+      <div th:if="${#fields.hasGlobalErrors()}" class="alert alert-error">
+        <p th:each="err : ${#fields.globalErrors()}" th:text="${err}" style="margin:0;">Connection failed.</p>
+      </div>
+
+      <label class="auth-label">
+        <span>IMAP host</span>
+        <input type="text" th:field="*{host}" placeholder="imap.gmail.com" required>
+        <span class="auth-hint" th:if="${#fields.hasErrors('host')}" th:errors="*{host}"
+              style="color:#b91c1c;">Host error.</span>
+      </label>
+
+      <label class="auth-label">
+        <span>Port</span>
+        <input type="number" th:field="*{port}" min="1" max="65535" required>
+        <span class="auth-hint" th:if="${#fields.hasErrors('port')}" th:errors="*{port}"
+              style="color:#b91c1c;">Port error.</span>
+      </label>
+
+      <label class="auth-checkbox">
+        <input type="checkbox" th:field="*{ssl}">
+        <span>Use TLS/SSL on connect (recommended; uncheck only for STARTTLS on port 143)</span>
+      </label>
+
+      <label class="auth-label">
+        <span>Username</span>
+        <input type="text" th:field="*{username}" placeholder="you@example.com" autocomplete="username" required>
+        <span class="auth-hint" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"
+              style="color:#b91c1c;">Username error.</span>
+      </label>
+
+      <label class="auth-label">
+        <span>App password</span>
+        <input type="password" th:field="*{password}" autocomplete="new-password" required>
+        <span class="auth-hint" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"
+              style="color:#b91c1c;">Password error.</span>
+      </label>
+
+      <button type="submit" class="btn btn-primary auth-submit">Connect mailbox</button>
+    </form>
+
+    <p class="auth-alt">
+      <a href="/threads">← Back to inbox</a>
+    </p>
+  </section>
+</main>
+
+</body>
+</html>

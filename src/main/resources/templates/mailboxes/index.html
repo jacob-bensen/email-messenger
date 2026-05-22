@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Mailboxes — MailIM</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/" class="brand">MailIM</a>
+  <nav class="header-nav">
+    <a href="/threads">Inbox</a>
+    <a href="/pricing">Pricing</a>
+    <form th:action="@{/logout}" method="post" class="header-logout">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button type="submit" class="link-button">Sign out</button>
+    </form>
+  </nav>
+</header>
+
+<main class="thread-page">
+  <h1 class="section-title">Mailboxes</h1>
+
+  <div th:if="${mailboxes == null or mailboxes.isEmpty()}" class="empty-state">
+    <h2>No mailboxes connected</h2>
+    <p>Connect your first IMAP mailbox to start importing threads.</p>
+    <a href="/mailboxes/new" class="btn btn-primary">Connect a mailbox</a>
+  </div>
+
+  <div th:if="${mailboxes != null and !mailboxes.isEmpty()}">
+    <div class="thread-list">
+      <div th:each="mb : ${mailboxes}" class="thread-item">
+        <div class="thread-subject" th:text="${mb.username + ' @ ' + mb.host}">user@host</div>
+        <div class="thread-meta">
+          <span th:if="${mb.lastSyncedAt != null}"
+                th:text="|Last synced ${#temporals.format(mb.lastSyncedAt, 'MMM d, yyyy h:mm a')}|">
+            Last synced Jan 1
+          </span>
+          <span th:if="${mb.lastSyncedAt == null}">Not yet synced</span>
+          <span th:if="${mb.lastSyncError != null}" style="color:#b91c1c;"
+                th:text="|Sync error: ${mb.lastSyncError}|">Sync error</span>
+        </div>
+      </div>
+    </div>
+    <p style="margin-top:24px;">
+      <a href="/mailboxes/new" class="btn btn-primary">+ Add another mailbox</a>
+    </p>
+  </div>
+</main>
+
+</body>
+</html>

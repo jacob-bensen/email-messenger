@@ -14,7 +14,7 @@
   <nav class="header-nav">
     <span class="kbd-hint"><kbd>j</kbd><kbd>k</kbd> navigate · <kbd>Enter</kbd> open</span>
     <a href="/pricing">Pricing</a>
-    <a href="/settings/mailboxes">+ Add mailbox</a>
+    <a href="/mailboxes">Mailboxes</a>
     <form th:if="${hasBilling}" th:action="@{/billing/portal}" method="post" class="header-logout">
       <input type="hidden" th:if="${_csrf != null}"
              th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
@@ -39,10 +39,17 @@
     <div class="modal-card">
       <button type="button" class="modal-close" aria-label="Dismiss"
               onclick="document.getElementById('upgrade-modal-overlay').remove();">×</button>
-      <h2 id="upgrade-modal-title" class="modal-title">You've hit your Free plan limit</h2>
-      <p class="modal-sub"
+      <h2 id="upgrade-modal-title" class="modal-title"
+          th:text="${upgradeModal.kind.name() == 'MAILBOX_COUNT'} ? 'You''ve hit your Free plan mailbox limit' : 'You''ve hit your Free plan limit'">
+        You've hit your Free plan limit
+      </h2>
+      <p class="modal-sub" th:if="${upgradeModal.kind.name() == 'THREAD_COUNT'}"
          th:text="|Your inbox holds ${upgradeModal.current} of ${upgradeModal.limit} threads on the Free plan. Upgrade to keep importing without losing a message.|">
         Your inbox holds 500 of 500 threads on the Free plan. Upgrade to keep importing without losing a message.
+      </p>
+      <p class="modal-sub" th:if="${upgradeModal.kind.name() == 'MAILBOX_COUNT'}"
+         th:text="|You've connected ${upgradeModal.current} of ${upgradeModal.limit} mailboxes on the Free plan. Upgrade to connect more accounts.|">
+        You've connected 1 of 1 mailboxes on the Free plan. Upgrade to connect more accounts.
       </p>
       <div class="plan-compare">
         <div class="plan-compare-col">
@@ -132,7 +139,7 @@
   <div class="empty-state" th:if="${threads != null and threads.totalElements == 0}">
     <h2>Your inbox is empty</h2>
     <p>Connect a mailbox to see your email threads as IM-style conversations.</p>
-    <a href="/pricing" class="btn btn-primary">See plans &amp; get started</a>
+    <a href="/mailboxes/new" class="btn btn-primary">Connect a mailbox</a>
   </div>
 
 </main>

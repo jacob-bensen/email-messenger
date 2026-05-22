@@ -4,6 +4,7 @@ import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
+import com.emailmessenger.repository.MailAccountRepository;
 import com.emailmessenger.repository.SubscriptionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,10 +28,14 @@ public class PlanLimitService {
 
     private final SubscriptionRepository subscriptions;
     private final EmailThreadRepository threads;
+    private final MailAccountRepository mailAccounts;
 
-    PlanLimitService(SubscriptionRepository subscriptions, EmailThreadRepository threads) {
+    PlanLimitService(SubscriptionRepository subscriptions,
+                     EmailThreadRepository threads,
+                     MailAccountRepository mailAccounts) {
         this.subscriptions = subscriptions;
         this.threads = threads;
+        this.mailAccounts = mailAccounts;
     }
 
     /**
@@ -67,6 +72,25 @@ public class PlanLimitService {
         long current = threads.countByOwner(user);
         if (current >= limit) {
             throw new PlanLimitExceededException(plan, PlanLimitKind.THREAD_COUNT, limit, current);
+        }
+    }
+
+    /**
+     * Throws {@link PlanLimitExceededException} when the user is already at
+     * their plan's mailbox cap. Call this just before persisting a new
+     * {@code MailAccount}. The Free plan caps at 1 mailbox, so a free user
+     * who tries to wire up a second mailbox gets the upgrade modal.
+     */
+    @Transactional(readOnly = true)
+    public void enforceCanCreateMailbox(User user) {
+        Plan plan = currentPlan(user);
+        long limit = PlanLimits.forPlan(plan).mailboxes();
+        if (limit == PlanLimits.UNLIMITED) {
+            return;
+        }
+        long current = mailAccounts.countByUser(user);
+        if (current >= limit) {
+            throw new PlanLimitExceededException(plan, PlanLimitKind.MAILBOX_COUNT, limit, current);
         }
     }
 }

@@ -48,6 +48,11 @@ billing:
     portal-return-url: ${BILLING_PORTAL_RETURN_URL:http://localhost:8080/threads}
     trial-days: 14
 
+mailbox:
+  encryption:
+    password: ${MAILBOX_ENCRYPTION_PASSWORD:}
+    salt: ${MAILBOX_ENCRYPTION_SALT:}
+
 logging:
   level:
     com.emailmessenger: DEBUG
@@ -109,6 +114,11 @@ billing:
     cancel-url: ${BILLING_CANCEL_URL:}
     portal-return-url: ${BILLING_PORTAL_RETURN_URL:}
     trial-days: ${BILLING_TRIAL_DAYS:14}
+
+mailbox:
+  encryption:
+    password: ${MAILBOX_ENCRYPTION_PASSWORD:}
+    salt: ${MAILBOX_ENCRYPTION_SALT:}
 
 logging:
   level:

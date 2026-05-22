@@ -2,10 +2,12 @@ package com.emailmessenger.billing;
 
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.domain.EmailThread;
+import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
+import com.emailmessenger.repository.MailAccountRepository;
 import com.emailmessenger.repository.SubscriptionRepository;
 import com.emailmessenger.repository.UserRepository;
 import com.emailmessenger.service.ReplyService;
@@ -29,6 +31,7 @@ class PlanLimitServiceTest {
     @Autowired UserRepository users;
     @Autowired SubscriptionRepository subscriptions;
     @Autowired EmailThreadRepository threads;
+    @Autowired MailAccountRepository mailAccounts;
 
     @MockBean StripeCheckoutGateway gateway;
     @MockBean StripePortalGateway portalGateway;
@@ -129,6 +132,44 @@ class PlanLimitServiceTest {
         PlanLimits caps = planLimitService.limitsFor(user);
         assertThat(caps.mailboxes()).isEqualTo(1);
         assertThat(caps.threads()).isEqualTo(500);
+    }
+
+    @Test
+    void enforceCanCreateMailboxPassesUnderFreeCap() {
+        User user = newUser("mbox-under@example.com");
+
+        planLimitService.enforceCanCreateMailbox(user); // 0 mailboxes < 1 cap, no throw
+    }
+
+    @Test
+    void enforceCanCreateMailboxThrowsAtFreeCap() {
+        User user = newUser("mbox-cap@example.com");
+        mailAccounts.save(new MailAccount(user, "imap.example.com", 993, true,
+                "first@example.com", "ciphertext"));
+
+        PlanLimitExceededException ex = catchThrowableOfType(
+                () -> planLimitService.enforceCanCreateMailbox(user),
+                PlanLimitExceededException.class);
+
+        assertThat(ex).isNotNull();
+        assertThat(ex.getCurrentPlan()).isEqualTo(Plan.FREE);
+        assertThat(ex.getKind()).isEqualTo(PlanLimitKind.MAILBOX_COUNT);
+        assertThat(ex.getLimit()).isEqualTo(1);
+        assertThat(ex.getCurrent()).isEqualTo(1);
+    }
+
+    @Test
+    void enforceCanCreateMailboxAllowsThreeOnPersonal() {
+        User user = newUser("mbox-personal@example.com");
+        Subscription sub = new Subscription(user, "cus_mbox", "active");
+        sub.setPlan(Plan.PERSONAL);
+        subscriptions.save(sub);
+        for (int i = 0; i < 2; i++) {
+            mailAccounts.save(new MailAccount(user, "host" + i, 993, true,
+                    "u" + i + "@example.com", "ct"));
+        }
+
+        planLimitService.enforceCanCreateMailbox(user); // 2 < 3, no throw
     }
 
     private void seedThreads(User owner, int count) {
