@@ -27,4 +27,21 @@ public interface ImapClient {
      */
     List<MimeMessage> fetchRecentInbox(String host, int port, boolean ssl,
                                        String username, String password, int limit);
+
+    /**
+     * Incremental sync: fetches every INBOX message whose IMAP UID is
+     * strictly greater than {@code lastSeenUid}. When {@code lastSeenUid}
+     * is {@code null}, no messages are returned but the highest UID in
+     * INBOX is reported back so subsequent polls can pick up from there
+     * without re-importing the initial-sync window.
+     *
+     * @return new messages plus the highest UID observed; {@code newLastUid}
+     *         is {@code null} only when the folder is empty and there is
+     *         no prior baseline.
+     * @throws ImapConnectionException on any IMAP failure
+     */
+    IncrementalFetch fetchSinceUid(String host, int port, boolean ssl,
+                                   String username, String password, Long lastSeenUid);
+
+    record IncrementalFetch(List<MimeMessage> messages, Long newLastUid) {}
 }

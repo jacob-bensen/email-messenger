@@ -5,6 +5,7 @@ import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.Store;
+import jakarta.mail.UIDFolder;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +63,53 @@ class JakartaImapClient implements ImapClient {
             return out;
         } catch (MessagingException e) {
             log.info("IMAP fetch failed for {}@{}: {}", username, host, e.getMessage());
+            throw new ImapConnectionException(humanReadable(e), e);
+        } finally {
+            closeQuietly(inbox);
+            closeQuietly(store);
+        }
+    }
+
+    @Override
+    public IncrementalFetch fetchSinceUid(String host, int port, boolean ssl,
+                                          String username, String password, Long lastSeenUid) {
+        Store store = null;
+        Folder inbox = null;
+        try {
+            store = openStore(host, port, ssl, username, password);
+            inbox = store.getFolder("INBOX");
+            inbox.open(Folder.READ_ONLY);
+            if (!(inbox instanceof UIDFolder uidFolder)) {
+                throw new ImapConnectionException(
+                        "Server does not support IMAP UIDs (required for incremental sync).", null);
+            }
+            int total = inbox.getMessageCount();
+            if (lastSeenUid == null) {
+                if (total == 0) {
+                    return new IncrementalFetch(List.of(), null);
+                }
+                long baseline = uidFolder.getUID(inbox.getMessage(total));
+                return new IncrementalFetch(List.of(), baseline);
+            }
+            if (total == 0) {
+                return new IncrementalFetch(List.of(), lastSeenUid);
+            }
+            Message[] msgs = uidFolder.getMessagesByUID(lastSeenUid + 1L, UIDFolder.LASTUID);
+            List<MimeMessage> out = new ArrayList<>(msgs.length);
+            long newLast = lastSeenUid;
+            for (Message m : msgs) {
+                if (m == null) continue;
+                long uid = uidFolder.getUID(m);
+                // Some servers include the boundary UID; filter strictly above lastSeen.
+                if (uid <= lastSeenUid) continue;
+                if (m instanceof MimeMessage mime) {
+                    out.add(new MimeMessage(mime));
+                }
+                if (uid > newLast) newLast = uid;
+            }
+            return new IncrementalFetch(out, newLast);
+        } catch (MessagingException e) {
+            log.info("IMAP incremental fetch failed for {}@{}: {}", username, host, e.getMessage());
             throw new ImapConnectionException(humanReadable(e), e);
         } finally {
             closeQuietly(inbox);

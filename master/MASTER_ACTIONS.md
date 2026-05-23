@@ -3,12 +3,6 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
-[PLAN-REVIEW] EPIC-02 "Done means" is code-complete as of 2026-05-22.
-Recommended next Primary Objective: EPIC-03 Mailbox Onboarding
-(scheduled IMAP polling + onboarding wizard) so newly-arrived mail keeps
-showing up post-signup. Confirm the switch before the next session edits
-`master/PLAN.md`.
-
 ## Infrastructure
 
 - [ ] Provision a PostgreSQL 16 database (Supabase / Neon / Railway /

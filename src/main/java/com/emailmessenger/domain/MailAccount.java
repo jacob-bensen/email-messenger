@@ -47,6 +47,9 @@ public class MailAccount {
     @Column(name = "last_sync_error", length = 500)
     private String lastSyncError;
 
+    @Column(name = "last_seen_uid")
+    private Long lastSeenUid;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -86,6 +89,8 @@ public class MailAccount {
     public String getPasswordCiphertext() { return passwordCiphertext; }
     public LocalDateTime getLastSyncedAt() { return lastSyncedAt; }
     public String getLastSyncError() { return lastSyncError; }
+    public Long getLastSeenUid() { return lastSeenUid; }
+    public void setLastSeenUid(Long lastSeenUid) { this.lastSeenUid = lastSeenUid; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 

@@ -52,6 +52,10 @@ mailbox:
   encryption:
     password: ${MAILBOX_ENCRYPTION_PASSWORD:}
     salt: ${MAILBOX_ENCRYPTION_SALT:}
+  polling:
+    enabled: ${MAILBOX_POLLING_ENABLED:false}
+    interval-ms: ${MAILBOX_POLLING_INTERVAL_MS:300000}
+    initial-delay-ms: ${MAILBOX_POLLING_INITIAL_DELAY_MS:30000}
 
 logging:
   level:
@@ -119,6 +123,10 @@ mailbox:
   encryption:
     password: ${MAILBOX_ENCRYPTION_PASSWORD:}
     salt: ${MAILBOX_ENCRYPTION_SALT:}
+  polling:
+    enabled: ${MAILBOX_POLLING_ENABLED:false}
+    interval-ms: ${MAILBOX_POLLING_INTERVAL_MS:300000}
+    initial-delay-ms: ${MAILBOX_POLLING_INITIAL_DELAY_MS:30000}
 
 logging:
   level:
