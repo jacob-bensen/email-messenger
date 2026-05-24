@@ -24,6 +24,9 @@ public class MailboxForm {
     @NotBlank(message = "Password is required.")
     private String password;
 
+    /** Wizard provider slug, carried through validation re-renders. */
+    private String provider;
+
     public String getHost() { return host; }
     public void setHost(String host) { this.host = host == null ? null : host.trim(); }
 
@@ -38,4 +41,7 @@ public class MailboxForm {
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+
+    public String getProvider() { return provider; }
+    public void setProvider(String provider) { this.provider = provider == null ? null : provider.trim(); }
 }

@@ -81,11 +81,42 @@ class MailboxControllerTest {
     }
 
     @Test
-    void newMailboxFormRenders() throws Exception {
+    void newMailboxWithoutProviderRendersPicker() throws Exception {
         mockMvc.perform(get("/mailboxes/new").with(user("mailbox@example.com")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("mailboxes/new"))
-                .andExpect(model().attributeExists("mailboxForm"));
+                .andExpect(model().attributeExists("providers"))
+                .andExpect(model().attributeDoesNotExist("provider"));
+    }
+
+    @Test
+    void newMailboxWithGmailPresetFillsHostAndPort() throws Exception {
+        mockMvc.perform(get("/mailboxes/new")
+                        .param("provider", "gmail")
+                        .with(user("mailbox@example.com")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("mailboxes/new"))
+                .andExpect(model().attributeExists("mailboxForm"))
+                .andExpect(model().attribute("mailboxForm",
+                        org.hamcrest.Matchers.hasProperty("host",
+                                org.hamcrest.Matchers.equalTo("imap.gmail.com"))))
+                .andExpect(model().attribute("mailboxForm",
+                        org.hamcrest.Matchers.hasProperty("port",
+                                org.hamcrest.Matchers.equalTo(993))))
+                .andExpect(model().attribute("mailboxForm",
+                        org.hamcrest.Matchers.hasProperty("provider",
+                                org.hamcrest.Matchers.equalTo("gmail"))))
+                .andExpect(model().attributeExists("provider"));
+    }
+
+    @Test
+    void newMailboxWithUnknownProviderFallsBackToPicker() throws Exception {
+        mockMvc.perform(get("/mailboxes/new")
+                        .param("provider", "bogus")
+                        .with(user("mailbox@example.com")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("mailboxes/new"))
+                .andExpect(model().attributeDoesNotExist("provider"));
     }
 
     @Test

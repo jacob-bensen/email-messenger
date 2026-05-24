@@ -22,45 +22,118 @@
   </nav>
 </header>
 
-<main class="auth-page">
-  <section class="auth-card">
-    <h1>Connect your mailbox</h1>
+<main class="auth-page wizard-page">
+
+  <!-- Step 1: provider picker (no form yet — either fresh GET or
+       fallback when an unknown provider slug was requested) -->
+  <section class="auth-card" th:if="${mailboxForm == null}">
+    <ol class="wizard-steps" aria-label="Setup progress">
+      <li class="wizard-step is-active">1. Pick your provider</li>
+      <li class="wizard-step">2. Connect</li>
+      <li class="wizard-step">3. Read your mail as chat</li>
+    </ol>
+    <h1>Which mailbox?</h1>
     <p class="auth-sub">
-      MailIM logs in over IMAP and pulls your most recent threads. Use an
-      app password rather than your main account password — Gmail, iCloud
-      and Fastmail all support them.
+      Pick your email provider — we'll fill in the IMAP server details and
+      show you where to grab an app password.
+    </p>
+
+    <ul class="provider-grid">
+      <li th:each="p : ${providers}">
+        <a th:href="@{/mailboxes/new(provider=${p.slug})}"
+           th:classappend="${p.slug == 'other'} ? ' provider-card-other' : ''"
+           class="provider-card">
+          <span class="provider-name" th:text="${p.displayName}">Provider</span>
+          <span class="provider-host" th:if="${p.slug != 'other'}"
+                th:text="${p.host}">imap.example.com</span>
+          <span class="provider-host" th:if="${p.slug == 'other'}">
+            Manual setup
+          </span>
+        </a>
+      </li>
+    </ul>
+
+    <p class="auth-alt">
+      <a href="/threads">← Back to inbox</a>
+    </p>
+  </section>
+
+  <!-- Step 2: credentials with provider preset (or the "Other" fallback
+       where the user fills the host/port themselves) -->
+  <section class="auth-card" th:if="${mailboxForm != null}">
+    <ol class="wizard-steps" aria-label="Setup progress">
+      <li class="wizard-step">1. Pick your provider</li>
+      <li class="wizard-step is-active">2. Connect</li>
+      <li class="wizard-step">3. Read your mail as chat</li>
+    </ol>
+    <h1 th:text="${provider != null ? 'Connect ' + provider.displayName : 'Connect your mailbox'}">Connect your mailbox</h1>
+    <p class="auth-sub" th:text="${provider != null ? provider.appPasswordHelp : 'MailIM logs in over IMAP and pulls your most recent threads. Use an app password rather than your main account password.'}">
+      Use an app password rather than your main account password.
+    </p>
+    <p class="auth-sub" th:if="${provider != null and provider.appPasswordUrl != null}" style="margin-top:-8px;">
+      <a th:href="${provider.appPasswordUrl}" target="_blank" rel="noopener"
+         th:text="|Open ${provider.displayName} app-password settings →|">
+        Open provider app-password settings →
+      </a>
     </p>
 
     <form method="post" th:action="@{/mailboxes}" th:object="${mailboxForm}" class="auth-form" autocomplete="off">
       <input type="hidden" th:if="${_csrf != null}"
              th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <input type="hidden" th:field="*{provider}">
 
       <div th:if="${#fields.hasGlobalErrors()}" class="alert alert-error">
         <p th:each="err : ${#fields.globalErrors()}" th:text="${err}" style="margin:0;">Connection failed.</p>
       </div>
 
-      <label class="auth-label">
-        <span>IMAP host</span>
-        <input type="text" th:field="*{host}" placeholder="imap.gmail.com" required>
-        <span class="auth-hint" th:if="${#fields.hasErrors('host')}" th:errors="*{host}"
-              style="color:#b91c1c;">Host error.</span>
-      </label>
+      <!-- For known providers we lock host/port/SSL behind a "Show advanced" toggle
+           so the wizard stays one screen. CSS hides .wizard-advanced unless toggled. -->
+      <details class="wizard-advanced" th:if="${provider != null and provider.slug != 'other'}"
+               th:attr="open=${#fields.hasErrors('host') or #fields.hasErrors('port')} ? 'open'">
+        <summary>Advanced: IMAP host &amp; port</summary>
+        <label class="auth-label">
+          <span>IMAP host</span>
+          <input type="text" th:field="*{host}" required>
+          <span class="auth-hint" th:if="${#fields.hasErrors('host')}" th:errors="*{host}"
+                style="color:#b91c1c;">Host error.</span>
+        </label>
+        <label class="auth-label">
+          <span>Port</span>
+          <input type="number" th:field="*{port}" min="1" max="65535" required>
+          <span class="auth-hint" th:if="${#fields.hasErrors('port')}" th:errors="*{port}"
+                style="color:#b91c1c;">Port error.</span>
+        </label>
+        <label class="auth-checkbox">
+          <input type="checkbox" th:field="*{ssl}">
+          <span>Use TLS/SSL on connect</span>
+        </label>
+      </details>
+
+      <!-- "Other" provider OR fallback when provider is unknown: the host fields
+           must be visible because we don't have a sensible preset to hide. -->
+      <th:block th:if="${provider == null or provider.slug == 'other'}">
+        <label class="auth-label">
+          <span>IMAP host</span>
+          <input type="text" th:field="*{host}" placeholder="imap.example.com" required>
+          <span class="auth-hint" th:if="${#fields.hasErrors('host')}" th:errors="*{host}"
+                style="color:#b91c1c;">Host error.</span>
+        </label>
+        <label class="auth-label">
+          <span>Port</span>
+          <input type="number" th:field="*{port}" min="1" max="65535" required>
+          <span class="auth-hint" th:if="${#fields.hasErrors('port')}" th:errors="*{port}"
+                style="color:#b91c1c;">Port error.</span>
+        </label>
+        <label class="auth-checkbox">
+          <input type="checkbox" th:field="*{ssl}">
+          <span>Use TLS/SSL on connect (recommended; uncheck only for STARTTLS on port 143)</span>
+        </label>
+      </th:block>
 
       <label class="auth-label">
-        <span>Port</span>
-        <input type="number" th:field="*{port}" min="1" max="65535" required>
-        <span class="auth-hint" th:if="${#fields.hasErrors('port')}" th:errors="*{port}"
-              style="color:#b91c1c;">Port error.</span>
-      </label>
-
-      <label class="auth-checkbox">
-        <input type="checkbox" th:field="*{ssl}">
-        <span>Use TLS/SSL on connect (recommended; uncheck only for STARTTLS on port 143)</span>
-      </label>
-
-      <label class="auth-label">
-        <span>Username</span>
-        <input type="text" th:field="*{username}" placeholder="you@example.com" autocomplete="username" required>
+        <span>Email address</span>
+        <input type="text" th:field="*{username}" placeholder="you@example.com"
+               autocomplete="username" required>
         <span class="auth-hint" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"
               style="color:#b91c1c;">Username error.</span>
       </label>
@@ -76,7 +149,7 @@
     </form>
 
     <p class="auth-alt">
-      <a href="/threads">← Back to inbox</a>
+      <a th:href="@{/mailboxes/new}">← Pick a different provider</a>
     </p>
   </section>
 </main>

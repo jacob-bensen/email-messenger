@@ -13,8 +13,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import java.security.Principal;
 import java.util.List;
+import java.util.Optional;
 
 @Controller
 @RequestMapping("/mailboxes")
@@ -37,17 +39,34 @@ class MailboxController {
     }
 
     @GetMapping("/new")
-    String newMailbox(Model model) {
-        if (!model.containsAttribute("mailboxForm")) {
-            model.addAttribute("mailboxForm", new MailboxForm());
+    String newMailbox(@RequestParam(value = "provider", required = false) String providerSlug,
+                      Model model) {
+        Optional<MailboxProvider> selected = MailboxProvider.fromSlug(providerSlug);
+        model.addAttribute("providers", MailboxProvider.values());
+        if (selected.isEmpty()) {
+            return "mailboxes/new";
         }
+        MailboxProvider provider = selected.get();
+        if (!model.containsAttribute("mailboxForm")) {
+            MailboxForm form = new MailboxForm();
+            form.setHost(provider.getHost());
+            form.setPort(provider.getPort());
+            form.setSsl(provider.isSsl());
+            form.setProvider(provider.getSlug());
+            model.addAttribute("mailboxForm", form);
+        }
+        model.addAttribute("provider", provider);
         return "mailboxes/new";
     }
 
     @PostMapping
     String createMailbox(@Valid @ModelAttribute("mailboxForm") MailboxForm form,
                          BindingResult binding,
+                         Model model,
                          Principal principal) {
+        Optional<MailboxProvider> selected = MailboxProvider.fromSlug(form.getProvider());
+        selected.ifPresent(p -> model.addAttribute("provider", p));
+        model.addAttribute("providers", MailboxProvider.values());
         if (binding.hasErrors()) {
             return "mailboxes/new";
         }

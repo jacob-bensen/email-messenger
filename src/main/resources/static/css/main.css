@@ -944,3 +944,86 @@ body {
     border-color: #5a2a2a;
   }
 }
+
+/* ── Connect-a-mailbox wizard ───────────────────────── */
+.wizard-page { max-width: 560px; }
+.wizard-steps {
+  list-style: none;
+  display: flex;
+  gap: 8px;
+  margin: 0 0 24px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.wizard-step {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--bg);
+  text-align: center;
+  border: 1px solid var(--border);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.wizard-step.is-active {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
+.provider-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 24px 0 16px;
+  padding: 0;
+}
+.provider-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.12s, background 0.12s;
+}
+.provider-card:hover {
+  border-color: var(--brand);
+  background: var(--surface);
+}
+.provider-name { font-weight: 700; font-size: 15px; }
+.provider-host { font-size: 12px; color: var(--text-muted); font-family: ui-monospace, SFMono-Regular, monospace; }
+.provider-card-other { grid-column: 1 / -1; }
+
+.wizard-advanced {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.wizard-advanced summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 0;
+  list-style: none;
+}
+.wizard-advanced summary::-webkit-details-marker { display: none; }
+.wizard-advanced[open] { padding-bottom: 4px; }
+.wizard-advanced[open] summary { margin-bottom: 8px; color: var(--text); }
+.wizard-advanced .auth-label,
+.wizard-advanced .auth-checkbox { margin-top: 10px; }
+
+@media (max-width: 480px) {
+  .provider-grid { grid-template-columns: 1fr; }
+  .wizard-steps { font-size: 11px; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .provider-card { background: #0d1117; }
+  .provider-card:hover { background: var(--surface); }
+}
