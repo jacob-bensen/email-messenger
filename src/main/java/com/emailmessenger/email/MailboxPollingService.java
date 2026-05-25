@@ -5,27 +5,26 @@ import com.emailmessenger.repository.MailAccountRepository;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 /**
- * Periodic IMAP poll of every connected mailbox. One {@link ImapClient}
- * call per account fetches messages whose UID is strictly greater than
- * the persisted {@code lastSeenUid} cursor; each new message is fed to
+ * IMAP poll of a connected mailbox: one {@link ImapClient} call fetches
+ * messages whose UID is strictly greater than the persisted
+ * {@code lastSeenUid} cursor; each new message is fed to
  * {@link EmailImportService} and the cursor is advanced. Per-account
  * failures are recorded on the row and the loop continues so a single
  * bad mailbox cannot block the rest.
  *
- * <p>Behind {@code mailbox.polling.enabled=true} so production can roll
- * the feature on without redeploying app code, and so tests don't have
- * a scheduler racing them by default.
+ * <p>Always present so the manual "Sync now" controller path can invoke
+ * {@link #pollOne(Long)} regardless of whether the scheduler feature
+ * flag is on; the recurring schedule itself lives in
+ * {@link MailboxPollingScheduler}, which is gated by
+ * {@code mailbox.polling.enabled=true}.
  */
 @Component
-@ConditionalOnProperty(name = "mailbox.polling.enabled", havingValue = "true")
 public class MailboxPollingService {
 
     private static final Logger log = LoggerFactory.getLogger(MailboxPollingService.class);
@@ -45,8 +44,6 @@ public class MailboxPollingService {
         this.importService = importService;
     }
 
-    @Scheduled(fixedDelayString = "${mailbox.polling.interval-ms:300000}",
-               initialDelayString = "${mailbox.polling.initial-delay-ms:30000}")
     public void pollAll() {
         List<MailAccount> all = accounts.findAll();
         log.debug("Polling {} mailbox(es)", all.size());

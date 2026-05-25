@@ -1027,3 +1027,55 @@ body {
   .provider-card { background: #0d1117; }
   .provider-card:hover { background: var(--surface); }
 }
+
+/* ── Mailboxes index: rows + sync-now ───────────────── */
+.mailbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.mailbox-row:last-child { border-bottom: none; }
+.mailbox-row-main { flex: 1; min-width: 0; }
+.mailbox-meta { display: block; }
+.mailbox-error {
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.mailbox-error-msg { color: #b91c1c; font-weight: 600; }
+.mailbox-error-hint { color: #7f1d1d; margin-top: 2px; }
+.mailbox-sync-form { margin: 0; flex-shrink: 0; }
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: #f3f4f6; }
+.mailbox-sync-btn { padding: 6px 14px; font-size: 13px; }
+.mailbox-add-cta { margin-top: 24px; }
+
+@media (prefers-color-scheme: dark) {
+  .mailbox-error {
+    background: #2a1414;
+    border-color: #5a2a2a;
+  }
+  .mailbox-error-msg { color: #fecaca; }
+  .mailbox-error-hint { color: #fca5a5; }
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .btn-secondary:hover { background: #1f242c; }
+}
+
+@media (max-width: 480px) {
+  .mailbox-row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .mailbox-sync-btn { width: 100%; }
+}

@@ -5,17 +5,24 @@ import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.ImapConnectionException;
 import com.emailmessenger.email.MailAccountService;
+import com.emailmessenger.email.MailboxPollingService;
+import com.emailmessenger.repository.MailAccountRepository;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
 import java.security.Principal;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @Controller
@@ -23,18 +30,28 @@ import java.util.Optional;
 class MailboxController {
 
     private final MailAccountService mailAccountService;
+    private final MailAccountRepository mailAccountRepository;
+    private final MailboxPollingService pollingService;
     private final UserService userService;
 
-    MailboxController(MailAccountService mailAccountService, UserService userService) {
+    MailboxController(MailAccountService mailAccountService,
+                      MailAccountRepository mailAccountRepository,
+                      MailboxPollingService pollingService,
+                      UserService userService) {
         this.mailAccountService = mailAccountService;
+        this.mailAccountRepository = mailAccountRepository;
+        this.pollingService = pollingService;
         this.userService = userService;
     }
 
     @GetMapping
     String listMailboxes(Principal principal, Model model) {
         User owner = userService.requireByEmail(principal.getName());
-        List<MailAccount> accounts = mailAccountService.list(owner);
-        model.addAttribute("mailboxes", accounts);
+        LocalDateTime now = LocalDateTime.now();
+        List<MailboxView> mailboxes = mailAccountService.list(owner).stream()
+                .map(a -> MailboxView.from(a, now))
+                .toList();
+        model.addAttribute("mailboxes", mailboxes);
         return "mailboxes/index";
     }
 
@@ -87,5 +104,30 @@ class MailboxController {
                     "Could not connect to that mailbox: " + e.getMessage());
             return "mailboxes/new";
         }
+    }
+
+    @PostMapping("/{id}/sync")
+    String syncMailbox(@PathVariable Long id,
+                       Principal principal,
+                       RedirectAttributes redirectAttributes) {
+        User owner = userService.requireByEmail(principal.getName());
+        // Ownership check: a NoSuchElementException for a foreign or unknown id
+        // surfaces as a 404 through GlobalExceptionHandler — same shape as
+        // ThreadController.viewConversation.
+        MailAccount account = mailAccountRepository.findByIdAndUser(id, owner)
+                .orElseThrow(NoSuchElementException::new);
+        pollingService.pollOne(account.getId());
+        // Reload so we see whatever pollOne wrote — lastSyncedAt + cleared
+        // error on success, or lastSyncError populated on a connect failure.
+        MailAccount reloaded = mailAccountRepository.findById(account.getId())
+                .orElseThrow(NoSuchElementException::new);
+        if (reloaded.getLastSyncError() != null) {
+            redirectAttributes.addFlashAttribute("syncError",
+                    "Sync failed: " + reloaded.getLastSyncError());
+        } else {
+            redirectAttributes.addFlashAttribute("syncMessage",
+                    "Mailbox synced.");
+        }
+        return "redirect:/mailboxes";
     }
 }

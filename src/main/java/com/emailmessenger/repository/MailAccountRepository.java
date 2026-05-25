@@ -14,4 +14,6 @@ public interface MailAccountRepository extends JpaRepository<MailAccount, Long> 
     long countByUser(User user);
 
     Optional<MailAccount> findByUserAndHostAndUsername(User user, String host, String username);
+
+    Optional<MailAccount> findByIdAndUser(Long id, User user);
 }

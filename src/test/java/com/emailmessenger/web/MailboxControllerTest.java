@@ -8,7 +8,9 @@ import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.ImapConnectionException;
 import com.emailmessenger.email.MailAccountService;
+import com.emailmessenger.email.MailboxPollingService;
 import com.emailmessenger.repository.EmailThreadRepository;
+import com.emailmessenger.repository.MailAccountRepository;
 import com.emailmessenger.repository.UserRepository;
 import com.emailmessenger.service.ReplyService;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,8 +52,10 @@ class MailboxControllerTest {
     @Autowired MockMvc mockMvc;
     @Autowired UserService userService;
     @Autowired UserRepository userRepository;
+    @Autowired MailAccountRepository mailAccountRepository;
 
     @MockBean MailAccountService mailAccountService;
+    @MockBean MailboxPollingService pollingService;
     // Avoid SMTP / Stripe wiring noise.
     @MockBean ReplyService replyService;
     @MockBean EmailThreadRepository threadRepository;
@@ -221,5 +225,75 @@ class MailboxControllerTest {
                         .param("username", "user@example.com")
                         .param("password", "app-pw"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void anonymousSyncIsRedirectedToLogin() throws Exception {
+        mockMvc.perform(post("/mailboxes/1/sync").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("**/login"));
+    }
+
+    @Test
+    void syncWithoutCsrfIsForbidden() throws Exception {
+        MailAccount saved = mailAccountRepository.save(new MailAccount(
+                owner, "imap.example.com", 993, true,
+                "owner@example.com", "ciphertext"));
+        mockMvc.perform(post("/mailboxes/" + saved.getId() + "/sync")
+                        .with(user("mailbox@example.com")))
+                .andExpect(status().isForbidden());
+        Mockito.verifyNoInteractions(pollingService);
+    }
+
+    @Test
+    void syncOnOwnedMailboxRedirectsWithSuccessFlash() throws Exception {
+        MailAccount saved = mailAccountRepository.save(new MailAccount(
+                owner, "imap.example.com", 993, true,
+                "owner@example.com", "ciphertext"));
+        saved.markSynced();
+        saved = mailAccountRepository.save(saved);
+        Long mailboxId = saved.getId();
+
+        mockMvc.perform(post("/mailboxes/" + mailboxId + "/sync")
+                        .with(user("mailbox@example.com"))
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/mailboxes"))
+                .andExpect(flash().attributeExists("syncMessage"));
+
+        verify(pollingService).pollOne(mailboxId);
+    }
+
+    @Test
+    void syncOnMailboxOwnedByAnotherUserReturns404() throws Exception {
+        userService.register("other@example.com", "password1", "Other User");
+        User other = userRepository.findByEmail("other@example.com").orElseThrow();
+        MailAccount foreign = mailAccountRepository.save(new MailAccount(
+                other, "imap.example.com", 993, true,
+                "other@example.com", "ciphertext"));
+
+        mockMvc.perform(post("/mailboxes/" + foreign.getId() + "/sync")
+                        .with(user("mailbox@example.com"))
+                        .with(csrf()))
+                .andExpect(status().isNotFound());
+
+        Mockito.verifyNoInteractions(pollingService);
+    }
+
+    @Test
+    void syncSurfacesPollErrorAsFlash() throws Exception {
+        MailAccount saved = mailAccountRepository.save(new MailAccount(
+                owner, "imap.example.com", 993, true,
+                "owner@example.com", "ciphertext"));
+        saved.markSyncError("Login failed");
+        saved = mailAccountRepository.save(saved);
+
+        mockMvc.perform(post("/mailboxes/" + saved.getId() + "/sync")
+                        .with(user("mailbox@example.com"))
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/mailboxes"))
+                .andExpect(flash().attribute("syncError",
+                        org.hamcrest.Matchers.containsString("Login failed")));
     }
 }
