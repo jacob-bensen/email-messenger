@@ -50,6 +50,15 @@ public class MailAccount {
     @Column(name = "last_seen_uid")
     private Long lastSeenUid;
 
+    @Column(name = "consecutive_failure_count", nullable = false)
+    private int consecutiveFailureCount;
+
+    @Column(name = "polling_suspended", nullable = false)
+    private boolean pollingSuspended;
+
+    @Column(name = "next_poll_at")
+    private LocalDateTime nextPollAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -91,16 +100,33 @@ public class MailAccount {
     public String getLastSyncError() { return lastSyncError; }
     public Long getLastSeenUid() { return lastSeenUid; }
     public void setLastSeenUid(Long lastSeenUid) { this.lastSeenUid = lastSeenUid; }
+    public int getConsecutiveFailureCount() { return consecutiveFailureCount; }
+    public boolean isPollingSuspended() { return pollingSuspended; }
+    public LocalDateTime getNextPollAt() { return nextPollAt; }
+    public void setNextPollAt(LocalDateTime nextPollAt) { this.nextPollAt = nextPollAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
     public void markSynced() {
         this.lastSyncedAt = LocalDateTime.now();
         this.lastSyncError = null;
+        this.consecutiveFailureCount = 0;
+        this.pollingSuspended = false;
     }
 
     public void markSyncError(String message) {
         this.lastSyncError = message == null ? null
                 : (message.length() > 500 ? message.substring(0, 500) : message);
+    }
+
+    // Increment failure counter and flip the circuit breaker once it
+    // crosses the threshold. Caller still owns the lastSyncError text via
+    // markSyncError(...); this is a separate signal so connect-time fetch
+    // failures don't poison the polling counter.
+    public void recordPollFailure(int suspendAtThreshold) {
+        this.consecutiveFailureCount++;
+        if (this.consecutiveFailureCount >= suspendAtThreshold) {
+            this.pollingSuspended = true;
+        }
     }
 }

@@ -38,7 +38,12 @@
     <div class="thread-list">
       <div th:each="mb : ${mailboxes}" class="mailbox-row">
         <div class="mailbox-row-main">
-          <div class="thread-subject" th:text="${mb.username() + ' @ ' + mb.host()}">user@host</div>
+          <div class="thread-subject">
+            <span th:text="${mb.username() + ' @ ' + mb.host()}">user@host</span>
+            <span th:if="${mb.pollingSuspended()}"
+                  class="mailbox-suspended-badge"
+                  title="Automatic polling paused after consecutive failures">Polling paused</span>
+          </div>
           <div class="thread-meta mailbox-meta">
             <span th:if="${mb.synced()}"
                   th:text="|Last synced ${mb.lastSyncedRelative()}|">Last synced 5 minutes ago</span>
@@ -47,6 +52,10 @@
           <div th:if="${mb.lastSyncError() != null}" class="mailbox-error">
             <div class="mailbox-error-msg" th:text="|Sync error: ${mb.lastSyncError()}|">Sync error</div>
             <div class="mailbox-error-hint" th:text="${mb.errorHint()}">Try again.</div>
+            <div th:if="${mb.pollingSuspended()}" class="mailbox-error-hint"
+                 th:text="|Automatic polling paused after ${mb.consecutiveFailureCount()} consecutive failures. Use Sync now to retry once you've fixed the issue.|">
+              Automatic polling paused. Use Sync now to retry once fixed.
+            </div>
           </div>
         </div>
         <form th:action="@{/mailboxes/{id}/sync(id=${mb.id()})}"

@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest
@@ -120,7 +121,90 @@ class MailboxPollingServiceTest {
         MailAccount reloaded = accountRepository.findById(account.getId()).orElseThrow();
         assertThat(reloaded.getLastSeenUid()).isEqualTo(50L);
         assertThat(reloaded.getLastSyncError()).isEqualTo("Login failed");
+        assertThat(reloaded.getConsecutiveFailureCount()).isEqualTo(1);
+        assertThat(reloaded.isPollingSuspended()).isFalse();
         verify(importService, never()).importMessage(any(), any());
+    }
+
+    @Test
+    void successResetsFailureCounterAndUnsuspends() {
+        account.setLastSeenUid(50L);
+        accountRepository.save(account);
+        // Drive the breaker open via repeated failures, then a success closes it.
+        when(imapClient.fetchSinceUid(anyString(), anyInt(), anyBoolean(),
+                anyString(), anyString(), any()))
+                .thenThrow(new ImapConnectionException("Login failed", null));
+        for (int i = 0; i < PollingPolicy.SUSPEND_AT_FAILURES; i++) {
+            polling.pollOne(account.getId());
+        }
+        MailAccount tripped = accountRepository.findById(account.getId()).orElseThrow();
+        assertThat(tripped.isPollingSuspended()).isTrue();
+        assertThat(tripped.getConsecutiveFailureCount())
+                .isEqualTo(PollingPolicy.SUSPEND_AT_FAILURES);
+
+        Mockito.reset(imapClient, importService);
+        when(imapClient.fetchSinceUid(anyString(), anyInt(), anyBoolean(),
+                anyString(), anyString(), any()))
+                .thenReturn(new ImapClient.IncrementalFetch(List.of(), 60L));
+
+        polling.pollOne(account.getId());
+
+        MailAccount reloaded = accountRepository.findById(account.getId()).orElseThrow();
+        assertThat(reloaded.isPollingSuspended()).isFalse();
+        assertThat(reloaded.getConsecutiveFailureCount()).isZero();
+        assertThat(reloaded.getLastSyncError()).isNull();
+    }
+
+    @Test
+    void suspendedMailboxIsSkippedByPollAll() {
+        when(imapClient.fetchSinceUid(anyString(), anyInt(), anyBoolean(),
+                anyString(), anyString(), any()))
+                .thenThrow(new ImapConnectionException("Login failed", null));
+        // Trip the circuit breaker.
+        for (int i = 0; i < PollingPolicy.SUSPEND_AT_FAILURES; i++) {
+            polling.pollOne(account.getId());
+        }
+        assertThat(accountRepository.findById(account.getId()).orElseThrow().isPollingSuspended())
+                .isTrue();
+
+        Mockito.reset(imapClient, importService);
+
+        polling.pollAll();
+
+        // findDueForPolling must filter out the suspended row so the IMAP
+        // client is never touched on a tick.
+        verifyNoInteractions(imapClient);
+    }
+
+    @Test
+    void notYetDueMailboxIsSkippedByPollAll() {
+        // Stamp next_poll_at well into the future; both Clock-zone variants
+        // (UTC vs default) treat +1d as "not due now".
+        account.setNextPollAt(java.time.LocalDateTime.now().plusDays(1));
+        accountRepository.save(account);
+
+        polling.pollAll();
+
+        verifyNoInteractions(imapClient);
+    }
+
+    @Test
+    void successfulPollSchedulesNextPollAt() {
+        // Fresh account has next_poll_at = null → due immediately.
+        when(imapClient.fetchSinceUid(anyString(), anyInt(), anyBoolean(),
+                anyString(), anyString(), any()))
+                .thenReturn(new ImapClient.IncrementalFetch(List.of(), 1L));
+
+        polling.pollOne(account.getId());
+
+        MailAccount reloaded = accountRepository.findById(account.getId()).orElseThrow();
+        assertThat(reloaded.getNextPollAt()).isNotNull();
+        // Free tier (no subscription row) → next poll between 14:30 and 15:30 from now.
+        java.time.LocalDateTime earliest = java.time.LocalDateTime.now()
+                .plusMinutes(14).plusSeconds(20);
+        java.time.LocalDateTime latest = java.time.LocalDateTime.now()
+                .plusMinutes(15).plusSeconds(40);
+        assertThat(reloaded.getNextPollAt()).isAfter(earliest).isBefore(latest);
     }
 
     @Test

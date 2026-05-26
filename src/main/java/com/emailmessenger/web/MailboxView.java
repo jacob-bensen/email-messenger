@@ -20,7 +20,9 @@ public record MailboxView(
         boolean synced,
         String lastSyncedRelative,
         String lastSyncError,
-        String errorHint) {
+        String errorHint,
+        boolean pollingSuspended,
+        int consecutiveFailureCount) {
 
     private static final DateTimeFormatter ABSOLUTE_DATE =
             DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
@@ -33,7 +35,9 @@ public record MailboxView(
                 account.getLastSyncedAt() != null,
                 formatRelative(account.getLastSyncedAt(), now),
                 account.getLastSyncError(),
-                errorHint(account.getLastSyncError()));
+                errorHint(account.getLastSyncError()),
+                account.isPollingSuspended(),
+                account.getConsecutiveFailureCount());
     }
 
     static String formatRelative(LocalDateTime ts, LocalDateTime now) {

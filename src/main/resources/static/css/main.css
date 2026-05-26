@@ -1050,6 +1050,20 @@ body {
 }
 .mailbox-error-msg { color: #b91c1c; font-weight: 600; }
 .mailbox-error-hint { color: #7f1d1d; margin-top: 2px; }
+.mailbox-suspended-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 999px;
+  vertical-align: middle;
+}
 .mailbox-sync-form { margin: 0; flex-shrink: 0; }
 .btn-secondary {
   background: var(--surface);
@@ -1067,6 +1081,11 @@ body {
   }
   .mailbox-error-msg { color: #fecaca; }
   .mailbox-error-hint { color: #fca5a5; }
+  .mailbox-suspended-badge {
+    color: #fde68a;
+    background: #3a2a0a;
+    border-color: #78551a;
+  }
   .btn-secondary {
     background: var(--surface);
     color: var(--text);

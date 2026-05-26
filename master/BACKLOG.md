@@ -2,7 +2,8 @@
 
 Up to 10 items, each advancing a PLAN.md milestone. Pick from the top.
 
-1. **Plan-tiered poll interval + jitter + consecutive-failure circuit
-   breaker.** Free polls every 15 min, paid every 5 min; +/- 30s
-   jitter; suspend an account after N consecutive IMAP failures with
-   visible status. Milestone 4.
+_Empty._ EPIC-03 Mailbox Onboarding milestones 1-4 are all shipped. Next
+session should verify the Primary Objective against PLAN.md's "Done means"
+and propose the next Objective (likely turning on `MAILBOX_POLLING_ENABLED`
+in prod and pushing on integration tests with Testcontainers + GreenMail,
+or moving to a Dockerfile + CI so a paying user can actually reach the app).

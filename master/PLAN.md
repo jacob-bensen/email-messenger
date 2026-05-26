@@ -40,10 +40,11 @@ blank empty-state.
    button on `/mailboxes` that calls the same poll path on demand;
    `lastSyncedAt` and `lastSyncError` rendered with friendly relative
    timestamps and remediation hints.
-4. **Sane defaults + safety rails.** Polling interval pinned per plan
+4. ~~**Sane defaults + safety rails.** Polling interval pinned per plan
    tier (Free = 15 min, Personal+ = 5 min); jitter to avoid
    thundering-herd; circuit-breaker that suspends polling for an
-   account after N consecutive failures with operator-visible state.
+   account after N consecutive failures with operator-visible state.~~
+   Shipped 2026-05-26.
 
 ## Done means
 
