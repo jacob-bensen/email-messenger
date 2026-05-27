@@ -10,49 +10,50 @@ SaaS: Free (1 mailbox, 30-day history), Personal $9/mo (3 mailboxes,
 unlimited history), Team $29/mo (10 mailboxes, sharing), Enterprise $99/mo
 (SSO, audit). Annual billing offers 2 months free. Money comes from
 recurring subscriptions, with natural Free → Personal → Team upgrades as
-mailbox count and history needs grow. EPIC-02 Monetization Plumbing is
-code-complete (signup → Stripe trial → webhook-driven status → connect
-mailbox → see threads); deploy + Stripe live keys remain Master ops work.
+mailbox count and history needs grow. EPIC-02 Monetization Plumbing and
+EPIC-03 Mailbox Onboarding are both code-complete; live-deploy verification
+remains blocked on Master ops (hosting, domain, Stripe live keys).
 
 ## Primary Objective
 
-**Ship EPIC-03 Mailbox Onboarding.** Move the product from "a one-time
-sync at connect" to "the inbox you connect on day 1 keeps showing new
-mail on day 7 without anyone touching the app." A user is paying $9/mo
-for an always-fresh chat-style inbox; if new mail stops arriving after
-the initial sync, churn at the day-15 first-charge moment is near
-certain. This Objective also covers the first-mailbox onboarding wizard
-so the signup → trial → first-thread flow doesn't dump trial users on a
-blank empty-state.
+**Ship EPIC-04 Deployability.** Both monetization and mailbox onboarding
+are code-complete in `claude_routine`, but no paying user has ever
+reached the app because there is no built artifact, no compose stack, no
+CI, and no documented path from `git push` to a running URL. Until that
+exists, every shipped feature is theoretical revenue. This Objective ends
+when Master can run a single command on a vanilla VPS (or push to a Render
+/ Railway / Fly app) and have the production stack — Postgres, Flyway
+migrations, the Spring Boot app — come up healthy and serve `/pricing`
+over the open internet.
 
 ## Milestones
 
-1. **Scheduled IMAP polling behind a feature flag.** `@Scheduled` job
-   polls every connected mailbox on an interval, fetches messages newer
-   than the persisted UID cursor, feeds them through
-   `EmailImportService`, and advances the cursor; per-account failures
-   recorded on the row instead of breaking the loop.
-2. **First-mailbox onboarding wizard.** New trial user lands on a
-   guided one-page connect flow (host presets for Gmail / iCloud /
-   FastMail / Outlook, app-password help links, success/failure
-   feedback) instead of the bare `/mailboxes/new` form.
-3. **Manual "Sync now" trigger + sync status surfacing.** Per-mailbox
-   button on `/mailboxes` that calls the same poll path on demand;
-   `lastSyncedAt` and `lastSyncError` rendered with friendly relative
-   timestamps and remediation hints.
-4. ~~**Sane defaults + safety rails.** Polling interval pinned per plan
-   tier (Free = 15 min, Personal+ = 5 min); jitter to avoid
-   thundering-herd; circuit-breaker that suspends polling for an
-   account after N consecutive failures with operator-visible state.~~
-   Shipped 2026-05-26.
+1. ~~**Container build + local compose stack.** Multi-stage Dockerfile
+   producing a slim JRE image, `docker-compose.yml` wiring the app to
+   `postgres:16-alpine` with a healthcheck, env-var passthrough for every
+   `application.yml prod` placeholder, non-root runtime user, and a
+   `.dockerignore` so the build context stays under a few MB. README's
+   "Run locally" path uses the compose stack.~~ Shipped 2026-05-27.
+2. **GitHub Actions CI.** `.github/workflows/ci.yml` builds the project
+   on push / PR with Maven dep caching, runs `./mvnw verify`, and
+   builds (but does not push) the Docker image so a broken build is
+   caught before the first deploy. Optional: matrix on Java 21 only;
+   surface coverage / test count on the README.
+3. **Integration tests with Testcontainers + GreenMail.** A real
+   end-to-end happy-path test that boots Postgres via Testcontainers,
+   stands up GreenMail as a fake IMAP server, walks the
+   `connect mailbox → poll → see thread in /threads` flow against the
+   actual `EmailImportService` and `MailboxPollingService`. Gates CI so
+   future regressions on the revenue critical path fail fast.
+4. **Production smoke deploy.** Build artifact pushed to a public
+   registry (GHCR), one-page `DEPLOY.md` walks Master from `git pull` to
+   `https://mailaim.app/pricing` returning 200; HTTPS in front of the
+   container, env vars set from secrets, Flyway runs on first boot.
 
 ## Done means
 
-A test user signs up, completes Stripe Checkout in trial mode, connects
-a real Gmail mailbox through the wizard, sees the latest threads
-immediately, then sends themselves a new email from another address —
-within the configured poll interval that new message appears in the
-MailIM inbox without any user action, and `lastSyncedAt` on
-`/mailboxes` updates accordingly. If credentials expire or the IMAP
-server becomes unreachable, the failure is visible on `/mailboxes`
-with a clear next step.
+Master runs `docker compose up --build` against this repo on a fresh host
+and `curl https://<host>/pricing` returns 200 with the rendered pricing
+page; the Spring Boot logs show Flyway applied V1..V7 against a real
+Postgres; CI on `claude_routine` is green; and the integration test
+boots Testcontainers + GreenMail end-to-end without external network.

@@ -35,18 +35,25 @@ the nested-quote mess most mail clients show you.
 
 ### Prerequisites
 
-- Java 21
-- Docker (for the Postgres container)
+- Docker + Docker Compose v2 (for the all-in-one stack)
+- Java 21 (only if you want to run the app outside Docker)
 
-### Run locally
+### Run locally (Docker)
+
+```bash
+docker compose up --build
+```
+
+The app starts on `http://localhost:8080`, backed by a `postgres:16-alpine`
+container. On first launch you create an account, then connect a mailbox
+(IMAP host, port, username, app password).
+
+### Run locally (without Docker)
 
 ```bash
 docker compose up -d postgres
 ./mvnw spring-boot:run
 ```
-
-The app starts on `http://localhost:8080`. On first launch you connect a
-mailbox (IMAP host, port, username, app password).
 
 ### Tests
 

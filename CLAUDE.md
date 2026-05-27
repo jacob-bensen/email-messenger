@@ -79,7 +79,7 @@ commit. Add follow-ups as they emerge.
 - [x] CSS for the IM look: avatars, bubbles, day separators, dark mode.
 - [x] IMAP polling job (`@Scheduled`) behind a feature flag.
 - [ ] Integration tests with Testcontainers (Postgres) + GreenMail (SMTP/IMAP).
-- [ ] `Dockerfile` + `docker-compose.yml` (app + postgres).
+- [x] `Dockerfile` + `docker-compose.yml` (app + postgres).
 - [ ] GitHub Actions CI: build, test, cache Maven deps.
 
 ## Conventions

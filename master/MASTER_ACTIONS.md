@@ -3,17 +3,6 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
-## [PLAN-REVIEW]
-
-EPIC-03 Mailbox Onboarding is code-complete (all four milestones shipped
-2026-05-23 → 2026-05-26). The Primary Objective in `master/PLAN.md`
-needs review next session: either flip `MAILBOX_POLLING_ENABLED=true`
-in a live deploy and end-to-end-verify the "Done means" signal with a
-real Gmail mailbox, or pick the next Primary Objective. Likely
-candidates from the README roadmap: integration tests with
-Testcontainers + GreenMail, Dockerfile + `docker-compose.yml`, GitHub
-Actions CI.
-
 ## Infrastructure
 
 - [ ] Provision a PostgreSQL 16 database (Supabase / Neon / Railway /

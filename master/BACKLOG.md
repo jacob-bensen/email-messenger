@@ -2,8 +2,17 @@
 
 Up to 10 items, each advancing a PLAN.md milestone. Pick from the top.
 
-_Empty._ EPIC-03 Mailbox Onboarding milestones 1-4 are all shipped. Next
-session should verify the Primary Objective against PLAN.md's "Done means"
-and propose the next Objective (likely turning on `MAILBOX_POLLING_ENABLED`
-in prod and pushing on integration tests with Testcontainers + GreenMail,
-or moving to a Dockerfile + CI so a paying user can actually reach the app).
+## GitHub Actions CI workflow
+Add `.github/workflows/ci.yml` that runs `./mvnw -B verify` with Maven dep
+caching and builds the Docker image so broken builds fail before deploy.
+_Milestone 2 — GitHub Actions CI._
+
+## End-to-end Testcontainers + GreenMail integration test
+Boot Postgres via Testcontainers + GreenMail as fake IMAP, walk connect →
+poll → thread visible, gating CI on the revenue critical path.
+_Milestone 3 — Integration tests with Testcontainers + GreenMail._
+
+## DEPLOY.md + GHCR image publish
+One-page deploy guide (env vars, HTTPS terminator, run command) plus CI
+job that pushes the image to `ghcr.io/...` on `claude_routine` push.
+_Milestone 4 — Production smoke deploy._
