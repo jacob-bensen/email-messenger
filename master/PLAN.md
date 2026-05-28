@@ -34,11 +34,10 @@ over the open internet.
    `application.yml prod` placeholder, non-root runtime user, and a
    `.dockerignore` so the build context stays under a few MB. README's
    "Run locally" path uses the compose stack.~~ Shipped 2026-05-27.
-2. **GitHub Actions CI.** `.github/workflows/ci.yml` builds the project
+2. ~~**GitHub Actions CI.** `.github/workflows/ci.yml` builds the project
    on push / PR with Maven dep caching, runs `./mvnw verify`, and
    builds (but does not push) the Docker image so a broken build is
-   caught before the first deploy. Optional: matrix on Java 21 only;
-   surface coverage / test count on the README.
+   caught before the first deploy.~~ Shipped 2026-05-28.
 3. **Integration tests with Testcontainers + GreenMail.** A real
    end-to-end happy-path test that boots Postgres via Testcontainers,
    stands up GreenMail as a fake IMAP server, walks the

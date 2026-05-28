@@ -2,11 +2,6 @@
 
 Up to 10 items, each advancing a PLAN.md milestone. Pick from the top.
 
-## GitHub Actions CI workflow
-Add `.github/workflows/ci.yml` that runs `./mvnw -B verify` with Maven dep
-caching and builds the Docker image so broken builds fail before deploy.
-_Milestone 2 — GitHub Actions CI._
-
 ## End-to-end Testcontainers + GreenMail integration test
 Boot Postgres via Testcontainers + GreenMail as fake IMAP, walk connect →
 poll → thread visible, gating CI on the revenue critical path.

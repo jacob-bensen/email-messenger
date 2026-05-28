@@ -1465,3 +1465,8 @@ Legal (flagged in TODO_MASTER.md [LEGAL]):
 Code quality:
 - Only 3 Java files; no dead code, no repeated logic
 - `open-in-view=false` already set to prevent common JPA antipattern
+
+## 2026-05-28
+Shipped: added `.github/workflows/ci.yml` running `./mvnw -B verify` on push/PR with Maven dep caching, plus a Buildx job that builds (no push) the Dockerfile with GHA layer cache so broken builds fail before deploy.
+Advances: Milestone 2 — GitHub Actions CI.
+Master action: none
