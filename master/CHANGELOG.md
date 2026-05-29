@@ -1470,3 +1470,8 @@ Code quality:
 Shipped: added `.github/workflows/ci.yml` running `./mvnw -B verify` on push/PR with Maven dep caching, plus a Buildx job that builds (no push) the Dockerfile with GHA layer cache so broken builds fail before deploy.
 Advances: Milestone 2 — GitHub Actions CI.
 Master action: none
+
+## 2026-05-29
+Shipped: end-to-end Testcontainers + GreenMail integration test (`EndToEndMailboxFlowIntegrationTest`) — boots `postgres:16-alpine` via Testcontainers with `spring.datasource.*` rewired through `@DynamicPropertySource` (Flyway V1..V7 applied against real Postgres + Hibernate `validate`), spins up an in-process GreenMail IMAP server via `GreenMailExtension(ServerSetupTest.IMAP)`, delivers a `MimeMessage` into a provisioned mailbox, then drives MockMvc through `POST /mailboxes` (which runs the real `MailAccountService.connect` → `JakartaImapClient.verifyConnection` + `fetchRecentInbox` → `EmailImportService.importMessage`) and asserts `/threads` renders the imported subject and the row is persisted under the owner. `@EnabledIf("dockerAvailable")` skips the test when no Docker daemon is reachable so contributors without Docker still get a green build; CI on `ubuntu-latest` always has one. Added `com.icegreen:greenmail:2.0.1` + `greenmail-junit5:2.0.1` (test scope) to pom.xml. 189 tests pass.
+Advances: EPIC-04 Deployability — Milestone 3 (Integration tests with Testcontainers + GreenMail).
+Master action: none
