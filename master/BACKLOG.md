@@ -2,7 +2,7 @@
 
 Up to 10 items, each advancing a PLAN.md milestone. Pick from the top.
 
-## DEPLOY.md + GHCR image publish
-One-page deploy guide (env vars, HTTPS terminator, run command) plus CI
-job that pushes the image to `ghcr.io/...` on `claude_routine` push.
-_Milestone 4 — Production smoke deploy._
+<!-- empty: next session derives a task that closes Milestone 4 (smoke deploy
+proof) or, if Master completes the MASTER_ACTIONS items, advances to a new
+Primary Objective. -->
+

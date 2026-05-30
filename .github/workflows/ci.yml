@@ -47,10 +47,17 @@ jobs:
           retention-days: 7
 
   docker:
-    name: Build Docker image
+    name: Build & publish Docker image
     runs-on: ubuntu-latest
     needs: build
     timeout-minutes: 20
+
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      IMAGE_NAME: ghcr.io/${{ github.repository }}
 
     steps:
       - name: Check out source
@@ -59,13 +66,32 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build image (no push)
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/claude_routine' }}
+
+      - name: Build (and push on non-PR events)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: Dockerfile
-          push: false
+          push: ${{ github.event_name != 'pull_request' }}
           load: false
-          tags: email-messenger:ci-${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
