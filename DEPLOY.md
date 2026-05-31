@@ -102,19 +102,28 @@ mailaim.app {
 
 `caddy run` (or `caddy reload`) gets you Let's Encrypt automatically. On
 Render / Fly / Railway the platform terminates TLS for you and you point
-their HTTP service at the container's port.
+their HTTP service at the container's port; configure their healthcheck
+path to `/actuator/health` so traffic isn't routed before Postgres +
+Flyway are ready.
 
 ## 5. Verify
 
+The image's Docker `HEALTHCHECK` and the compose stack both poll
+`/actuator/health` every 30s after a 60s start-period. To smoke-check
+manually:
+
 ```bash
+curl -sSf https://<host>/actuator/health
+# {"status":"UP"}
+
 curl -sSf https://<host>/pricing | grep -o '<title>.*</title>'
 ```
 
-Expected: `<title>MailIM — Pricing</title>` (or the current pricing
-template). A 200 from `/pricing` confirms Flyway ran, the JVM came up,
-and the Thymeleaf engine renders. Then walk the live path: register →
-connect a mailbox → see imported threads in `/threads` → Upgrade → land
-back from Stripe Checkout.
+A 200 from `/actuator/health` confirms Flyway ran and the DataSource is
+reachable; a 200 from `/pricing` confirms the JVM came up and the
+Thymeleaf engine renders. Then walk the live path: register → connect a
+mailbox → see imported threads in `/threads` → Upgrade → land back from
+Stripe Checkout.
 
 ## 6. Configure Stripe webhook
 

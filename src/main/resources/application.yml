@@ -4,6 +4,28 @@ spring:
   profiles:
     active: dev
 
+# Actuator: only /actuator/health is exposed over HTTP. It aggregates the
+# DataSource probe (so a 200 confirms Flyway + Postgres are reachable) and
+# powers Docker HEALTHCHECK + every hosting platform's deploy gate.
+# Mail health is disabled because the SMTP host is best-effort, not a
+# liveness signal — a flaky relay must not flap the whole app.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  health:
+    mail:
+      enabled: false
+    defaults:
+      enabled: true
+
 ---
 spring:
   config:

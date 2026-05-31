@@ -38,7 +38,8 @@ class SecurityConfig {
                                 "/login", "/register",
                                 "/billing/cancel", "/billing/webhook",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
-                                "/error", "/h2-console/**")
+                                "/error", "/h2-console/**",
+                                "/actuator/health", "/actuator/health/**")
                         .permitAll()
                         .anyRequest().authenticated()
                 )
