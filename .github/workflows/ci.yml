@@ -46,6 +46,58 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  compose-smoke:
+    name: Compose stack smoke test
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Free host port 5432 if Postgres is preinstalled
+        run: sudo systemctl stop postgresql 2>/dev/null || true
+
+      - name: Start compose stack
+        run: docker compose up -d --build
+
+      - name: Wait for /actuator/health = UP
+        run: |
+          set -e
+          deadline=$((SECONDS + 180))
+          while [ $SECONDS -lt $deadline ]; do
+            if curl -fsS http://localhost:8080/actuator/health 2>/dev/null | grep -q '"status":"UP"'; then
+              echo "App reported UP after ${SECONDS}s"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Timed out waiting for /actuator/health=UP after 180s" >&2
+          exit 1
+
+      - name: Smoke /pricing returns 200 with brand marker
+        run: |
+          set -e
+          body=$(curl -fsS http://localhost:8080/pricing)
+          echo "$body" | grep -q 'MailIM' \
+            || { echo "Pricing response missing 'MailIM' marker" >&2; exit 1; }
+
+      - name: Smoke /login returns 200
+        run: |
+          set -e
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/login)
+          test "$code" = "200" \
+            || { echo "Unexpected /login status $code" >&2; exit 1; }
+
+      - name: Dump compose logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
   docker:
     name: Build & publish Docker image
     runs-on: ubuntu-latest

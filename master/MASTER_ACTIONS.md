@@ -3,6 +3,20 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
+## [PLAN-REVIEW]
+
+- [ ] EPIC-04 Deployability is code-complete (all 4 milestones shipped;
+      compose stack, CI, Testcontainers + GreenMail integration test,
+      GHCR publish, `DEPLOY.md`, /actuator/health, and now a CI
+      compose-smoke job that boots the stack and curls /pricing). The
+      only piece left in PLAN.md's "Done means" is the open-internet
+      domain proof, which is gated on the Infrastructure + Stripe items
+      below. Pick the next Primary Objective — strong default:
+      **acquisition** (no landing page at `/`, no Product-Hunt-ready
+      marketing site, so even with prod live, zero traffic converts).
+      Until this is picked, the routine has no milestone-advancing work
+      to do.
+
 ## Infrastructure
 
 - [ ] Provision a PostgreSQL 16 database (Supabase / Neon / Railway /
