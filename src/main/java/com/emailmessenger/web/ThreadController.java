@@ -51,11 +51,6 @@ class ThreadController {
         this.billingService = billingService;
     }
 
-    @GetMapping("/")
-    String home() {
-        return "redirect:/threads";
-    }
-
     @GetMapping("/threads")
     String listThreads(@RequestParam(defaultValue = "0") int page,
                        Principal principal,

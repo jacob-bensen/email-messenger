@@ -10,49 +10,52 @@ SaaS: Free (1 mailbox, 30-day history), Personal $9/mo (3 mailboxes,
 unlimited history), Team $29/mo (10 mailboxes, sharing), Enterprise $99/mo
 (SSO, audit). Annual billing offers 2 months free. Money comes from
 recurring subscriptions, with natural Free → Personal → Team upgrades as
-mailbox count and history needs grow. EPIC-02 Monetization Plumbing and
-EPIC-03 Mailbox Onboarding are both code-complete; live-deploy verification
-remains blocked on Master ops (hosting, domain, Stripe live keys).
+mailbox count and history needs grow. EPIC-02 Monetization, EPIC-03
+Mailbox Onboarding, and EPIC-04 Deployability are all code-complete in
+`claude_routine`; live deploy is gated on Master ops (hosting, domain,
+Stripe live keys, encryption secrets).
 
 ## Primary Objective
 
-**Ship EPIC-04 Deployability.** Both monetization and mailbox onboarding
-are code-complete in `claude_routine`, but no paying user has ever
-reached the app because there is no built artifact, no compose stack, no
-CI, and no documented path from `git push` to a running URL. Until that
-exists, every shipped feature is theoretical revenue. This Objective ends
-when Master can run a single command on a vanilla VPS (or push to a Render
-/ Railway / Fly app) and have the production stack — Postgres, Flyway
-migrations, the Spring Boot app — come up healthy and serve `/pricing`
-over the open internet.
+**Ship EPIC-05 Acquisition.** Even with prod live, every Product-Hunt /
+referral / SEO visitor currently hits a Spring 404 at `/` because the
+funnel only has `/pricing`, `/login`, `/register` — no marketing home,
+no story, no above-the-fold conversion path. Until `/` sells the product
+and routes warm traffic into `/register`, the only signups will be
+people who already know the URL of `/register`, which is nobody. This
+Objective ends when a cold visitor landing on `mailaim.app/` sees a real
+landing page, can pick a plan, and reach the registration form in two
+clicks — and we can credibly post the URL to Product Hunt without
+embarrassment.
 
 ## Milestones
 
-1. ~~**Container build + local compose stack.** Multi-stage Dockerfile
-   producing a slim JRE image, `docker-compose.yml` wiring the app to
-   `postgres:16-alpine` with a healthcheck, env-var passthrough for every
-   `application.yml prod` placeholder, non-root runtime user, and a
-   `.dockerignore` so the build context stays under a few MB. README's
-   "Run locally" path uses the compose stack.~~ Shipped 2026-05-27.
-2. ~~**GitHub Actions CI.** `.github/workflows/ci.yml` builds the project
-   on push / PR with Maven dep caching, runs `./mvnw verify`, and
-   builds (but does not push) the Docker image so a broken build is
-   caught before the first deploy.~~ Shipped 2026-05-28.
-3. **Integration tests with Testcontainers + GreenMail.** A real
-   end-to-end happy-path test that boots Postgres via Testcontainers,
-   stands up GreenMail as a fake IMAP server, walks the
-   `connect mailbox → poll → see thread in /threads` flow against the
-   actual `EmailImportService` and `MailboxPollingService`. Gates CI so
-   future regressions on the revenue critical path fail fast.
-4. **Production smoke deploy.** Build artifact pushed to a public
-   registry (GHCR), one-page `DEPLOY.md` walks Master from `git pull` to
-   `https://mailaim.app/pricing` returning 200; HTTPS in front of the
-   container, env vars set from secrets, Flyway runs on first boot.
+1. **Public landing page at `/`.** Real marketing home: hero + tagline +
+   primary CTA, IM-conversation preview, feature grid, how-it-works,
+   pricing recap with link to `/pricing`, final CTA, footer. Anonymous
+   visitors see the page; logged-in users redirect to `/threads` so the
+   marketing site doesn't intercept the app.
+2. **Conversion-tracked signup funnel.** `/register` (and `/register?plan=…`)
+   land with the plan + UTM source preserved through Stripe Checkout
+   success, and the trial-banner copy on `/threads` reflects which plan
+   was chosen. One source of truth for "where did this signup come from"
+   so we can read it back per-cohort.
+3. **SEO basics + OG previews.** `/`, `/pricing`, `/login`, `/register`
+   render unique `<title>`, `meta description`, canonical URL,
+   OpenGraph + Twitter card tags. `sitemap.xml` and `robots.txt` served
+   from the app so search engines and Slack/Twitter unfurls work without
+   manual asset uploads.
+4. **First-touch demo content.** A `?demo=1` mode (or shared demo user)
+   that shows a curated thread rendered as chat — no signup needed — so
+   Product Hunt visitors and Twitter clickers can see the product
+   actually working in 5 seconds.
 
 ## Done means
 
-Master runs `docker compose up --build` against this repo on a fresh host
-and `curl https://<host>/pricing` returns 200 with the rendered pricing
-page; the Spring Boot logs show Flyway applied V1..V7 against a real
-Postgres; CI on `claude_routine` is green; and the integration test
-boots Testcontainers + GreenMail end-to-end without external network.
+A cold visitor opens `https://mailaim.app/`, sees a polished landing page
+with hero, IM preview, features, pricing recap, and a "Start free" CTA;
+clicking it takes them to `/register`; UTM source and chosen plan are
+preserved through Stripe Checkout to the trial-banner on `/threads`;
+`view-source:` on every public page shows distinct title, description,
+canonical, and OG tags; `sitemap.xml` and `robots.txt` are served; and
+`/?demo=1` renders a working conversation view without an account.

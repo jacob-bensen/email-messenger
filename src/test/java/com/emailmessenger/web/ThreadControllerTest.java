@@ -82,13 +82,6 @@ class ThreadControllerTest {
     }
 
     @Test
-    void rootRedirectsToThreads() throws Exception {
-        mockMvc.perform(get("/").principal(principal))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/threads"));
-    }
-
-    @Test
     void listThreadsReturnsThreadsViewWithModel() throws Exception {
         Page<EmailThread> empty = new PageImpl<>(List.of());
         when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))

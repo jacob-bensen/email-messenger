@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MailIM — Your inbox, as a chat</title>
+  <meta name="description"
+        content="MailIM turns email threads into a modern instant-message conversation — bubbles, avatars, day separators, dark mode. Free to start.">
+  <meta property="og:title" content="MailIM — Your inbox, as a chat">
+  <meta property="og:description"
+        content="Stop scrolling through nested-quote walls. Read your email like a chat thread. Free to start.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/" class="brand">MailIM</a>
+  <nav class="header-nav">
+    <a href="/pricing">Pricing</a>
+    <a href="/login">Sign in</a>
+    <a href="/register" class="btn btn-primary btn-compact">Start free</a>
+  </nav>
+</header>
+
+<main class="marketing landing">
+
+  <section class="landing-hero">
+    <h1>Your inbox, as a chat.</h1>
+    <p class="landing-hero-sub">
+      MailIM imports your email threads over IMAP and renders them as a
+      modern instant-message conversation — bubbles, avatars, day
+      separators, dark mode. Skip the nested-quote wall.
+    </p>
+    <div class="landing-hero-ctas">
+      <a href="/register" class="btn btn-primary btn-lg">Start free</a>
+      <a href="/pricing" class="btn btn-secondary btn-lg">See pricing</a>
+    </div>
+    <p class="landing-hero-fineprint">No credit card. 1 mailbox free, forever.</p>
+  </section>
+
+  <section class="landing-screenshot" aria-label="Conversation view preview">
+    <div class="screenshot-mock">
+      <div class="mock-bubble mock-bubble-them">
+        <div class="mock-avatar" aria-hidden="true">AL</div>
+        <div class="mock-bubble-body">
+          <p class="mock-sender">Alex Lee</p>
+          <p class="mock-msg">Quick one — can you ship the pricing page today?</p>
+          <p class="mock-time">9:41 AM</p>
+        </div>
+      </div>
+      <div class="mock-bubble mock-bubble-me">
+        <div class="mock-bubble-body">
+          <p class="mock-msg">Already in review — landing page lands right after.</p>
+          <p class="mock-time">9:43 AM</p>
+        </div>
+      </div>
+      <div class="mock-bubble mock-bubble-them">
+        <div class="mock-avatar" aria-hidden="true">AL</div>
+        <div class="mock-bubble-body">
+          <p class="mock-msg">Perfect. I'll start drafting the launch post.</p>
+          <p class="mock-time">9:44 AM</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="landing-features">
+    <h2 class="landing-section-title">Email, the way you read everything else</h2>
+    <div class="feature-grid">
+      <article class="feature-card">
+        <h3>IM-style conversations</h3>
+        <p>Messages in a thread are grouped by sender, sorted by time,
+           and rendered as chat bubbles you can skim in seconds.</p>
+      </article>
+      <article class="feature-card">
+        <h3>Quoted replies, stripped</h3>
+        <p>"On Tue, Apr 1, … wrote:" blocks and <code>&gt;</code> quotes
+           are collapsed. Each bubble shows only what's new.</p>
+      </article>
+      <article class="feature-card">
+        <h3>Real threading</h3>
+        <p>Messages group by <code>Message-ID</code> /
+           <code>In-Reply-To</code> / <code>References</code>, not
+           subject-line guessing.</p>
+      </article>
+      <article class="feature-card">
+        <h3>Inline reply</h3>
+        <p>Reply from inside the conversation. The message is sent over
+           SMTP and threaded back into the same chat.</p>
+      </article>
+      <article class="feature-card">
+        <h3>Background sync</h3>
+        <p>A scheduled IMAP poll pulls new mail as it arrives — no
+           refresh, no manual fetch.</p>
+      </article>
+      <article class="feature-card">
+        <h3>Dark mode</h3>
+        <p>Follows your system preference. Easy on the eyes whether
+           you're at 9am or midnight.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="landing-how">
+    <h2 class="landing-section-title">From inbox to chat in 60 seconds</h2>
+    <ol class="how-steps">
+      <li>
+        <span class="how-step-num">1</span>
+        <div>
+          <h3>Create an account</h3>
+          <p>Email + password. No credit card.</p>
+        </div>
+      </li>
+      <li>
+        <span class="how-step-num">2</span>
+        <div>
+          <h3>Connect a mailbox</h3>
+          <p>Pick Gmail, iCloud, Fastmail, Outlook, or any IMAP server.
+             Paste an app password. We encrypt it at rest.</p>
+        </div>
+      </li>
+      <li>
+        <span class="how-step-num">3</span>
+        <div>
+          <h3>Read your threads as chats</h3>
+          <p>MailIM imports your recent threads and renders them
+             instantly. Reply inline, send, done.</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section class="landing-pricing-recap">
+    <h2 class="landing-section-title">Free to start. Upgrade when you outgrow it.</h2>
+    <div class="pricing-recap-grid">
+      <div class="pricing-recap-card">
+        <p class="pricing-recap-name">Free</p>
+        <p class="pricing-recap-price">$0</p>
+        <p class="pricing-recap-blurb">1 mailbox · 30-day history</p>
+      </div>
+      <div class="pricing-recap-card pricing-recap-card-featured">
+        <p class="pricing-recap-name">Personal</p>
+        <p class="pricing-recap-price">$9<span>/mo</span></p>
+        <p class="pricing-recap-blurb">3 mailboxes · unlimited history · full-text search</p>
+      </div>
+      <div class="pricing-recap-card">
+        <p class="pricing-recap-name">Team</p>
+        <p class="pricing-recap-price">$29<span>/mo</span></p>
+        <p class="pricing-recap-blurb">10 mailboxes · shared inbox · webhooks</p>
+      </div>
+    </div>
+    <p class="landing-pricing-link">
+      <a href="/pricing">See full pricing &amp; Enterprise &rarr;</a>
+    </p>
+  </section>
+
+  <section class="landing-final-cta">
+    <h2>Try MailIM with your real inbox.</h2>
+    <p>Free for one mailbox. Takes a minute to connect.</p>
+    <a href="/register" class="btn btn-primary btn-lg">Start free</a>
+  </section>
+
+</main>
+
+<footer class="marketing-footer">
+  <span>&copy; MailIM</span>
+  <nav>
+    <a href="/pricing">Pricing</a>
+    <a href="/login">Sign in</a>
+    <a href="/register">Create account</a>
+  </nav>
+</footer>
+
+</body>
+</html>

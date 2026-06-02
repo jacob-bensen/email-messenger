@@ -2,8 +2,17 @@
 
 Up to 10 items, each advancing a PLAN.md milestone. Pick from the top.
 
-<!-- empty: EPIC-04 Deployability is code-complete and CI now smoke-tests the
-compose stack end-to-end. Next Primary Objective is gated on a [PLAN-REVIEW]
-decision in MASTER_ACTIONS.md (default: acquisition / landing page so traffic
-converts). Do not derive micro-tasks here until the next Objective is picked. -->
+## Conversion-tracked signup funnel
+Carry `?plan=` + UTM source from landing CTAs through Stripe Checkout
+success so trial-banner copy and cohort attribution work end-to-end.
+Milestone: EPIC-05 Acquisition — Milestone 2.
 
+## SEO basics + OG previews
+Add unique `<title>` / `description` / canonical / OG / Twitter-card
+tags to every public page, plus `sitemap.xml` and `robots.txt` served
+from the app. Milestone: EPIC-05 Acquisition — Milestone 3.
+
+## First-touch demo content
+`/?demo=1` (or shared demo user) renders a curated thread as a chat
+view with no signup required, so Product Hunt clickers see the product
+work in five seconds. Milestone: EPIC-05 Acquisition — Milestone 4.
