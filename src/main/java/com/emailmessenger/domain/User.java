@@ -28,6 +28,9 @@ public class User {
     @Column(name = "display_name")
     private String displayName;
 
+    @Column(name = "acquisition_source", length = 64)
+    private String acquisitionSource;
+
     @Column(nullable = false)
     private boolean enabled = true;
 
@@ -61,11 +64,13 @@ public class User {
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
     public String getDisplayName() { return displayName; }
+    public String getAcquisitionSource() { return acquisitionSource; }
     public boolean isEnabled() { return enabled; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public void setAcquisitionSource(String acquisitionSource) { this.acquisitionSource = acquisitionSource; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

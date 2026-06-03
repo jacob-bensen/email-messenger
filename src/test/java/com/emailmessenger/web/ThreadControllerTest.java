@@ -174,7 +174,7 @@ class ThreadControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("threads"))
                 .andExpect(model().attribute("billingBanner",
-                        new BillingBanner(BillingBanner.Kind.TRIAL_ENDING, 7)))
+                        new BillingBanner(BillingBanner.Kind.TRIAL_ENDING, 7, null)))
                 .andExpect(model().attributeExists("threads"));
     }
 
@@ -219,6 +219,6 @@ class ThreadControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("conversation"))
                 .andExpect(model().attribute("billingBanner",
-                        is(new BillingBanner(BillingBanner.Kind.TRIAL_ENDING, 2))));
+                        is(new BillingBanner(BillingBanner.Kind.TRIAL_ENDING, 2, null))));
     }
 }

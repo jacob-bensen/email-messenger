@@ -40,12 +40,21 @@ class AuthController {
     }
 
     @GetMapping("/register")
-    String registerPage(@RequestParam(name = "plan", required = false) String plan, Model model) {
+    String registerPage(@RequestParam(name = "plan", required = false) String plan,
+                        @RequestParam(name = "utm_source", required = false) String utmSource,
+                        Model model) {
         if (!model.containsAttribute("registrationForm")) {
-            model.addAttribute("registrationForm", new RegistrationForm());
+            RegistrationForm form = new RegistrationForm();
+            if (StringUtils.hasText(utmSource)) {
+                form.setSource(utmSource);
+            }
+            model.addAttribute("registrationForm", form);
         }
         if (StringUtils.hasText(plan)) {
             model.addAttribute("plan", plan);
+        }
+        if (StringUtils.hasText(utmSource)) {
+            model.addAttribute("utmSource", utmSource);
         }
         return "register";
     }
@@ -63,7 +72,8 @@ class AuthController {
             return "register";
         }
         try {
-            userService.register(form.getEmail(), form.getPassword(), form.getDisplayName());
+            userService.register(form.getEmail(), form.getPassword(),
+                    form.getDisplayName(), form.getSource());
         } catch (EmailAlreadyRegisteredException e) {
             binding.rejectValue("email", "email.taken",
                     "An account with that email already exists.");

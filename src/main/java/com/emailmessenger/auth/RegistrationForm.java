@@ -18,6 +18,9 @@ public class RegistrationForm {
     @Size(max = 100)
     private String displayName;
 
+    @Size(max = 64)
+    private String source;
+
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
@@ -26,4 +29,7 @@ public class RegistrationForm {
 
     public String getDisplayName() { return displayName; }
     public void setDisplayName(String displayName) { this.displayName = displayName; }
+
+    public String getSource() { return source; }
+    public void setSource(String source) { this.source = source; }
 }

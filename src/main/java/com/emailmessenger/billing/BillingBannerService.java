@@ -1,5 +1,6 @@
 package com.emailmessenger.billing;
 
+import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.SubscriptionRepository;
@@ -38,8 +39,20 @@ public class BillingBannerService {
             // than "today" when there's still more than 24h on the clock.
             long hours = ChronoUnit.HOURS.between(LocalDateTime.now(clock), sub.getTrialEndsAt());
             long days = hours <= 0 ? 0 : (hours + 23) / 24;
-            return Optional.of(BillingBanner.trialEnding(days));
+            return Optional.of(BillingBanner.trialEnding(days, planLabel(sub.getPlan())));
         }
         return Optional.empty();
+    }
+
+    private static String planLabel(Plan plan) {
+        if (plan == null) {
+            return null;
+        }
+        return switch (plan) {
+            case PERSONAL -> "Personal";
+            case TEAM -> "Team";
+            case ENTERPRISE -> "Enterprise";
+            case FREE -> null;
+        };
     }
 }

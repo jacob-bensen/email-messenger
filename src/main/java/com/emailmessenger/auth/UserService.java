@@ -22,12 +22,30 @@ public class UserService {
 
     @Transactional
     public User register(String email, String rawPassword, String displayName) {
+        return register(email, rawPassword, displayName, null);
+    }
+
+    @Transactional
+    public User register(String email, String rawPassword, String displayName, String acquisitionSource) {
         String normalized = normalizeEmail(email);
         if (users.existsByEmail(normalized)) {
             throw new EmailAlreadyRegisteredException(normalized);
         }
         String trimmedName = (displayName == null || displayName.isBlank()) ? null : displayName.trim();
-        return users.save(new User(normalized, passwordEncoder.encode(rawPassword), trimmedName));
+        User user = new User(normalized, passwordEncoder.encode(rawPassword), trimmedName);
+        user.setAcquisitionSource(normalizeSource(acquisitionSource));
+        return users.save(user);
+    }
+
+    private static String normalizeSource(String source) {
+        if (source == null) {
+            return null;
+        }
+        String trimmed = source.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return trimmed.length() > 64 ? trimmed.substring(0, 64) : trimmed;
     }
 
     @Transactional(readOnly = true)

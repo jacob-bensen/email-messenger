@@ -34,6 +34,7 @@
           class="auth-form" autocomplete="on">
 
       <input type="hidden" name="plan" th:if="${plan != null}" th:value="${plan}">
+      <input type="hidden" th:field="*{source}">
 
       <label class="auth-label">
         <span>Email</span>

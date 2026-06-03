@@ -198,6 +198,27 @@ class AuthFlowIntegrationTest {
     }
 
     @Test
+    void registrationCarriesUtmSourceOntoUser() throws Exception {
+        mockMvc.perform(post("/register")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("email", "ph@example.com")
+                        .param("password", "password1")
+                        .param("source", "producthunt"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/threads"));
+
+        User saved = users.findByEmail("ph@example.com").orElseThrow();
+        assertThat(saved.getAcquisitionSource()).isEqualTo("producthunt");
+    }
+
+    @Test
+    void registerGetPrefillsHiddenSourceFromUtmSourceQuery() throws Exception {
+        mockMvc.perform(get("/register").param("utm_source", "twitter"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("register"));
+    }
+
+    @Test
     void registrationWithUnknownPlanFallsThroughToThreads() throws Exception {
         mockMvc.perform(post("/register")
                         .with(SecurityMockMvcRequestPostProcessors.csrf())

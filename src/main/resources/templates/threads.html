@@ -91,10 +91,12 @@
        class="trial-banner"
        th:classappend="${billingBanner.daysLeft <= 3} ? ' trial-banner-urgent' : ''">
     <span class="trial-banner-text">
-      <strong th:if="${billingBanner.daysLeft == 0}">Your trial ends today.</strong>
-      <strong th:if="${billingBanner.daysLeft == 1}">Your trial ends tomorrow.</strong>
+      <strong th:if="${billingBanner.daysLeft == 0}"
+              th:text="${billingBanner.planLabel != null} ? |Your ${billingBanner.planLabel} trial ends today.| : 'Your trial ends today.'">Your trial ends today.</strong>
+      <strong th:if="${billingBanner.daysLeft == 1}"
+              th:text="${billingBanner.planLabel != null} ? |Your ${billingBanner.planLabel} trial ends tomorrow.| : 'Your trial ends tomorrow.'">Your trial ends tomorrow.</strong>
       <strong th:if="${billingBanner.daysLeft > 1}"
-              th:text="|Trial ends in ${billingBanner.daysLeft} days.|">Trial ends in 14 days.</strong>
+              th:text="${billingBanner.planLabel != null} ? |${billingBanner.planLabel} trial ends in ${billingBanner.daysLeft} days.| : |Trial ends in ${billingBanner.daysLeft} days.|">Trial ends in 14 days.</strong>
       Add a card to keep MailIM after the trial.
     </span>
     <a href="/pricing" class="btn btn-primary trial-banner-cta">Add card</a>

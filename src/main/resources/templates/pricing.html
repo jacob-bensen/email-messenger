@@ -48,7 +48,8 @@
         <li>IM-style conversation view</li>
         <li>Dark mode</li>
       </ul>
-      <a href="/register" class="btn btn-secondary plan-cta">Get started</a>
+      <a th:href="${utmSource != null} ? @{/register(utm_source=${utmSource})} : @{/register}"
+         class="btn btn-secondary plan-cta">Get started</a>
     </article>
 
     <article class="plan-card plan-card-featured">
@@ -67,7 +68,8 @@
         <li>Reply send-later scheduling</li>
         <li>Priority email support</li>
       </ul>
-      <a href="/register?plan=personal" class="btn btn-primary plan-cta">Start 14-day free trial</a>
+      <a th:href="${utmSource != null} ? @{/register(plan='personal',utm_source=${utmSource})} : @{/register(plan='personal')}"
+         class="btn btn-primary plan-cta">Start 14-day free trial</a>
     </article>
 
     <article class="plan-card">
@@ -85,7 +87,8 @@
         <li>REST API access</li>
         <li>Priority chat support</li>
       </ul>
-      <a href="/register?plan=team" class="btn btn-secondary plan-cta">Start 14-day free trial</a>
+      <a th:href="${utmSource != null} ? @{/register(plan='team',utm_source=${utmSource})} : @{/register(plan='team')}"
+         class="btn btn-secondary plan-cta">Start 14-day free trial</a>
     </article>
 
     <article class="plan-card">

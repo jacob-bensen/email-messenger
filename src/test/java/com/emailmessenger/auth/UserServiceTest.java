@@ -54,6 +54,28 @@ class UserServiceTest {
         assertThat(userService.findByEmail("FIND@Example.com")).isPresent();
     }
 
+    @Test
+    void persistsAcquisitionSourceWhenProvided() {
+        User saved = userService.register(
+                "ph@example.com", "password1", null, "producthunt");
+        assertThat(saved.getAcquisitionSource()).isEqualTo("producthunt");
+    }
+
+    @Test
+    void normalizesBlankAcquisitionSourceToNull() {
+        User saved = userService.register(
+                "blank-source@example.com", "password1", null, "   ");
+        assertThat(saved.getAcquisitionSource()).isNull();
+    }
+
+    @Test
+    void clampsOverlongAcquisitionSourceToColumnWidth() {
+        String long65 = "a".repeat(65);
+        User saved = userService.register(
+                "long-source@example.com", "password1", null, long65);
+        assertThat(saved.getAcquisitionSource()).hasSize(64);
+    }
+
     static class TestConfig {
         @org.springframework.context.annotation.Bean
         PasswordEncoder passwordEncoder() {

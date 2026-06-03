@@ -1,5 +1,6 @@
 package com.emailmessenger.billing;
 
+import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.SubscriptionRepository;
@@ -88,6 +89,28 @@ class BillingBannerServiceTest {
         when(subscriptions.findByUser(user)).thenReturn(Optional.of(sub));
 
         assertThat(service.bannerFor(user)).isEmpty();
+    }
+
+    @Test
+    void trialBannerSurfacesChosenPlanLabel() {
+        Subscription sub = new Subscription(user, "cus_1", "trialing");
+        sub.setPlan(Plan.PERSONAL);
+        sub.setTrialEndsAt(now.plusDays(5));
+        when(subscriptions.findByUser(user)).thenReturn(Optional.of(sub));
+
+        BillingBanner banner = service.bannerFor(user).orElseThrow();
+        assertThat(banner.planLabel()).isEqualTo("Personal");
+        assertThat(banner.daysLeft()).isEqualTo(5L);
+    }
+
+    @Test
+    void trialBannerHasNullPlanLabelWhenPlanUnset() {
+        Subscription sub = new Subscription(user, "cus_1", "trialing");
+        sub.setTrialEndsAt(now.plusDays(3));
+        when(subscriptions.findByUser(user)).thenReturn(Optional.of(sub));
+
+        BillingBanner banner = service.bannerFor(user).orElseThrow();
+        assertThat(banner.planLabel()).isNull();
     }
 
     @Test

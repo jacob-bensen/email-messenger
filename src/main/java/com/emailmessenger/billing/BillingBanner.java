@@ -1,15 +1,19 @@
 package com.emailmessenger.billing;
 
-public record BillingBanner(Kind kind, long daysLeft) {
+public record BillingBanner(Kind kind, long daysLeft, String planLabel) {
 
     public enum Kind { TRIAL_ENDING, SUBSCRIPTION_ENDED }
 
     public static BillingBanner trialEnding(long daysLeft) {
-        return new BillingBanner(Kind.TRIAL_ENDING, Math.max(0, daysLeft));
+        return trialEnding(daysLeft, null);
+    }
+
+    public static BillingBanner trialEnding(long daysLeft, String planLabel) {
+        return new BillingBanner(Kind.TRIAL_ENDING, Math.max(0, daysLeft), planLabel);
     }
 
     public static BillingBanner subscriptionEnded() {
-        return new BillingBanner(Kind.SUBSCRIPTION_ENDED, 0);
+        return new BillingBanner(Kind.SUBSCRIPTION_ENDED, 0, null);
     }
 
     public boolean isTrialEnding() {

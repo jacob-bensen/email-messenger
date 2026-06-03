@@ -18,9 +18,10 @@
 <header class="app-header">
   <a href="/" class="brand">MailIM</a>
   <nav class="header-nav">
-    <a href="/pricing">Pricing</a>
+    <a th:href="${utmSource != null} ? @{/pricing(utm_source=${utmSource})} : @{/pricing}">Pricing</a>
     <a href="/login">Sign in</a>
-    <a href="/register" class="btn btn-primary btn-compact">Start free</a>
+    <a th:href="${utmSource != null} ? @{/register(utm_source=${utmSource})} : @{/register}"
+       class="btn btn-primary btn-compact">Start free</a>
   </nav>
 </header>
 
@@ -34,8 +35,10 @@
       separators, dark mode. Skip the nested-quote wall.
     </p>
     <div class="landing-hero-ctas">
-      <a href="/register" class="btn btn-primary btn-lg">Start free</a>
-      <a href="/pricing" class="btn btn-secondary btn-lg">See pricing</a>
+      <a th:href="${utmSource != null} ? @{/register(utm_source=${utmSource})} : @{/register}"
+         class="btn btn-primary btn-lg">Start free</a>
+      <a th:href="${utmSource != null} ? @{/pricing(utm_source=${utmSource})} : @{/pricing}"
+         class="btn btn-secondary btn-lg">See pricing</a>
     </div>
     <p class="landing-hero-fineprint">No credit card. 1 mailbox free, forever.</p>
   </section>
@@ -152,14 +155,15 @@
       </div>
     </div>
     <p class="landing-pricing-link">
-      <a href="/pricing">See full pricing &amp; Enterprise &rarr;</a>
+      <a th:href="${utmSource != null} ? @{/pricing(utm_source=${utmSource})} : @{/pricing}">See full pricing &amp; Enterprise &rarr;</a>
     </p>
   </section>
 
   <section class="landing-final-cta">
     <h2>Try MailIM with your real inbox.</h2>
     <p>Free for one mailbox. Takes a minute to connect.</p>
-    <a href="/register" class="btn btn-primary btn-lg">Start free</a>
+    <a th:href="${utmSource != null} ? @{/register(utm_source=${utmSource})} : @{/register}"
+       class="btn btn-primary btn-lg">Start free</a>
   </section>
 
 </main>
