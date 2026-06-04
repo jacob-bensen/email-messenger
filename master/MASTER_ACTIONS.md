@@ -3,6 +3,13 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
+- [PLAN-REVIEW] (2026-06-04) EPIC-05 Acquisition is code-complete on all
+  four milestones — landing at `/`, conversion-tracked signup funnel,
+  SEO/OG, and now `/demo`. Confirm the next Primary Objective (proposal:
+  EPIC-06 Launch readiness — Privacy / Terms / Refund pages + cookie
+  banner + Loom demo embed in landing hero + first-touch in-app
+  onboarding checklist) and update `master/PLAN.md`.
+
 ## Infrastructure
 
 - [ ] Provision a PostgreSQL 16 database (Supabase / Neon / Railway /

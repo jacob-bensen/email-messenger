@@ -86,12 +86,37 @@ class PublicPageSeoIntegrationTest {
         String pricingTitle = extractTitle(render("/pricing"));
         String loginTitle = extractTitle(render("/login"));
         String registerTitle = extractTitle(render("/register"));
+        String demoTitle = extractTitle(render("/demo"));
         assertThat(landingTitle).isNotEqualTo(pricingTitle);
         assertThat(landingTitle).isNotEqualTo(loginTitle);
         assertThat(landingTitle).isNotEqualTo(registerTitle);
+        assertThat(landingTitle).isNotEqualTo(demoTitle);
         assertThat(pricingTitle).isNotEqualTo(loginTitle);
         assertThat(pricingTitle).isNotEqualTo(registerTitle);
+        assertThat(pricingTitle).isNotEqualTo(demoTitle);
         assertThat(loginTitle).isNotEqualTo(registerTitle);
+        assertThat(loginTitle).isNotEqualTo(demoTitle);
+        assertThat(registerTitle).isNotEqualTo(demoTitle);
+    }
+
+    @Test
+    void demoPageRendersConversationWithSeoTagsAndStartFreeCta() throws Exception {
+        String body = render("/demo");
+        assertThat(body).contains("<title>Live demo — MailIM</title>");
+        assertThat(body).contains("<meta name=\"description\" content=\"See an email thread rendered as an IM-style chat");
+        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.mailaim.app/demo\"");
+        assertThat(body).contains("<meta property=\"og:url\" content=\"https://test.mailaim.app/demo\"");
+        // Curated demo content must actually render.
+        assertThat(body).contains("Launch checklist");
+        assertThat(body).contains("Alex Lee");
+        assertThat(body).contains("Sam Patel");
+        assertThat(body).contains("Maya Chen");
+        // Demo banner + footer must surface the signup CTA so cold visitors convert.
+        assertThat(body).contains("class=\"demo-banner\"");
+        assertThat(body).contains("/register?utm_source=demo");
+        // Reply form is for real threads only — it must NOT render in demo mode.
+        assertThat(body).doesNotContain("name=\"body\"");
+        assertThat(body).doesNotContain("/threads/null/reply");
     }
 
     @Test
@@ -106,6 +131,7 @@ class PublicPageSeoIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         assertThat(sitemap).contains("<loc>https://test.mailaim.app/</loc>");
         assertThat(sitemap).contains("<loc>https://test.mailaim.app/pricing</loc>");
+        assertThat(sitemap).contains("<loc>https://test.mailaim.app/demo</loc>");
     }
 
     private String render(String path) throws Exception {

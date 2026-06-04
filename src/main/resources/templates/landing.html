@@ -33,8 +33,8 @@
     <div class="landing-hero-ctas">
       <a th:href="${utmSource != null} ? @{/register(utm_source=${utmSource})} : @{/register}"
          class="btn btn-primary btn-lg">Start free</a>
-      <a th:href="${utmSource != null} ? @{/pricing(utm_source=${utmSource})} : @{/pricing}"
-         class="btn btn-secondary btn-lg">See pricing</a>
+      <a th:href="${utmSource != null} ? @{/demo(utm_source=${utmSource})} : @{/demo}"
+         class="btn btn-secondary btn-lg">See live demo</a>
     </div>
     <p class="landing-hero-fineprint">No credit card. 1 mailbox free, forever.</p>
   </section>

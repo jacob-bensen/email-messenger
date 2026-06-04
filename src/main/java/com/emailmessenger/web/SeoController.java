@@ -29,7 +29,7 @@ import java.time.ZoneOffset;
 class SeoController {
 
     private static final String[] PUBLIC_PATHS = {
-            "/", "/pricing", "/register", "/login"
+            "/", "/pricing", "/demo", "/register", "/login"
     };
 
     private final SiteProperties siteProperties;

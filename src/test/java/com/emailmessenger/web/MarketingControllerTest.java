@@ -74,4 +74,30 @@ class MarketingControllerTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/threads"));
     }
+
+    @Test
+    void rootRedirectsToDemoWhenDemoQueryParamSet() throws Exception {
+        mockMvc.perform(get("/").param("demo", "1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/demo"));
+    }
+
+    @Test
+    void rootDemoRedirectPreservesUtmSource() throws Exception {
+        mockMvc.perform(get("/").param("demo", "1").param("utm_source", "producthunt"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/demo?utm_source=producthunt"));
+    }
+
+    @Test
+    void rootDemoRedirectWinsOverAuthenticatedThreadsRedirect() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        "owner@example.com", "n/a",
+                        List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+
+        mockMvc.perform(get("/").param("demo", "1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/demo"));
+    }
 }

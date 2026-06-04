@@ -34,7 +34,7 @@ class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/", "/pricing",
+                                "/", "/pricing", "/demo",
                                 "/login", "/register",
                                 "/billing/cancel", "/billing/webhook",
                                 "/robots.txt", "/sitemap.xml",

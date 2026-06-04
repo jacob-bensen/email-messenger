@@ -3,25 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="noindex, nofollow">
-  <title th:text="|(${conversation.thread().subject.length() > 57 ? conversation.thread().subject.substring(0, 57) + '…' : conversation.thread().subject}) — MailIM|">Conversation — MailIM</title>
+
+  <th:block th:if="${demoMode}"
+            th:replace="~{fragments/seo :: meta(
+      pageTitle='Live demo — MailIM',
+      pageDescription='See an email thread rendered as an IM-style chat: bubbles, avatars, day separators, markdown, quoted-reply stripping. No signup.',
+      pagePath='/demo')}"></th:block>
+
+  <th:block th:unless="${demoMode}">
+    <meta name="robots" content="noindex, nofollow">
+    <title th:text="|(${conversation.thread().subject.length() > 57 ? conversation.thread().subject.substring(0, 57) + '…' : conversation.thread().subject}) — MailIM|">Conversation — MailIM</title>
+  </th:block>
+
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>
 
 <header class="conv-header">
-  <a href="/threads" class="back-link">← All threads</a>
+  <a th:if="${demoMode}" href="/" class="back-link">← MailIM home</a>
+  <a th:unless="${demoMode}" href="/threads" class="back-link">← All threads</a>
   <h1 th:text="${conversation.thread().subject}">Thread subject</h1>
-  <span class="kbd-hint"><kbd>r</kbd> reply · <kbd>Esc</kbd> cancel</span>
+  <span th:unless="${demoMode}" class="kbd-hint"><kbd>r</kbd> reply · <kbd>Esc</kbd> cancel</span>
   <span class="msg-count"
         th:text="${conversation.thread().messageCount + ' message' + (conversation.thread().messageCount != 1 ? 's' : '')}">
     1 message
   </span>
 </header>
 
+<div th:if="${demoMode}" class="demo-banner" role="note">
+  <span class="demo-banner-text">
+    <strong>Live demo.</strong>
+    This is a curated thread rendered by MailIM — bubble grouping, markdown, and quoted-reply stripping all running for real.
+  </span>
+  <a th:if="${demoSignedIn}" href="/threads" class="btn btn-primary btn-compact">Back to inbox</a>
+  <a th:unless="${demoSignedIn}" href="/register?utm_source=demo" class="btn btn-primary btn-compact">Start free</a>
+</div>
+
 <div class="conv-body">
 
-  <div th:if="${billingBanner != null and billingBanner.trialEnding}"
+  <div th:if="${!demoMode and billingBanner != null and billingBanner.trialEnding}"
        class="trial-banner trial-banner-compact"
        th:classappend="${billingBanner.daysLeft <= 3} ? ' trial-banner-urgent' : ''">
     <span class="trial-banner-text">
@@ -68,8 +88,8 @@
 
   </div>
 
-  <!-- Reply area -->
-  <div class="reply-area">
+  <!-- Reply area: real threads only. Demo mode renders a conversion CTA instead. -->
+  <div th:unless="${demoMode}" class="reply-area">
     <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Reply sent.</div>
 
     <form th:action="@{/threads/{id}/reply(id=${conversation.thread().id})}"
@@ -91,9 +111,18 @@
     </form>
   </div>
 
+  <div th:if="${demoMode}" class="demo-footer">
+    <p class="demo-footer-text">Like what you see? MailIM connects to your real inbox over IMAP.</p>
+    <div class="demo-footer-ctas">
+      <a th:if="${demoSignedIn}" href="/mailboxes/new" class="btn btn-primary btn-lg">Connect a mailbox</a>
+      <a th:unless="${demoSignedIn}" href="/register?utm_source=demo" class="btn btn-primary btn-lg">Start free</a>
+      <a href="/pricing?utm_source=demo" class="btn btn-secondary btn-lg">See pricing</a>
+    </div>
+  </div>
+
 </div>
 
-<script>
+<script th:inline="javascript">
 (function () {
   const msgs = document.getElementById('messages');
   if (!msgs) return;
@@ -115,7 +144,8 @@
   msgs.scrollTop = msgs.scrollHeight;
 }());
 
-// r to focus reply, Esc to blur
+// r to focus reply, Esc to blur — disabled in demo mode (no reply form)
+/*[# th:if="${!demoMode}"]*/
 document.addEventListener('keydown', function (e) {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   var ta = document.querySelector('.reply-form textarea');
@@ -129,6 +159,7 @@ document.addEventListener('keydown', function (e) {
     ta.blur();
   }
 });
+/*[/]*/
 
 function formatDateLabel(iso) {
   var parts = iso.split('-');

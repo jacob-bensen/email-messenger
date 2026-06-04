@@ -1335,6 +1335,49 @@ body {
   margin-bottom: 22px;
 }
 
+/* ── Demo mode (anonymous /demo conversation) ─────────── */
+.demo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: linear-gradient(90deg, #4f80ff 0%, #6366f1 100%);
+  color: #fff;
+  padding: 10px 24px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.demo-banner-text { max-width: 720px; }
+.demo-banner-text strong { font-weight: 700; }
+.demo-banner .btn { flex-shrink: 0; }
+.demo-banner .btn-primary {
+  background: #fff;
+  color: var(--brand-dark);
+}
+.demo-banner .btn-primary:hover { background: #f0f4ff; }
+
+.demo-footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 24px;
+  text-align: center;
+}
+.demo-footer-text {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+.demo-footer-ctas {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+@media (max-width: 640px) {
+  .demo-banner { flex-direction: column; align-items: stretch; text-align: center; gap: 10px; padding: 12px 16px; }
+  .demo-banner .btn { align-self: center; }
+}
+
 @media (prefers-color-scheme: dark) {
   .landing-screenshot {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);

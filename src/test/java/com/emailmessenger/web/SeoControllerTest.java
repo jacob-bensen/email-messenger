@@ -51,6 +51,7 @@ class SeoControllerTest {
                 .contains("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">")
                 .contains("<loc>https://mailaim.app/</loc>")
                 .contains("<loc>https://mailaim.app/pricing</loc>")
+                .contains("<loc>https://mailaim.app/demo</loc>")
                 .contains("<loc>https://mailaim.app/register</loc>")
                 .contains("<loc>https://mailaim.app/login</loc>")
                 .contains("</urlset>");
