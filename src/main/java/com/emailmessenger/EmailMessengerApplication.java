@@ -1,6 +1,7 @@
 package com.emailmessenger;
 
 import com.emailmessenger.billing.BillingProperties;
+import com.emailmessenger.web.SiteProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -10,7 +11,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import java.time.Clock;
 
 @SpringBootApplication
-@EnableConfigurationProperties(BillingProperties.class)
+@EnableConfigurationProperties({BillingProperties.class, SiteProperties.class})
 @EnableScheduling
 public class EmailMessengerApplication {
 

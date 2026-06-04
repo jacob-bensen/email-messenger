@@ -37,6 +37,7 @@ class SecurityConfig {
                                 "/", "/pricing",
                                 "/login", "/register",
                                 "/billing/cancel", "/billing/webhook",
+                                "/robots.txt", "/sitemap.xml",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/error", "/h2-console/**",
                                 "/actuator/health", "/actuator/health/**")

@@ -70,6 +70,9 @@ billing:
     portal-return-url: ${BILLING_PORTAL_RETURN_URL:http://localhost:8080/threads}
     trial-days: 14
 
+marketing:
+  base-url: ${MARKETING_BASE_URL:http://localhost:8080}
+
 mailbox:
   encryption:
     password: ${MAILBOX_ENCRYPTION_PASSWORD:}
@@ -140,6 +143,9 @@ billing:
     cancel-url: ${BILLING_CANCEL_URL:}
     portal-return-url: ${BILLING_PORTAL_RETURN_URL:}
     trial-days: ${BILLING_TRIAL_DAYS:14}
+
+marketing:
+  base-url: ${MARKETING_BASE_URL:https://mailaim.app}
 
 mailbox:
   encryption:

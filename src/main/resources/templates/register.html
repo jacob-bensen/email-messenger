@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="noindex, nofollow">
-  <title>Create your account — MailIM</title>
+  <th:block th:replace="~{fragments/seo :: meta(
+      pageTitle='Create your account — MailIM',
+      pageDescription='Create a free MailIM account and read your email threads as an IM chat. One mailbox free forever, no credit card required.',
+      pagePath='/register')}"></th:block>
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>

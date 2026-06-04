@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pricing — MailIM</title>
-  <meta name="description"
-        content="Simple, transparent pricing for MailIM. Free for personal use. $9/mo Personal, $29/mo Team, $99/mo Enterprise. Save 16% with annual billing.">
+  <th:block th:replace="~{fragments/seo :: meta(
+      pageTitle='Pricing — MailIM',
+      pageDescription='Simple, transparent pricing for MailIM. Free for one mailbox, $9/mo Personal, $29/mo Team, $99/mo Enterprise. Save 16% with annual billing.',
+      pagePath='/pricing')}"></th:block>
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>

@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="noindex, nofollow">
-  <title>Sign in — MailIM</title>
+  <th:block th:replace="~{fragments/seo :: meta(
+      pageTitle='Sign in — MailIM',
+      pageDescription='Sign in to MailIM to read your email threads as an IM-style chat — bubbles, avatars, dark mode.',
+      pagePath='/login')}"></th:block>
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>

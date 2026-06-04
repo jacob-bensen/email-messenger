@@ -3,14 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MailIM — Your inbox, as a chat</title>
-  <meta name="description"
-        content="MailIM turns email threads into a modern instant-message conversation — bubbles, avatars, day separators, dark mode. Free to start.">
-  <meta property="og:title" content="MailIM — Your inbox, as a chat">
-  <meta property="og:description"
-        content="Stop scrolling through nested-quote walls. Read your email like a chat thread. Free to start.">
-  <meta property="og:type" content="website">
-  <meta name="twitter:card" content="summary_large_image">
+  <th:block th:replace="~{fragments/seo :: meta(
+      pageTitle='MailIM — Your inbox, as a chat',
+      pageDescription='MailIM turns email threads into a modern instant-message conversation — bubbles, avatars, day separators, dark mode. Free to start.',
+      pagePath='/')}"></th:block>
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>
