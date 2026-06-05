@@ -60,6 +60,7 @@ class ThreadController {
 
     @GetMapping("/threads")
     String listThreads(@RequestParam(defaultValue = "0") int page,
+                       @RequestParam(name = "q", required = false) String query,
                        Principal principal,
                        Model model) {
         User owner = userService.requireByEmail(principal.getName());
@@ -69,10 +70,14 @@ class ThreadController {
         if (banner != null && banner.isSubscriptionEnded()) {
             return "threads";
         }
-        Page<EmailThread> threads = threadRepository.findByOwnerOrderByUpdatedAtDesc(
-                owner, PageRequest.of(Math.max(0, page), PAGE_SIZE));
+        String trimmedQuery = query == null ? "" : query.trim();
+        PageRequest pageRequest = PageRequest.of(Math.max(0, page), PAGE_SIZE);
+        Page<EmailThread> threads = trimmedQuery.isEmpty()
+                ? threadRepository.findByOwnerOrderByUpdatedAtDesc(owner, pageRequest)
+                : threadRepository.search(owner, trimmedQuery, pageRequest);
         model.addAttribute("threads", threads);
-        if (threads.getTotalElements() == 0) {
+        model.addAttribute("searchQuery", trimmedQuery);
+        if (trimmedQuery.isEmpty() && threads.getTotalElements() == 0) {
             model.addAttribute("onboarding", onboardingService.checklistFor(owner));
         }
         trialConversionNudgeService.nudgeFor(owner)

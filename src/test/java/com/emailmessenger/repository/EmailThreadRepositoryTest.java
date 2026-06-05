@@ -107,4 +107,81 @@ class EmailThreadRepositoryTest {
         assertThat(messageRepo.findByMessageIdHeaderAndOwner("<nonexistent@example.com>", owner))
                 .isEmpty();
     }
+
+    @Test
+    void searchMatchesSubjectCaseInsensitively() {
+        threadRepo.save(new EmailThread(owner, "Quarterly Planning Doc", "<q1@example.com>"));
+        threadRepo.save(new EmailThread(owner, "Birthday party", "<b1@example.com>"));
+
+        var page = threadRepo.search(owner, "planning", PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getContent().get(0).getSubject()).isEqualTo("Quarterly Planning Doc");
+    }
+
+    @Test
+    void searchMatchesParticipantDisplayName() {
+        var ada = participantRepo.save(new Participant("ada@acme.com", "Ada Lovelace"));
+        var grace = participantRepo.save(new Participant("grace@navy.mil", "Grace Hopper"));
+        var t1 = threadRepo.save(new EmailThread(owner, "Project Athena", "<a@x>"));
+        var t2 = threadRepo.save(new EmailThread(owner, "Project Olympus", "<o@x>"));
+        messageRepo.save(new Message(t1, ada, "Project Athena", "body", null, LocalDateTime.now()));
+        messageRepo.save(new Message(t2, grace, "Project Olympus", "body", null, LocalDateTime.now()));
+
+        var page = threadRepo.search(owner, "lovelace", PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).extracting(EmailThread::getSubject)
+                .containsExactly("Project Athena");
+    }
+
+    @Test
+    void searchMatchesParticipantEmail() {
+        var alex = participantRepo.save(new Participant("alex@acme.com", "Alex"));
+        var thread = threadRepo.save(new EmailThread(owner, "Invoice followup", "<inv@x>"));
+        messageRepo.save(new Message(thread, alex, "Invoice", "body", null, LocalDateTime.now()));
+        threadRepo.save(new EmailThread(owner, "Unrelated subject", "<u@x>"));
+
+        var page = threadRepo.search(owner, "acme", PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).extracting(EmailThread::getSubject)
+                .containsExactly("Invoice followup");
+    }
+
+    @Test
+    void searchScopedByOwner() {
+        var alice = userRepo.save(new User("alice-search@example.com", "h", "Alice"));
+        var bob = userRepo.save(new User("bob-search@example.com", "h", "Bob"));
+        threadRepo.save(new EmailThread(alice, "Shared subject", "<a-s@x>"));
+        threadRepo.save(new EmailThread(bob, "Shared subject", "<b-s@x>"));
+
+        var alicePage = threadRepo.search(alice, "shared", PageRequest.of(0, 10));
+        var bobPage = threadRepo.search(bob, "shared", PageRequest.of(0, 10));
+
+        assertThat(alicePage.getContent()).hasSize(1);
+        assertThat(alicePage.getContent().get(0).getRootMessageId()).isEqualTo("<a-s@x>");
+        assertThat(bobPage.getContent()).hasSize(1);
+        assertThat(bobPage.getContent().get(0).getRootMessageId()).isEqualTo("<b-s@x>");
+    }
+
+    @Test
+    void searchReturnsEmptyPageWhenNoMatch() {
+        threadRepo.save(new EmailThread(owner, "Lunch tomorrow", "<l@x>"));
+
+        var page = threadRepo.search(owner, "nonexistent-zzzz", PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).isEmpty();
+        assertThat(page.getTotalElements()).isZero();
+    }
+
+    @Test
+    void searchDeduplicatesThreadsWithMultipleMatchingMessages() {
+        var ada = participantRepo.save(new Participant("ada-dup@acme.com", "Ada Dup"));
+        var thread = threadRepo.save(new EmailThread(owner, "Long thread", "<lt@x>"));
+        messageRepo.save(new Message(thread, ada, "Reply 1", "body1", null, LocalDateTime.now()));
+        messageRepo.save(new Message(thread, ada, "Reply 2", "body2", null, LocalDateTime.now()));
+
+        var page = threadRepo.search(owner, "acme", PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).hasSize(1);
+    }
 }

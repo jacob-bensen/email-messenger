@@ -272,6 +272,50 @@ class ThreadControllerTest {
     }
 
     @Test
+    void searchQueryParamRoutesToRepositorySearch() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadRepository.search(eq(owner), eq("planning"), any(Pageable.class)))
+                .thenReturn(empty);
+
+        mockMvc.perform(get("/threads").principal(principal).param("q", "planning"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("threads"))
+                .andExpect(model().attribute("searchQuery", "planning"))
+                .andExpect(model().attribute("threads", notNullValue()));
+
+        verify(threadRepository, never())
+                .findByOwnerOrderByUpdatedAtDesc(any(User.class), any(Pageable.class));
+    }
+
+    @Test
+    void blankSearchQueryFallsBackToFullList() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(empty);
+
+        mockMvc.perform(get("/threads").principal(principal).param("q", "   "))
+                .andExpect(status().isOk())
+                .andExpect(view().name("threads"))
+                .andExpect(model().attribute("searchQuery", ""));
+
+        verify(threadRepository, never()).search(any(User.class), anyString(), any(Pageable.class));
+    }
+
+    @Test
+    void searchWithNoResultsSuppressesOnboardingChecklist() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadRepository.search(eq(owner), eq("nope"), any(Pageable.class)))
+                .thenReturn(empty);
+
+        mockMvc.perform(get("/threads").principal(principal).param("q", "nope"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("threads"))
+                .andExpect(model().attribute("onboarding", nullValue()));
+
+        verify(onboardingService, never()).checklistFor(any(User.class));
+    }
+
+    @Test
     void conversationViewIncludesBillingBannerAttribute() throws Exception {
         EmailThread thread = new EmailThread(owner, "Test Subject", "<root@test>");
         Conversation conv = new Conversation(thread, List.of());

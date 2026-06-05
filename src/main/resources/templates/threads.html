@@ -164,8 +164,24 @@
     <a href="/pricing" class="btn btn-primary">Reactivate plan</a>
   </div>
 
+  <form th:if="${threads != null and (threads.totalElements > 0 or (searchQuery != null and !#strings.isEmpty(searchQuery)))}"
+        class="inbox-search" method="get" th:action="@{/threads}" role="search">
+    <label for="inbox-search-input" class="visually-hidden">Search conversations</label>
+    <input id="inbox-search-input" type="search" name="q"
+           class="inbox-search-input"
+           placeholder="Search by subject, sender name, or email"
+           autocomplete="off"
+           th:value="${searchQuery}">
+    <button type="submit" class="btn btn-primary inbox-search-submit">Search</button>
+    <a th:if="${searchQuery != null and !#strings.isEmpty(searchQuery)}"
+       th:href="@{/threads}" class="inbox-search-clear">Clear</a>
+  </form>
+
   <div th:if="${threads != null and threads.totalElements > 0}">
-    <h2 class="section-title">Conversations</h2>
+    <h2 class="section-title"
+        th:text="${searchQuery != null and !#strings.isEmpty(searchQuery)}
+                 ? |${threads.totalElements} result${threads.totalElements == 1 ? '' : 's'} for &quot;${searchQuery}&quot;|
+                 : 'Conversations'">Conversations</h2>
     <div class="thread-list">
       <a th:each="thread : ${threads}"
          th:href="@{/threads/{id}(id=${thread.id})}"
@@ -180,14 +196,22 @@
 
     <nav class="pagination" th:if="${threads.totalPages > 1}">
       <a th:if="${!threads.first}"
-         th:href="@{/threads(page=${threads.number - 1})}"
+         th:href="@{/threads(page=${threads.number - 1}, q=${searchQuery})}"
          class="page-link">← Newer</a>
       <span class="page-info"
             th:text="|Page ${threads.number + 1} of ${threads.totalPages}|">Page 1 of 1</span>
       <a th:if="${!threads.last}"
-         th:href="@{/threads(page=${threads.number + 1})}"
+         th:href="@{/threads(page=${threads.number + 1}, q=${searchQuery})}"
          class="page-link">Older →</a>
     </nav>
+  </div>
+
+  <div class="search-empty"
+       th:if="${threads != null and threads.totalElements == 0 and searchQuery != null and !#strings.isEmpty(searchQuery)}">
+    <h2 class="search-empty-title"
+        th:text="|No matches for &quot;${searchQuery}&quot;|">No matches</h2>
+    <p class="search-empty-sub">Try a different subject, sender name, or email address.</p>
+    <a th:href="@{/threads}" class="btn btn-primary">Back to inbox</a>
   </div>
 
   <div class="onboarding-card" th:if="${threads != null and threads.totalElements == 0 and onboarding != null}">
