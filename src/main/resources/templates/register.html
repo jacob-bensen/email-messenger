@@ -76,8 +76,25 @@
       <a th:if="${plan == null}" href="/login">Sign in</a>
       <a th:if="${plan != null}" th:href="@{/login(plan=${plan})}">Sign in</a>.
     </p>
+    <p class="auth-legal">
+      By creating an account you agree to our
+      <a href="/terms">Terms</a> and
+      <a href="/privacy">Privacy Policy</a>.
+    </p>
   </section>
 </main>
+
+<footer class="marketing-footer">
+  <span>&copy; MailIM</span>
+  <nav>
+    <a href="/pricing">Pricing</a>
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+    <a href="/refund">Refund</a>
+  </nav>
+</footer>
+
+<th:block th:replace="~{fragments/cookie-banner :: banner}"></th:block>
 
 </body>
 </html>

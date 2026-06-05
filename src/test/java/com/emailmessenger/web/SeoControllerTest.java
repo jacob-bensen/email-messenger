@@ -54,6 +54,9 @@ class SeoControllerTest {
                 .contains("<loc>https://mailaim.app/demo</loc>")
                 .contains("<loc>https://mailaim.app/register</loc>")
                 .contains("<loc>https://mailaim.app/login</loc>")
+                .contains("<loc>https://mailaim.app/privacy</loc>")
+                .contains("<loc>https://mailaim.app/terms</loc>")
+                .contains("<loc>https://mailaim.app/refund</loc>")
                 .contains("</urlset>");
     }
 

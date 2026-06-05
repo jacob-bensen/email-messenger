@@ -1464,3 +1464,114 @@ body {
   .landing-final-cta h2 { font-size: 22px; }
   .btn-lg { padding: 10px 18px; font-size: 15px; }
 }
+
+/* ── Legal pages (privacy / terms / refund) ──────────── */
+.legal-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 16px 56px;
+}
+.legal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 40px 44px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.legal-card h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.legal-body { color: var(--text); line-height: 1.65; font-size: 15px; }
+.legal-body h2 {
+  font-size: 19px;
+  font-weight: 700;
+  margin-top: 28px;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+.legal-body h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 20px;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.legal-body p { margin-bottom: 12px; }
+.legal-body ul { margin: 0 0 12px 20px; }
+.legal-body li { margin-bottom: 6px; }
+.legal-body a { color: var(--brand); }
+.legal-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.legal-updated {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+.legal-note {
+  margin-top: 28px;
+  padding: 12px 14px;
+  background: rgba(79, 128, 255, 0.06);
+  border-left: 3px solid var(--brand);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.auth-legal {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.auth-legal a { color: var(--text-muted); text-decoration: underline; }
+.auth-legal a:hover { color: var(--text); }
+
+/* ── Cookie consent banner ───────────────────────────── */
+.cookie-banner {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 200;
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 14px;
+  color: var(--text);
+}
+.cookie-banner[hidden] { display: none; }
+.cookie-banner-text { flex: 1; line-height: 1.45; }
+.cookie-banner a { color: var(--brand); }
+
+@media (max-width: 560px) {
+  .cookie-banner { flex-direction: column; align-items: stretch; text-align: left; }
+  .cookie-banner-text { font-size: 13px; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .legal-card { background: var(--surface); border-color: var(--border); }
+  .legal-body code { background: rgba(255, 255, 255, 0.08); }
+  .legal-note {
+    background: rgba(79, 128, 255, 0.12);
+  }
+  .cookie-banner {
+    background: var(--surface);
+    border-color: var(--border);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  }
+}

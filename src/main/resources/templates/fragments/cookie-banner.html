@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+  <!--
+    First-visit cookie-consent banner. Shown only to anonymous visitors
+    on public marketing/auth pages. Dismissal is persisted in
+    localStorage so it doesn't reappear on subsequent visits from the
+    same browser. The site uses only strictly-necessary cookies (session,
+    remember-me) — no analytics or ad cookies — but a visible banner is
+    still required for Stripe live-mode and for users in GDPR/CCPA
+    jurisdictions to feel informed.
+  -->
+  <th:block th:fragment="banner">
+    <div id="cookie-banner" class="cookie-banner" hidden role="dialog"
+         aria-label="Cookie notice" aria-live="polite">
+      <span class="cookie-banner-text">
+        We use only essential cookies for sign-in and your session. No
+        tracking, no ads. See our
+        <a href="/privacy">Privacy Policy</a>.
+      </span>
+      <button type="button" id="cookie-banner-dismiss" class="btn btn-primary btn-compact">
+        Got it
+      </button>
+    </div>
+    <script th:inline="javascript">
+      /*<![CDATA[*/
+      (function () {
+        try {
+          var KEY = 'mailim-cookie-consent-v1';
+          if (localStorage.getItem(KEY) === '1') return;
+          var banner = document.getElementById('cookie-banner');
+          var dismiss = document.getElementById('cookie-banner-dismiss');
+          if (!banner || !dismiss) return;
+          banner.hidden = false;
+          dismiss.addEventListener('click', function () {
+            try { localStorage.setItem(KEY, '1'); } catch (e) { /* private mode */ }
+            banner.hidden = true;
+          });
+        } catch (e) {
+          /* storage blocked — leave banner hidden so the page isn't broken */
+        }
+      }());
+      /*]]>*/
+    </script>
+  </th:block>
+</body>
+</html>

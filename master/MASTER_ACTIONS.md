@@ -46,10 +46,13 @@ asset delivery — that the agent cannot complete in code. Group by area.
 
 ## Legal (Stripe & GDPR/OAuth gate)
 
-- [ ] Publish a Privacy Policy page (Termly / Iubenda is fine to start).
-- [ ] Publish a Terms of Service page.
-- [ ] Publish a Refund Policy page (Stripe requires this).
-- [ ] Add a cookie-consent banner if targeting EU users.
+- [ ] Review the shipped Privacy / Terms / Refund boilerplate at
+      `/privacy`, `/terms`, `/refund` (sources in
+      `src/main/resources/legal/`). Either accept as-is for the Stripe
+      live-mode application, or replace per page via env override:
+      `MARKETING_LEGAL_PRIVACY`, `MARKETING_LEGAL_TERMS`,
+      `MARKETING_LEGAL_REFUND` (each takes a Spring resource locator,
+      e.g. `file:/etc/mailim/privacy.html` or `https://termly.io/...`).
 
 ## Launch / marketing
 

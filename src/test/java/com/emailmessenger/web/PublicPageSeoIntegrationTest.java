@@ -132,6 +132,62 @@ class PublicPageSeoIntegrationTest {
         assertThat(sitemap).contains("<loc>https://test.mailaim.app/</loc>");
         assertThat(sitemap).contains("<loc>https://test.mailaim.app/pricing</loc>");
         assertThat(sitemap).contains("<loc>https://test.mailaim.app/demo</loc>");
+        // Legal pages must show up in the sitemap so Stripe / search crawlers
+        // can verify the published-policy URLs exist.
+        assertThat(sitemap).contains("<loc>https://test.mailaim.app/privacy</loc>");
+        assertThat(sitemap).contains("<loc>https://test.mailaim.app/terms</loc>");
+        assertThat(sitemap).contains("<loc>https://test.mailaim.app/refund</loc>");
+    }
+
+    @Test
+    void privacyPageRendersDefaultBoilerplateContentAndSeoTags() throws Exception {
+        String body = render("/privacy");
+        assertThat(body).contains("<title>Privacy Policy — MailIM</title>");
+        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.mailaim.app/privacy\"");
+        // Shipped boilerplate must render through the legal-page Thymeleaf wrapper.
+        assertThat(body).contains("What we collect");
+        assertThat(body).contains("privacy@mailaim.app");
+    }
+
+    @Test
+    void termsPageRendersDefaultBoilerplateContentAndSeoTags() throws Exception {
+        String body = render("/terms");
+        assertThat(body).contains("<title>Terms of Service — MailIM</title>");
+        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.mailaim.app/terms\"");
+        assertThat(body).contains("Acceptable use");
+        assertThat(body).contains("legal@mailaim.app");
+    }
+
+    @Test
+    void refundPageRendersDefaultBoilerplateContentAndSeoTags() throws Exception {
+        String body = render("/refund");
+        assertThat(body).contains("<title>Refund Policy — MailIM</title>");
+        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.mailaim.app/refund\"");
+        assertThat(body).contains("Annual subscriptions");
+        assertThat(body).contains("billing@mailaim.app");
+    }
+
+    @Test
+    void landingFooterLinksToAllThreeLegalPagesAndRendersCookieBanner() throws Exception {
+        String body = render("/");
+        // Footer must surface the legal links so a Stripe reviewer can find them.
+        assertThat(body).contains("href=\"/privacy\"");
+        assertThat(body).contains("href=\"/terms\"");
+        assertThat(body).contains("href=\"/refund\"");
+        // Cookie banner fragment is injected and the dismiss button is wired.
+        assertThat(body).contains("id=\"cookie-banner\"");
+        assertThat(body).contains("id=\"cookie-banner-dismiss\"");
+        assertThat(body).contains("mailim-cookie-consent-v1");
+    }
+
+    @Test
+    void registerPageLinksToTermsAndPrivacyInline() throws Exception {
+        String body = render("/register");
+        // The /register form must inline a "by creating an account you agree to…"
+        // line — this is what makes the click-through binding to terms.
+        assertThat(body).contains("auth-legal");
+        assertThat(body).contains("href=\"/terms\"");
+        assertThat(body).contains("href=\"/privacy\"");
     }
 
     private String render(String path) throws Exception {

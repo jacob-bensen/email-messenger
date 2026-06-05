@@ -36,6 +36,7 @@ class SecurityConfig {
                         .requestMatchers(
                                 "/", "/pricing", "/demo",
                                 "/login", "/register",
+                                "/privacy", "/terms", "/refund",
                                 "/billing/cancel", "/billing/webhook",
                                 "/robots.txt", "/sitemap.xml",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
