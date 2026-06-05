@@ -14,6 +14,7 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver;
 import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -27,7 +28,7 @@ class MarketingControllerTest {
         InternalResourceViewResolver viewResolver = new InternalResourceViewResolver();
         viewResolver.setPrefix("/WEB-INF/templates/");
         viewResolver.setSuffix(".html");
-        mockMvc = MockMvcBuilders.standaloneSetup(new MarketingController())
+        mockMvc = MockMvcBuilders.standaloneSetup(new MarketingController(new LandingProperties()))
                 .setViewResolvers(viewResolver)
                 .build();
     }
@@ -87,6 +88,35 @@ class MarketingControllerTest {
         mockMvc.perform(get("/").param("demo", "1").param("utm_source", "producthunt"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/demo?utm_source=producthunt"));
+    }
+
+    @Test
+    void landingOmitsDemoVideoWhenProviderNotConfigured() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("landing"))
+                .andExpect(model().attributeDoesNotExist("demoVideo"));
+    }
+
+    @Test
+    void landingExposesDemoVideoWhenProviderAndIdConfigured() throws Exception {
+        LandingProperties props = new LandingProperties();
+        props.getVideo().setProvider("youtube");
+        props.getVideo().setId("dQw4w9WgXcQ");
+        props.getVideo().setPosterUrl("https://cdn.example/poster.png");
+        props.getVideo().setTitle("MailIM in 60s");
+
+        InternalResourceViewResolver vr = new InternalResourceViewResolver();
+        vr.setPrefix("/WEB-INF/templates/");
+        vr.setSuffix(".html");
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new MarketingController(props))
+                .setViewResolvers(vr)
+                .build();
+
+        mvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("landing"))
+                .andExpect(model().attributeExists("demoVideo"));
     }
 
     @Test

@@ -50,6 +50,20 @@ class PublicPageSeoIntegrationTest {
     }
 
     @Test
+    void landingFallsBackToChatBubbleMockWhenNoDemoVideoConfigured() throws Exception {
+        // The dev profile leaves marketing.landing.video.* empty by default,
+        // so the static chat-bubble mock must still render and the video
+        // embed wrapper must be absent — a fresh deploy without a video URL
+        // shouldn't break the hero.
+        String body = render("/");
+        assertThat(body).contains("class=\"landing-screenshot\"");
+        assertThat(body).contains("class=\"screenshot-mock\"");
+        assertThat(body).doesNotContain("class=\"landing-video\"");
+        assertThat(body).doesNotContain("data-embed-url");
+        assertThat(body).doesNotContain("youtube-nocookie.com");
+    }
+
+    @Test
     void pricingPageRendersUniqueSeoTags() throws Exception {
         String body = render("/pricing");
         assertThat(body).contains("<title>Pricing — MailIM</title>");

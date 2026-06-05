@@ -43,7 +43,11 @@ land, sign up, see the IM transform — is intentional from end to end.
 3. **Demo video in the landing hero.** Replace the static screenshot mock
    in `landing.html` with a 60–90s Loom/YouTube embed (URL/ID injected
    via config so Master can swap it without a deploy), with a poster
-   image fallback so first paint stays fast.
+   image fallback so first paint stays fast. _(Shipped 2026-06-05 — the
+   embed wrapper renders whenever `MARKETING_LANDING_VIDEO_{PROVIDER,ID}`
+   are set; static chat-bubble mock stays as the fallback when they're
+   not. Open: Master must record + supply the actual demo URL — tracked
+   under Launch / marketing in MASTER_ACTIONS.md.)_
 4. **Trial-conversion nudge.** When a trialing user's trial ends in ≤3
    days, surface a more prominent in-app prompt (beyond the existing
    `trial-banner-urgent` strip) — e.g. a dismissable conversion modal on

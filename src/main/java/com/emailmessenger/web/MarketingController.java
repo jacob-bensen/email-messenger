@@ -14,6 +14,12 @@ import java.nio.charset.StandardCharsets;
 @Controller
 class MarketingController {
 
+    private final LandingProperties landingProperties;
+
+    MarketingController(LandingProperties landingProperties) {
+        this.landingProperties = landingProperties;
+    }
+
     @GetMapping("/")
     String landing(@RequestParam(name = "utm_source", required = false) String utmSource,
                    @RequestParam(name = "demo", required = false) String demo,
@@ -30,6 +36,10 @@ class MarketingController {
         }
         if (StringUtils.hasText(utmSource)) {
             model.addAttribute("utmSource", utmSource);
+        }
+        LandingVideo demoVideo = LandingVideo.from(landingProperties.getVideo());
+        if (demoVideo != null) {
+            model.addAttribute("demoVideo", demoVideo);
         }
         return "landing";
     }

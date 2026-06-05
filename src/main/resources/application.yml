@@ -72,6 +72,12 @@ billing:
 
 marketing:
   base-url: ${MARKETING_BASE_URL:http://localhost:8080}
+  landing:
+    video:
+      provider: ${MARKETING_LANDING_VIDEO_PROVIDER:}
+      id: ${MARKETING_LANDING_VIDEO_ID:}
+      poster-url: ${MARKETING_LANDING_VIDEO_POSTER_URL:}
+      title: ${MARKETING_LANDING_VIDEO_TITLE:MailIM demo}
 
 mailbox:
   encryption:
@@ -146,6 +152,12 @@ billing:
 
 marketing:
   base-url: ${MARKETING_BASE_URL:https://mailaim.app}
+  landing:
+    video:
+      provider: ${MARKETING_LANDING_VIDEO_PROVIDER:}
+      id: ${MARKETING_LANDING_VIDEO_ID:}
+      poster-url: ${MARKETING_LANDING_VIDEO_POSTER_URL:}
+      title: ${MARKETING_LANDING_VIDEO_TITLE:MailIM demo}
 
 mailbox:
   encryption:

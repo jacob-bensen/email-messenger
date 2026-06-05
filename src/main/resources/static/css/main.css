@@ -1258,6 +1258,80 @@ body {
 }
 .mock-bubble-me .mock-time { color: rgba(255, 255, 255, 0.75); }
 
+/* ── Landing demo video (click-to-play facade) ───────── */
+.landing-video {
+  max-width: 760px;
+  margin: 0 auto 80px;
+  padding: 0 16px;
+}
+.landing-video-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+}
+.landing-video-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  background-color: #0d1117;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  transition: filter 120ms ease;
+}
+.landing-video-poster:hover { filter: brightness(1.08); }
+.landing-video-poster:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: -3px;
+}
+.landing-video-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--brand);
+  font-size: 28px;
+  padding-left: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+.landing-video-label {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.landing-video-iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+@media (max-width: 640px) {
+  .landing-video-play { width: 56px; height: 56px; font-size: 22px; }
+}
+
 .landing-section-title {
   font-size: 28px;
   font-weight: 800;
