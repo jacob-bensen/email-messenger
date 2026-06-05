@@ -57,6 +57,7 @@ class ThreadControllerTest {
     @Mock UserService userService;
     @Mock BillingBannerService billingBannerService;
     @Mock BillingService billingService;
+    @Mock OnboardingService onboardingService;
 
     MockMvc mockMvc;
 
@@ -67,9 +68,11 @@ class ThreadControllerTest {
     void setUp() {
         ThreadController controller = new ThreadController(
                 threadRepository, threadViewService, replyService, userService,
-                billingBannerService, billingService);
+                billingBannerService, billingService, onboardingService);
         lenient().when(userService.requireByEmail("owner@example.com")).thenReturn(owner);
         lenient().when(billingBannerService.bannerFor(owner)).thenReturn(Optional.empty());
+        lenient().when(onboardingService.checklistFor(owner))
+                .thenReturn(new OnboardingChecklist(false, false));
         // Prefix/suffix prevents InternalResourceViewResolver from producing a path that
         // matches the request URL (which would cause a circular-dispatch error in standalone mode).
         InternalResourceViewResolver viewResolver = new InternalResourceViewResolver();
@@ -205,6 +208,35 @@ class ThreadControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("threads"))
                 .andExpect(model().attribute("upgradeModal", modal));
+    }
+
+    @Test
+    void emptyInboxExposesOnboardingChecklist() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(empty);
+        OnboardingChecklist checklist = new OnboardingChecklist(false, false);
+        when(onboardingService.checklistFor(owner)).thenReturn(checklist);
+
+        mockMvc.perform(get("/threads").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(view().name("threads"))
+                .andExpect(model().attribute("onboarding", checklist));
+    }
+
+    @Test
+    void nonEmptyInboxDoesNotExposeOnboardingChecklist() throws Exception {
+        EmailThread thread = new EmailThread(owner, "Hello", "<a@b>");
+        Page<EmailThread> populated = new PageImpl<>(List.of(thread));
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(populated);
+
+        mockMvc.perform(get("/threads").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(view().name("threads"))
+                .andExpect(model().attribute("onboarding", nullValue()));
+
+        verify(onboardingService, never()).checklistFor(any(User.class));
     }
 
     @Test

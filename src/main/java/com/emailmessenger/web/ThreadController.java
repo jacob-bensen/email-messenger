@@ -36,19 +36,22 @@ class ThreadController {
     private final UserService userService;
     private final BillingBannerService billingBannerService;
     private final BillingService billingService;
+    private final OnboardingService onboardingService;
 
     ThreadController(EmailThreadRepository threadRepository,
                      ThreadViewService threadViewService,
                      ReplyService replyService,
                      UserService userService,
                      BillingBannerService billingBannerService,
-                     BillingService billingService) {
+                     BillingService billingService,
+                     OnboardingService onboardingService) {
         this.threadRepository = threadRepository;
         this.threadViewService = threadViewService;
         this.replyService = replyService;
         this.userService = userService;
         this.billingBannerService = billingBannerService;
         this.billingService = billingService;
+        this.onboardingService = onboardingService;
     }
 
     @GetMapping("/threads")
@@ -65,6 +68,9 @@ class ThreadController {
         Page<EmailThread> threads = threadRepository.findByOwnerOrderByUpdatedAtDesc(
                 owner, PageRequest.of(Math.max(0, page), PAGE_SIZE));
         model.addAttribute("threads", threads);
+        if (threads.getTotalElements() == 0) {
+            model.addAttribute("onboarding", onboardingService.checklistFor(owner));
+        }
         return "threads";
     }
 

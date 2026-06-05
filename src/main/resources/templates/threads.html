@@ -138,10 +138,44 @@
     </nav>
   </div>
 
-  <div class="empty-state" th:if="${threads != null and threads.totalElements == 0}">
-    <h2>Your inbox is empty</h2>
-    <p>Connect a mailbox to see your email threads as IM-style conversations.</p>
-    <a href="/mailboxes/new" class="btn btn-primary">Connect a mailbox</a>
+  <div class="onboarding-card" th:if="${threads != null and threads.totalElements == 0 and onboarding != null}">
+    <h2 class="onboarding-title"
+        th:text="${!onboarding.mailboxConnected} ? 'Welcome to MailIM' : 'Your inbox is connected'">
+      Welcome to MailIM
+    </h2>
+    <p class="onboarding-sub"
+       th:text="${!onboarding.mailboxConnected}
+                ? 'Two quick steps and your email becomes a chat.'
+                : 'We''re importing your conversations. Sync now or check back in a minute.'">
+      Two quick steps and your email becomes a chat.
+    </p>
+
+    <ol class="onboarding-steps">
+      <li class="onboarding-step onboarding-step-done">
+        <span class="onboarding-step-mark" aria-hidden="true">&#10003;</span>
+        <span class="onboarding-step-text">Create your account</span>
+      </li>
+      <li class="onboarding-step"
+          th:classappend="${onboarding.mailboxConnected}
+                          ? ' onboarding-step-done'
+                          : ' onboarding-step-current'">
+        <span class="onboarding-step-mark" aria-hidden="true"
+              th:text="${onboarding.mailboxConnected} ? '&#10003;' : '2'">2</span>
+        <span class="onboarding-step-text">Connect your inbox</span>
+      </li>
+      <li class="onboarding-step"
+          th:classappend="${onboarding.firstThreadImported}
+                          ? ' onboarding-step-done'
+                          : (onboarding.mailboxConnected ? ' onboarding-step-current' : '')">
+        <span class="onboarding-step-mark" aria-hidden="true"
+              th:text="${onboarding.firstThreadImported} ? '&#10003;' : '3'">3</span>
+        <span class="onboarding-step-text">See your first conversation</span>
+      </li>
+    </ol>
+
+    <a th:href="@{${onboarding.nextStepCtaUrl()}}"
+       th:text="${onboarding.nextStepCtaLabel()}"
+       class="btn btn-primary btn-lg onboarding-cta">Connect your inbox</a>
   </div>
 
 </main>
