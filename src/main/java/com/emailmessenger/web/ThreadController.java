@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
+import java.util.List;
 import java.util.NoSuchElementException;
 
 @Controller
@@ -40,6 +41,7 @@ class ThreadController {
     private final OnboardingService onboardingService;
     private final TrialConversionNudgeService trialConversionNudgeService;
     private final ThreadSearchService threadSearchService;
+    private final SenderGroupService senderGroupService;
 
     ThreadController(EmailThreadRepository threadRepository,
                      ThreadViewService threadViewService,
@@ -49,7 +51,8 @@ class ThreadController {
                      BillingService billingService,
                      OnboardingService onboardingService,
                      TrialConversionNudgeService trialConversionNudgeService,
-                     ThreadSearchService threadSearchService) {
+                     ThreadSearchService threadSearchService,
+                     SenderGroupService senderGroupService) {
         this.threadRepository = threadRepository;
         this.threadViewService = threadViewService;
         this.replyService = replyService;
@@ -59,11 +62,13 @@ class ThreadController {
         this.onboardingService = onboardingService;
         this.trialConversionNudgeService = trialConversionNudgeService;
         this.threadSearchService = threadSearchService;
+        this.senderGroupService = senderGroupService;
     }
 
     @GetMapping("/threads")
     String listThreads(@RequestParam(defaultValue = "0") int page,
                        @RequestParam(name = "q", required = false) String query,
+                       @RequestParam(name = "from", required = false) String fromSender,
                        Principal principal,
                        Model model) {
         User owner = userService.requireByEmail(principal.getName());
@@ -74,12 +79,14 @@ class ThreadController {
             return "threads";
         }
         String trimmedQuery = query == null ? "" : query.trim();
+        String trimmedFrom = (fromSender == null || fromSender.isBlank()) ? null : fromSender.trim();
         PageRequest pageRequest = PageRequest.of(Math.max(0, page), PAGE_SIZE);
         Page<EmailThread> threads;
-        if (trimmedQuery.isEmpty()) {
+        if (trimmedQuery.isEmpty() && trimmedFrom == null) {
             threads = threadRepository.findByOwnerOrderByUpdatedAtDesc(owner, pageRequest);
         } else {
-            ThreadSearchService.Result result = threadSearchService.search(owner, trimmedQuery, pageRequest);
+            ThreadSearchService.Result result =
+                    threadSearchService.search(owner, trimmedQuery, trimmedFrom, pageRequest);
             threads = result.page();
             if (result.showBodySearchUpgradeNag()) {
                 model.addAttribute("bodySearchUpgradeNag", true);
@@ -87,7 +94,11 @@ class ThreadController {
         }
         model.addAttribute("threads", threads);
         model.addAttribute("searchQuery", trimmedQuery);
-        if (trimmedQuery.isEmpty() && threads.getTotalElements() == 0) {
+        model.addAttribute("activeSender", trimmedFrom);
+        List<SenderGroupService.SenderGroup> senderGroups = senderGroupService.topSenders(owner);
+        model.addAttribute("senderGroups", senderGroups);
+        model.addAttribute("hasAnyThreads", !senderGroups.isEmpty());
+        if (trimmedQuery.isEmpty() && trimmedFrom == null && threads.getTotalElements() == 0) {
             model.addAttribute("onboarding", onboardingService.checklistFor(owner));
         }
         trialConversionNudgeService.nudgeFor(owner)

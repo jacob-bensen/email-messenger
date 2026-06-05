@@ -55,6 +55,13 @@ body text — and the Free-vs-Personal gap pivots from "thread cap" to
    "everything from acme.com". Lives in the same `/threads` surface as a
    collapsible left rail; integrates with the search query so a sender
    pick narrows the result set without a full reload.
+   _(Shipped 2026-06-05 — new `EmailThreadRepository.topSenders` +
+   `findByOwnerAndSender` + sender-filter param on `search` /
+   `searchIncludingBody` / `hasBodyOnlyMatch`; new `SenderGroupService`
+   feeds the rail; `ThreadController` accepts `?from=<email>` and
+   composes it with `?q=`; `threads.html` renders the sticky `.sender-rail`
+   aside with avatars + thread counts + active-state highlighting.
+   25 new tests; 306 total pass.)_
 4. **Filter chips: date range, has-attachment, unread.** Compact chip
    row above the thread list that ANDs onto the active search/sender
    filter. Each chip toggles a `?since=`/`?attachments=true`/`?unread=true`

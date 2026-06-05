@@ -16,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -35,26 +36,26 @@ class ThreadSearchServiceTest {
     void freeUserSearchUsesSubjectOnlyAndChecksBodyOnlyMatch() {
         Page<EmailThread> page = new PageImpl<>(List.of());
         when(planLimits.currentPlan(user)).thenReturn(Plan.FREE);
-        when(threads.search(eq(user), eq("invoice"), any())).thenReturn(page);
-        when(threads.hasBodyOnlyMatch(user, "invoice")).thenReturn(true);
+        when(threads.search(eq(user), eq("invoice"), eq(null), any())).thenReturn(page);
+        when(threads.hasBodyOnlyMatch(user, "invoice", null)).thenReturn(true);
 
         ThreadSearchService svc = new ThreadSearchService(threads, planLimits);
-        ThreadSearchService.Result result = svc.search(user, "invoice", PageRequest.of(0, 20));
+        ThreadSearchService.Result result = svc.search(user, "invoice", null, PageRequest.of(0, 20));
 
         assertThat(result.page()).isSameAs(page);
         assertThat(result.showBodySearchUpgradeNag()).isTrue();
-        verify(threads, never()).searchIncludingBody(any(), anyString(), any());
+        verify(threads, never()).searchIncludingBody(any(), anyString(), any(), any());
     }
 
     @Test
     void freeUserWithNoBodyOnlyMatchDoesNotSurfaceUpgradeNag() {
         Page<EmailThread> page = new PageImpl<>(List.of());
         when(planLimits.currentPlan(user)).thenReturn(Plan.FREE);
-        when(threads.search(eq(user), eq("nothing"), any())).thenReturn(page);
-        when(threads.hasBodyOnlyMatch(user, "nothing")).thenReturn(false);
+        when(threads.search(eq(user), eq("nothing"), eq(null), any())).thenReturn(page);
+        when(threads.hasBodyOnlyMatch(user, "nothing", null)).thenReturn(false);
 
         ThreadSearchService svc = new ThreadSearchService(threads, planLimits);
-        ThreadSearchService.Result result = svc.search(user, "nothing", PageRequest.of(0, 20));
+        ThreadSearchService.Result result = svc.search(user, "nothing", null, PageRequest.of(0, 20));
 
         assertThat(result.showBodySearchUpgradeNag()).isFalse();
     }
@@ -63,28 +64,82 @@ class ThreadSearchServiceTest {
     void personalUserSearchUsesBodyInclusivePathAndSkipsNag() {
         Page<EmailThread> page = new PageImpl<>(List.of());
         when(planLimits.currentPlan(user)).thenReturn(Plan.PERSONAL);
-        when(threads.searchIncludingBody(eq(user), eq("kickoff"), any())).thenReturn(page);
+        when(threads.searchIncludingBody(eq(user), eq("kickoff"), eq(null), any())).thenReturn(page);
 
         ThreadSearchService svc = new ThreadSearchService(threads, planLimits);
-        ThreadSearchService.Result result = svc.search(user, "kickoff", PageRequest.of(0, 20));
+        ThreadSearchService.Result result = svc.search(user, "kickoff", null, PageRequest.of(0, 20));
 
         assertThat(result.page()).isSameAs(page);
         assertThat(result.showBodySearchUpgradeNag()).isFalse();
-        verify(threads, never()).search(any(), anyString(), any());
-        verify(threads, never()).hasBodyOnlyMatch(any(), anyString());
+        verify(threads, never()).search(any(), anyString(), any(), any());
+        verify(threads, never()).hasBodyOnlyMatch(any(), anyString(), any());
     }
 
     @Test
     void teamAndEnterpriseAlsoGetBodyInclusiveSearch() {
         Page<EmailThread> page = new PageImpl<>(List.of());
-        when(threads.searchIncludingBody(eq(user), anyString(), any())).thenReturn(page);
+        when(threads.searchIncludingBody(eq(user), anyString(), eq(null), any())).thenReturn(page);
 
         ThreadSearchService svc = new ThreadSearchService(threads, planLimits);
 
         when(planLimits.currentPlan(user)).thenReturn(Plan.TEAM);
-        assertThat(svc.search(user, "q", PageRequest.of(0, 20)).showBodySearchUpgradeNag()).isFalse();
+        assertThat(svc.search(user, "q", null, PageRequest.of(0, 20)).showBodySearchUpgradeNag()).isFalse();
 
         when(planLimits.currentPlan(user)).thenReturn(Plan.ENTERPRISE);
-        assertThat(svc.search(user, "q", PageRequest.of(0, 20)).showBodySearchUpgradeNag()).isFalse();
+        assertThat(svc.search(user, "q", null, PageRequest.of(0, 20)).showBodySearchUpgradeNag()).isFalse();
+    }
+
+    @Test
+    void senderOnlyFilterRoutesThroughFindByOwnerAndSender() {
+        Page<EmailThread> page = new PageImpl<>(List.of());
+        when(threads.findByOwnerAndSender(eq(user), eq("ada@acme.com"), any())).thenReturn(page);
+
+        ThreadSearchService svc = new ThreadSearchService(threads, planLimits);
+        ThreadSearchService.Result result = svc.search(user, "", "ada@acme.com", PageRequest.of(0, 20));
+
+        assertThat(result.page()).isSameAs(page);
+        assertThat(result.showBodySearchUpgradeNag()).isFalse();
+        verify(threads, never()).search(any(), anyString(), any(), any());
+        verify(threads, never()).searchIncludingBody(any(), anyString(), any(), any());
+        verify(planLimits, never()).currentPlan(any());
+    }
+
+    @Test
+    void freeUserCombinedQueryAndSenderPropagatesSenderToBothQueries() {
+        Page<EmailThread> page = new PageImpl<>(List.of());
+        when(planLimits.currentPlan(user)).thenReturn(Plan.FREE);
+        when(threads.search(eq(user), eq("planning"), eq("ada@acme.com"), any())).thenReturn(page);
+        when(threads.hasBodyOnlyMatch(user, "planning", "ada@acme.com")).thenReturn(true);
+
+        ThreadSearchService svc = new ThreadSearchService(threads, planLimits);
+        ThreadSearchService.Result result = svc.search(user, "planning", "ada@acme.com",
+                PageRequest.of(0, 20));
+
+        assertThat(result.showBodySearchUpgradeNag()).isTrue();
+        verify(threads).search(eq(user), eq("planning"), eq("ada@acme.com"), any());
+        verify(threads).hasBodyOnlyMatch(user, "planning", "ada@acme.com");
+    }
+
+    @Test
+    void paidUserCombinedQueryAndSenderHitsBodyInclusiveSearchWithSender() {
+        Page<EmailThread> page = new PageImpl<>(List.of());
+        when(planLimits.currentPlan(user)).thenReturn(Plan.PERSONAL);
+        when(threads.searchIncludingBody(eq(user), eq("invoice"), eq("ada@acme.com"), any()))
+                .thenReturn(page);
+
+        ThreadSearchService svc = new ThreadSearchService(threads, planLimits);
+        ThreadSearchService.Result result = svc.search(user, "invoice", "ada@acme.com",
+                PageRequest.of(0, 20));
+
+        assertThat(result.page()).isSameAs(page);
+        assertThat(result.showBodySearchUpgradeNag()).isFalse();
+    }
+
+    @Test
+    void blankQueryAndNullSenderIsAnIllegalRequest() {
+        ThreadSearchService svc = new ThreadSearchService(threads, planLimits);
+
+        assertThatThrownBy(() -> svc.search(user, "", null, PageRequest.of(0, 20)))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

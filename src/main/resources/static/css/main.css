@@ -35,7 +35,7 @@ body {
 
 /* ── Thread List Page ───────────────────────────────── */
 .thread-page {
-  max-width: 760px;
+  max-width: 980px;
   margin: 0 auto;
   padding: 28px 16px;
 }
@@ -1748,5 +1748,167 @@ body {
   .body-search-nag {
     background: linear-gradient(135deg, rgba(79, 128, 255, 0.18), rgba(58, 107, 224, 0.10));
     border-color: rgba(79, 128, 255, 0.45);
+  }
+}
+
+/* ── Sender drill-down rail ──────────────────────────── */
+.thread-layout { display: block; }
+.thread-layout-with-rail {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.thread-main { min-width: 0; }
+.sender-rail {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+}
+.sender-rail-details { padding: 4px 0; }
+.sender-rail-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 16px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sender-rail-summary::-webkit-details-marker { display: none; }
+.sender-rail-toggle-hint {
+  transition: transform 0.15s;
+  font-size: 11px;
+}
+.sender-rail-details:not([open]) .sender-rail-toggle-hint {
+  transform: rotate(-90deg);
+}
+.sender-rail-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  text-decoration: none;
+  color: var(--text);
+  border-left: 3px solid transparent;
+  transition: background 0.1s;
+}
+.sender-rail-row:hover { background: #f9fafb; }
+.sender-rail-active {
+  background: rgba(79, 128, 255, 0.10);
+  border-left-color: var(--brand);
+}
+.sender-rail-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sender-rail-avatar-everyone {
+  background: var(--border);
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 1;
+}
+.sender-rail-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.sender-rail-name {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.sender-rail-email {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.sender-rail-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+  padding: 2px 8px;
+  flex-shrink: 0;
+}
+.sender-rail-active .sender-rail-count {
+  background: rgba(79, 128, 255, 0.20);
+  color: var(--brand-dark);
+}
+.sender-pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  background: rgba(79, 128, 255, 0.08);
+  border: 1px solid rgba(79, 128, 255, 0.30);
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+.sender-pill-label { flex: 1; color: var(--text); }
+.sender-pill-label strong { color: var(--brand-dark); word-break: break-all; }
+.sender-pill-clear {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.sender-pill-clear:hover { color: var(--text); text-decoration: underline; }
+
+@media (max-width: 760px) {
+  .thread-layout-with-rail {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .sender-rail {
+    position: static;
+    max-height: none;
+  }
+  .sender-rail-details:not([open]) { padding-bottom: 4px; }
+}
+@media (prefers-color-scheme: dark) {
+  .sender-rail-row:hover { background: rgba(255, 255, 255, 0.04); }
+  .sender-rail-avatar-everyone {
+    background: rgba(255, 255, 255, 0.10);
+    color: var(--text-muted);
+  }
+  .sender-rail-count {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .sender-rail-active {
+    background: rgba(79, 128, 255, 0.18);
+  }
+  .sender-rail-active .sender-rail-count {
+    background: rgba(79, 128, 255, 0.28);
+    color: #c4d4ff;
+  }
+  .sender-pill {
+    background: rgba(79, 128, 255, 0.14);
+    border-color: rgba(79, 128, 255, 0.40);
   }
 }

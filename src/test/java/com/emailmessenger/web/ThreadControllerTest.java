@@ -62,6 +62,7 @@ class ThreadControllerTest {
     @Mock OnboardingService onboardingService;
     @Mock TrialConversionNudgeService trialConversionNudgeService;
     @Mock ThreadSearchService threadSearchService;
+    @Mock SenderGroupService senderGroupService;
 
     MockMvc mockMvc;
 
@@ -73,12 +74,13 @@ class ThreadControllerTest {
         ThreadController controller = new ThreadController(
                 threadRepository, threadViewService, replyService, userService,
                 billingBannerService, billingService, onboardingService,
-                trialConversionNudgeService, threadSearchService);
+                trialConversionNudgeService, threadSearchService, senderGroupService);
         lenient().when(userService.requireByEmail("owner@example.com")).thenReturn(owner);
         lenient().when(billingBannerService.bannerFor(owner)).thenReturn(Optional.empty());
         lenient().when(onboardingService.checklistFor(owner))
                 .thenReturn(new OnboardingChecklist(false, false));
         lenient().when(trialConversionNudgeService.nudgeFor(owner)).thenReturn(Optional.empty());
+        lenient().when(senderGroupService.topSenders(owner)).thenReturn(List.of());
         // Prefix/suffix prevents InternalResourceViewResolver from producing a path that
         // matches the request URL (which would cause a circular-dispatch error in standalone mode).
         InternalResourceViewResolver viewResolver = new InternalResourceViewResolver();
@@ -275,7 +277,7 @@ class ThreadControllerTest {
     @Test
     void searchQueryParamRoutesThroughThreadSearchService() throws Exception {
         Page<EmailThread> empty = new PageImpl<>(List.of());
-        when(threadSearchService.search(eq(owner), eq("planning"), any(Pageable.class)))
+        when(threadSearchService.search(eq(owner), eq("planning"), eq(null), any(Pageable.class)))
                 .thenReturn(new ThreadSearchService.Result(empty, false));
 
         mockMvc.perform(get("/threads").principal(principal).param("q", "planning"))
@@ -292,7 +294,7 @@ class ThreadControllerTest {
     @Test
     void bodyOnlyMatchOnFreePlanExposesUpgradeNag() throws Exception {
         Page<EmailThread> empty = new PageImpl<>(List.of());
-        when(threadSearchService.search(eq(owner), eq("invoice"), any(Pageable.class)))
+        when(threadSearchService.search(eq(owner), eq("invoice"), eq(null), any(Pageable.class)))
                 .thenReturn(new ThreadSearchService.Result(empty, true));
 
         mockMvc.perform(get("/threads").principal(principal).param("q", "invoice"))
@@ -314,19 +316,92 @@ class ThreadControllerTest {
                 .andExpect(model().attribute("searchQuery", ""));
 
         verify(threadSearchService, never())
-                .search(any(User.class), anyString(), any(Pageable.class));
-        verify(threadRepository, never()).search(any(User.class), anyString(), any(Pageable.class));
+                .search(any(User.class), anyString(), any(), any(Pageable.class));
+        verify(threadRepository, never())
+                .search(any(User.class), anyString(), any(), any(Pageable.class));
     }
 
     @Test
     void searchWithNoResultsSuppressesOnboardingChecklist() throws Exception {
         Page<EmailThread> empty = new PageImpl<>(List.of());
-        when(threadSearchService.search(eq(owner), eq("nope"), any(Pageable.class)))
+        when(threadSearchService.search(eq(owner), eq("nope"), eq(null), any(Pageable.class)))
                 .thenReturn(new ThreadSearchService.Result(empty, false));
 
         mockMvc.perform(get("/threads").principal(principal).param("q", "nope"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("threads"))
+                .andExpect(model().attribute("onboarding", nullValue()));
+
+        verify(onboardingService, never()).checklistFor(any(User.class));
+    }
+
+    @Test
+    void senderRailIsExposedOnInbox() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(empty);
+        List<SenderGroupService.SenderGroup> groups = List.of(
+                new SenderGroupService.SenderGroup("ada@acme.com", "Ada Lovelace", 4L, "Ada Lovelace", "AL"));
+        when(senderGroupService.topSenders(owner)).thenReturn(groups);
+
+        mockMvc.perform(get("/threads").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("senderGroups", groups))
+                .andExpect(model().attribute("activeSender", nullValue()));
+    }
+
+    @Test
+    void fromParamRoutesThroughSenderOnlyFilter() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadSearchService.search(eq(owner), eq(""), eq("ada@acme.com"), any(Pageable.class)))
+                .thenReturn(new ThreadSearchService.Result(empty, false));
+
+        mockMvc.perform(get("/threads").principal(principal).param("from", "ada@acme.com"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("threads"))
+                .andExpect(model().attribute("activeSender", "ada@acme.com"))
+                .andExpect(model().attribute("searchQuery", ""));
+
+        verify(threadRepository, never())
+                .findByOwnerOrderByUpdatedAtDesc(any(User.class), any(Pageable.class));
+    }
+
+    @Test
+    void combinedQueryAndFromGoesThroughSearchServiceWithBoth() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadSearchService.search(eq(owner), eq("planning"), eq("ada@acme.com"), any(Pageable.class)))
+                .thenReturn(new ThreadSearchService.Result(empty, false));
+
+        mockMvc.perform(get("/threads").principal(principal)
+                        .param("q", "planning")
+                        .param("from", "ada@acme.com"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("activeSender", "ada@acme.com"))
+                .andExpect(model().attribute("searchQuery", "planning"));
+    }
+
+    @Test
+    void blankFromParamFallsBackToFullList() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(empty);
+
+        mockMvc.perform(get("/threads").principal(principal).param("from", "  "))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("activeSender", nullValue()));
+
+        verify(threadSearchService, never())
+                .search(any(User.class), anyString(), any(), any(Pageable.class));
+    }
+
+    @Test
+    void senderFilterActiveSuppressesOnboardingCard() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadSearchService.search(eq(owner), eq(""), eq("ada@acme.com"), any(Pageable.class)))
+                .thenReturn(new ThreadSearchService.Result(empty, false));
+
+        mockMvc.perform(get("/threads").principal(principal).param("from", "ada@acme.com"))
+                .andExpect(status().isOk())
                 .andExpect(model().attribute("onboarding", nullValue()));
 
         verify(onboardingService, never()).checklistFor(any(User.class));
