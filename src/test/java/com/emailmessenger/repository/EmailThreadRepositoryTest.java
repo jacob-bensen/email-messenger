@@ -184,4 +184,90 @@ class EmailThreadRepositoryTest {
 
         assertThat(page.getContent()).hasSize(1);
     }
+
+    @Test
+    void searchIncludingBodyMatchesMessageBodyContent() {
+        var alex = participantRepo.save(new Participant("alex-body@example.com", "Alex"));
+        var thread = threadRepo.save(new EmailThread(owner, "Lunch tomorrow", "<lb@x>"));
+        messageRepo.save(new Message(thread, alex, "Lunch tomorrow",
+                "Can we move the Stripe webhook discussion to Friday?", null, LocalDateTime.now()));
+        threadRepo.save(new EmailThread(owner, "Unrelated", "<u@x>"));
+
+        var page = threadRepo.searchIncludingBody(owner, "stripe webhook", PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).extracting(EmailThread::getSubject)
+                .containsExactly("Lunch tomorrow");
+    }
+
+    @Test
+    void searchIncludingBodyStillFindsSubjectMatches() {
+        threadRepo.save(new EmailThread(owner, "Q3 Planning kickoff", "<q3@x>"));
+
+        var page = threadRepo.searchIncludingBody(owner, "planning", PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).hasSize(1);
+    }
+
+    @Test
+    void searchIncludingBodyScopedByOwner() {
+        var alice = userRepo.save(new User("alice-body@example.com", "h", "Alice"));
+        var sender = participantRepo.save(new Participant("s-body@x.com", "S"));
+        var aliceThread = threadRepo.save(new EmailThread(alice, "Alice's", "<ab@x>"));
+        messageRepo.save(new Message(aliceThread, sender, "Alice's",
+                "Confidential alpha launch plan", null, LocalDateTime.now()));
+
+        var ownerPage = threadRepo.searchIncludingBody(owner, "confidential", PageRequest.of(0, 10));
+
+        assertThat(ownerPage.getContent()).isEmpty();
+    }
+
+    @Test
+    void hasBodyOnlyMatchTrueWhenOnlyBodyMatches() {
+        var sender = participantRepo.save(new Participant("anon@x.com", "Anon"));
+        var thread = threadRepo.save(new EmailThread(owner, "Casual chat", "<cc@x>"));
+        messageRepo.save(new Message(thread, sender, "Casual chat",
+                "The Q4 forecast looks rough", null, LocalDateTime.now()));
+
+        assertThat(threadRepo.hasBodyOnlyMatch(owner, "forecast")).isTrue();
+    }
+
+    @Test
+    void hasBodyOnlyMatchFalseWhenSubjectAlsoMatches() {
+        var sender = participantRepo.save(new Participant("p@x.com", "P"));
+        var thread = threadRepo.save(new EmailThread(owner, "Forecast review", "<fr@x>"));
+        messageRepo.save(new Message(thread, sender, "Forecast review",
+                "Q4 forecast attached", null, LocalDateTime.now()));
+
+        assertThat(threadRepo.hasBodyOnlyMatch(owner, "forecast")).isFalse();
+    }
+
+    @Test
+    void hasBodyOnlyMatchFalseWhenParticipantMatches() {
+        var ada = participantRepo.save(new Participant("ada@bodyonly.com", "Ada"));
+        var thread = threadRepo.save(new EmailThread(owner, "Lunch", "<l-bom@x>"));
+        messageRepo.save(new Message(thread, ada, "Lunch",
+                "bodyonly text", null, LocalDateTime.now()));
+
+        assertThat(threadRepo.hasBodyOnlyMatch(owner, "bodyonly")).isFalse();
+    }
+
+    @Test
+    void hasBodyOnlyMatchFalseWhenNothingMatches() {
+        threadRepo.save(new EmailThread(owner, "Something else", "<se@x>"));
+
+        assertThat(threadRepo.hasBodyOnlyMatch(owner, "noresultswhatsoever")).isFalse();
+    }
+
+    @Test
+    void hasBodyOnlyMatchScopedByOwner() {
+        var alice = userRepo.save(new User("alice-hbom@example.com", "h", "Alice"));
+        var sender = participantRepo.save(new Participant("p-hbom@x.com", "P"));
+        var aliceThread = threadRepo.save(new EmailThread(alice, "Boring subject", "<bs@x>"));
+        messageRepo.save(new Message(aliceThread, sender, "Boring subject",
+                "Mentions zzunique-token only here", null, LocalDateTime.now()));
+
+        // Alice sees the body-only match; owner (a different user) does not.
+        assertThat(threadRepo.hasBodyOnlyMatch(alice, "zzunique-token")).isTrue();
+        assertThat(threadRepo.hasBodyOnlyMatch(owner, "zzunique-token")).isFalse();
+    }
 }

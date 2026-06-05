@@ -177,6 +177,21 @@
        th:href="@{/threads}" class="inbox-search-clear">Clear</a>
   </form>
 
+  <div th:if="${bodySearchUpgradeNag}" class="body-search-nag" role="status">
+    <div class="body-search-nag-text">
+      <strong>Search across message bodies is a Personal feature.</strong>
+      <span th:text="|We found more matches inside email bodies for &quot;${searchQuery}&quot;. Upgrade to read them.|">
+        We found more matches inside email bodies. Upgrade to read them.
+      </span>
+    </div>
+    <form th:action="@{/billing/checkout}" method="post" class="body-search-nag-cta-form">
+      <input type="hidden" name="plan" value="personal">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button type="submit" class="btn btn-primary body-search-nag-cta">Upgrade to Personal</button>
+    </form>
+  </div>
+
   <div th:if="${threads != null and threads.totalElements > 0}">
     <h2 class="section-title"
         th:text="${searchQuery != null and !#strings.isEmpty(searchQuery)}

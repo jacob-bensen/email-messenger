@@ -39,6 +39,7 @@ class ThreadController {
     private final BillingService billingService;
     private final OnboardingService onboardingService;
     private final TrialConversionNudgeService trialConversionNudgeService;
+    private final ThreadSearchService threadSearchService;
 
     ThreadController(EmailThreadRepository threadRepository,
                      ThreadViewService threadViewService,
@@ -47,7 +48,8 @@ class ThreadController {
                      BillingBannerService billingBannerService,
                      BillingService billingService,
                      OnboardingService onboardingService,
-                     TrialConversionNudgeService trialConversionNudgeService) {
+                     TrialConversionNudgeService trialConversionNudgeService,
+                     ThreadSearchService threadSearchService) {
         this.threadRepository = threadRepository;
         this.threadViewService = threadViewService;
         this.replyService = replyService;
@@ -56,6 +58,7 @@ class ThreadController {
         this.billingService = billingService;
         this.onboardingService = onboardingService;
         this.trialConversionNudgeService = trialConversionNudgeService;
+        this.threadSearchService = threadSearchService;
     }
 
     @GetMapping("/threads")
@@ -72,9 +75,16 @@ class ThreadController {
         }
         String trimmedQuery = query == null ? "" : query.trim();
         PageRequest pageRequest = PageRequest.of(Math.max(0, page), PAGE_SIZE);
-        Page<EmailThread> threads = trimmedQuery.isEmpty()
-                ? threadRepository.findByOwnerOrderByUpdatedAtDesc(owner, pageRequest)
-                : threadRepository.search(owner, trimmedQuery, pageRequest);
+        Page<EmailThread> threads;
+        if (trimmedQuery.isEmpty()) {
+            threads = threadRepository.findByOwnerOrderByUpdatedAtDesc(owner, pageRequest);
+        } else {
+            ThreadSearchService.Result result = threadSearchService.search(owner, trimmedQuery, pageRequest);
+            threads = result.page();
+            if (result.showBodySearchUpgradeNag()) {
+                model.addAttribute("bodySearchUpgradeNag", true);
+            }
+        }
         model.addAttribute("threads", threads);
         model.addAttribute("searchQuery", trimmedQuery);
         if (trimmedQuery.isEmpty() && threads.getTotalElements() == 0) {

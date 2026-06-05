@@ -61,6 +61,7 @@ class ThreadControllerTest {
     @Mock BillingService billingService;
     @Mock OnboardingService onboardingService;
     @Mock TrialConversionNudgeService trialConversionNudgeService;
+    @Mock ThreadSearchService threadSearchService;
 
     MockMvc mockMvc;
 
@@ -72,7 +73,7 @@ class ThreadControllerTest {
         ThreadController controller = new ThreadController(
                 threadRepository, threadViewService, replyService, userService,
                 billingBannerService, billingService, onboardingService,
-                trialConversionNudgeService);
+                trialConversionNudgeService, threadSearchService);
         lenient().when(userService.requireByEmail("owner@example.com")).thenReturn(owner);
         lenient().when(billingBannerService.bannerFor(owner)).thenReturn(Optional.empty());
         lenient().when(onboardingService.checklistFor(owner))
@@ -272,19 +273,33 @@ class ThreadControllerTest {
     }
 
     @Test
-    void searchQueryParamRoutesToRepositorySearch() throws Exception {
+    void searchQueryParamRoutesThroughThreadSearchService() throws Exception {
         Page<EmailThread> empty = new PageImpl<>(List.of());
-        when(threadRepository.search(eq(owner), eq("planning"), any(Pageable.class)))
-                .thenReturn(empty);
+        when(threadSearchService.search(eq(owner), eq("planning"), any(Pageable.class)))
+                .thenReturn(new ThreadSearchService.Result(empty, false));
 
         mockMvc.perform(get("/threads").principal(principal).param("q", "planning"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("threads"))
                 .andExpect(model().attribute("searchQuery", "planning"))
-                .andExpect(model().attribute("threads", notNullValue()));
+                .andExpect(model().attribute("threads", notNullValue()))
+                .andExpect(model().attribute("bodySearchUpgradeNag", nullValue()));
 
         verify(threadRepository, never())
                 .findByOwnerOrderByUpdatedAtDesc(any(User.class), any(Pageable.class));
+    }
+
+    @Test
+    void bodyOnlyMatchOnFreePlanExposesUpgradeNag() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadSearchService.search(eq(owner), eq("invoice"), any(Pageable.class)))
+                .thenReturn(new ThreadSearchService.Result(empty, true));
+
+        mockMvc.perform(get("/threads").principal(principal).param("q", "invoice"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("threads"))
+                .andExpect(model().attribute("searchQuery", "invoice"))
+                .andExpect(model().attribute("bodySearchUpgradeNag", is(true)));
     }
 
     @Test
@@ -298,14 +313,16 @@ class ThreadControllerTest {
                 .andExpect(view().name("threads"))
                 .andExpect(model().attribute("searchQuery", ""));
 
+        verify(threadSearchService, never())
+                .search(any(User.class), anyString(), any(Pageable.class));
         verify(threadRepository, never()).search(any(User.class), anyString(), any(Pageable.class));
     }
 
     @Test
     void searchWithNoResultsSuppressesOnboardingChecklist() throws Exception {
         Page<EmailThread> empty = new PageImpl<>(List.of());
-        when(threadRepository.search(eq(owner), eq("nope"), any(Pageable.class)))
-                .thenReturn(empty);
+        when(threadSearchService.search(eq(owner), eq("nope"), any(Pageable.class)))
+                .thenReturn(new ThreadSearchService.Result(empty, false));
 
         mockMvc.perform(get("/threads").principal(principal).param("q", "nope"))
                 .andExpect(status().isOk())

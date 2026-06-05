@@ -45,6 +45,11 @@ body text — and the Free-vs-Personal gap pivots from "thread cap" to
    running a query that only hits body content see an upgrade nag
    ("Search across message bodies is a Personal feature") that links to
    `/billing/checkout?plan=personal`. H2-friendly fallback for tests.
+   _(Shipped 2026-06-05 — `EmailThreadRepository.searchIncludingBody` +
+   `.hasBodyOnlyMatch` (JPQL `LIKE` on `bodyPlain`, H2 + Postgres-safe),
+   new `ThreadSearchService` gates on `PlanLimitService.currentPlan`,
+   nag form posts `plan=personal` to `/billing/checkout`. 13 new tests;
+   281 total pass.)_
 3. **Sender-grouped sidebar drill-down.** Group threads by participant
    (avatar + name + thread count) so users can drill from "everyone" to
    "everything from acme.com". Lives in the same `/threads` surface as a
