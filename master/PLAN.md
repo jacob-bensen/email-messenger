@@ -52,7 +52,12 @@ land, sign up, see the IM transform — is intentional from end to end.
    days, surface a more prominent in-app prompt (beyond the existing
    `trial-banner-urgent` strip) — e.g. a dismissable conversion modal on
    `/threads` with the chosen plan, price, and a one-click checkout —
-   to push trial→paid conversion before expiry.
+   to push trial→paid conversion before expiry. _(Shipped 2026-06-05 —
+   `TrialConversionNudgeService` produces a per-user nudge with plan
+   label, $9/$29 monthly price, and a localStorage-keyed dismissal
+   bucket that re-arms as days-left shrinks; `/threads` renders a
+   modal with a one-click POST to `/billing/checkout`. Enterprise is
+   skipped since it's sales-assisted.)_
 
 ## Done means
 

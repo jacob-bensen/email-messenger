@@ -5,6 +5,8 @@ import com.emailmessenger.billing.BillingBanner;
 import com.emailmessenger.billing.BillingBannerService;
 import com.emailmessenger.billing.BillingService;
 import com.emailmessenger.billing.PlanLimitKind;
+import com.emailmessenger.billing.TrialConversionNudge;
+import com.emailmessenger.billing.TrialConversionNudgeService;
 import com.emailmessenger.billing.UpgradeModal;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Plan;
@@ -58,6 +60,7 @@ class ThreadControllerTest {
     @Mock BillingBannerService billingBannerService;
     @Mock BillingService billingService;
     @Mock OnboardingService onboardingService;
+    @Mock TrialConversionNudgeService trialConversionNudgeService;
 
     MockMvc mockMvc;
 
@@ -68,11 +71,13 @@ class ThreadControllerTest {
     void setUp() {
         ThreadController controller = new ThreadController(
                 threadRepository, threadViewService, replyService, userService,
-                billingBannerService, billingService, onboardingService);
+                billingBannerService, billingService, onboardingService,
+                trialConversionNudgeService);
         lenient().when(userService.requireByEmail("owner@example.com")).thenReturn(owner);
         lenient().when(billingBannerService.bannerFor(owner)).thenReturn(Optional.empty());
         lenient().when(onboardingService.checklistFor(owner))
                 .thenReturn(new OnboardingChecklist(false, false));
+        lenient().when(trialConversionNudgeService.nudgeFor(owner)).thenReturn(Optional.empty());
         // Prefix/suffix prevents InternalResourceViewResolver from producing a path that
         // matches the request URL (which would cause a circular-dispatch error in standalone mode).
         InternalResourceViewResolver viewResolver = new InternalResourceViewResolver();
@@ -237,6 +242,33 @@ class ThreadControllerTest {
                 .andExpect(model().attribute("onboarding", nullValue()));
 
         verify(onboardingService, never()).checklistFor(any(User.class));
+    }
+
+    @Test
+    void trialConversionNudgeIsExposedOnInboxWhenServiceReturnsOne() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(empty);
+        TrialConversionNudge nudge = new TrialConversionNudge(
+                "Personal", "personal", 2L, "$9", "mailim-trial-nudge-2026-06-07-d2");
+        when(trialConversionNudgeService.nudgeFor(owner)).thenReturn(Optional.of(nudge));
+
+        mockMvc.perform(get("/threads").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(view().name("threads"))
+                .andExpect(model().attribute("trialConversionNudge", nudge));
+    }
+
+    @Test
+    void trialConversionNudgeIsNotSurfacedDuringLockout() throws Exception {
+        when(billingBannerService.bannerFor(owner))
+                .thenReturn(Optional.of(BillingBanner.subscriptionEnded()));
+
+        mockMvc.perform(get("/threads").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("trialConversionNudge", nullValue()));
+
+        verify(trialConversionNudgeService, never()).nudgeFor(any(User.class));
     }
 
     @Test

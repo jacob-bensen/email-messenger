@@ -4,6 +4,7 @@ import com.emailmessenger.auth.UserService;
 import com.emailmessenger.billing.BillingBanner;
 import com.emailmessenger.billing.BillingBannerService;
 import com.emailmessenger.billing.BillingService;
+import com.emailmessenger.billing.TrialConversionNudgeService;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
@@ -37,6 +38,7 @@ class ThreadController {
     private final BillingBannerService billingBannerService;
     private final BillingService billingService;
     private final OnboardingService onboardingService;
+    private final TrialConversionNudgeService trialConversionNudgeService;
 
     ThreadController(EmailThreadRepository threadRepository,
                      ThreadViewService threadViewService,
@@ -44,7 +46,8 @@ class ThreadController {
                      UserService userService,
                      BillingBannerService billingBannerService,
                      BillingService billingService,
-                     OnboardingService onboardingService) {
+                     OnboardingService onboardingService,
+                     TrialConversionNudgeService trialConversionNudgeService) {
         this.threadRepository = threadRepository;
         this.threadViewService = threadViewService;
         this.replyService = replyService;
@@ -52,6 +55,7 @@ class ThreadController {
         this.billingBannerService = billingBannerService;
         this.billingService = billingService;
         this.onboardingService = onboardingService;
+        this.trialConversionNudgeService = trialConversionNudgeService;
     }
 
     @GetMapping("/threads")
@@ -71,6 +75,8 @@ class ThreadController {
         if (threads.getTotalElements() == 0) {
             model.addAttribute("onboarding", onboardingService.checklistFor(owner));
         }
+        trialConversionNudgeService.nudgeFor(owner)
+                .ifPresent(n -> model.addAttribute("trialConversionNudge", n));
         return "threads";
     }
 

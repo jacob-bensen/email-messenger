@@ -87,6 +87,58 @@
     </div>
   </div>
 
+  <div th:if="${trialConversionNudge != null}"
+       id="trial-nudge-overlay"
+       class="modal-overlay"
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="trial-nudge-title"
+       th:attr="data-dismiss-key=${trialConversionNudge.dismissKey()}"
+       hidden>
+    <div class="modal-card">
+      <button type="button" class="modal-close" aria-label="Dismiss"
+              id="trial-nudge-close">&times;</button>
+      <h2 id="trial-nudge-title" class="modal-title"
+          th:text="${trialConversionNudge.daysLeft() == 0}
+                   ? |Your ${trialConversionNudge.planLabel()} trial ends today|
+                   : (${trialConversionNudge.daysLeft() == 1}
+                      ? |Your ${trialConversionNudge.planLabel()} trial ends tomorrow|
+                      : |Your ${trialConversionNudge.planLabel()} trial ends in ${trialConversionNudge.daysLeft()} days|)">
+        Your Personal trial ends in 3 days
+      </h2>
+      <p class="modal-sub"
+         th:text="|Continue on ${trialConversionNudge.planLabel()} for ${trialConversionNudge.monthlyPrice()}/month — keep your imported threads and reply tooling without interruption.|">
+        Continue on Personal for $9/month — keep your imported threads and reply tooling without interruption.
+      </p>
+      <div class="plan-compare">
+        <div class="plan-compare-col plan-compare-featured">
+          <div class="plan-compare-tag">Your plan</div>
+          <div class="plan-compare-name"
+               th:text="|${trialConversionNudge.planLabel()} — ${trialConversionNudge.monthlyPrice()}/month|">
+            Personal — $9/month
+          </div>
+          <ul class="plan-compare-features">
+            <li>Keep every imported thread</li>
+            <li>Unlimited history &amp; mailbox sync</li>
+            <li>Cancel anytime from the billing portal</li>
+          </ul>
+        </div>
+      </div>
+      <form th:action="@{/billing/checkout}" method="post" class="modal-cta-form">
+        <input type="hidden" name="plan" th:value="${trialConversionNudge.planParam()}">
+        <input type="hidden" th:if="${_csrf != null}"
+               th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <button type="submit" class="btn btn-primary modal-cta"
+                th:text="|Continue on ${trialConversionNudge.planLabel()}|">
+          Continue on Personal
+        </button>
+      </form>
+      <button type="button" class="modal-dismiss-link" id="trial-nudge-dismiss">
+        Remind me later
+      </button>
+    </div>
+  </div>
+
   <div th:if="${billingBanner != null and billingBanner.trialEnding}"
        class="trial-banner"
        th:classappend="${billingBanner.daysLeft <= 3} ? ' trial-banner-urgent' : ''">
@@ -180,6 +232,23 @@
 
 </main>
 <script>
+(function () {
+  var overlay = document.getElementById('trial-nudge-overlay');
+  if (!overlay) return;
+  var key = overlay.getAttribute('data-dismiss-key');
+  try {
+    if (key && localStorage.getItem(key) === '1') return;
+  } catch (e) { /* private mode — fall through and show */ }
+  overlay.hidden = false;
+  function dismiss() {
+    try { if (key) localStorage.setItem(key, '1'); } catch (e) { /* ignore */ }
+    overlay.remove();
+  }
+  var close = document.getElementById('trial-nudge-close');
+  var later = document.getElementById('trial-nudge-dismiss');
+  if (close) close.addEventListener('click', dismiss);
+  if (later) later.addEventListener('click', dismiss);
+}());
 (function () {
   var items = Array.from(document.querySelectorAll('.thread-item'));
   if (!items.length) return;
