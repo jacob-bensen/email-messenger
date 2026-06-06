@@ -29,6 +29,9 @@
     <div th:if="${param.logout}" class="alert alert-success">
       You have been signed out.
     </div>
+    <div th:if="${param.reset}" class="alert alert-success">
+      Password updated. Sign in with your new password.
+    </div>
 
     <form method="post" th:action="@{/login}" class="auth-form" autocomplete="on">
       <input type="hidden" name="plan" th:if="${plan != null}" th:value="${plan}">
@@ -51,6 +54,9 @@
       <button type="submit" class="btn btn-primary auth-submit">Sign in</button>
     </form>
 
+    <p class="auth-alt">
+      <a href="/password/forgot">Forgot your password?</a>
+    </p>
     <p class="auth-alt">
       No account yet?
       <a th:if="${plan == null}" href="/register">Create one</a>

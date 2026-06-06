@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <th:block th:replace="~{fragments/seo :: meta(
+      pageTitle='Set a new password — MailIM',
+      pageDescription='Set a new password for your MailIM account.',
+      pagePath='/password/reset')}"></th:block>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/" class="brand">MailIM</a>
+  <nav class="header-nav">
+    <a href="/pricing">Pricing</a>
+    <a href="/login">Sign in</a>
+  </nav>
+</header>
+
+<main class="auth-page">
+  <section class="auth-card">
+    <h1>Set a new password</h1>
+
+    <div th:if="${status == 'invalid'}" class="alert alert-error">
+      This reset link is invalid or has expired. Reset links are valid for one
+      hour and can only be used once.
+      <p class="auth-alt"><a href="/password/forgot">Request a new link</a>.</p>
+    </div>
+
+    <div th:if="${error == 'tooShort'}" class="alert alert-error">
+      Password must be at least 8 characters.
+    </div>
+
+    <form th:if="${status != 'invalid'}"
+          method="post" th:action="@{/password/reset}" class="auth-form"
+          autocomplete="on">
+      <input type="hidden" name="token" th:value="${token}">
+
+      <label class="auth-label">
+        <span>New password</span>
+        <input type="password" name="password" required minlength="8"
+               autocomplete="new-password" autofocus>
+        <small class="auth-hint">At least 8 characters.</small>
+      </label>
+
+      <button type="submit" class="btn btn-primary auth-submit">Set password</button>
+    </form>
+  </section>
+</main>
+
+<footer class="marketing-footer">
+  <span>&copy; MailIM</span>
+  <nav>
+    <a href="/pricing">Pricing</a>
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+    <a href="/refund">Refund</a>
+  </nav>
+</footer>
+
+<th:block th:replace="~{fragments/cookie-banner :: banner}"></th:block>
+
+</body>
+</html>
