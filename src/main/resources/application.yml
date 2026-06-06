@@ -88,6 +88,11 @@ mailbox:
     interval-ms: ${MAILBOX_POLLING_INTERVAL_MS:300000}
     initial-delay-ms: ${MAILBOX_POLLING_INITIAL_DELAY_MS:30000}
 
+digest:
+  enabled: ${DIGEST_ENABLED:false}
+  cron: ${DIGEST_CRON:0 0 14 ? * MON}
+  zone: ${DIGEST_ZONE:UTC}
+
 logging:
   level:
     com.emailmessenger: DEBUG
@@ -167,6 +172,11 @@ mailbox:
     enabled: ${MAILBOX_POLLING_ENABLED:false}
     interval-ms: ${MAILBOX_POLLING_INTERVAL_MS:300000}
     initial-delay-ms: ${MAILBOX_POLLING_INITIAL_DELAY_MS:30000}
+
+digest:
+  enabled: ${DIGEST_ENABLED:false}
+  cron: ${DIGEST_CRON:0 0 14 ? * MON}
+  zone: ${DIGEST_ZONE:UTC}
 
 logging:
   level:

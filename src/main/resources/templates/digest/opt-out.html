@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Digest email preferences — MailIM</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/" class="brand">MailIM</a>
+  <nav class="header-nav">
+    <a href="/login">Sign in</a>
+  </nav>
+</header>
+
+<main class="legal-page">
+  <article class="legal-card">
+    <th:block th:if="${status == 'ok'}">
+      <h1>You're unsubscribed</h1>
+      <p>
+        We've stopped weekly saved-search digests to
+        <strong th:text="${email}">you@example.com</strong>.
+        You'll still receive transactional messages (replies, billing,
+        password resets) as normal.
+      </p>
+      <p>
+        Changed your mind? Re-enable digests from the inbox sidebar after
+        signing in.
+      </p>
+      <p><a href="/login" class="btn btn-primary">Back to sign in</a></p>
+    </th:block>
+    <th:block th:if="${status == 'invalid'}">
+      <h1>Link no longer valid</h1>
+      <p>
+        That unsubscribe link is missing or no longer recognised. If you
+        meant to stop digest emails, open the most recent one and click
+        the unsubscribe link in its footer, or sign in and toggle the
+        preference from your inbox.
+      </p>
+      <p><a href="/login" class="btn btn-primary">Sign in</a></p>
+    </th:block>
+  </article>
+</main>
+
+</body>
+</html>

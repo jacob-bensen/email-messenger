@@ -77,6 +77,23 @@ re-engagement emails recover dormant accounts before they cancel.
    over the past 7 days. Per-user opt-out token in the footer; a
    `digest_email_preferences` row stores opt-out state. Free users are
    intentionally excluded — that's the upgrade hook.
+   _(Shipped 2026-06-06 — V12 adds `digest_email_preferences` with a
+   unique `opt_out_token` and nullable `last_sent_at`; new
+   `DigestEmailPreference` entity + repository, `WeeklyDigestService` in
+   `com.emailmessenger.digest` iterates `SavedSearchRepository.findDistinctOwners`,
+   skips Free / opted-out / no-new-match users, lazily provisions the
+   pref row with a UUID token, and for each remaining user reuses the
+   same plan-aware `findByOwnerFiltered` / `findByOwnerAndSender` /
+   `searchIncludingBody` / `search` repository methods that power the
+   inbox — capped at 5 threads per saved-search section and floored at
+   the 7-day window — to assemble a plain-text digest delivered via the
+   existing `JavaMailSender`. `WeeklyDigestScheduler` runs cron
+   `0 0 14 ? * MON` UTC gated by `digest.enabled=true` (default off in
+   dev/tests so nothing accidentally mails). Unauthenticated
+   `GET /digest/opt-out?token=…` flips the row and renders a confirmation
+   (or a generic "invalid link" page for missing/unknown tokens to avoid
+   leaking which tokens existed); `SecurityConfig` permits the path.
+   12 new tests; 377 total pass.)_
 4. **Re-engagement email after 7 days of inactivity.** Cross-references
    the user's last `/threads` GET against `last_login_at` (new `users`
    column) and fires a single "you have N unread threads waiting"

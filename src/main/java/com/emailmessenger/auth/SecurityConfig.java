@@ -38,6 +38,7 @@ class SecurityConfig {
                                 "/login", "/register",
                                 "/privacy", "/terms", "/refund",
                                 "/billing/cancel", "/billing/webhook",
+                                "/digest/opt-out",
                                 "/robots.txt", "/sitemap.xml",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/error", "/h2-console/**",
