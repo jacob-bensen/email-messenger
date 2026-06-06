@@ -147,6 +147,20 @@
     </div>
   </div>
 
+  <div th:if="${emailUnverified}" class="verify-email-banner" role="status">
+    <span class="verify-email-text">
+      <strong th:if="${verifyFlash == 'resent'}">We just sent a fresh verification link.</strong>
+      <strong th:if="${verifyFlash == 'resendFailed'}">We couldn't send the verification email — try again in a moment.</strong>
+      <strong th:if="${verifyFlash == null or (verifyFlash != 'resent' and verifyFlash != 'resendFailed')}">Confirm your email to keep your MailIM account.</strong>
+      Check your inbox for the link we sent on signup, or resend it below.
+    </span>
+    <form th:action="@{/verify-email/resend}" method="post" class="verify-email-form">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button type="submit" class="btn btn-secondary verify-email-cta">Resend link</button>
+    </form>
+  </div>
+
   <div th:if="${billingBanner != null and billingBanner.trialEnding}"
        class="trial-banner"
        th:classappend="${billingBanner.daysLeft <= 3} ? ' trial-banner-urgent' : ''">

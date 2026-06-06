@@ -49,6 +49,9 @@ public class User {
     @Column(name = "last_reengagement_sent_at")
     private LocalDateTime lastReengagementSentAt;
 
+    @Column(name = "email_verified_at")
+    private LocalDateTime emailVerifiedAt;
+
     protected User() {}
 
     public User(String email, String passwordHash, String displayName) {
@@ -80,6 +83,8 @@ public class User {
     public LocalDateTime getLastLoginAt() { return lastLoginAt; }
     public LocalDateTime getLastInboxVisitAt() { return lastInboxVisitAt; }
     public LocalDateTime getLastReengagementSentAt() { return lastReengagementSentAt; }
+    public LocalDateTime getEmailVerifiedAt() { return emailVerifiedAt; }
+    public boolean isEmailVerified() { return emailVerifiedAt != null; }
 
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public void setDisplayName(String displayName) { this.displayName = displayName; }
@@ -88,4 +93,5 @@ public class User {
     public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
     public void setLastInboxVisitAt(LocalDateTime lastInboxVisitAt) { this.lastInboxVisitAt = lastInboxVisitAt; }
     public void setLastReengagementSentAt(LocalDateTime ts) { this.lastReengagementSentAt = ts; }
+    public void setEmailVerifiedAt(LocalDateTime ts) { this.emailVerifiedAt = ts; }
 }

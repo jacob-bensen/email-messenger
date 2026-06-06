@@ -16,6 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.service.ReplyService;
+import jakarta.mail.Session;
+import jakarta.mail.internet.MimeMessage;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.mail.javamail.JavaMailSender;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -46,6 +50,15 @@ class AuthFlowIntegrationTest {
     // Stripe is unconfigured in the dev profile; mock so happy-path checkout
     // is deterministic without hitting the real gateway.
     @MockBean BillingService billingService;
+    // Registration now sends a verification email; mock so we don't try
+    // to reach a real SMTP relay from the test JVM.
+    @MockBean JavaMailSender mailSender;
+
+    @BeforeEach
+    void stubMimeFactory() {
+        when(mailSender.createMimeMessage())
+                .thenReturn(new MimeMessage((Session) null));
+    }
 
     @Test
     void loginPageIsPublic() throws Exception {

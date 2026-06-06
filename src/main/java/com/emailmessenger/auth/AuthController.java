@@ -25,10 +25,14 @@ class AuthController {
 
     private final UserService userService;
     private final BillingService billingService;
+    private final EmailVerificationService emailVerificationService;
 
-    AuthController(UserService userService, BillingService billingService) {
+    AuthController(UserService userService,
+                   BillingService billingService,
+                   EmailVerificationService emailVerificationService) {
         this.userService = userService;
         this.billingService = billingService;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @GetMapping("/login")
@@ -71,14 +75,19 @@ class AuthController {
         if (binding.hasErrors()) {
             return "register";
         }
+        User newUser;
         try {
-            userService.register(form.getEmail(), form.getPassword(),
+            newUser = userService.register(form.getEmail(), form.getPassword(),
                     form.getDisplayName(), form.getSource());
         } catch (EmailAlreadyRegisteredException e) {
             binding.rejectValue("email", "email.taken",
                     "An account with that email already exists.");
             return "register";
         }
+        // Verification email is best-effort — a flaky SMTP relay must not
+        // strand the user mid-signup. The service swallows MailException
+        // and the banner on /threads lets them re-request.
+        emailVerificationService.sendVerification(newUser);
         // Auto-login after registration so the user lands inside the app,
         // not on the login screen.
         request.login(UserService.normalizeEmail(form.getEmail()), form.getPassword());

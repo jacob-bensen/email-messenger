@@ -37,6 +37,7 @@ class SecurityConfig {
                                 "/", "/pricing", "/demo",
                                 "/login", "/register",
                                 "/password/forgot", "/password/reset",
+                                "/verify-email",
                                 "/privacy", "/terms", "/refund",
                                 "/billing/cancel", "/billing/webhook",
                                 "/digest/opt-out",

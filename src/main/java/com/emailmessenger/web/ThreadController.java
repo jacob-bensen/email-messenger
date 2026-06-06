@@ -92,6 +92,7 @@ class ThreadController {
         BillingBanner banner = billingBannerService.bannerFor(owner).orElse(null);
         model.addAttribute("billingBanner", banner);
         model.addAttribute("hasBilling", billingService.hasManagedBilling(owner));
+        model.addAttribute("emailUnverified", !owner.isEmailVerified());
         if (banner != null && banner.isSubscriptionEnded()) {
             return "threads";
         }
