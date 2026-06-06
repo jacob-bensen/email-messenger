@@ -6,8 +6,10 @@ import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
+import com.emailmessenger.domain.SavedSearch;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.repository.MailAccountRepository;
+import com.emailmessenger.repository.SavedSearchRepository;
 import com.emailmessenger.repository.SubscriptionRepository;
 import com.emailmessenger.repository.UserRepository;
 import com.emailmessenger.service.ReplyService;
@@ -32,6 +34,7 @@ class PlanLimitServiceTest {
     @Autowired SubscriptionRepository subscriptions;
     @Autowired EmailThreadRepository threads;
     @Autowired MailAccountRepository mailAccounts;
+    @Autowired SavedSearchRepository savedSearches;
 
     @MockBean StripeCheckoutGateway gateway;
     @MockBean StripePortalGateway portalGateway;
@@ -170,6 +173,51 @@ class PlanLimitServiceTest {
         }
 
         planLimitService.enforceCanCreateMailbox(user); // 2 < 3, no throw
+    }
+
+    @Test
+    void enforceCanCreateSavedSearchPassesUnderFreeCap() {
+        User user = newUser("ss-under@example.com");
+
+        planLimitService.enforceCanCreateSavedSearch(user); // 0 saved < 1 cap, no throw
+    }
+
+    @Test
+    void enforceCanCreateSavedSearchThrowsAtFreeCap() {
+        User user = newUser("ss-cap@example.com");
+        savedSearches.save(new SavedSearch(user, "First", null,
+                "ada@example.com", null, false, false));
+
+        PlanLimitExceededException ex = catchThrowableOfType(
+                () -> planLimitService.enforceCanCreateSavedSearch(user),
+                PlanLimitExceededException.class);
+
+        assertThat(ex).isNotNull();
+        assertThat(ex.getCurrentPlan()).isEqualTo(Plan.FREE);
+        assertThat(ex.getKind()).isEqualTo(PlanLimitKind.SAVED_SEARCH_COUNT);
+        assertThat(ex.getLimit()).isEqualTo(1);
+        assertThat(ex.getCurrent()).isEqualTo(1);
+    }
+
+    @Test
+    void enforceCanCreateSavedSearchNoOpsForPaidPlan() {
+        User user = newUser("ss-paid@example.com");
+        Subscription sub = new Subscription(user, "cus_ss_paid", "active");
+        sub.setPlan(Plan.PERSONAL);
+        subscriptions.save(sub);
+        for (int i = 0; i < 3; i++) {
+            savedSearches.save(new SavedSearch(user, "s" + i, null,
+                    "x" + i + "@example.com", null, false, false));
+        }
+
+        planLimitService.enforceCanCreateSavedSearch(user); // no throw despite >Free cap
+    }
+
+    @Test
+    void freePlanSavedSearchCapIsOne() {
+        User user = newUser("ss-limit@example.com");
+        PlanLimits caps = planLimitService.limitsFor(user);
+        assertThat(caps.savedSearches()).isEqualTo(1);
     }
 
     private void seedThreads(User owner, int count) {

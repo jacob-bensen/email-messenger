@@ -43,6 +43,7 @@ class ThreadController {
     private final TrialConversionNudgeService trialConversionNudgeService;
     private final ThreadSearchService threadSearchService;
     private final SenderGroupService senderGroupService;
+    private final SavedSearchService savedSearchService;
     private final Clock clock;
 
     ThreadController(EmailThreadRepository threadRepository,
@@ -55,6 +56,7 @@ class ThreadController {
                      TrialConversionNudgeService trialConversionNudgeService,
                      ThreadSearchService threadSearchService,
                      SenderGroupService senderGroupService,
+                     SavedSearchService savedSearchService,
                      Clock clock) {
         this.threadRepository = threadRepository;
         this.threadViewService = threadViewService;
@@ -66,6 +68,7 @@ class ThreadController {
         this.trialConversionNudgeService = trialConversionNudgeService;
         this.threadSearchService = threadSearchService;
         this.senderGroupService = senderGroupService;
+        this.savedSearchService = savedSearchService;
         this.clock = clock;
     }
 
@@ -107,6 +110,10 @@ class ThreadController {
         List<SenderGroupService.SenderGroup> senderGroups = senderGroupService.topSenders(owner);
         model.addAttribute("senderGroups", senderGroups);
         model.addAttribute("hasAnyThreads", !senderGroups.isEmpty());
+        List<SavedSearchView> savedSearches = savedSearchService.viewsFor(owner);
+        model.addAttribute("savedSearches", savedSearches);
+        model.addAttribute("hasActiveSearchToSave",
+                !trimmedQuery.isEmpty() || trimmedFrom != null || filters.isActive());
         if (trimmedQuery.isEmpty() && trimmedFrom == null && !filters.isActive()
                 && threads.getTotalElements() == 0) {
             model.addAttribute("onboarding", onboardingService.checklistFor(owner));

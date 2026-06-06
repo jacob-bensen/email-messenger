@@ -40,7 +40,11 @@
       <button type="button" class="modal-close" aria-label="Dismiss"
               onclick="document.getElementById('upgrade-modal-overlay').remove();">×</button>
       <h2 id="upgrade-modal-title" class="modal-title"
-          th:text="${upgradeModal.kind.name() == 'MAILBOX_COUNT'} ? 'You''ve hit your Free plan mailbox limit' : 'You''ve hit your Free plan limit'">
+          th:text="${upgradeModal.kind.name() == 'MAILBOX_COUNT'}
+                   ? 'You''ve hit your Free plan mailbox limit'
+                   : (${upgradeModal.kind.name() == 'SAVED_SEARCH_COUNT'}
+                      ? 'Save more searches on Personal'
+                      : 'You''ve hit your Free plan limit')">
         You've hit your Free plan limit
       </h2>
       <p class="modal-sub" th:if="${upgradeModal.kind.name() == 'THREAD_COUNT'}"
@@ -50,6 +54,10 @@
       <p class="modal-sub" th:if="${upgradeModal.kind.name() == 'MAILBOX_COUNT'}"
          th:text="|You've connected ${upgradeModal.current} of ${upgradeModal.limit} mailboxes on the Free plan. Upgrade to connect more accounts.|">
         You've connected 1 of 1 mailboxes on the Free plan. Upgrade to connect more accounts.
+      </p>
+      <p class="modal-sub" th:if="${upgradeModal.kind.name() == 'SAVED_SEARCH_COUNT'}"
+         th:text="|Free includes ${upgradeModal.limit} saved search. Upgrade to Personal to pin every "everything from X" view you care about.|">
+        Free includes 1 saved search. Upgrade to Personal to pin every "everything from X" view you care about.
       </p>
       <div class="plan-compare">
         <div class="plan-compare-col">
@@ -165,12 +173,47 @@
   </div>
 
   <div class="thread-layout"
-       th:classappend="${senderGroups != null and !senderGroups.isEmpty()} ? ' thread-layout-with-rail' : ''">
+       th:classappend="${(senderGroups != null and !senderGroups.isEmpty()) or (savedSearches != null and !savedSearches.isEmpty())} ? ' thread-layout-with-rail' : ''">
 
   <aside class="sender-rail"
-         th:if="${senderGroups != null and !senderGroups.isEmpty()}"
-         aria-label="Filter by sender">
-    <details class="sender-rail-details" open>
+         th:if="${(senderGroups != null and !senderGroups.isEmpty()) or (savedSearches != null and !savedSearches.isEmpty())}"
+         aria-label="Inbox filters">
+    <details class="sender-rail-details saved-search-rail"
+             th:if="${savedSearches != null and !savedSearches.isEmpty()}" open>
+      <summary class="sender-rail-summary">
+        <span>Saved searches</span>
+        <span class="sender-rail-toggle-hint" aria-hidden="true">▾</span>
+      </summary>
+      <div th:each="saved : ${savedSearches}"
+           class="saved-search-row"
+           th:classappend="${saved.matches(searchQuery, activeSender,
+                              activeFilters != null ? activeFilters.sincePreset() : null,
+                              activeFilters != null ? activeFilters.requireUnread() : false,
+                              activeFilters != null ? activeFilters.requireAttachments() : false)} ? ' saved-search-active' : ''">
+        <a th:href="@{/threads(q=${saved.hasQuery()} ? ${saved.query()} : null,
+                                from=${saved.hasSender()} ? ${saved.senderEmail()} : null,
+                                since=${saved.hasSincePreset()} ? ${saved.sincePreset()} : null,
+                                unread=${saved.requireUnread()} ? 'true' : null,
+                                attachments=${saved.requireAttachments()} ? 'true' : null)}"
+           class="saved-search-link">
+          <span class="saved-search-icon" aria-hidden="true">★</span>
+          <span class="saved-search-name" th:text="${saved.name()}">My saved search</span>
+        </a>
+        <form th:action="@{/searches/{id}/delete(id=${saved.id()})}" method="post"
+              class="saved-search-delete-form"
+              onsubmit="return confirm('Delete this saved search?');">
+          <input type="hidden" name="q" th:if="${searchQuery != null and !#strings.isEmpty(searchQuery)}" th:value="${searchQuery}">
+          <input type="hidden" name="from" th:if="${activeSender != null}" th:value="${activeSender}">
+          <input type="hidden" name="since" th:if="${activeFilters != null and activeFilters.sincePreset() != null}" th:value="${activeFilters.sincePreset()}">
+          <input type="hidden" name="unread" value="true" th:if="${activeFilters != null and activeFilters.requireUnread()}">
+          <input type="hidden" name="attachments" value="true" th:if="${activeFilters != null and activeFilters.requireAttachments()}">
+          <input type="hidden" th:if="${_csrf != null}"
+                 th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+          <button type="submit" class="saved-search-delete" aria-label="Delete saved search">&times;</button>
+        </form>
+      </div>
+    </details>
+    <details class="sender-rail-details" th:if="${senderGroups != null and !senderGroups.isEmpty()}" open>
       <summary class="sender-rail-summary">
         <span>Senders</span>
         <span class="sender-rail-toggle-hint" aria-hidden="true">▾</span>
@@ -206,6 +249,35 @@
   </aside>
 
   <div class="thread-main">
+
+  <div th:if="${savedSearchMessage != null}" class="saved-search-flash saved-search-flash-success"
+       role="status" th:text="${savedSearchMessage}">Saved.</div>
+  <div th:if="${savedSearchError != null}" class="saved-search-flash saved-search-flash-error"
+       role="alert" th:text="${savedSearchError}">Error.</div>
+
+  <form th:if="${hasActiveSearchToSave}"
+        class="save-search-form" method="post" th:action="@{/searches}">
+    <label for="save-search-name" class="visually-hidden">Saved search name</label>
+    <input id="save-search-name" type="text" name="name"
+           class="save-search-name-input"
+           maxlength="80"
+           required
+           placeholder="Name this search (e.g. From Ada · last 30d)">
+    <input type="hidden" name="q"
+           th:if="${searchQuery != null and !#strings.isEmpty(searchQuery)}"
+           th:value="${searchQuery}">
+    <input type="hidden" name="from" th:if="${activeSender != null}" th:value="${activeSender}">
+    <input type="hidden" name="since"
+           th:if="${activeFilters != null and activeFilters.sincePreset() != null}"
+           th:value="${activeFilters.sincePreset()}">
+    <input type="hidden" name="unread" value="true"
+           th:if="${activeFilters != null and activeFilters.requireUnread()}">
+    <input type="hidden" name="attachments" value="true"
+           th:if="${activeFilters != null and activeFilters.requireAttachments()}">
+    <input type="hidden" th:if="${_csrf != null}"
+           th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+    <button type="submit" class="btn btn-primary save-search-submit">Save search</button>
+  </form>
 
   <form th:if="${threads != null and (threads.totalElements > 0 or (searchQuery != null and !#strings.isEmpty(searchQuery)) or activeSender != null or (activeFilters != null and activeFilters.isActive()))}"
         class="inbox-search" method="get" th:action="@{/threads}" role="search">

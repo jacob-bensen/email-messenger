@@ -5,6 +5,7 @@ import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.repository.MailAccountRepository;
+import com.emailmessenger.repository.SavedSearchRepository;
 import com.emailmessenger.repository.SubscriptionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,13 +30,16 @@ public class PlanLimitService {
     private final SubscriptionRepository subscriptions;
     private final EmailThreadRepository threads;
     private final MailAccountRepository mailAccounts;
+    private final SavedSearchRepository savedSearches;
 
     PlanLimitService(SubscriptionRepository subscriptions,
                      EmailThreadRepository threads,
-                     MailAccountRepository mailAccounts) {
+                     MailAccountRepository mailAccounts,
+                     SavedSearchRepository savedSearches) {
         this.subscriptions = subscriptions;
         this.threads = threads;
         this.mailAccounts = mailAccounts;
+        this.savedSearches = savedSearches;
     }
 
     /**
@@ -91,6 +95,24 @@ public class PlanLimitService {
         long current = mailAccounts.countByUser(user);
         if (current >= limit) {
             throw new PlanLimitExceededException(plan, PlanLimitKind.MAILBOX_COUNT, limit, current);
+        }
+    }
+
+    /**
+     * Throws {@link PlanLimitExceededException} when the user is already at
+     * their plan's saved-search cap. Free is capped at 1 so the second save
+     * lands the upgrade modal; paid plans are unlimited.
+     */
+    @Transactional(readOnly = true)
+    public void enforceCanCreateSavedSearch(User user) {
+        Plan plan = currentPlan(user);
+        long limit = PlanLimits.forPlan(plan).savedSearches();
+        if (limit == PlanLimits.UNLIMITED) {
+            return;
+        }
+        long current = savedSearches.countByOwner(user);
+        if (current >= limit) {
+            throw new PlanLimitExceededException(plan, PlanLimitKind.SAVED_SEARCH_COUNT, limit, current);
         }
     }
 }
