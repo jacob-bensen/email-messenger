@@ -1,5 +1,6 @@
 package com.emailmessenger.web;
 
+import com.emailmessenger.auth.UserActivityService;
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.billing.BillingBanner;
 import com.emailmessenger.billing.BillingBannerService;
@@ -45,6 +46,7 @@ class ThreadController {
     private final ThreadSearchService threadSearchService;
     private final SenderGroupService senderGroupService;
     private final SavedSearchService savedSearchService;
+    private final UserActivityService userActivityService;
     private final Clock clock;
 
     ThreadController(EmailThreadRepository threadRepository,
@@ -58,6 +60,7 @@ class ThreadController {
                      ThreadSearchService threadSearchService,
                      SenderGroupService senderGroupService,
                      SavedSearchService savedSearchService,
+                     UserActivityService userActivityService,
                      Clock clock) {
         this.threadRepository = threadRepository;
         this.threadViewService = threadViewService;
@@ -70,6 +73,7 @@ class ThreadController {
         this.threadSearchService = threadSearchService;
         this.senderGroupService = senderGroupService;
         this.savedSearchService = savedSearchService;
+        this.userActivityService = userActivityService;
         this.clock = clock;
     }
 
@@ -84,6 +88,7 @@ class ThreadController {
                        Principal principal,
                        Model model) {
         User owner = userService.requireByEmail(principal.getName());
+        userActivityService.recordInboxVisit(owner);
         BillingBanner banner = billingBannerService.bannerFor(owner).orElse(null);
         model.addAttribute("billingBanner", banner);
         model.addAttribute("hasBilling", billingService.hasManagedBilling(owner));

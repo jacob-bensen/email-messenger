@@ -3,16 +3,21 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
-- [ ] [PLAN-REVIEW] EPIC-07 Inbox Search & Discovery shipped all four
-      milestones (subject+participant search, body search Personal+,
-      sender rail, filter chips). Routine has switched the Primary
-      Objective to EPIC-08 Saved Searches & Reactivation. Confirm the
-      direction or redirect — strong alternatives: (a) EPIC-08 Mobile /
-      PWA (a phone-friendly conversation view since most email-on-the-go
-      use happens on mobile), (b) EPIC-08 Account self-serve (password
-      reset + email verification before any real paid signups), or
-      (c) EPIC-08 Annual-billing push (the 2-months-free annual plan is
-      priced but not surfaced in the upgrade flows).
+- [ ] [PLAN-REVIEW] EPIC-08 Saved Searches & Reactivation shipped all
+      four milestones (saved searches + rail surface, live match counts
+      + unread badges, weekly digest of new matches, 7-day re-engagement
+      email). Routine proposes **EPIC-09 Account self-serve** (password
+      reset via emailed token + email verification on signup) as the
+      next Primary Objective — current users have no recovery path if
+      they forget their password, which silently caps paid retention
+      and blocks real-world Stripe live launches. Strong alternatives:
+      (a) EPIC-09 Mobile / PWA (phone-friendly conversation view since
+      most email-on-the-go usage is mobile), (b) EPIC-09 Annual-billing
+      push (the 2-months-free annual plan is priced but not surfaced in
+      Checkout flows), (c) EPIC-09 Google OAuth signup (removes the
+      password step entirely for Gmail users and auto-connects the
+      mailbox — also drops the password-reset problem). Confirm the
+      direction so the routine can edit PLAN.md and start shipping.
 
 ## Infrastructure
 

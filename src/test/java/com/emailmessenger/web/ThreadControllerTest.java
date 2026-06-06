@@ -1,5 +1,6 @@
 package com.emailmessenger.web;
 
+import com.emailmessenger.auth.UserActivityService;
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.billing.BillingBanner;
 import com.emailmessenger.billing.BillingBannerService;
@@ -68,6 +69,7 @@ class ThreadControllerTest {
     @Mock ThreadSearchService threadSearchService;
     @Mock SenderGroupService senderGroupService;
     @Mock SavedSearchService savedSearchService;
+    @Mock UserActivityService userActivityService;
 
     MockMvc mockMvc;
 
@@ -83,7 +85,7 @@ class ThreadControllerTest {
                 threadRepository, threadViewService, replyService, userService,
                 billingBannerService, billingService, onboardingService,
                 trialConversionNudgeService, threadSearchService, senderGroupService,
-                savedSearchService, CLOCK);
+                savedSearchService, userActivityService, CLOCK);
         lenient().when(userService.requireByEmail("owner@example.com")).thenReturn(owner);
         lenient().when(billingBannerService.bannerFor(owner)).thenReturn(Optional.empty());
         lenient().when(onboardingService.checklistFor(owner))
@@ -112,6 +114,18 @@ class ThreadControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("threads"))
                 .andExpect(model().attributeExists("threads"));
+    }
+
+    @Test
+    void listThreadsRecordsInboxVisitForOwner() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(empty);
+
+        mockMvc.perform(get("/threads").principal(principal))
+                .andExpect(status().isOk());
+
+        verify(userActivityService).recordInboxVisit(owner);
     }
 
     @Test

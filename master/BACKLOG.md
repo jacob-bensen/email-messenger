@@ -2,4 +2,6 @@
 
 Up to 10 items, each advancing a PLAN.md milestone. Pick from the top.
 
-_(empty — Milestone 4 of EPIC-08 is the next pick; pull directly from PLAN.md.)_
+_(empty — EPIC-08 Saved Searches & Reactivation is now code-complete on
+all four milestones. The next Primary Objective is pending
+[PLAN-REVIEW] in MASTER_ACTIONS.md.)_

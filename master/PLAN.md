@@ -99,6 +99,35 @@ re-engagement emails recover dormant accounts before they cancel.
    column) and fires a single "you have N unread threads waiting"
    email; idempotent per inactivity window so a user who reads then
    re-disappears gets a second nudge.
+   _(Shipped 2026-06-06 — V13 adds `last_login_at`, `last_inbox_visit_at`,
+   `last_reengagement_sent_at` to `users` (all nullable; service code
+   coalesces against `created_at` for pre-tracking rows). New
+   `UserActivityService` in `com.emailmessenger.auth` writes both
+   timestamps via single-row `@Modifying` JPQL updates so the hot path
+   stays a one-statement write and the entity-wide `updated_at` isn't
+   bumped on every login or inbox visit. `LoginAuditListener` consumes
+   Spring Security's `AuthenticationSuccessEvent` (covers form login,
+   remember-me re-auth, and the post-registration `request.login()`),
+   filtering anonymous/blank principals. `ThreadController` calls
+   `userActivityService.recordInboxVisit(owner)` at the top of
+   `GET /threads`. New `com.emailmessenger.reengagement` package mirrors
+   the digest pattern: `ReengagementService.runReengagementCycle()`
+   loads dormant users via a single `UserRepository.findDormantSince`
+   query (`COALESCE(last_inbox_visit_at, created_at) < cutoff AND
+   COALESCE(last_login_at, created_at) < cutoff`), then for each
+   user skips (a) those whose `last_reengagement_sent_at` is more
+   recent than their effective last activity, (b) those with zero
+   unread threads (`countByOwnerAndUnreadTrue`), (c) those who opted
+   out via the existing `DigestEmailPreference.optedOut` flag — and
+   composes a plain-text email naming the unread count and days-away
+   delta, with an unsubscribe link reusing the shared opt-out token.
+   `ReengagementScheduler` runs cron `0 0 13 * * ?` UTC gated by
+   `reengagement.enabled=true` (default off in dev/tests so nothing
+   accidentally mails). 17 new tests (`ReengagementServiceTest` x8,
+   `UserActivityServiceTest` x4, `LoginAuditListenerTest` x2,
+   `ReengagementSchedulerFeatureFlagTest` x2, plus
+   `ThreadControllerTest#listThreadsRecordsInboxVisitForOwner`);
+   394 total pass (1 Docker-only skipped as before).)_
 
 ## Done means
 

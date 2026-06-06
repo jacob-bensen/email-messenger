@@ -93,6 +93,11 @@ digest:
   cron: ${DIGEST_CRON:0 0 14 ? * MON}
   zone: ${DIGEST_ZONE:UTC}
 
+reengagement:
+  enabled: ${REENGAGEMENT_ENABLED:false}
+  cron: ${REENGAGEMENT_CRON:0 0 13 * * ?}
+  zone: ${REENGAGEMENT_ZONE:UTC}
+
 logging:
   level:
     com.emailmessenger: DEBUG
@@ -177,6 +182,11 @@ digest:
   enabled: ${DIGEST_ENABLED:false}
   cron: ${DIGEST_CRON:0 0 14 ? * MON}
   zone: ${DIGEST_ZONE:UTC}
+
+reengagement:
+  enabled: ${REENGAGEMENT_ENABLED:false}
+  cron: ${REENGAGEMENT_CRON:0 0 13 * * ?}
+  zone: ${REENGAGEMENT_ZONE:UTC}
 
 logging:
   level:

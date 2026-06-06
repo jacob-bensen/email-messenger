@@ -40,6 +40,15 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
+
+    @Column(name = "last_inbox_visit_at")
+    private LocalDateTime lastInboxVisitAt;
+
+    @Column(name = "last_reengagement_sent_at")
+    private LocalDateTime lastReengagementSentAt;
+
     protected User() {}
 
     public User(String email, String passwordHash, String displayName) {
@@ -68,9 +77,15 @@ public class User {
     public boolean isEnabled() { return enabled; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public LocalDateTime getLastLoginAt() { return lastLoginAt; }
+    public LocalDateTime getLastInboxVisitAt() { return lastInboxVisitAt; }
+    public LocalDateTime getLastReengagementSentAt() { return lastReengagementSentAt; }
 
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public void setDisplayName(String displayName) { this.displayName = displayName; }
     public void setAcquisitionSource(String acquisitionSource) { this.acquisitionSource = acquisitionSource; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+    public void setLastInboxVisitAt(LocalDateTime lastInboxVisitAt) { this.lastInboxVisitAt = lastInboxVisitAt; }
+    public void setLastReengagementSentAt(LocalDateTime ts) { this.lastReengagementSentAt = ts; }
 }

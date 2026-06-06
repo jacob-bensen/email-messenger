@@ -21,6 +21,8 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
 
     long countByOwner(User owner);
 
+    long countByOwnerAndUnreadTrue(User owner);
+
     // Filtered no-search listing — powers `/threads` when no `?q=` / `?from=` is set
     // but one or more of the filter chips (since / unread / attachments) is on.
     @Query("""
