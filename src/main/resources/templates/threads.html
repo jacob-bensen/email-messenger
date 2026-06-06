@@ -177,14 +177,20 @@
       </summary>
       <a class="sender-rail-row sender-rail-everyone"
          th:classappend="${activeSender == null} ? ' sender-rail-active' : ''"
-         th:href="${searchQuery != null and !#strings.isEmpty(searchQuery)} ? @{/threads(q=${searchQuery})} : @{/threads}">
+         th:href="@{/threads(q=${searchQuery != null and !#strings.isEmpty(searchQuery)} ? ${searchQuery} : null,
+                            since=${activeFilters != null} ? ${activeFilters.sincePreset()} : null,
+                            unread=${activeFilters != null and activeFilters.requireUnread()} ? 'true' : null,
+                            attachments=${activeFilters != null and activeFilters.requireAttachments()} ? 'true' : null)}">
         <span class="sender-rail-avatar sender-rail-avatar-everyone" aria-hidden="true">∗</span>
         <span class="sender-rail-text">
           <span class="sender-rail-name">Everyone</span>
         </span>
       </a>
       <a th:each="sender : ${senderGroups}"
-         th:href="@{/threads(q=${searchQuery}, from=${sender.email()})}"
+         th:href="@{/threads(q=${searchQuery}, from=${sender.email()},
+                             since=${activeFilters != null} ? ${activeFilters.sincePreset()} : null,
+                             unread=${activeFilters != null and activeFilters.requireUnread()} ? 'true' : null,
+                             attachments=${activeFilters != null and activeFilters.requireAttachments()} ? 'true' : null)}"
          class="sender-rail-row"
          th:classappend="${activeSender != null and #strings.equalsIgnoreCase(activeSender, sender.email())} ? ' sender-rail-active' : ''">
         <span class="sender-rail-avatar" aria-hidden="true" th:text="${sender.initials()}">AB</span>
@@ -201,7 +207,7 @@
 
   <div class="thread-main">
 
-  <form th:if="${threads != null and (threads.totalElements > 0 or (searchQuery != null and !#strings.isEmpty(searchQuery)) or activeSender != null)}"
+  <form th:if="${threads != null and (threads.totalElements > 0 or (searchQuery != null and !#strings.isEmpty(searchQuery)) or activeSender != null or (activeFilters != null and activeFilters.isActive()))}"
         class="inbox-search" method="get" th:action="@{/threads}" role="search">
     <label for="inbox-search-input" class="visually-hidden">Search conversations</label>
     <input id="inbox-search-input" type="search" name="q"
@@ -210,17 +216,74 @@
            autocomplete="off"
            th:value="${searchQuery}">
     <input type="hidden" name="from" th:if="${activeSender != null}" th:value="${activeSender}">
+    <input type="hidden" name="since"
+           th:if="${activeFilters != null and activeFilters.sincePreset() != null}"
+           th:value="${activeFilters.sincePreset()}">
+    <input type="hidden" name="unread" value="true"
+           th:if="${activeFilters != null and activeFilters.requireUnread()}">
+    <input type="hidden" name="attachments" value="true"
+           th:if="${activeFilters != null and activeFilters.requireAttachments()}">
     <button type="submit" class="btn btn-primary inbox-search-submit">Search</button>
-    <a th:if="${(searchQuery != null and !#strings.isEmpty(searchQuery)) or activeSender != null}"
+    <a th:if="${(searchQuery != null and !#strings.isEmpty(searchQuery)) or activeSender != null or (activeFilters != null and activeFilters.isActive())}"
        th:href="@{/threads}" class="inbox-search-clear">Clear</a>
   </form>
+
+  <div th:if="${activeFilters != null and (threads != null and (threads.totalElements > 0 or (searchQuery != null and !#strings.isEmpty(searchQuery)) or activeSender != null or activeFilters.isActive()))}"
+       class="filter-chips" role="group" aria-label="Filter conversations">
+    <a class="filter-chip"
+       th:classappend="${activeFilters.sincePreset() == '7d'} ? ' filter-chip-active' : ''"
+       th:href="@{/threads(q=${searchQuery}, from=${activeSender},
+                           since=${activeFilters.sincePreset() == '7d'} ? null : '7d',
+                           unread=${activeFilters.requireUnread()} ? 'true' : null,
+                           attachments=${activeFilters.requireAttachments()} ? 'true' : null)}">
+      Last 7 days
+    </a>
+    <a class="filter-chip"
+       th:classappend="${activeFilters.sincePreset() == '30d'} ? ' filter-chip-active' : ''"
+       th:href="@{/threads(q=${searchQuery}, from=${activeSender},
+                           since=${activeFilters.sincePreset() == '30d'} ? null : '30d',
+                           unread=${activeFilters.requireUnread()} ? 'true' : null,
+                           attachments=${activeFilters.requireAttachments()} ? 'true' : null)}">
+      Last 30 days
+    </a>
+    <a class="filter-chip"
+       th:classappend="${activeFilters.sincePreset() == '90d'} ? ' filter-chip-active' : ''"
+       th:href="@{/threads(q=${searchQuery}, from=${activeSender},
+                           since=${activeFilters.sincePreset() == '90d'} ? null : '90d',
+                           unread=${activeFilters.requireUnread()} ? 'true' : null,
+                           attachments=${activeFilters.requireAttachments()} ? 'true' : null)}">
+      Last 90 days
+    </a>
+    <a class="filter-chip"
+       th:classappend="${activeFilters.requireUnread()} ? ' filter-chip-active' : ''"
+       th:href="@{/threads(q=${searchQuery}, from=${activeSender},
+                           since=${activeFilters.sincePreset()},
+                           unread=${activeFilters.requireUnread()} ? null : 'true',
+                           attachments=${activeFilters.requireAttachments()} ? 'true' : null)}">
+      Unread
+    </a>
+    <a class="filter-chip"
+       th:classappend="${activeFilters.requireAttachments()} ? ' filter-chip-active' : ''"
+       th:href="@{/threads(q=${searchQuery}, from=${activeSender},
+                           since=${activeFilters.sincePreset()},
+                           unread=${activeFilters.requireUnread()} ? 'true' : null,
+                           attachments=${activeFilters.requireAttachments()} ? null : 'true')}">
+      Has attachment
+    </a>
+    <a th:if="${activeFilters.isActive()}"
+       class="filter-chip-clear"
+       th:href="@{/threads(q=${searchQuery}, from=${activeSender})}">Clear filters</a>
+  </div>
 
   <div th:if="${activeSender != null}" class="sender-pill" role="status">
     <span class="sender-pill-label">Showing only threads from
       <strong th:text="${activeSender}">sender@example.com</strong>
     </span>
     <a class="sender-pill-clear"
-       th:href="${searchQuery != null and !#strings.isEmpty(searchQuery)} ? @{/threads(q=${searchQuery})} : @{/threads}">
+       th:href="@{/threads(q=${searchQuery},
+                           since=${activeFilters != null} ? ${activeFilters.sincePreset()} : null,
+                           unread=${activeFilters != null and activeFilters.requireUnread()} ? 'true' : null,
+                           attachments=${activeFilters != null and activeFilters.requireAttachments()} ? 'true' : null)}">
       Show all senders
     </a>
   </div>
@@ -255,7 +318,8 @@
     <div class="thread-list">
       <a th:each="thread : ${threads}"
          th:href="@{/threads/{id}(id=${thread.id})}"
-         class="thread-item">
+         class="thread-item"
+         th:classappend="${thread.unread} ? ' thread-item-unread' : ''">
         <div class="thread-subject" th:text="${thread.subject}">Thread subject</div>
         <div class="thread-meta">
           <span th:text="${thread.messageCount + ' message' + (thread.messageCount != 1 ? 's' : '')}">1 message</span>
@@ -266,18 +330,24 @@
 
     <nav class="pagination" th:if="${threads.totalPages > 1}">
       <a th:if="${!threads.first}"
-         th:href="@{/threads(page=${threads.number - 1}, q=${searchQuery}, from=${activeSender})}"
+         th:href="@{/threads(page=${threads.number - 1}, q=${searchQuery}, from=${activeSender},
+                             since=${activeFilters != null} ? ${activeFilters.sincePreset()} : null,
+                             unread=${activeFilters != null and activeFilters.requireUnread()} ? 'true' : null,
+                             attachments=${activeFilters != null and activeFilters.requireAttachments()} ? 'true' : null)}"
          class="page-link">← Newer</a>
       <span class="page-info"
             th:text="|Page ${threads.number + 1} of ${threads.totalPages}|">Page 1 of 1</span>
       <a th:if="${!threads.last}"
-         th:href="@{/threads(page=${threads.number + 1}, q=${searchQuery}, from=${activeSender})}"
+         th:href="@{/threads(page=${threads.number + 1}, q=${searchQuery}, from=${activeSender},
+                             since=${activeFilters != null} ? ${activeFilters.sincePreset()} : null,
+                             unread=${activeFilters != null and activeFilters.requireUnread()} ? 'true' : null,
+                             attachments=${activeFilters != null and activeFilters.requireAttachments()} ? 'true' : null)}"
          class="page-link">Older →</a>
     </nav>
   </div>
 
   <div class="search-empty"
-       th:if="${threads != null and threads.totalElements == 0 and ((searchQuery != null and !#strings.isEmpty(searchQuery)) or activeSender != null)}">
+       th:if="${threads != null and threads.totalElements == 0 and ((searchQuery != null and !#strings.isEmpty(searchQuery)) or activeSender != null or (activeFilters != null and activeFilters.isActive()))}">
     <h2 class="search-empty-title"
         th:if="${searchQuery != null and !#strings.isEmpty(searchQuery) and activeSender != null}"
         th:text="|No matches for &quot;${searchQuery}&quot; from ${activeSender}|">No matches</h2>
@@ -287,7 +357,10 @@
     <h2 class="search-empty-title"
         th:if="${(searchQuery == null or #strings.isEmpty(searchQuery)) and activeSender != null}"
         th:text="|No threads from ${activeSender}|">No matches</h2>
-    <p class="search-empty-sub">Try a different subject, sender name, or email address.</p>
+    <h2 class="search-empty-title"
+        th:if="${(searchQuery == null or #strings.isEmpty(searchQuery)) and activeSender == null and activeFilters != null and activeFilters.isActive()}">
+      No threads match these filters</h2>
+    <p class="search-empty-sub">Try a different subject, sender name, email address, or filter.</p>
     <a th:href="@{/threads}" class="btn btn-primary">Back to inbox</a>
   </div>
 

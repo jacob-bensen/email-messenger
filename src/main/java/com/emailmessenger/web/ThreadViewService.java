@@ -22,10 +22,13 @@ class ThreadViewService {
         this.conversationService = conversationService;
     }
 
-    @Transactional(readOnly = true)
+    // Read-write: viewing a thread also marks it read (JPA dirty-checks the
+    // unread flag flip on transaction commit). Powers the "Unread" filter chip.
+    @Transactional
     Conversation getConversation(long threadId, User owner) {
         EmailThread thread = threadRepository.findByIdAndOwner(threadId, owner)
                 .orElseThrow(NoSuchElementException::new);
+        thread.markRead();
         return conversationService.buildConversation(thread);
     }
 }

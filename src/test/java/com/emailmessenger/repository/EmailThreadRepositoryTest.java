@@ -113,7 +113,7 @@ class EmailThreadRepositoryTest {
         threadRepo.save(new EmailThread(owner, "Quarterly Planning Doc", "<q1@example.com>"));
         threadRepo.save(new EmailThread(owner, "Birthday party", "<b1@example.com>"));
 
-        var page = threadRepo.search(owner, "planning", null, PageRequest.of(0, 10));
+        var page = threadRepo.search(owner, "planning", null, null, false, false, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).hasSize(1);
         assertThat(page.getContent().get(0).getSubject()).isEqualTo("Quarterly Planning Doc");
@@ -128,7 +128,7 @@ class EmailThreadRepositoryTest {
         messageRepo.save(new Message(t1, ada, "Project Athena", "body", null, LocalDateTime.now()));
         messageRepo.save(new Message(t2, grace, "Project Olympus", "body", null, LocalDateTime.now()));
 
-        var page = threadRepo.search(owner, "lovelace", null, PageRequest.of(0, 10));
+        var page = threadRepo.search(owner, "lovelace", null, null, false, false, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).extracting(EmailThread::getSubject)
                 .containsExactly("Project Athena");
@@ -141,7 +141,7 @@ class EmailThreadRepositoryTest {
         messageRepo.save(new Message(thread, alex, "Invoice", "body", null, LocalDateTime.now()));
         threadRepo.save(new EmailThread(owner, "Unrelated subject", "<u@x>"));
 
-        var page = threadRepo.search(owner, "acme", null, PageRequest.of(0, 10));
+        var page = threadRepo.search(owner, "acme", null, null, false, false, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).extracting(EmailThread::getSubject)
                 .containsExactly("Invoice followup");
@@ -154,8 +154,8 @@ class EmailThreadRepositoryTest {
         threadRepo.save(new EmailThread(alice, "Shared subject", "<a-s@x>"));
         threadRepo.save(new EmailThread(bob, "Shared subject", "<b-s@x>"));
 
-        var alicePage = threadRepo.search(alice, "shared", null, PageRequest.of(0, 10));
-        var bobPage = threadRepo.search(bob, "shared", null, PageRequest.of(0, 10));
+        var alicePage = threadRepo.search(alice, "shared", null, null, false, false, PageRequest.of(0, 10));
+        var bobPage = threadRepo.search(bob, "shared", null, null, false, false, PageRequest.of(0, 10));
 
         assertThat(alicePage.getContent()).hasSize(1);
         assertThat(alicePage.getContent().get(0).getRootMessageId()).isEqualTo("<a-s@x>");
@@ -167,7 +167,7 @@ class EmailThreadRepositoryTest {
     void searchReturnsEmptyPageWhenNoMatch() {
         threadRepo.save(new EmailThread(owner, "Lunch tomorrow", "<l@x>"));
 
-        var page = threadRepo.search(owner, "nonexistent-zzzz", null, PageRequest.of(0, 10));
+        var page = threadRepo.search(owner, "nonexistent-zzzz", null, null, false, false, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).isEmpty();
         assertThat(page.getTotalElements()).isZero();
@@ -180,7 +180,7 @@ class EmailThreadRepositoryTest {
         messageRepo.save(new Message(thread, ada, "Reply 1", "body1", null, LocalDateTime.now()));
         messageRepo.save(new Message(thread, ada, "Reply 2", "body2", null, LocalDateTime.now()));
 
-        var page = threadRepo.search(owner, "acme", null, PageRequest.of(0, 10));
+        var page = threadRepo.search(owner, "acme", null, null, false, false, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).hasSize(1);
     }
@@ -193,7 +193,7 @@ class EmailThreadRepositoryTest {
                 "Can we move the Stripe webhook discussion to Friday?", null, LocalDateTime.now()));
         threadRepo.save(new EmailThread(owner, "Unrelated", "<u@x>"));
 
-        var page = threadRepo.searchIncludingBody(owner, "stripe webhook", null, PageRequest.of(0, 10));
+        var page = threadRepo.searchIncludingBody(owner, "stripe webhook", null, null, false, false, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).extracting(EmailThread::getSubject)
                 .containsExactly("Lunch tomorrow");
@@ -203,7 +203,7 @@ class EmailThreadRepositoryTest {
     void searchIncludingBodyStillFindsSubjectMatches() {
         threadRepo.save(new EmailThread(owner, "Q3 Planning kickoff", "<q3@x>"));
 
-        var page = threadRepo.searchIncludingBody(owner, "planning", null, PageRequest.of(0, 10));
+        var page = threadRepo.searchIncludingBody(owner, "planning", null, null, false, false, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).hasSize(1);
     }
@@ -216,7 +216,7 @@ class EmailThreadRepositoryTest {
         messageRepo.save(new Message(aliceThread, sender, "Alice's",
                 "Confidential alpha launch plan", null, LocalDateTime.now()));
 
-        var ownerPage = threadRepo.searchIncludingBody(owner, "confidential", null, PageRequest.of(0, 10));
+        var ownerPage = threadRepo.searchIncludingBody(owner, "confidential", null, null, false, false, PageRequest.of(0, 10));
 
         assertThat(ownerPage.getContent()).isEmpty();
     }
@@ -228,7 +228,7 @@ class EmailThreadRepositoryTest {
         messageRepo.save(new Message(thread, sender, "Casual chat",
                 "The Q4 forecast looks rough", null, LocalDateTime.now()));
 
-        assertThat(threadRepo.hasBodyOnlyMatch(owner, "forecast", null)).isTrue();
+        assertThat(threadRepo.hasBodyOnlyMatch(owner, "forecast", null, null, false, false)).isTrue();
     }
 
     @Test
@@ -238,7 +238,7 @@ class EmailThreadRepositoryTest {
         messageRepo.save(new Message(thread, sender, "Forecast review",
                 "Q4 forecast attached", null, LocalDateTime.now()));
 
-        assertThat(threadRepo.hasBodyOnlyMatch(owner, "forecast", null)).isFalse();
+        assertThat(threadRepo.hasBodyOnlyMatch(owner, "forecast", null, null, false, false)).isFalse();
     }
 
     @Test
@@ -248,14 +248,14 @@ class EmailThreadRepositoryTest {
         messageRepo.save(new Message(thread, ada, "Lunch",
                 "bodyonly text", null, LocalDateTime.now()));
 
-        assertThat(threadRepo.hasBodyOnlyMatch(owner, "bodyonly", null)).isFalse();
+        assertThat(threadRepo.hasBodyOnlyMatch(owner, "bodyonly", null, null, false, false)).isFalse();
     }
 
     @Test
     void hasBodyOnlyMatchFalseWhenNothingMatches() {
         threadRepo.save(new EmailThread(owner, "Something else", "<se@x>"));
 
-        assertThat(threadRepo.hasBodyOnlyMatch(owner, "noresultswhatsoever", null)).isFalse();
+        assertThat(threadRepo.hasBodyOnlyMatch(owner, "noresultswhatsoever", null, null, false, false)).isFalse();
     }
 
     @Test
@@ -267,8 +267,8 @@ class EmailThreadRepositoryTest {
                 "Mentions zzunique-token only here", null, LocalDateTime.now()));
 
         // Alice sees the body-only match; owner (a different user) does not.
-        assertThat(threadRepo.hasBodyOnlyMatch(alice, "zzunique-token", null)).isTrue();
-        assertThat(threadRepo.hasBodyOnlyMatch(owner, "zzunique-token", null)).isFalse();
+        assertThat(threadRepo.hasBodyOnlyMatch(alice, "zzunique-token", null, null, false, false)).isTrue();
+        assertThat(threadRepo.hasBodyOnlyMatch(owner, "zzunique-token", null, null, false, false)).isFalse();
     }
 
     @Test
@@ -283,7 +283,7 @@ class EmailThreadRepositoryTest {
         messageRepo.save(new Message(t3, ada, "Both1", "body", null, LocalDateTime.now()));
         messageRepo.save(new Message(t3, grace, "Both2", "body", null, LocalDateTime.now()));
 
-        var page = threadRepo.findByOwnerAndSender(owner, "ada-sf@acme.com", PageRequest.of(0, 10));
+        var page = threadRepo.findByOwnerAndSender(owner, "ada-sf@acme.com", null, false, false, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).extracting(EmailThread::getSubject)
                 .containsExactlyInAnyOrder("Ada thread", "Both thread");
@@ -295,7 +295,7 @@ class EmailThreadRepositoryTest {
         var thread = threadRepo.save(new EmailThread(owner, "Ada thread", "<a-ci@x>"));
         messageRepo.save(new Message(thread, ada, "Ada", "body", null, LocalDateTime.now()));
 
-        var page = threadRepo.findByOwnerAndSender(owner, "Ada-CI@ACME.com", PageRequest.of(0, 10));
+        var page = threadRepo.findByOwnerAndSender(owner, "Ada-CI@ACME.com", null, false, false, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).hasSize(1);
     }
@@ -310,7 +310,7 @@ class EmailThreadRepositoryTest {
         messageRepo.save(new Message(aliceThread, shared, "A", "body", null, LocalDateTime.now()));
         messageRepo.save(new Message(bobThread, shared, "B", "body", null, LocalDateTime.now()));
 
-        var alicePage = threadRepo.findByOwnerAndSender(alice, "shared-sf@x.com", PageRequest.of(0, 10));
+        var alicePage = threadRepo.findByOwnerAndSender(alice, "shared-sf@x.com", null, false, false, PageRequest.of(0, 10));
 
         assertThat(alicePage.getContent()).hasSize(1);
         assertThat(alicePage.getContent().get(0).getRootMessageId()).isEqualTo("<as-sf@x>");
@@ -327,7 +327,7 @@ class EmailThreadRepositoryTest {
         messageRepo.save(new Message(planGrace, grace, "Planning", "body", null, LocalDateTime.now()));
         messageRepo.save(new Message(lunch, ada, "Lunch", "body", null, LocalDateTime.now()));
 
-        var page = threadRepo.search(owner, "planning", "ada-sw@acme.com", PageRequest.of(0, 10));
+        var page = threadRepo.search(owner, "planning", "ada-sw@acme.com", null, false, false, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).extracting(EmailThread::getSubject)
                 .containsExactly("Planning Q3");
@@ -344,8 +344,7 @@ class EmailThreadRepositoryTest {
         messageRepo.save(new Message(graceThread, grace, "Drinks",
                 "Stripe webhook discussion at 6pm", null, LocalDateTime.now()));
 
-        var page = threadRepo.searchIncludingBody(owner, "stripe webhook",
-                "ada-sb@acme.com", PageRequest.of(0, 10));
+        var page = threadRepo.searchIncludingBody(owner, "stripe webhook", "ada-sb@acme.com", null, false, false, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).extracting(EmailThread::getSubject)
                 .containsExactly("Lunch tomorrow");
@@ -363,9 +362,9 @@ class EmailThreadRepositoryTest {
                 "totally unrelated", null, LocalDateTime.now()));
 
         // Without sender filter: Grace's thread is a body-only match → true.
-        assertThat(threadRepo.hasBodyOnlyMatch(owner, "needle", null)).isTrue();
+        assertThat(threadRepo.hasBodyOnlyMatch(owner, "needle", null, null, false, false)).isTrue();
         // Scoped to Ada: she doesn't have any body match → false.
-        assertThat(threadRepo.hasBodyOnlyMatch(owner, "needle", "ada-hbsf@acme.com")).isFalse();
+        assertThat(threadRepo.hasBodyOnlyMatch(owner, "needle", "ada-hbsf@acme.com", null, false, false)).isFalse();
     }
 
     @Test
@@ -413,5 +412,86 @@ class EmailThreadRepositoryTest {
         var rows = threadRepo.topSenders(owner, PageRequest.of(0, 3));
 
         assertThat(rows).hasSize(3);
+    }
+
+    @Test
+    void findByOwnerFilteredWithUnreadOnlyReturnsThreadsWhereUnreadTrue() {
+        var fresh = threadRepo.save(new EmailThread(owner, "Fresh thread", "<f@x>"));
+        var stale = threadRepo.save(new EmailThread(owner, "Stale thread", "<s@x>"));
+        stale.markRead();
+        threadRepo.save(stale);
+
+        var unreadPage = threadRepo.findByOwnerFiltered(owner, null, true, false, PageRequest.of(0, 10));
+
+        assertThat(unreadPage.getContent()).extracting(EmailThread::getSubject)
+                .containsExactly("Fresh thread");
+        assertThat(fresh.isUnread()).isTrue();
+    }
+
+    @Test
+    void findByOwnerFilteredWithAttachmentsOnlyReturnsThreadsWithMessagesThatHaveAttachments() {
+        var sender = participantRepo.save(new Participant("att-sender@x.com", "S"));
+        var bare = threadRepo.save(new EmailThread(owner, "Plain text only", "<bare@x>"));
+        var rich = threadRepo.save(new EmailThread(owner, "With doc", "<rich@x>"));
+        messageRepo.save(new Message(bare, sender, "p", "body", null, LocalDateTime.now()));
+        var msg = new Message(rich, sender, "rich", "body", null, LocalDateTime.now());
+        msg.addAttachment(new com.emailmessenger.domain.Attachment(msg, "Q3.pdf", "application/pdf",
+                12345L, null));
+        messageRepo.save(msg);
+
+        var page = threadRepo.findByOwnerFiltered(owner, null, false, true, PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).extracting(EmailThread::getSubject).containsExactly("With doc");
+    }
+
+    @Test
+    void findByOwnerFilteredWithSinceCutsOffOlderThreads() {
+        var old = threadRepo.save(new EmailThread(owner, "Old", "<old@x>"));
+        var recent = threadRepo.save(new EmailThread(owner, "Recent", "<recent@x>"));
+
+        var page = threadRepo.findByOwnerFiltered(owner,
+                LocalDateTime.now().minusMinutes(1), false, false, PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).extracting(EmailThread::getSubject)
+                .contains("Recent", "Old"); // both within last minute
+    }
+
+    @Test
+    void findByOwnerFilteredWithSinceInFutureReturnsNothing() {
+        threadRepo.save(new EmailThread(owner, "Now", "<now@x>"));
+
+        var page = threadRepo.findByOwnerFiltered(owner,
+                LocalDateTime.now().plusDays(1), false, false, PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).isEmpty();
+    }
+
+    @Test
+    void searchWithUnreadFilterANDsOntoSubjectMatch() {
+        var t1 = threadRepo.save(new EmailThread(owner, "Planning Q3", "<p1@x>"));
+        var t2 = threadRepo.save(new EmailThread(owner, "Planning Q4", "<p2@x>"));
+        t1.markRead();
+        threadRepo.save(t1);
+
+        var page = threadRepo.search(owner, "planning", null, null, true, false, PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).extracting(EmailThread::getSubject).containsExactly("Planning Q4");
+    }
+
+    @Test
+    void searchIncludingBodyWithAttachmentFilterANDsOntoBodyMatch() {
+        var sender = participantRepo.save(new Participant("body-att@x.com", "S"));
+        var bare = threadRepo.save(new EmailThread(owner, "No attach", "<na@x>"));
+        var rich = threadRepo.save(new EmailThread(owner, "Has attach", "<ha@x>"));
+        messageRepo.save(new Message(bare, sender, "p", "rocket science here", null, LocalDateTime.now()));
+        var msg = new Message(rich, sender, "rich", "rocket science here", null, LocalDateTime.now());
+        msg.addAttachment(new com.emailmessenger.domain.Attachment(msg, "data.csv", "text/csv",
+                100L, null));
+        messageRepo.save(msg);
+
+        var page = threadRepo.searchIncludingBody(owner, "rocket",
+                null, null, false, true, PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).extracting(EmailThread::getSubject).containsExactly("Has attach");
     }
 }

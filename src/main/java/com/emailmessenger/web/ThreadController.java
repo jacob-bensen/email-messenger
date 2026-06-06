@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
+import java.time.Clock;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -42,6 +43,7 @@ class ThreadController {
     private final TrialConversionNudgeService trialConversionNudgeService;
     private final ThreadSearchService threadSearchService;
     private final SenderGroupService senderGroupService;
+    private final Clock clock;
 
     ThreadController(EmailThreadRepository threadRepository,
                      ThreadViewService threadViewService,
@@ -52,7 +54,8 @@ class ThreadController {
                      OnboardingService onboardingService,
                      TrialConversionNudgeService trialConversionNudgeService,
                      ThreadSearchService threadSearchService,
-                     SenderGroupService senderGroupService) {
+                     SenderGroupService senderGroupService,
+                     Clock clock) {
         this.threadRepository = threadRepository;
         this.threadViewService = threadViewService;
         this.replyService = replyService;
@@ -63,12 +66,16 @@ class ThreadController {
         this.trialConversionNudgeService = trialConversionNudgeService;
         this.threadSearchService = threadSearchService;
         this.senderGroupService = senderGroupService;
+        this.clock = clock;
     }
 
     @GetMapping("/threads")
     String listThreads(@RequestParam(defaultValue = "0") int page,
                        @RequestParam(name = "q", required = false) String query,
                        @RequestParam(name = "from", required = false) String fromSender,
+                       @RequestParam(name = "since", required = false) String since,
+                       @RequestParam(name = "unread", defaultValue = "false") boolean unread,
+                       @RequestParam(name = "attachments", defaultValue = "false") boolean attachments,
                        Principal principal,
                        Model model) {
         User owner = userService.requireByEmail(principal.getName());
@@ -80,13 +87,14 @@ class ThreadController {
         }
         String trimmedQuery = query == null ? "" : query.trim();
         String trimmedFrom = (fromSender == null || fromSender.isBlank()) ? null : fromSender.trim();
+        ThreadFilters filters = ThreadFilters.parse(since, unread, attachments, clock);
         PageRequest pageRequest = PageRequest.of(Math.max(0, page), PAGE_SIZE);
         Page<EmailThread> threads;
-        if (trimmedQuery.isEmpty() && trimmedFrom == null) {
+        if (trimmedQuery.isEmpty() && trimmedFrom == null && !filters.isActive()) {
             threads = threadRepository.findByOwnerOrderByUpdatedAtDesc(owner, pageRequest);
         } else {
             ThreadSearchService.Result result =
-                    threadSearchService.search(owner, trimmedQuery, trimmedFrom, pageRequest);
+                    threadSearchService.search(owner, trimmedQuery, trimmedFrom, filters, pageRequest);
             threads = result.page();
             if (result.showBodySearchUpgradeNag()) {
                 model.addAttribute("bodySearchUpgradeNag", true);
@@ -95,10 +103,12 @@ class ThreadController {
         model.addAttribute("threads", threads);
         model.addAttribute("searchQuery", trimmedQuery);
         model.addAttribute("activeSender", trimmedFrom);
+        model.addAttribute("activeFilters", filters);
         List<SenderGroupService.SenderGroup> senderGroups = senderGroupService.topSenders(owner);
         model.addAttribute("senderGroups", senderGroups);
         model.addAttribute("hasAnyThreads", !senderGroups.isEmpty());
-        if (trimmedQuery.isEmpty() && trimmedFrom == null && threads.getTotalElements() == 0) {
+        if (trimmedQuery.isEmpty() && trimmedFrom == null && !filters.isActive()
+                && threads.getTotalElements() == 0) {
             model.addAttribute("onboarding", onboardingService.checklistFor(owner));
         }
         trialConversionNudgeService.nudgeFor(owner)

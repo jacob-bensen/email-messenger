@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,12 +21,35 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
 
     long countByOwner(User owner);
 
+    // Filtered no-search listing — powers `/threads` when no `?q=` / `?from=` is set
+    // but one or more of the filter chips (since / unread / attachments) is on.
+    @Query("""
+            SELECT DISTINCT t FROM EmailThread t
+            WHERE t.owner = :owner
+              AND (:since IS NULL OR t.updatedAt >= :since)
+              AND (:requireUnread = false OR t.unread = true)
+              AND (:requireAttachments = false OR EXISTS (
+                SELECT 1 FROM Message m JOIN m.attachments a WHERE m.thread = t
+              ))
+            ORDER BY t.updatedAt DESC
+            """)
+    Page<EmailThread> findByOwnerFiltered(@Param("owner") User owner,
+                                          @Param("since") LocalDateTime since,
+                                          @Param("requireUnread") boolean requireUnread,
+                                          @Param("requireAttachments") boolean requireAttachments,
+                                          Pageable pageable);
+
     @Query("""
             SELECT DISTINCT t FROM EmailThread t
             WHERE t.owner = :owner
               AND (:senderEmail IS NULL OR EXISTS (
                 SELECT 1 FROM Message ss
                 WHERE ss.thread = t AND LOWER(ss.sender.email) = LOWER(:senderEmail)
+              ))
+              AND (:since IS NULL OR t.updatedAt >= :since)
+              AND (:requireUnread = false OR t.unread = true)
+              AND (:requireAttachments = false OR EXISTS (
+                SELECT 1 FROM Message ma JOIN ma.attachments att WHERE ma.thread = t
               ))
               AND (
                 LOWER(t.subject) LIKE LOWER(CONCAT('%', :q, '%'))
@@ -43,6 +67,9 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
     Page<EmailThread> search(@Param("owner") User owner,
                              @Param("q") String query,
                              @Param("senderEmail") String senderEmail,
+                             @Param("since") LocalDateTime since,
+                             @Param("requireUnread") boolean requireUnread,
+                             @Param("requireAttachments") boolean requireAttachments,
                              Pageable pageable);
 
     @Query("""
@@ -51,6 +78,11 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
               AND (:senderEmail IS NULL OR EXISTS (
                 SELECT 1 FROM Message ss
                 WHERE ss.thread = t AND LOWER(ss.sender.email) = LOWER(:senderEmail)
+              ))
+              AND (:since IS NULL OR t.updatedAt >= :since)
+              AND (:requireUnread = false OR t.unread = true)
+              AND (:requireAttachments = false OR EXISTS (
+                SELECT 1 FROM Message ma JOIN ma.attachments att WHERE ma.thread = t
               ))
               AND (
                 LOWER(t.subject) LIKE LOWER(CONCAT('%', :q, '%'))
@@ -69,6 +101,9 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
     Page<EmailThread> searchIncludingBody(@Param("owner") User owner,
                                           @Param("q") String query,
                                           @Param("senderEmail") String senderEmail,
+                                          @Param("since") LocalDateTime since,
+                                          @Param("requireUnread") boolean requireUnread,
+                                          @Param("requireAttachments") boolean requireAttachments,
                                           Pageable pageable);
 
     // Did the query match any thread by body content that the subject/participant
@@ -79,6 +114,11 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
               AND (:senderEmail IS NULL OR EXISTS (
                 SELECT 1 FROM Message ss
                 WHERE ss.thread = t AND LOWER(ss.sender.email) = LOWER(:senderEmail)
+              ))
+              AND (:since IS NULL OR t.updatedAt >= :since)
+              AND (:requireUnread = false OR t.unread = true)
+              AND (:requireAttachments = false OR EXISTS (
+                SELECT 1 FROM Message ma JOIN ma.attachments att WHERE ma.thread = t
               ))
               AND LOWER(t.subject) NOT LIKE LOWER(CONCAT('%', :q, '%'))
               AND NOT EXISTS (
@@ -97,7 +137,10 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
             """)
     boolean hasBodyOnlyMatch(@Param("owner") User owner,
                              @Param("q") String query,
-                             @Param("senderEmail") String senderEmail);
+                             @Param("senderEmail") String senderEmail,
+                             @Param("since") LocalDateTime since,
+                             @Param("requireUnread") boolean requireUnread,
+                             @Param("requireAttachments") boolean requireAttachments);
 
     @Query("""
             SELECT DISTINCT t FROM EmailThread t
@@ -106,10 +149,18 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
                 SELECT 1 FROM Message m
                 WHERE m.thread = t AND LOWER(m.sender.email) = LOWER(:senderEmail)
               )
+              AND (:since IS NULL OR t.updatedAt >= :since)
+              AND (:requireUnread = false OR t.unread = true)
+              AND (:requireAttachments = false OR EXISTS (
+                SELECT 1 FROM Message ma JOIN ma.attachments att WHERE ma.thread = t
+              ))
             ORDER BY t.updatedAt DESC
             """)
     Page<EmailThread> findByOwnerAndSender(@Param("owner") User owner,
                                            @Param("senderEmail") String senderEmail,
+                                           @Param("since") LocalDateTime since,
+                                           @Param("requireUnread") boolean requireUnread,
+                                           @Param("requireAttachments") boolean requireAttachments,
                                            Pageable pageable);
 
     @Query("""

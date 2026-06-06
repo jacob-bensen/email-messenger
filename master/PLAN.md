@@ -66,6 +66,25 @@ body text — and the Free-vs-Personal gap pivots from "thread cap" to
    row above the thread list that ANDs onto the active search/sender
    filter. Each chip toggles a `?since=`/`?attachments=true`/`?unread=true`
    query param. Filters are bookmarkable.
+   _(Shipped 2026-06-06 — V9 migration adds `email_threads.unread`
+   (default true, indexed by `(owner_id, unread)`); `EmailThread.addMessage`
+   flips unread true on import / new reply; `ThreadViewService.getConversation`
+   is now read-write and marks the thread read on view via JPA dirty
+   checking. New `ThreadFilters` record parses `?since=7d|30d|90d`
+   through a `Clock` bean (unknown values silently dropped),
+   `?unread=true`, `?attachments=true`. `EmailThreadRepository.search`,
+   `searchIncludingBody`, `hasBodyOnlyMatch`, `findByOwnerAndSender`,
+   and new `findByOwnerFiltered` AND the three filter params onto the
+   existing search/sender constraints (H2 + Postgres-safe JPQL).
+   `ThreadSearchService` now routes blank-query / no-sender requests with
+   active filters through `findByOwnerFiltered`. `threads.html` renders
+   a `.filter-chips` row (Last 7d / 30d / 90d / Unread / Has attachment +
+   Clear filters) above the thread list; chip URLs preserve `?q` / `?from`
+   and toggle off on second click. Sender-rail rows, pagination, search
+   form, and sender-pill clear links all carry the active filter params
+   through so a bookmark renders the same result set on reload. Unread
+   threads get a bolder subject + dot marker via `.thread-item-unread`.
+   21 new tests; 327 total pass.)_
 
 ## Done means
 

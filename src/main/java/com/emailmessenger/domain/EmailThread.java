@@ -40,6 +40,9 @@ public class EmailThread {
     @Column(name = "message_count", nullable = false)
     private int messageCount = 0;
 
+    @Column(nullable = false)
+    private boolean unread = true;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -74,6 +77,11 @@ public class EmailThread {
         messages.add(message);
         messageCount = messages.size();
         updatedAt = LocalDateTime.now();
+        unread = true;
+    }
+
+    public void markRead() {
+        this.unread = false;
     }
 
     public Long getId() { return id; }
@@ -81,6 +89,7 @@ public class EmailThread {
     public String getSubject() { return subject; }
     public String getRootMessageId() { return rootMessageId; }
     public int getMessageCount() { return messageCount; }
+    public boolean isUnread() { return unread; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public List<Message> getMessages() { return Collections.unmodifiableList(messages); }
