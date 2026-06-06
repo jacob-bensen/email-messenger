@@ -50,6 +50,9 @@ public class SavedSearch {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "last_viewed_at")
+    private LocalDateTime lastViewedAt;
+
     protected SavedSearch() {}
 
     public SavedSearch(User owner, String name, String query, String senderEmail,
@@ -85,4 +88,6 @@ public class SavedSearch {
     public boolean isRequireAttachments() { return requireAttachments; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public LocalDateTime getLastViewedAt() { return lastViewedAt; }
+    public void setLastViewedAt(LocalDateTime lastViewedAt) { this.lastViewedAt = lastViewedAt; }
 }

@@ -7,6 +7,11 @@ import com.emailmessenger.domain.SavedSearch;
  * drill-down. {@link #matches} lets the template highlight the row that
  * corresponds to the active inbox query — Free users with one saved search
  * use this to navigate back to it instead of re-typing the query.
+ *
+ * <p>{@code matchCount} is the current total of threads matching the saved
+ * filter; {@code newCount} is the subset of those whose {@code updatedAt}
+ * is after {@code lastViewedAt} (or {@code createdAt} if never visited) —
+ * the "new since last visit" badge on the rail row.
  */
 public record SavedSearchView(
         Long id,
@@ -15,10 +20,12 @@ public record SavedSearchView(
         String senderEmail,
         String sincePreset,
         boolean requireUnread,
-        boolean requireAttachments
+        boolean requireAttachments,
+        long matchCount,
+        long newCount
 ) {
 
-    public static SavedSearchView from(SavedSearch s) {
+    public static SavedSearchView withCounts(SavedSearch s, long matchCount, long newCount) {
         return new SavedSearchView(
                 s.getId(),
                 s.getName(),
@@ -26,12 +33,15 @@ public record SavedSearchView(
                 s.getSenderEmail(),
                 s.getSincePreset(),
                 s.isRequireUnread(),
-                s.isRequireAttachments());
+                s.isRequireAttachments(),
+                matchCount,
+                newCount);
     }
 
     public boolean hasQuery() { return query != null && !query.isBlank(); }
     public boolean hasSender() { return senderEmail != null && !senderEmail.isBlank(); }
     public boolean hasSincePreset() { return sincePreset != null && !sincePreset.isBlank(); }
+    public boolean hasNew() { return newCount > 0; }
 
     /**
      * True when the supplied active params line up byte-for-byte with this

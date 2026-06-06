@@ -519,13 +519,42 @@ class ThreadControllerTest {
                 .thenReturn(empty);
         List<SavedSearchView> views = List.of(
                 new SavedSearchView(1L, "From Ada", null, "ada@example.com",
-                        "30d", false, true));
+                        "30d", false, true, 7L, 2L));
         when(savedSearchService.viewsFor(owner)).thenReturn(views);
 
         mockMvc.perform(get("/threads").principal(principal))
                 .andExpect(status().isOk())
                 .andExpect(model().attribute("savedSearches", views))
                 .andExpect(model().attribute("hasActiveSearchToSave", is(false)));
+    }
+
+    @Test
+    void savedSearchIdParamMarksViewedBeforeRendering() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadSearchService.search(eq(owner), eq(""), eq("ada@example.com"),
+                any(ThreadFilters.class), any(Pageable.class)))
+                .thenReturn(new ThreadSearchService.Result(empty, false));
+
+        mockMvc.perform(get("/threads").principal(principal)
+                        .param("from", "ada@example.com")
+                        .param("s", "42"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("threads"));
+
+        verify(savedSearchService).markViewed(eq(owner), eq(42L),
+                eq(java.time.LocalDateTime.ofInstant(CLOCK.instant(), java.time.ZoneOffset.UTC)));
+    }
+
+    @Test
+    void omittedSavedSearchIdParamDoesNotCallMarkViewed() throws Exception {
+        Page<EmailThread> empty = new PageImpl<>(List.of());
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(empty);
+
+        mockMvc.perform(get("/threads").principal(principal))
+                .andExpect(status().isOk());
+
+        verify(savedSearchService, never()).markViewed(any(), any(), any());
     }
 
     @Test

@@ -62,6 +62,16 @@ re-engagement emails recover dormant accounts before they cancel.
    `EmailThreadRepository` search methods reused with the saved-search
    params, with a per-saved-search `last_viewed_at` column tracking the
    unread delta.
+   _(Shipped 2026-06-06 — V11 adds nullable `last_viewed_at` to
+   `saved_searches`; new `SavedSearchCountService` reuses
+   `findByOwnerFiltered` / `findByOwnerAndSender` / `search` /
+   `searchIncludingBody` with `PageRequest.of(0, 1).getTotalElements()`
+   for matchCount and re-runs the same query with `since = max(originalSince,
+   lastViewedAt ?? createdAt)` for newCount, honouring the same Free vs
+   paid body-search gating the inbox uses. `SavedSearchView` carries
+   matchCount/newCount + `hasNew()`; rail link gains `?s={id}`,
+   `SavedSearchService.markViewed` stamps `last_viewed_at` before counts
+   render so the just-clicked badge clears. 7 new tests; 365 total pass.)_
 3. **Weekly digest email of new matches (Personal+).** `@Scheduled` job
    emails paid users a digest of new threads matching each saved search
    over the past 7 days. Per-user opt-out token in the footer; a

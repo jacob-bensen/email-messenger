@@ -7,6 +7,7 @@ import com.emailmessenger.repository.SavedSearchRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -25,10 +26,14 @@ public class SavedSearchService {
 
     private final SavedSearchRepository repository;
     private final PlanLimitService planLimits;
+    private final SavedSearchCountService countService;
 
-    SavedSearchService(SavedSearchRepository repository, PlanLimitService planLimits) {
+    SavedSearchService(SavedSearchRepository repository,
+                       PlanLimitService planLimits,
+                       SavedSearchCountService countService) {
         this.repository = repository;
         this.planLimits = planLimits;
+        this.countService = countService;
     }
 
     @Transactional(readOnly = true)
@@ -38,7 +43,15 @@ public class SavedSearchService {
 
     @Transactional(readOnly = true)
     public List<SavedSearchView> viewsFor(User owner) {
-        return list(owner).stream().map(SavedSearchView::from).toList();
+        return countService.viewsFor(owner, list(owner));
+    }
+
+    @Transactional
+    public void markViewed(User owner, Long id, LocalDateTime when) {
+        repository.findByIdAndOwner(id, owner).ifPresent(s -> {
+            s.setLastViewedAt(when);
+            repository.save(s);
+        });
     }
 
     @Transactional

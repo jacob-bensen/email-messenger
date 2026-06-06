@@ -25,6 +25,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
 import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -79,6 +80,7 @@ class ThreadController {
                        @RequestParam(name = "since", required = false) String since,
                        @RequestParam(name = "unread", defaultValue = "false") boolean unread,
                        @RequestParam(name = "attachments", defaultValue = "false") boolean attachments,
+                       @RequestParam(name = "s", required = false) Long savedSearchId,
                        Principal principal,
                        Model model) {
         User owner = userService.requireByEmail(principal.getName());
@@ -87,6 +89,9 @@ class ThreadController {
         model.addAttribute("hasBilling", billingService.hasManagedBilling(owner));
         if (banner != null && banner.isSubscriptionEnded()) {
             return "threads";
+        }
+        if (savedSearchId != null) {
+            savedSearchService.markViewed(owner, savedSearchId, LocalDateTime.now(clock));
         }
         String trimmedQuery = query == null ? "" : query.trim();
         String trimmedFrom = (fromSender == null || fromSender.isBlank()) ? null : fromSender.trim();

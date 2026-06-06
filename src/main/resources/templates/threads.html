@@ -190,7 +190,8 @@
                               activeFilters != null ? activeFilters.sincePreset() : null,
                               activeFilters != null ? activeFilters.requireUnread() : false,
                               activeFilters != null ? activeFilters.requireAttachments() : false)} ? ' saved-search-active' : ''">
-        <a th:href="@{/threads(q=${saved.hasQuery()} ? ${saved.query()} : null,
+        <a th:href="@{/threads(s=${saved.id()},
+                                q=${saved.hasQuery()} ? ${saved.query()} : null,
                                 from=${saved.hasSender()} ? ${saved.senderEmail()} : null,
                                 since=${saved.hasSincePreset()} ? ${saved.sincePreset()} : null,
                                 unread=${saved.requireUnread()} ? 'true' : null,
@@ -198,6 +199,13 @@
            class="saved-search-link">
           <span class="saved-search-icon" aria-hidden="true">★</span>
           <span class="saved-search-name" th:text="${saved.name()}">My saved search</span>
+          <span class="saved-search-new"
+                th:if="${saved.hasNew()}"
+                th:text="${saved.newCount()}"
+                th:attr="aria-label=|${saved.newCount()} new since last visit|">3</span>
+          <span class="saved-search-count"
+                th:text="${saved.matchCount()}"
+                th:attr="aria-label=|${saved.matchCount()} matching threads|">12</span>
         </a>
         <form th:action="@{/searches/{id}/delete(id=${saved.id()})}" method="post"
               class="saved-search-delete-form"
