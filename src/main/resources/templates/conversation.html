@@ -13,6 +13,13 @@
   <th:block th:unless="${demoMode}">
     <meta name="robots" content="noindex, nofollow">
     <title th:text="|(${conversation.thread().subject.length() > 57 ? conversation.thread().subject.substring(0, 57) + '…' : conversation.thread().subject}) — MailIM|">Conversation — MailIM</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#4f80ff">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="MailIM">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   </th:block>
 
   <link rel="stylesheet" th:href="@{/css/main.css}">

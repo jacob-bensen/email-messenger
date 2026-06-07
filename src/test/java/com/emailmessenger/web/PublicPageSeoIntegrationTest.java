@@ -195,6 +195,42 @@ class PublicPageSeoIntegrationTest {
     }
 
     @Test
+    void landingPageAdvertisesPwaManifestAndThemeColor() throws Exception {
+        // PWA "Install" prompt requires a <link rel=manifest>, a
+        // theme-color meta, and an apple-touch-icon for iOS. They must
+        // all render on the landing page so a first-touch visitor on
+        // Chrome / iOS Safari sees an installable site.
+        String body = render("/");
+        assertThat(body).contains("<link rel=\"manifest\" href=\"/manifest.webmanifest\"");
+        assertThat(body).contains("<meta name=\"theme-color\" content=\"#4f80ff\"");
+        assertThat(body).contains("<link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\"");
+        assertThat(body).contains("apple-mobile-web-app-capable");
+    }
+
+    @Test
+    void manifestServedAtCanonicalPathWithRequiredFields() throws Exception {
+        // Full Spring filter chain: the manifest must be reachable from
+        // an unauthenticated request (browsers fetch it before login).
+        String body = mockMvc.perform(get("/manifest.webmanifest"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(body).contains("\"start_url\": \"/threads\"");
+        assertThat(body).contains("\"display\": \"standalone\"");
+        assertThat(body).contains("/icons/icon-192.png");
+        assertThat(body).contains("/icons/icon-512.png");
+    }
+
+    @Test
+    void pwaIconsAndAppleTouchIconAreReachableWithoutAuth() throws Exception {
+        // Browsers fetch these from the install banner before the user
+        // ever signs in — they have to be in the public allow-list.
+        mockMvc.perform(get("/icons/icon-192.png")).andExpect(status().isOk());
+        mockMvc.perform(get("/icons/icon-512.png")).andExpect(status().isOk());
+        mockMvc.perform(get("/icons/icon-512-maskable.png")).andExpect(status().isOk());
+        mockMvc.perform(get("/apple-touch-icon.png")).andExpect(status().isOk());
+    }
+
+    @Test
     void registerPageLinksToTermsAndPrivacyInline() throws Exception {
         String body = render("/register");
         // The /register form must inline a "by creating an account you agree to…"

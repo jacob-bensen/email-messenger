@@ -11,67 +11,74 @@ SaaS: Free (1 mailbox, 500 threads, 1 saved search), Personal $9/mo
 Team $29/mo (10 mailboxes, sharing), Enterprise $99/mo (SSO, audit).
 Annual billing offers 2 months free. Money comes from recurring
 subscriptions, with natural Free → Personal → Team upgrades as mailbox
-count, history, and saved-search counts grow. EPICs 02–08 (Monetization,
+count, history, and saved-search counts grow. EPICs 02–09 (Monetization,
 Mailbox Onboarding, Deployability, Acquisition, Launch readiness, Inbox
-Search, Saved Searches & Reactivation) are code-complete in
-`claude_routine`; live deploy is gated on Master ops (hosting, domain,
-Stripe live keys, encryption secrets, demo video URL).
+Search, Saved Searches & Reactivation, Account self-serve) are
+code-complete in `claude_routine`; live deploy is gated on Master ops
+(hosting, domain, Stripe live keys, encryption secrets, demo video URL).
 
 ## Primary Objective
 
-**Ship EPIC-09 Account self-serve.** Authenticated MailIM users currently
-have no recovery path if they forget their password — the only login form
-demands the password, the database stores a one-way bcrypt hash, and the
-codebase has no password-reset flow. For a paid product this silently
-caps retention (a churned user can't recover, just abandons), and it is a
-hard blocker for any real-world Stripe live launch (a paying customer
-locked out of their own account is a chargeback). Email verification on
-signup hardens the same surface — without it, anyone can register with
-any address (real or stolen), the reset flow becomes a free
-account-takeover vector, and transactional emails (digest, re-engagement)
-go to unconfirmed addresses. In-app password/email change and a basic
-login-throttle audit close the loop so the account UX feels like a paid
-product. This Objective ends when a user who forgot their password can
-recover it from `/login` end-to-end via a tokenized email, signup emails
-verify the address before the first paid feature unlocks, and
-authenticated users can change their own password and email from a
-self-serve account page.
+**Ship EPIC-10 Mobile / PWA.** Responsive `/threads` + `/conversation`
+layouts already work on a phone browser, but MailIM is not installable.
+The mobile experience caps Personal-tier conversion because the only
+way to read mail "on my phone" today is to open the browser, tab over,
+sign in again, and type the URL — the natural retention loop ("ping me
+on Slack, I'll glance at my MailIM IM-view") needs a home-screen icon
+and an app-shell launch. PWA install + offline shell is the cheapest
+path: no App Store review, no iOS dev account, no Play Store fees, and
+the same Spring Boot codebase serves it. This Objective ends when a
+visitor on iOS Safari or Android Chrome can install MailIM from
+`/threads`, launch it from the home screen into a standalone app shell
+that opens to `/threads` without browser chrome, see a sensible "you're
+offline" screen if the network drops, and (where supported) get a
+native install banner the first time they visit signed-in.
 
 ## Milestones
 
-1. **Password reset via emailed token.** `/login` gains a "Forgot
-   password?" link → `/password/forgot` form takes an email → service
-   emails a tokenized `/password/reset?token=…` URL → `/password/reset`
-   form sets a new password and revokes any other outstanding tokens for
-   the same user. Tokens are 32 random bytes URL-safe base64, stored as
-   SHA-256 hash, single-use (consumed → `used_at`), and expire in 1 hour.
-   `POST /password/forgot` always renders the same generic "if we know
-   that email, you'll get a link" screen to avoid account enumeration.
-2. **Email verification on signup.** New users get a `email_verifications`
-   token in a confirmation email; until verified, a soft banner on
-   `/threads` prompts them to verify; `GET /verify-email?token=…` flips
-   the `users.email_verified_at` column and clears the banner. Resend
-   link from the banner. Optional unverified-account grace window before
-   paid feature gates kick in.
-3. **In-app change password / change email.** Authenticated `/account`
-   page lets the user change password (requires current password) and
-   change email (re-verifies the new address via the same token flow).
-   Bcrypt round-trip on every change. All outstanding password-reset
-   and email-verification tokens are revoked on password/email change.
-4. **Login throttling + auth audit log.** Brute-force protection on
-   `/login` (progressive delays / temporary lockout after N failures per
-   email or IP), and a minimal `auth_events` table backing a "recent
-   account activity" panel on `/account` (last 10 logins, password
-   changes, email changes, resets).
+1. **Web app manifest + PWA icons + theme color.** `GET
+   /manifest.webmanifest` returns a valid manifest (name, short_name,
+   description, start_url=`/threads`, scope=`/`, display=`standalone`,
+   theme_color, background_color, icons[192/512/maskable]). `GET
+   /icons/icon-{192,512,512-maskable}.png` and `GET
+   /apple-touch-icon.png` (180px, iOS Safari) are generated server-side
+   from the brand mark. `<link rel="manifest">` + `<meta
+   name="theme-color">` + `<link rel="apple-touch-icon">` are injected
+   into every public page (via the SEO fragment) and the authenticated
+   `/threads` + `/conversation` views so the browser install prompt
+   triggers from both pre-signup and post-signup surfaces.
+2. **Service worker for offline shell.** `GET /sw.js` registers a
+   service worker that pre-caches the static shell (CSS, brand mark,
+   `/threads` HTML skeleton) on install, serves cached responses for
+   navigation requests when the network fails, and ships a small
+   `/offline` HTML fallback so an installed PWA opened in airplane
+   mode shows MailIM-branded "you're offline" copy instead of the iOS
+   "Safari can't open the page" screen. Cache versioning busts on
+   deploy via a build-time hash.
+3. **In-app install prompt + iOS instructions.** On `/threads` and
+   `/`, listen for `beforeinstallprompt`, stash the event, and render
+   a dismissable "Install MailIM" banner with a button that triggers
+   the native prompt. Safari ignores `beforeinstallprompt`, so detect
+   iOS Safari and render an "Add to Home Screen → tap share → Add"
+   help card instead. Both banners persist a dismiss cookie so a user
+   who said no isn't pestered again.
+4. **Mobile-tuned threads + conversation view.** Audit `/threads` and
+   `/conversation` on a 375px viewport: tap targets ≥44px, safe-area
+   insets for iOS notch, sticky reply form above the on-screen keyboard,
+   swipe-to-back gesture surfaced as a visible back arrow, day-separator
+   sticky headers, and a `viewport-fit=cover` meta so the standalone PWA
+   uses the full screen. Wire the new mobile-first CSS through the
+   existing `--brand` / `--surface` design tokens so dark mode still
+   applies.
 
 ## Done means
 
-A user who forgot their password can recover it from `/login` end-to-end:
-"Forgot password?" → enter email → receive token URL → set new password →
-sign in with the new password. A newly-registered user receives a
-verification email on signup and the unverified-account banner disappears
-after they click through. An authenticated user can change their own
-password (requiring the current one) and email (re-verifying the new
-address) from `/account` without contacting support. Five failed login
-attempts in a row temporarily blocks further attempts for that account
-or IP, and the account page lists the most recent auth events.
+A visitor on iOS Safari or Android Chrome can `GET /threads`, accept the
+install prompt (Android) or follow the "Add to Home Screen" card (iOS),
+launch MailIM from the home screen as a standalone app — no browser
+chrome — landing on `/threads`. The service worker pre-caches enough of
+the static shell that opening the installed app in airplane mode shows a
+MailIM-branded offline screen instead of a generic browser error. The
+mobile-tuned layout passes a 375px-viewport audit on `/threads` and
+`/conversation` (tap targets, safe-area, sticky reply form). The install
+banner dismisses persistently so a "no thanks" doesn't reappear.

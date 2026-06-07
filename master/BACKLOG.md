@@ -2,5 +2,15 @@
 
 Up to 10 items, each advancing a PLAN.md milestone. Pick from the top.
 
-_EPIC-09 Account self-serve shipped end-to-end; backlog empty pending
-the [PLAN-REVIEW] in MASTER_ACTIONS.md to set the next Primary Objective._
+1. **Service worker for offline shell.** `GET /sw.js` pre-caches the
+   static shell (CSS, brand mark, threads HTML) and serves `/offline`
+   when the network is unreachable. — Milestone 2
+
+2. **In-app install prompt + iOS instructions.** Banner on `/threads`
+   that listens for `beforeinstallprompt` (Android/Chrome) or shows
+   "Add to Home Screen" guidance (iOS Safari), dismiss persists. —
+   Milestone 3
+
+3. **Mobile-tuned threads + conversation view.** Tap targets ≥44px,
+   safe-area insets, sticky reply form, mobile-first audit at 375px on
+   `/threads` + `/conversation`. — Milestone 4

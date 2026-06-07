@@ -58,6 +58,7 @@ class SecurityConfig {
                                 "/billing/cancel", "/billing/webhook",
                                 "/digest/opt-out",
                                 "/robots.txt", "/sitemap.xml",
+                                "/manifest.webmanifest", "/icons/**", "/apple-touch-icon.png",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/error", "/h2-console/**",
                                 "/actuator/health", "/actuator/health/**")
