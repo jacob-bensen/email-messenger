@@ -2259,3 +2259,86 @@ body {
   margin-left: 8px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
+
+/* ── PWA install banner ────────────────────────────── */
+.install-banner {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 210;
+  max-width: 560px;
+  margin: 0 auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14);
+  font-size: 14px;
+  color: var(--text);
+}
+.install-banner[hidden] { display: none; }
+.install-banner-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px 12px 14px;
+}
+.install-banner-body[hidden] { display: none; }
+.install-banner-mark {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+.install-banner-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.35;
+  min-width: 0;
+}
+.install-banner-title { color: var(--text); }
+.install-banner-sub { color: var(--text-muted); font-size: 13px; }
+.install-banner-share {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 0 4px;
+}
+.install-banner-cta { flex-shrink: 0; }
+.install-banner-dismiss {
+  flex-shrink: 0;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.install-banner-dismiss:hover { color: var(--text); background: rgba(0, 0, 0, 0.04); }
+
+@media (max-width: 560px) {
+  .install-banner { left: 8px; right: 8px; bottom: 8px; }
+  .install-banner-body { flex-wrap: wrap; gap: 10px; padding: 12px; }
+  .install-banner-text { flex-basis: 100%; order: -1; }
+  .install-banner-cta { flex: 1; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .install-banner {
+    background: var(--surface);
+    border-color: var(--border);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  }
+  .install-banner-dismiss:hover { background: rgba(255, 255, 255, 0.06); }
+}

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+  <!--
+    PWA install prompt fragment. Two branches share one banner element:
+      • Android / Chromium: stash the deferred `beforeinstallprompt` event
+        and surface a one-click "Install MailIM" CTA that triggers the
+        native prompt.
+      • iOS Safari (no `beforeinstallprompt` support): detect the UA and
+        render an "Add to Home Screen" walkthrough pointing at Safari's
+        share sheet.
+    A dismiss either way persists to localStorage so a user who said
+    "no thanks" isn't pestered again. Hidden entirely when the page is
+    already running standalone (display-mode media query or the legacy
+    iOS `navigator.standalone` flag) so an installed PWA never nags.
+  -->
+  <th:block th:fragment="banner">
+    <div id="install-banner" class="install-banner" hidden role="dialog"
+         aria-label="Install MailIM" aria-live="polite">
+      <div id="install-banner-default" class="install-banner-body" hidden>
+        <span class="install-banner-mark" aria-hidden="true">MI</span>
+        <div class="install-banner-text">
+          <strong class="install-banner-title">Install MailIM</strong>
+          <span class="install-banner-sub">Open your inbox from the home screen — no browser tab to find.</span>
+        </div>
+        <button type="button" id="install-banner-cta" class="btn btn-primary btn-compact install-banner-cta">
+          Install
+        </button>
+        <button type="button" id="install-banner-dismiss"
+                class="install-banner-dismiss" aria-label="Dismiss install prompt">&times;</button>
+      </div>
+      <div id="install-banner-ios" class="install-banner-body" hidden>
+        <span class="install-banner-mark" aria-hidden="true">MI</span>
+        <div class="install-banner-text">
+          <strong class="install-banner-title">Add MailIM to your home screen</strong>
+          <span class="install-banner-sub">
+            Tap the <span class="install-banner-share" aria-hidden="true">&#x2B06;</span>
+            share icon, then choose <em>Add to Home Screen</em>.
+          </span>
+        </div>
+        <button type="button" id="install-banner-ios-dismiss"
+                class="install-banner-dismiss" aria-label="Dismiss install prompt">&times;</button>
+      </div>
+    </div>
+    <script th:inline="javascript">
+      /*<![CDATA[*/
+      (function () {
+        var DISMISS_KEY = 'mailim-install-dismiss-v1';
+        var banner = document.getElementById('install-banner');
+        if (!banner) return;
+
+        function storageDismissed() {
+          try { return localStorage.getItem(DISMISS_KEY) === '1'; } catch (e) { return false; }
+        }
+        function rememberDismiss() {
+          try { localStorage.setItem(DISMISS_KEY, '1'); } catch (e) { /* private mode */ }
+        }
+        function hide() {
+          banner.hidden = true;
+          var d = document.getElementById('install-banner-default');
+          var i = document.getElementById('install-banner-ios');
+          if (d) d.hidden = true;
+          if (i) i.hidden = true;
+        }
+
+        if (storageDismissed()) { hide(); return; }
+
+        // Already installed: standalone display-mode (Chrome/Android) or
+        // navigator.standalone (legacy iOS). Never nag in the installed app.
+        var displayStandalone = false;
+        try {
+          displayStandalone = window.matchMedia &&
+            window.matchMedia('(display-mode: standalone)').matches;
+        } catch (e) { /* unsupported */ }
+        var iosStandalone = window.navigator && window.navigator.standalone === true;
+        if (displayStandalone || iosStandalone) { hide(); return; }
+
+        var defaultCard = document.getElementById('install-banner-default');
+        var iosCard = document.getElementById('install-banner-ios');
+        var ctaBtn = document.getElementById('install-banner-cta');
+        var dismissBtn = document.getElementById('install-banner-dismiss');
+        var iosDismiss = document.getElementById('install-banner-ios-dismiss');
+
+        function dismiss() {
+          rememberDismiss();
+          hide();
+        }
+        if (dismissBtn) dismissBtn.addEventListener('click', dismiss);
+        if (iosDismiss) iosDismiss.addEventListener('click', dismiss);
+
+        // iOS Safari has no beforeinstallprompt — feature-detect via UA so
+        // we still surface the share-sheet hint. Exclude Chrome-on-iOS
+        // ("CriOS") and Edge-on-iOS ("EdgiOS"): those can't add to home
+        // screen as a PWA either, so showing them the hint is just noise.
+        var ua = navigator.userAgent || '';
+        var isIosDevice = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+        var isInAppBrowser = /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+        if (isIosDevice && !isInAppBrowser) {
+          if (iosCard) iosCard.hidden = false;
+          banner.hidden = false;
+          return;
+        }
+
+        var deferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', function (evt) {
+          evt.preventDefault();
+          deferredPrompt = evt;
+          if (storageDismissed()) return;
+          if (defaultCard) defaultCard.hidden = false;
+          banner.hidden = false;
+        });
+
+        if (ctaBtn) {
+          ctaBtn.addEventListener('click', function () {
+            if (!deferredPrompt) { dismiss(); return; }
+            deferredPrompt.prompt();
+            var p = deferredPrompt.userChoice;
+            deferredPrompt = null;
+            // Either outcome: hide the banner. Accepted → installed; dismissed
+            // → respect the choice. Always remember so we don't reappear next
+            // page load.
+            if (p && typeof p.then === 'function') {
+              p.then(function () { dismiss(); }, function () { dismiss(); });
+            } else {
+              dismiss();
+            }
+          });
+        }
+
+        // Browser fires appinstalled when the user completes installation
+        // — clear the banner immediately so it doesn't re-show on next nav.
+        window.addEventListener('appinstalled', function () { dismiss(); });
+      }());
+      /*]]>*/
+    </script>
+  </th:block>
+</body>
+</html>

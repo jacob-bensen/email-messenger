@@ -256,6 +256,35 @@ class PublicPageSeoIntegrationTest {
     }
 
     @Test
+    void landingPageRendersInstallBannerWithIosFallbackAndPersistentDismiss() throws Exception {
+        // PWA install: Android/Chromium gets a one-click "Install" banner
+        // wired to the stashed `beforeinstallprompt` event. iOS Safari
+        // doesn't fire that event, so we feature-detect the UA and show
+        // an "Add to Home Screen" walkthrough instead. Either dismissal
+        // persists to localStorage so a returning visitor isn't pestered.
+        String body = render("/");
+        assertThat(body).contains("id=\"install-banner\"");
+        assertThat(body).contains("id=\"install-banner-default\"");
+        assertThat(body).contains("id=\"install-banner-ios\"");
+        assertThat(body).contains("id=\"install-banner-cta\"");
+        assertThat(body).contains("id=\"install-banner-dismiss\"");
+        assertThat(body).contains("Install MailIM");
+        assertThat(body).contains("Add MailIM to your home screen");
+        // JS wiring: beforeinstallprompt is the Chromium signal; the iOS
+        // UA test is what triggers the share-sheet walkthrough.
+        assertThat(body).contains("beforeinstallprompt");
+        assertThat(body).contains("/iPad|iPhone|iPod/");
+        // Already-installed detection: standalone display-mode (Chrome) +
+        // navigator.standalone (legacy iOS). The banner has to hide in
+        // the installed app or it nags forever.
+        assertThat(body).contains("display-mode: standalone");
+        assertThat(body).contains("navigator.standalone");
+        // Dismiss persistence: a versioned localStorage key so we can
+        // future-version the banner copy without re-pestering everyone.
+        assertThat(body).contains("mailim-install-dismiss-v1");
+    }
+
+    @Test
     void registerPageLinksToTermsAndPrivacyInline() throws Exception {
         String body = render("/register");
         // The /register form must inline a "by creating an account you agree to…"

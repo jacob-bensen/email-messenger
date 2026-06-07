@@ -97,6 +97,22 @@ class ThreadInboxRenderingIntegrationTest {
 
     @Test
     @WithMockUser(username = "inbox-render@example.com")
+    void inboxRendersInstallBannerForSignedInUsers() throws Exception {
+        // Authenticated `/threads` is the post-signup surface where the
+        // PWA install banner has to also show — Personal-tier retention
+        // depends on home-screen install, and a user who only ever sees
+        // the prompt on the public landing has already moved past it.
+        String body = mockMvc.perform(get("/threads"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).contains("id=\"install-banner\"");
+        assertThat(body).contains("beforeinstallprompt");
+        assertThat(body).contains("mailim-install-dismiss-v1");
+    }
+
+    @Test
+    @WithMockUser(username = "inbox-render@example.com")
     void combinedQueryAndSenderPreservesBothInSearchFormAndLinks() throws Exception {
         String body = mockMvc.perform(get("/threads")
                         .param("q", "athena")
