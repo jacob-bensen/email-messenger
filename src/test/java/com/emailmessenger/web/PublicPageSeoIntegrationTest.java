@@ -285,6 +285,25 @@ class PublicPageSeoIntegrationTest {
     }
 
     @Test
+    void mainStylesheetCarriesMobileTuningForInstalledPwa() throws Exception {
+        // EPIC-10 milestone 4: an installed MailIM on a 375px iPhone needs
+        // ≥44px tap targets, safe-area insets so chrome doesn't slide under
+        // the notch / home bar, a sticky reply form via 100dvh, and sticky
+        // day-separator headers as the user scrolls a long thread. These
+        // are CSS-only changes — assert the rules persist in the shipped
+        // /css/main.css so a future refactor that drops them fails CI.
+        String css = mockMvc.perform(get("/css/main.css"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(css).contains("100dvh");
+        assertThat(css).contains("env(safe-area-inset-bottom");
+        assertThat(css).contains("env(safe-area-inset-top");
+        assertThat(css).contains("min-height: 44px");
+        assertThat(css).contains(".day-separator");
+        assertThat(css).contains("position: sticky");
+    }
+
+    @Test
     void registerPageLinksToTermsAndPrivacyInline() throws Exception {
         String body = render("/register");
         // The /register form must inline a "by creating an account you agree to…"

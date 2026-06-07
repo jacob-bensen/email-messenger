@@ -431,6 +431,7 @@ body {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 57px);
+  height: calc(100dvh - 57px);
 }
 
 /* ── Messages Area ──────────────────────────────────── */
@@ -598,6 +599,10 @@ body {
   padding: 6px 0;
   pointer-events: none;
   user-select: none;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 5;
 }
 .day-separator::before,
 .day-separator::after {
@@ -2341,4 +2346,104 @@ body {
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
   }
   .install-banner-dismiss:hover { background: rgba(255, 255, 255, 0.06); }
+}
+
+/* ── Mobile audit (≤640px, 375px-viewport baseline) ──────────
+   Safe-area insets for iOS notch/home bar (env() resolves to 0
+   in non-standalone tabs so this is a no-op there), ≥44px tap
+   targets per WCAG 2.5.5, sticky reply form via the 100dvh
+   conv-body height set above, and a visible back-arrow button
+   replacing the desktop text link. All wired through the
+   existing --brand / --surface / --border tokens so dark mode
+   inherits with no extra overrides. */
+
+.app-header {
+  padding-top: env(safe-area-inset-top, 0);
+  padding-left: calc(24px + env(safe-area-inset-left, 0));
+  padding-right: calc(24px + env(safe-area-inset-right, 0));
+}
+.conv-header {
+  padding-top: calc(12px + env(safe-area-inset-top, 0));
+  padding-left: calc(24px + env(safe-area-inset-left, 0));
+  padding-right: calc(24px + env(safe-area-inset-right, 0));
+}
+.reply-area {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0));
+  padding-left: calc(24px + env(safe-area-inset-left, 0));
+  padding-right: calc(24px + env(safe-area-inset-right, 0));
+}
+
+@media (max-width: 640px) {
+  .header-nav { gap: 4px; }
+  .header-nav a,
+  .header-nav .link-button {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 10px;
+  }
+  .kbd-hint { display: none; }
+
+  .back-link {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: rgba(79, 128, 255, 0.10);
+    font-size: 15px;
+    padding: 0 12px;
+  }
+  .conv-header { gap: 10px; padding-bottom: 10px; }
+  .conv-header h1 { font-size: 15px; }
+
+  .thread-item {
+    padding: 16px 18px;
+    min-height: 64px;
+  }
+
+  .sender-rail-row { padding: 12px 14px; min-height: 44px; }
+  .sender-rail-summary { padding: 14px 16px 10px; min-height: 44px; }
+  .sender-pill-clear {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 10px;
+  }
+
+  .filter-chip,
+  .filter-chip-clear {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .inbox-search-input,
+  .inbox-search-submit { min-height: 44px; }
+  .inbox-search-clear {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 10px;
+  }
+
+  /* Sticky reply form clears the iOS home bar; the 100dvh height on
+     .conv-body keeps it above the on-screen keyboard. */
+  .reply-area {
+    position: sticky;
+    bottom: 0;
+    padding-top: 12px;
+  }
+  .reply-form textarea { min-height: 96px; font-size: 16px; }
+  .reply-form .btn { min-height: 44px; padding: 10px 20px; }
+
+  .page-link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 14px;
+  }
 }

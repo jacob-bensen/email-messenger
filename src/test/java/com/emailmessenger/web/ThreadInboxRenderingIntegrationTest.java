@@ -113,6 +113,21 @@ class ThreadInboxRenderingIntegrationTest {
 
     @Test
     @WithMockUser(username = "inbox-render@example.com")
+    void inboxRendersMobileViewportAndUsesSharedStylesheet() throws Exception {
+        // Mobile-tuned shell: viewport-fit=cover so an installed PWA on
+        // iOS reaches into the notch + home-bar area, and the same
+        // /css/main.css carries the ≥44px tap targets + safe-area insets.
+        // Without the viewport-fit hint, env(safe-area-inset-*) collapses
+        // to 0 and the chat bubbles slide under the notch.
+        String body = mockMvc.perform(get("/threads"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(body).contains("viewport-fit=cover");
+        assertThat(body).contains("href=\"/css/main.css\"");
+    }
+
+    @Test
+    @WithMockUser(username = "inbox-render@example.com")
     void combinedQueryAndSenderPreservesBothInSearchFormAndLinks() throws Exception {
         String body = mockMvc.perform(get("/threads")
                         .param("q", "athena")
