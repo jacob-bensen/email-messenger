@@ -32,6 +32,10 @@
     <div th:if="${param.reset}" class="alert alert-success">
       Password updated. Sign in with your new password.
     </div>
+    <div th:if="${param['email-changed']}" class="alert alert-success">
+      Email updated. Sign in with your new address — we've sent a
+      confirmation link there.
+    </div>
 
     <form method="post" th:action="@{/login}" class="auth-form" autocomplete="on">
       <input type="hidden" name="plan" th:if="${plan != null}" th:value="${plan}">

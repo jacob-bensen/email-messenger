@@ -86,6 +86,7 @@ public class User {
     public LocalDateTime getEmailVerifiedAt() { return emailVerifiedAt; }
     public boolean isEmailVerified() { return emailVerifiedAt != null; }
 
+    public void setEmail(String email) { this.email = email; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public void setDisplayName(String displayName) { this.displayName = displayName; }
     public void setAcquisitionSource(String acquisitionSource) { this.acquisitionSource = acquisitionSource; }
