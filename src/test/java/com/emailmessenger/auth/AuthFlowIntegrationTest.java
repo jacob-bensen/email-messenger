@@ -1,5 +1,6 @@
 package com.emailmessenger.auth;
 
+import com.emailmessenger.billing.BillingPeriod;
 import com.emailmessenger.billing.BillingService;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
@@ -157,7 +158,7 @@ class AuthFlowIntegrationTest {
     @Test
     void loginWithPlanRedirectsToCheckout() throws Exception {
         userService.register("funnel@example.com", "password1", null);
-        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL)))
+        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.MONTHLY)))
                 .thenReturn("https://checkout.stripe.com/c/pay/cs_test_login_funnel");
 
         mockMvc.perform(post("/login")
@@ -168,7 +169,25 @@ class AuthFlowIntegrationTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("https://checkout.stripe.com/c/pay/cs_test_login_funnel"));
 
-        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL));
+        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.MONTHLY));
+    }
+
+    @Test
+    void loginWithAnnualBillingPassesAnnualPeriodToCheckout() throws Exception {
+        userService.register("annuallogin@example.com", "password1", null);
+        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.ANNUAL)))
+                .thenReturn("https://checkout.stripe.com/c/pay/cs_test_annual_login");
+
+        mockMvc.perform(post("/login")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("email", "annuallogin@example.com")
+                        .param("password", "password1")
+                        .param("plan", "personal")
+                        .param("billing", "annual"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("https://checkout.stripe.com/c/pay/cs_test_annual_login"));
+
+        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.ANNUAL));
     }
 
     @Test
@@ -183,7 +202,7 @@ class AuthFlowIntegrationTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/threads"));
 
-        verify(billingService, never()).startCheckout(any(User.class), any(Plan.class));
+        verify(billingService, never()).startCheckout(any(User.class), any(Plan.class), any(BillingPeriod.class));
     }
 
     @Test
@@ -195,7 +214,7 @@ class AuthFlowIntegrationTest {
 
     @Test
     void registrationWithPlanStartsCheckoutAndRedirectsToStripe() throws Exception {
-        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL)))
+        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.MONTHLY)))
                 .thenReturn("https://checkout.stripe.com/c/pay/cs_test_funnel");
 
         mockMvc.perform(post("/register")
@@ -207,7 +226,25 @@ class AuthFlowIntegrationTest {
                 .andExpect(redirectedUrl("https://checkout.stripe.com/c/pay/cs_test_funnel"));
 
         assertThat(users.findByEmail("trial@example.com")).isPresent();
-        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL));
+        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.MONTHLY));
+    }
+
+    @Test
+    void registrationWithAnnualBillingPassesAnnualPeriodToCheckout() throws Exception {
+        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.ANNUAL)))
+                .thenReturn("https://checkout.stripe.com/c/pay/cs_test_annual_register");
+
+        mockMvc.perform(post("/register")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("email", "annualregister@example.com")
+                        .param("password", "password1")
+                        .param("plan", "personal")
+                        .param("billing", "annual"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("https://checkout.stripe.com/c/pay/cs_test_annual_register"));
+
+        assertThat(users.findByEmail("annualregister@example.com")).isPresent();
+        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.ANNUAL));
     }
 
     @Test
@@ -242,6 +279,6 @@ class AuthFlowIntegrationTest {
                 .andExpect(redirectedUrl("/threads"));
 
         assertThat(users.findByEmail("tampered@example.com")).isPresent();
-        verify(billingService, never()).startCheckout(any(User.class), any(Plan.class));
+        verify(billingService, never()).startCheckout(any(User.class), any(Plan.class), any(BillingPeriod.class));
     }
 }

@@ -36,14 +36,22 @@ public class BillingService {
     }
 
     @Transactional
-    public String startCheckout(User user, Plan plan) {
+    public String startCheckout(User user, Plan plan, BillingPeriod period) {
         if (plan == Plan.FREE) {
             throw new BillingException("Free plan does not require checkout.");
         }
         if (plan == Plan.ENTERPRISE) {
             throw new BillingException("Enterprise is sales-assisted; use the contact link.");
         }
-        String priceId = properties.priceIds().get(plan);
+        BillingPeriod resolved = period == null ? BillingPeriod.MONTHLY : period;
+        String priceId = properties.priceIds(resolved).get(plan);
+        if (!StringUtils.hasText(priceId) && resolved == BillingPeriod.ANNUAL) {
+            // Annual SKU not yet configured for this plan — degrade to
+            // monthly so a customer who picked "Annual" still completes
+            // checkout. The Stripe Billing Portal will offer the annual
+            // swap once the price ID is wired.
+            priceId = properties.priceIds(BillingPeriod.MONTHLY).get(plan);
+        }
         if (!StringUtils.hasText(priceId)) {
             throw new BillingException("No price configured for plan " + plan);
         }

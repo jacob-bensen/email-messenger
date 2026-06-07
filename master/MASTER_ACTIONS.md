@@ -18,8 +18,13 @@ asset delivery — that the agent cannot complete in code. Group by area.
 - [ ] Create a Stripe account; provide `STRIPE_PUBLIC_KEY` and
       `STRIPE_SECRET_KEY` (test mode is fine to start).
 - [ ] Create Stripe Products + Prices for Personal $9/mo, Team $29/mo,
-      Enterprise $99/mo (plus matching annual prices at 2 months free).
-      Hand over the four price IDs.
+      Enterprise $99/mo (plus matching annual prices at 2 months free —
+      Personal $90/yr, Team $290/yr, Enterprise $990/yr). Hand over the
+      six price IDs as env vars: `STRIPE_PERSONAL_PRICE_ID`,
+      `STRIPE_TEAM_PRICE_ID`, `STRIPE_ENTERPRISE_PRICE_ID`,
+      `STRIPE_PERSONAL_ANNUAL_PRICE_ID`, `STRIPE_TEAM_ANNUAL_PRICE_ID`,
+      `STRIPE_ENTERPRISE_ANNUAL_PRICE_ID`. Annual IDs are optional — the
+      checkout silently degrades to monthly when an annual SKU isn't set.
 - [ ] Configure the Stripe webhook endpoint at `/billing/webhook` after
       deploy and provide `STRIPE_WEBHOOK_SECRET`.
 - [ ] In the Stripe Dashboard, enable the Customer Billing Portal and
@@ -53,22 +58,6 @@ asset delivery — that the agent cannot complete in code. Group by area.
       `MARKETING_LEGAL_PRIVACY`, `MARKETING_LEGAL_TERMS`,
       `MARKETING_LEGAL_REFUND` (each takes a Spring resource locator,
       e.g. `file:/etc/mailim/privacy.html` or `https://termly.io/...`).
-
-## Plan review
-
-- [ ] [PLAN-REVIEW] EPIC-10 Mobile / PWA is code-complete (manifest +
-      icons, service worker + offline shell, install banner with iOS
-      fallback, mobile-tuned threads + conversation view with
-      `viewport-fit=cover`, safe-area insets, ≥44px tap targets,
-      sticky reply form via `100dvh`, sticky day-separator headers).
-      Adopt one of: **annual-billing surfacing** (toggle annual vs
-      monthly on `/pricing`, pass `?billing=annual` through Stripe
-      Checkout for the 2-months-free SKU — direct ARPU lift),
-      **Gmail OAuth mailbox connection** (replaces IMAP-password
-      friction with one-click signin — biggest activation gain,
-      depends on the Google OAuth credentials master action below),
-      or **first-paying-customer attribution** (per-customer
-      utm_source → Subscription, dashboard at `/admin/revenue`).
 
 ## Launch / marketing
 

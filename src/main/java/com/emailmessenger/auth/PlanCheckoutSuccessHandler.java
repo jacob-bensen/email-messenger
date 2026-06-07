@@ -1,6 +1,7 @@
 package com.emailmessenger.auth;
 
 import com.emailmessenger.billing.BillingException;
+import com.emailmessenger.billing.BillingPeriod;
 import com.emailmessenger.billing.BillingService;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
@@ -65,9 +66,10 @@ class PlanCheckoutSuccessHandler extends SavedRequestAwareAuthenticationSuccessH
             log.warn("Ignoring unknown plan '{}' at login for {}", planParam, authentication.getName());
             return null;
         }
+        BillingPeriod period = BillingPeriod.parse(request.getParameter("billing"));
         try {
             User user = userService.requireByEmail(authentication.getName());
-            return billingService.startCheckout(user, plan);
+            return billingService.startCheckout(user, plan, period);
         } catch (BillingException e) {
             log.warn("Skipping checkout after login for plan {}: {}", plan, e.getMessage());
             return null;

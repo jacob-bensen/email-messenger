@@ -23,10 +23,13 @@ class BillingController {
     }
 
     @PostMapping("/billing/checkout")
-    String startCheckout(@RequestParam("plan") String planParam, Principal principal) {
+    String startCheckout(@RequestParam("plan") String planParam,
+                         @RequestParam(name = "billing", required = false) String billingParam,
+                         Principal principal) {
         Plan plan = Plan.parse(planParam);
+        BillingPeriod period = BillingPeriod.parse(billingParam);
         User user = userService.requireByEmail(principal.getName());
-        String checkoutUrl = billingService.startCheckout(user, plan);
+        String checkoutUrl = billingService.startCheckout(user, plan, period);
         return "redirect:" + checkoutUrl;
     }
 

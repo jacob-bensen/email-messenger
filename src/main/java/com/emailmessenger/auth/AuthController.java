@@ -1,6 +1,7 @@
 package com.emailmessenger.auth;
 
 import com.emailmessenger.billing.BillingException;
+import com.emailmessenger.billing.BillingPeriod;
 import com.emailmessenger.billing.BillingService;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
@@ -36,15 +37,21 @@ class AuthController {
     }
 
     @GetMapping("/login")
-    String loginPage(@RequestParam(name = "plan", required = false) String plan, Model model) {
+    String loginPage(@RequestParam(name = "plan", required = false) String plan,
+                     @RequestParam(name = "billing", required = false) String billing,
+                     Model model) {
         if (StringUtils.hasText(plan)) {
             model.addAttribute("plan", plan);
+        }
+        if (StringUtils.hasText(billing)) {
+            model.addAttribute("billing", BillingPeriod.parse(billing).paramValue());
         }
         return "login";
     }
 
     @GetMapping("/register")
     String registerPage(@RequestParam(name = "plan", required = false) String plan,
+                        @RequestParam(name = "billing", required = false) String billing,
                         @RequestParam(name = "utm_source", required = false) String utmSource,
                         Model model) {
         if (!model.containsAttribute("registrationForm")) {
@@ -57,6 +64,9 @@ class AuthController {
         if (StringUtils.hasText(plan)) {
             model.addAttribute("plan", plan);
         }
+        if (StringUtils.hasText(billing)) {
+            model.addAttribute("billing", BillingPeriod.parse(billing).paramValue());
+        }
         if (StringUtils.hasText(utmSource)) {
             model.addAttribute("utmSource", utmSource);
         }
@@ -67,10 +77,14 @@ class AuthController {
     String register(@Valid @ModelAttribute("registrationForm") RegistrationForm form,
                     BindingResult binding,
                     @RequestParam(name = "plan", required = false) String plan,
+                    @RequestParam(name = "billing", required = false) String billing,
                     Model model,
                     HttpServletRequest request) throws ServletException {
         if (StringUtils.hasText(plan)) {
             model.addAttribute("plan", plan);
+        }
+        if (StringUtils.hasText(billing)) {
+            model.addAttribute("billing", BillingPeriod.parse(billing).paramValue());
         }
         if (binding.hasErrors()) {
             return "register";
@@ -92,7 +106,7 @@ class AuthController {
         // not on the login screen.
         request.login(UserService.normalizeEmail(form.getEmail()), form.getPassword());
 
-        String checkoutRedirect = checkoutRedirectFor(plan, form.getEmail());
+        String checkoutRedirect = checkoutRedirectFor(plan, billing, form.getEmail());
         return checkoutRedirect != null ? checkoutRedirect : "redirect:/threads";
     }
 
@@ -102,7 +116,7 @@ class AuthController {
      * — a tampered or unknown plan must not strand a freshly-signed-up user
      * on an error page.
      */
-    private String checkoutRedirectFor(String plan, String email) {
+    private String checkoutRedirectFor(String plan, String billing, String email) {
         if (!StringUtils.hasText(plan)) {
             return null;
         }
@@ -113,9 +127,10 @@ class AuthController {
             log.warn("Ignoring unknown plan '{}' on register for {}", plan, email);
             return null;
         }
+        BillingPeriod period = BillingPeriod.parse(billing);
         try {
             User user = userService.requireByEmail(email);
-            String url = billingService.startCheckout(user, parsed);
+            String url = billingService.startCheckout(user, parsed, period);
             return "redirect:" + url;
         } catch (BillingException e) {
             log.warn("Skipping checkout after register for plan {}: {}", parsed, e.getMessage());

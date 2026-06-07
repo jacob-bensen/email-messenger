@@ -36,6 +36,7 @@
           class="auth-form" autocomplete="on">
 
       <input type="hidden" name="plan" th:if="${plan != null}" th:value="${plan}">
+      <input type="hidden" name="billing" th:if="${billing != null}" th:value="${billing}">
       <input type="hidden" th:field="*{source}">
 
       <label class="auth-label">
@@ -74,7 +75,8 @@
     <p class="auth-alt">
       Already have an account?
       <a th:if="${plan == null}" href="/login">Sign in</a>
-      <a th:if="${plan != null}" th:href="@{/login(plan=${plan})}">Sign in</a>.
+      <a th:if="${plan != null}"
+         th:href="@{/login(plan=${plan},billing=${billing})}">Sign in</a>.
     </p>
     <p class="auth-legal">
       By creating an account you agree to our

@@ -11,74 +11,89 @@ SaaS: Free (1 mailbox, 500 threads, 1 saved search), Personal $9/mo
 Team $29/mo (10 mailboxes, sharing), Enterprise $99/mo (SSO, audit).
 Annual billing offers 2 months free. Money comes from recurring
 subscriptions, with natural Free → Personal → Team upgrades as mailbox
-count, history, and saved-search counts grow. EPICs 02–09 (Monetization,
+count, history, and saved-search counts grow. EPICs 02–10 (Monetization,
 Mailbox Onboarding, Deployability, Acquisition, Launch readiness, Inbox
-Search, Saved Searches & Reactivation, Account self-serve) are
-code-complete in `claude_routine`; live deploy is gated on Master ops
+Search, Saved Searches & Reactivation, Account self-serve, Mobile/PWA)
+are code-complete in `claude_routine`; live deploy is gated on Master ops
 (hosting, domain, Stripe live keys, encryption secrets, demo video URL).
 
 ## Primary Objective
 
-**Ship EPIC-10 Mobile / PWA.** Responsive `/threads` + `/conversation`
-layouts already work on a phone browser, but MailIM is not installable.
-The mobile experience caps Personal-tier conversion because the only
-way to read mail "on my phone" today is to open the browser, tab over,
-sign in again, and type the URL — the natural retention loop ("ping me
-on Slack, I'll glance at my MailIM IM-view") needs a home-screen icon
-and an app-shell launch. PWA install + offline shell is the cheapest
-path: no App Store review, no iOS dev account, no Play Store fees, and
-the same Spring Boot codebase serves it. This Objective ends when a
-visitor on iOS Safari or Android Chrome can install MailIM from
-`/threads`, launch it from the home screen into a standalone app shell
-that opens to `/threads` without browser chrome, see a sensible "you're
-offline" screen if the network drops, and (where supported) get a
-native install banner the first time they visit signed-in.
+**Ship EPIC-11 Annual billing surfacing.** The `/pricing` page already
+ships a `Monthly | Annual` toggle that visually swaps the displayed price
+($9 → $7, $29 → $24, $99 → $83) but the CTAs route through the monthly
+Stripe price ID regardless — annual is cosmetic. Annual billing
+materially lifts ARPU (12 × monthly vs. ~10 × monthly = ~17% per active
+subscription), is the single highest-impact pricing change available
+without new product features, and is the cheapest path to defensible
+revenue (it reduces churn — an annual subscriber doesn't cancel inside
+the term). Two months free is also a stronger anchor for the Free →
+Personal upgrade decision than a discount badge. This Objective ends
+when a visitor on `/pricing` can toggle Annual, click "Start 14-day free
+trial", land in Stripe Checkout against the annual price ID, complete
+checkout, and have the local `Subscription` row record the annual
+`stripe_price_id` — and existing monthly subscribers can self-serve a
+switch to annual from the billing portal or an in-app upsell, with the
+trial nudge surfacing the annual option in the final week.
 
 ## Milestones
 
-1. **Web app manifest + PWA icons + theme color.** `GET
-   /manifest.webmanifest` returns a valid manifest (name, short_name,
-   description, start_url=`/threads`, scope=`/`, display=`standalone`,
-   theme_color, background_color, icons[192/512/maskable]). `GET
-   /icons/icon-{192,512,512-maskable}.png` and `GET
-   /apple-touch-icon.png` (180px, iOS Safari) are generated server-side
-   from the brand mark. `<link rel="manifest">` + `<meta
-   name="theme-color">` + `<link rel="apple-touch-icon">` are injected
-   into every public page (via the SEO fragment) and the authenticated
-   `/threads` + `/conversation` views so the browser install prompt
-   triggers from both pre-signup and post-signup surfaces.
-2. **Service worker for offline shell.** `GET /sw.js` registers a
-   service worker that pre-caches the static shell (CSS, brand mark,
-   `/threads` HTML skeleton) on install, serves cached responses for
-   navigation requests when the network fails, and ships a small
-   `/offline` HTML fallback so an installed PWA opened in airplane
-   mode shows MailIM-branded "you're offline" copy instead of the iOS
-   "Safari can't open the page" screen. Cache versioning busts on
-   deploy via a build-time hash.
-3. **In-app install prompt + iOS instructions.** On `/threads` and
-   `/`, listen for `beforeinstallprompt`, stash the event, and render
-   a dismissable "Install MailIM" banner with a button that triggers
-   the native prompt. Safari ignores `beforeinstallprompt`, so detect
-   iOS Safari and render an "Add to Home Screen → tap share → Add"
-   help card instead. Both banners persist a dismiss cookie so a user
-   who said no isn't pestered again.
-4. **Mobile-tuned threads + conversation view.** Audit `/threads` and
-   `/conversation` on a 375px viewport: tap targets ≥44px, safe-area
-   insets for iOS notch, sticky reply form above the on-screen keyboard,
-   swipe-to-back gesture surfaced as a visible back arrow, day-separator
-   sticky headers, and a `viewport-fit=cover` meta so the standalone PWA
-   uses the full screen. Wire the new mobile-first CSS through the
-   existing `--brand` / `--surface` design tokens so dark mode still
-   applies.
+1. **Annual SKU plumbed end-to-end + pricing toggle wired to CTA.**
+   `BillingPeriod` enum (MONTHLY / ANNUAL) with a lenient `parse(String)`
+   that defaults to MONTHLY for blank / unknown / tampered input.
+   `BillingProperties` grows `personal-annual-price-id` /
+   `team-annual-price-id` / `enterprise-annual-price-id` env-overridable
+   fields and `priceIds(BillingPeriod)` resolves the right map.
+   `BillingService.startCheckout(User, Plan, BillingPeriod)` selects the
+   period-correct price ID and degrades ANNUAL→MONTHLY when the annual
+   SKU isn't configured (so checkout always completes). `/billing/checkout`,
+   `/register`, `/login` all accept a `billing` request param and round
+   it through to the Stripe Checkout session. `/pricing`'s
+   Monthly|Annual toggle rewrites the four plan-card CTA hrefs to add
+   `?billing=annual` when the annual tab is active, so the period the
+   user picked on /pricing actually reaches Stripe.
+2. **Annual savings copy + value framing on `/pricing` and `/register`.**
+   The "Save 16%" badge becomes "2 months free" so the value frame
+   matches how SaaS pricing comparison sites describe annual discounts;
+   each plan card grows a "Billed annually as $X" sub-line under the
+   monthly-equivalent price when the annual tab is active, so the user
+   sees both the monthly mental model ($7/mo) and the cash they'll
+   actually be charged today ($84) before clicking through. The
+   `/register?plan=personal&billing=annual` flow renders an
+   annual-billing badge in the auth card so a user who picked Annual on
+   `/pricing` sees the choice acknowledged on the signup screen and
+   doesn't lose context across the page transition. The trial-nudge
+   modal's CTA copy switches to "Continue on Personal (annual — 2 months
+   free)" when annual is the active period from the original signup.
+3. **Annual switch from in-app upgrade + trial nudge + billing portal.**
+   The `upgrade-modal` on `/threads` gains a Monthly|Annual sub-toggle
+   above the "Upgrade to Personal" button, hidden-fielding `billing` on
+   the `/billing/checkout` form. The trial-conversion nudge modal
+   surfaces the annual option in its final-3-days copy ("Save 2 months
+   by switching to annual today") with a dedicated CTA that posts to
+   `/billing/checkout` with `billing=annual` so a user in the trial-end
+   funnel converts at the higher ARPU SKU. Existing monthly subscribers
+   can swap to annual from the Stripe Billing Portal (default Stripe
+   portal behaviour, but verify the price-swap toggle is enabled).
+4. **Subscription period field + admin-visible ARPU mix.** Add
+   `subscriptions.billing_period VARCHAR(10)` (Flyway V17) populated
+   from `applyStripeEvent` when `event.priceId()` matches the annual
+   map, so the system can answer "what fraction of active subscribers
+   are on annual" without a Stripe API round-trip. `/account` shows the
+   active billing period ("Personal · Annual, renews 2027-06-07") so a
+   self-serve user knows what they're paying for. Optional follow-on:
+   a tiny `/admin/revenue` row that shows monthly / annual subscriber
+   counts side by side for the operator to track the ARPU lift.
 
 ## Done means
 
-A visitor on iOS Safari or Android Chrome can `GET /threads`, accept the
-install prompt (Android) or follow the "Add to Home Screen" card (iOS),
-launch MailIM from the home screen as a standalone app — no browser
-chrome — landing on `/threads`. The service worker pre-caches enough of
-the static shell that opening the installed app in airplane mode shows a
-MailIM-branded offline screen instead of a generic browser error. The
-mobile-tuned layout passes a 375px-viewport audit on `/threads` and
-`/conversation` (tap targets, safe-area, sticky reply form). The install
-banner dismisses persistently so a "no thanks" doesn't reappear.
+A visitor on `/pricing` can toggle Annual, click "Start 14-day free
+trial" on the Personal card, land on `/register?plan=personal&billing=annual`,
+submit the form, and be redirected into a Stripe Checkout session whose
+line item is the **annual** Personal price ID. The completed checkout
+returns a `Subscription` row whose `stripe_price_id` is the annual SKU
+and `billing_period = 'ANNUAL'`. Existing monthly subscribers can
+self-serve switch to annual from either the `/threads` upgrade modal,
+the trial nudge in the final 3 days, or the Stripe Billing Portal.
+`/account` shows the active billing cadence so a customer can confirm
+their pricing without contacting support.

@@ -41,6 +41,9 @@ class BillingServiceTest {
     void seedPriceIds() {
         properties.setPersonalPriceId("price_personal_test");
         properties.setTeamPriceId("price_team_test");
+        properties.setPersonalAnnualPriceId("price_personal_annual_test");
+        properties.setTeamAnnualPriceId("price_team_annual_test");
+        properties.setEnterpriseAnnualPriceId("");
         properties.setSuccessUrl("http://localhost:8080/billing/success");
         properties.setCancelUrl("http://localhost:8080/billing/cancel");
         properties.setPortalReturnUrl("http://localhost:8080/threads");
@@ -63,7 +66,7 @@ class BillingServiceTest {
                         "cs_test_abc",
                         "cus_test_123"));
 
-        String url = billingService.startCheckout(user, Plan.PERSONAL);
+        String url = billingService.startCheckout(user, Plan.PERSONAL, BillingPeriod.MONTHLY);
 
         assertThat(url).isEqualTo("https://checkout.stripe.com/c/pay/cs_test_abc");
         Subscription sub = subscriptions.findByUser(user).orElseThrow();
@@ -75,6 +78,56 @@ class BillingServiceTest {
     }
 
     @Test
+    void startCheckoutAnnualUsesAnnualPriceId() {
+        User user = newUser("annual@example.com");
+        when(gateway.createSubscriptionSession(
+                eq(null), eq("annual@example.com"), eq("price_personal_annual_test"),
+                eq(14), any(), any()))
+                .thenReturn(new CheckoutSessionResult(
+                        "https://checkout.stripe.com/c/pay/cs_test_annual",
+                        "cs_test_annual",
+                        "cus_test_annual"));
+
+        String url = billingService.startCheckout(user, Plan.PERSONAL, BillingPeriod.ANNUAL);
+
+        assertThat(url).isEqualTo("https://checkout.stripe.com/c/pay/cs_test_annual");
+        Subscription sub = subscriptions.findByUser(user).orElseThrow();
+        assertThat(sub.getStripePriceId()).isEqualTo("price_personal_annual_test");
+        assertThat(sub.getPlan()).isEqualTo(Plan.PERSONAL);
+    }
+
+    @Test
+    void startCheckoutAnnualFallsBackToMonthlyPriceWhenAnnualNotConfigured() {
+        properties.setPersonalAnnualPriceId("");
+        User user = newUser("fallback@example.com");
+        when(gateway.createSubscriptionSession(
+                eq(null), any(), eq("price_personal_test"), any(), any(), any()))
+                .thenReturn(new CheckoutSessionResult(
+                        "https://checkout.stripe.com/c/pay/cs_fb", "cs_fb", "cus_fb"));
+
+        String url = billingService.startCheckout(user, Plan.PERSONAL, BillingPeriod.ANNUAL);
+
+        assertThat(url).isEqualTo("https://checkout.stripe.com/c/pay/cs_fb");
+        Subscription sub = subscriptions.findByUser(user).orElseThrow();
+        assertThat(sub.getStripePriceId()).isEqualTo("price_personal_test");
+    }
+
+    @Test
+    void startCheckoutNullPeriodDefaultsToMonthly() {
+        User user = newUser("nullperiod@example.com");
+        when(gateway.createSubscriptionSession(
+                eq(null), any(), eq("price_personal_test"), any(), any(), any()))
+                .thenReturn(new CheckoutSessionResult(
+                        "https://checkout.stripe.com/c/pay/cs_np", "cs_np", "cus_np"));
+
+        String url = billingService.startCheckout(user, Plan.PERSONAL, null);
+
+        assertThat(url).isEqualTo("https://checkout.stripe.com/c/pay/cs_np");
+        Subscription sub = subscriptions.findByUser(user).orElseThrow();
+        assertThat(sub.getStripePriceId()).isEqualTo("price_personal_test");
+    }
+
+    @Test
     void secondCheckoutReusesExistingStripeCustomer() {
         User user = newUser("bob@example.com");
         when(gateway.createSubscriptionSession(
@@ -82,7 +135,7 @@ class BillingServiceTest {
                 .thenReturn(new CheckoutSessionResult(
                         "https://checkout.stripe.com/c/pay/first",
                         "cs_first", "cus_bob"));
-        billingService.startCheckout(user, Plan.PERSONAL);
+        billingService.startCheckout(user, Plan.PERSONAL, BillingPeriod.MONTHLY);
 
         ArgumentCaptor<String> existingCustomer = ArgumentCaptor.forClass(String.class);
         when(gateway.createSubscriptionSession(
@@ -91,7 +144,7 @@ class BillingServiceTest {
                         "https://checkout.stripe.com/c/pay/second",
                         "cs_second", "cus_bob"));
 
-        String url = billingService.startCheckout(user, Plan.TEAM);
+        String url = billingService.startCheckout(user, Plan.TEAM, BillingPeriod.MONTHLY);
 
         assertThat(url).isEqualTo("https://checkout.stripe.com/c/pay/second");
         assertThat(existingCustomer.getValue()).isEqualTo("cus_bob");
@@ -104,7 +157,7 @@ class BillingServiceTest {
     @Test
     void enterprisePlanIsRejectedForSelfServeCheckout() {
         User user = newUser("ent@example.com");
-        assertThatThrownBy(() -> billingService.startCheckout(user, Plan.ENTERPRISE))
+        assertThatThrownBy(() -> billingService.startCheckout(user, Plan.ENTERPRISE, BillingPeriod.MONTHLY))
                 .isInstanceOf(BillingException.class)
                 .hasMessageContaining("sales");
     }
@@ -112,7 +165,7 @@ class BillingServiceTest {
     @Test
     void freePlanIsRejectedForCheckout() {
         User user = newUser("free@example.com");
-        assertThatThrownBy(() -> billingService.startCheckout(user, Plan.FREE))
+        assertThatThrownBy(() -> billingService.startCheckout(user, Plan.FREE, BillingPeriod.MONTHLY))
                 .isInstanceOf(BillingException.class)
                 .hasMessageContaining("Free");
     }
@@ -120,8 +173,9 @@ class BillingServiceTest {
     @Test
     void missingPriceIdRaisesBillingException() {
         properties.setPersonalPriceId("");
+        properties.setPersonalAnnualPriceId("");
         User user = newUser("noprice@example.com");
-        assertThatThrownBy(() -> billingService.startCheckout(user, Plan.PERSONAL))
+        assertThatThrownBy(() -> billingService.startCheckout(user, Plan.PERSONAL, BillingPeriod.MONTHLY))
                 .isInstanceOf(BillingException.class)
                 .hasMessageContaining("price");
     }
@@ -132,7 +186,7 @@ class BillingServiceTest {
         when(gateway.createSubscriptionSession(eq(null), any(), any(), any(), any(), any()))
                 .thenReturn(new CheckoutSessionResult(
                         "https://checkout.stripe.com/c/pay/cs_p", "cs_p", "cus_portal"));
-        billingService.startCheckout(user, Plan.PERSONAL);
+        billingService.startCheckout(user, Plan.PERSONAL, BillingPeriod.MONTHLY);
 
         when(portalGateway.createPortalSession(eq("cus_portal"),
                 eq("http://localhost:8080/threads")))
@@ -156,7 +210,7 @@ class BillingServiceTest {
         when(gateway.createSubscriptionSession(eq(null), any(), any(), any(), any(), any()))
                 .thenReturn(new CheckoutSessionResult(
                         "https://checkout.stripe.com/c/pay/cs_q", "cs_q", "cus_q"));
-        billingService.startCheckout(user, Plan.PERSONAL);
+        billingService.startCheckout(user, Plan.PERSONAL, BillingPeriod.MONTHLY);
 
         assertThat(billingService.hasManagedBilling(user)).isTrue();
     }

@@ -45,6 +45,7 @@
 
     <form method="post" th:action="@{/login}" class="auth-form" autocomplete="on">
       <input type="hidden" name="plan" th:if="${plan != null}" th:value="${plan}">
+      <input type="hidden" name="billing" th:if="${billing != null}" th:value="${billing}">
 
       <label class="auth-label">
         <span>Email</span>
@@ -70,7 +71,8 @@
     <p class="auth-alt">
       No account yet?
       <a th:if="${plan == null}" href="/register">Create one</a>
-      <a th:if="${plan != null}" th:href="@{/register(plan=${plan})}">Create one</a>.
+      <a th:if="${plan != null}"
+         th:href="@{/register(plan=${plan},billing=${billing})}">Create one</a>.
     </p>
   </section>
 </main>

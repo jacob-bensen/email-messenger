@@ -157,16 +157,36 @@
 (function () {
   var toggles = document.querySelectorAll('.billing-option');
   var amounts = document.querySelectorAll('.price-amount[data-monthly]');
-  if (!toggles.length || !amounts.length) return;
+  var ctas = document.querySelectorAll('.plan-cta[href]');
+  if (!toggles.length) return;
+
+  function applyPeriod(period) {
+    amounts.forEach(function (el) {
+      var v = el.getAttribute('data-' + period);
+      if (v) el.textContent = v;
+    });
+    ctas.forEach(function (link) {
+      var href = link.getAttribute('href');
+      if (!href || href.indexOf('/register') !== 0) return;
+      // Strip any existing billing param then re-append for the chosen period.
+      var stripped = href
+        .replace(/([?&])billing=(annual|monthly)(&|$)/, function (_m, pre, _v, post) {
+          return post === '&' ? pre : (pre === '?' ? '' : '');
+        })
+        .replace(/\?$/, '');
+      if (period === 'annual') {
+        link.setAttribute('href', stripped + (stripped.indexOf('?') === -1 ? '?' : '&') + 'billing=annual');
+      } else {
+        link.setAttribute('href', stripped);
+      }
+    });
+  }
 
   toggles.forEach(function (btn) {
     btn.addEventListener('click', function () {
       var period = btn.getAttribute('data-period');
       toggles.forEach(function (b) { b.classList.toggle('is-active', b === btn); });
-      amounts.forEach(function (el) {
-        var v = el.getAttribute('data-' + period);
-        if (v) el.textContent = v;
-      });
+      applyPeriod(period);
     });
   });
 }());

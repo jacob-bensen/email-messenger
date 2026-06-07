@@ -14,6 +14,9 @@ public class BillingProperties {
     private String personalPriceId = "";
     private String teamPriceId = "";
     private String enterprisePriceId = "";
+    private String personalAnnualPriceId = "";
+    private String teamAnnualPriceId = "";
+    private String enterpriseAnnualPriceId = "";
     private String successUrl = "";
     private String cancelUrl = "";
     private String portalReturnUrl = "";
@@ -34,6 +37,15 @@ public class BillingProperties {
     public String getEnterprisePriceId() { return enterprisePriceId; }
     public void setEnterprisePriceId(String v) { this.enterprisePriceId = v; }
 
+    public String getPersonalAnnualPriceId() { return personalAnnualPriceId; }
+    public void setPersonalAnnualPriceId(String v) { this.personalAnnualPriceId = v; }
+
+    public String getTeamAnnualPriceId() { return teamAnnualPriceId; }
+    public void setTeamAnnualPriceId(String v) { this.teamAnnualPriceId = v; }
+
+    public String getEnterpriseAnnualPriceId() { return enterpriseAnnualPriceId; }
+    public void setEnterpriseAnnualPriceId(String v) { this.enterpriseAnnualPriceId = v; }
+
     public String getSuccessUrl() { return successUrl; }
     public void setSuccessUrl(String v) { this.successUrl = v; }
 
@@ -46,11 +58,17 @@ public class BillingProperties {
     public int getTrialDays() { return trialDays; }
     public void setTrialDays(int v) { this.trialDays = v; }
 
-    public Map<Plan, String> priceIds() {
+    public Map<Plan, String> priceIds(BillingPeriod period) {
         EnumMap<Plan, String> map = new EnumMap<>(Plan.class);
-        map.put(Plan.PERSONAL, personalPriceId);
-        map.put(Plan.TEAM, teamPriceId);
-        map.put(Plan.ENTERPRISE, enterprisePriceId);
+        if (period == BillingPeriod.ANNUAL) {
+            map.put(Plan.PERSONAL, personalAnnualPriceId);
+            map.put(Plan.TEAM, teamAnnualPriceId);
+            map.put(Plan.ENTERPRISE, enterpriseAnnualPriceId);
+        } else {
+            map.put(Plan.PERSONAL, personalPriceId);
+            map.put(Plan.TEAM, teamPriceId);
+            map.put(Plan.ENTERPRISE, enterprisePriceId);
+        }
         return map;
     }
 }
