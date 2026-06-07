@@ -17,7 +17,11 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.List;
 
 /**
  * PWA install surface: web app manifest + brand-mark icons in the sizes
@@ -35,6 +39,69 @@ class PwaController {
     static final String SCOPE = "/";
     static final String THEME_COLOR = "#4f80ff";
     static final String BACKGROUND_COLOR = "#0f172a";
+
+    /**
+     * Static-shell assets pre-cached by the service worker on install.
+     * Listed once so the JS body, the test assertions, and the cache-bust
+     * version hash all derive from the same source of truth.
+     */
+    static final List<String> SHELL_ASSETS = List.of(
+            "/offline",
+            "/css/main.css",
+            "/icons/icon-192.png",
+            "/manifest.webmanifest"
+    );
+
+    /**
+     * Service-worker JS source. The {@code __CACHE_VERSION__} placeholder is
+     * replaced on every render with a deterministic hash of this template +
+     * the shell-asset list, so any code change here or asset addition busts
+     * stale client caches on the next install (browsers re-fetch /sw.js on
+     * navigation and treat any byte diff as "new worker → run install").
+     */
+    private static final String SW_TEMPLATE = """
+            'use strict';
+            const CACHE_VERSION = '__CACHE_VERSION__';
+            const SHELL_ASSETS = __SHELL_ASSETS__;
+
+            self.addEventListener('install', (event) => {
+              event.waitUntil(
+                caches.open(CACHE_VERSION)
+                  .then((cache) => cache.addAll(SHELL_ASSETS))
+                  .then(() => self.skipWaiting())
+              );
+            });
+
+            self.addEventListener('activate', (event) => {
+              event.waitUntil(
+                caches.keys()
+                  .then((keys) => Promise.all(
+                    keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k))
+                  ))
+                  .then(() => self.clients.claim())
+              );
+            });
+
+            self.addEventListener('fetch', (event) => {
+              const req = event.request;
+              if (req.method !== 'GET') return;
+              if (req.mode === 'navigate') {
+                event.respondWith(
+                  fetch(req).catch(() => caches.match('/offline'))
+                );
+                return;
+              }
+              const url = new URL(req.url);
+              if (url.origin === self.location.origin && SHELL_ASSETS.indexOf(url.pathname) !== -1) {
+                event.respondWith(
+                  caches.match(req).then((cached) => cached || fetch(req))
+                );
+              }
+            });
+            """;
+
+    private final String swBody = renderServiceWorker();
+    private final String cacheVersion = extractCacheVersion(swBody);
 
     @GetMapping(value = "/manifest.webmanifest", produces = "application/manifest+json")
     ResponseEntity<String> manifest() {
@@ -95,6 +162,109 @@ class PwaController {
     @GetMapping(value = "/apple-touch-icon.png", produces = MediaType.IMAGE_PNG_VALUE)
     ResponseEntity<byte[]> appleTouchIcon() {
         return pngResponse(renderBrandIcon(180, false));
+    }
+
+    @GetMapping(value = "/sw.js", produces = "application/javascript")
+    ResponseEntity<String> serviceWorker() {
+        // Per spec the SW script must never be served from cache or the
+        // browser will keep activating the same worker forever.
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/javascript"))
+                .cacheControl(CacheControl.noStore())
+                .header("Service-Worker-Allowed", "/")
+                .body(swBody);
+    }
+
+    @GetMapping(value = "/offline", produces = MediaType.TEXT_HTML_VALUE)
+    ResponseEntity<String> offline() {
+        String body = """
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                  <meta charset="UTF-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+                  <meta name="robots" content="noindex">
+                  <title>You're offline — MailIM</title>
+                  <meta name="theme-color" content="#4f80ff">
+                  <link rel="manifest" href="/manifest.webmanifest">
+                  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+                  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+                  <link rel="stylesheet" href="/css/main.css">
+                  <style>
+                    body.offline-shell { display: flex; min-height: 100vh; margin: 0;
+                      align-items: center; justify-content: center;
+                      background: #0f172a; color: #f8fafc;
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                      padding: env(safe-area-inset-top) env(safe-area-inset-right)
+                              env(safe-area-inset-bottom) env(safe-area-inset-left); }
+                    .offline-card { max-width: 28rem; text-align: center; padding: 2rem; }
+                    .offline-mark { font-size: 2rem; font-weight: 700; color: #4f80ff;
+                      letter-spacing: -0.02em; margin: 0 0 1rem; }
+                    .offline-title { font-size: 1.5rem; margin: 0 0 0.75rem; }
+                    .offline-sub { color: #cbd5e1; line-height: 1.5; margin: 0 0 1.5rem; }
+                    .offline-btn { display: inline-block; padding: 0.75rem 1.5rem;
+                      background: #4f80ff; color: #fff; border: none; border-radius: 0.5rem;
+                      font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
+                    .offline-btn:hover { background: #3b6fe0; }
+                  </style>
+                </head>
+                <body class="offline-shell">
+                  <main class="offline-card">
+                    <p class="offline-mark">MailIM</p>
+                    <h1 class="offline-title">You're offline</h1>
+                    <p class="offline-sub">
+                      Your inbox is waiting. We'll reconnect to MailIM as soon
+                      as your network is back.
+                    </p>
+                    <button class="offline-btn" onclick="location.reload()" type="button">
+                      Try again
+                    </button>
+                  </main>
+                </body>
+                </html>
+                """;
+        return ResponseEntity.ok()
+                .contentType(MediaType.TEXT_HTML)
+                .cacheControl(CacheControl.maxAge(Duration.ofMinutes(5)).cachePublic())
+                .body(body);
+    }
+
+    String cacheVersion() {
+        return cacheVersion;
+    }
+
+    private static String renderServiceWorker() {
+        String assetsJsArray = SHELL_ASSETS.stream()
+                .map(p -> "'" + p + "'")
+                .reduce((a, b) -> a + ", " + b)
+                .map(s -> "[" + s + "]")
+                .orElse("[]");
+        String withAssets = SW_TEMPLATE.replace("__SHELL_ASSETS__", assetsJsArray);
+        String version = hash12(withAssets);
+        return withAssets.replace("__CACHE_VERSION__", "mailim-shell-" + version);
+    }
+
+    private static String extractCacheVersion(String body) {
+        int start = body.indexOf("'mailim-shell-");
+        if (start < 0) {
+            return "mailim-shell";
+        }
+        int end = body.indexOf('\'', start + 1);
+        return body.substring(start + 1, end);
+    }
+
+    private static String hash12(String input) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            byte[] digest = md.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(12);
+            for (int i = 0; i < 6; i++) {
+                hex.append(String.format("%02x", digest[i] & 0xff));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-1 unavailable", e);
+        }
     }
 
     /**

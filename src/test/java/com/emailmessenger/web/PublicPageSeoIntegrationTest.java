@@ -231,6 +231,31 @@ class PublicPageSeoIntegrationTest {
     }
 
     @Test
+    void serviceWorkerAndOfflineShellAreReachableThroughSecurityFilterChain() throws Exception {
+        // Browsers fetch /sw.js with no auth context, and the SW pre-caches
+        // /offline at install time — both have to clear permitAll() before
+        // anything downstream works.
+        String sw = mockMvc.perform(get("/sw.js"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(sw).contains("CACHE_VERSION");
+
+        String offline = mockMvc.perform(get("/offline"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(offline).contains("You're offline").contains("MailIM");
+    }
+
+    @Test
+    void landingPageRegistersServiceWorkerOnLoad() throws Exception {
+        // Without the registration <script>, the install prompt fires but
+        // the offline cache never seeds — and an installed PWA opened in
+        // airplane mode shows a browser error instead of MailIM's screen.
+        String body = render("/");
+        assertThat(body).contains("serviceWorker.register('/sw.js'");
+    }
+
+    @Test
     void registerPageLinksToTermsAndPrivacyInline() throws Exception {
         String body = render("/register");
         // The /register form must inline a "by creating an account you agree to…"

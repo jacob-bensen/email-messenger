@@ -77,6 +77,70 @@ class PwaControllerTest {
     }
 
     @Test
+    void serviceWorkerJsRegistersInstallActivateAndFetchHandlers() throws Exception {
+        MvcResult result = mockMvc.perform(get("/sw.js"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("application/javascript"))
+                .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        // The three lifecycle listeners and the navigation-fallback wiring
+        // are what make the SW actually serve /offline when the network drops.
+        assertThat(body)
+                .contains("addEventListener('install'")
+                .contains("addEventListener('activate'")
+                .contains("addEventListener('fetch'")
+                .contains("caches.match('/offline')");
+
+        // Shell assets must all be present in the pre-cache list so opening
+        // the installed PWA in airplane mode renders the cached offline page
+        // with its CSS and brand mark.
+        for (String asset : PwaController.SHELL_ASSETS) {
+            assertThat(body).contains("'" + asset + "'");
+        }
+
+        // Per spec the script must not be HTTP-cached — browsers re-check it
+        // every navigation and any byte diff triggers a fresh install.
+        String cacheControl = result.getResponse().getHeader("Cache-Control");
+        assertThat(cacheControl).contains("no-store");
+        // Allowing the SW to claim "/" lets it intercept any subpath.
+        assertThat(result.getResponse().getHeader("Service-Worker-Allowed")).isEqualTo("/");
+    }
+
+    @Test
+    void serviceWorkerCacheVersionBustsOnSourceChange() throws Exception {
+        // The cache version is derived from a hash of the SW body so a code
+        // edit here ships as a new cache key — old clients invalidate on
+        // activate. Same source must hash deterministically across requests.
+        String first = mockMvc.perform(get("/sw.js"))
+                .andReturn().getResponse().getContentAsString();
+        String second = mockMvc.perform(get("/sw.js"))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(first).isEqualTo(second);
+        assertThat(first).containsPattern("CACHE_VERSION = 'mailim-shell-[0-9a-f]{12}'");
+    }
+
+    @Test
+    void offlinePageRendersMailimBrandedShell() throws Exception {
+        MvcResult result = mockMvc.perform(get("/offline"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("text/html"))
+                .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        // Branded copy, not a generic browser error. Must include MailIM,
+        // a refresh affordance, and the manifest link so the offline screen
+        // itself stays installable when shown.
+        assertThat(body)
+                .contains("MailIM")
+                .contains("offline")
+                .contains("Try again")
+                .contains("/manifest.webmanifest")
+                .contains("/css/main.css");
+    }
+
+    @Test
     void maskableIconFillsCornersUnlikeStandardIcon() throws Exception {
         // The maskable variant must be a full square (corner pixels =
         // brand colour, fully opaque) so an Android adaptive mask doesn't

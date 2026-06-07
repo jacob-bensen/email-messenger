@@ -59,6 +59,7 @@ class SecurityConfig {
                                 "/digest/opt-out",
                                 "/robots.txt", "/sitemap.xml",
                                 "/manifest.webmanifest", "/icons/**", "/apple-touch-icon.png",
+                                "/sw.js", "/offline",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/error", "/h2-console/**",
                                 "/actuator/health", "/actuator/health/**")
