@@ -3,6 +3,17 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
+## Plan review
+
+- [ ] [PLAN-REVIEW] EPIC-09 Account self-serve is code-complete on all
+      four milestones (password reset, email verification, in-app
+      change password / change email, login throttling + auth audit
+      log). Adopt EPIC-10 Mobile / PWA (manifest + service worker +
+      install prompt, since responsive layouts already work and the
+      gap is a pinnable home-screen install) as the next Primary
+      Objective and update PLAN.md, or pick one of: annual-billing
+      surfacing, Google OAuth signup.
+
 ## Infrastructure
 
 - [ ] Provision a PostgreSQL 16 database (Supabase / Neon / Railway /

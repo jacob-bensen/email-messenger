@@ -1,5 +1,6 @@
 package com.emailmessenger.auth;
 
+import com.emailmessenger.domain.AuthEvent;
 import com.emailmessenger.domain.User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
+import java.util.List;
 
 /**
  * Authenticated self-serve account page.
@@ -26,12 +28,18 @@ import java.security.Principal;
 @Controller
 class AccountController {
 
+    static final int RECENT_ACTIVITY_LIMIT = 10;
+
     private final AccountService accountService;
     private final UserService userService;
+    private final AuthEventService authEventService;
 
-    AccountController(AccountService accountService, UserService userService) {
+    AccountController(AccountService accountService,
+                      UserService userService,
+                      AuthEventService authEventService) {
         this.accountService = accountService;
         this.userService = userService;
+        this.authEventService = authEventService;
     }
 
     @GetMapping("/account")
@@ -40,6 +48,8 @@ class AccountController {
         model.addAttribute("currentEmail", user.getEmail());
         model.addAttribute("displayName", user.getDisplayName());
         model.addAttribute("emailVerified", user.isEmailVerified());
+        List<AuthEvent> recentActivity = authEventService.recentFor(user, RECENT_ACTIVITY_LIMIT);
+        model.addAttribute("recentActivity", recentActivity);
         return "account";
     }
 

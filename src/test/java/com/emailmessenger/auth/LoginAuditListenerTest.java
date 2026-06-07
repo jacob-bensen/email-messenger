@@ -1,5 +1,6 @@
 package com.emailmessenger.auth;
 
+import com.emailmessenger.domain.AuthEventType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -13,7 +14,9 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -21,16 +24,19 @@ import static org.mockito.Mockito.verify;
 class LoginAuditListenerTest {
 
     @Mock UserActivityService activity;
+    @Mock AuthEventService authEvents;
     @InjectMocks LoginAuditListener listener;
 
     @Test
-    void authenticatedSuccessEventRecordsLogin() {
+    void authenticatedSuccessEventRecordsLoginAndAuditRow() {
         Authentication auth = new UsernamePasswordAuthenticationToken(
                 "alice@example.com", "ignored",
                 List.of(new SimpleGrantedAuthority("ROLE_USER")));
         listener.onAuthenticationSuccess(new AuthenticationSuccessEvent(auth));
 
         verify(activity).recordLogin("alice@example.com");
+        verify(authEvents).recordForEmail(eq("alice@example.com"),
+                eq(AuthEventType.LOGIN_SUCCESS), any());
     }
 
     @Test
@@ -41,5 +47,6 @@ class LoginAuditListenerTest {
         listener.onAuthenticationSuccess(new AuthenticationSuccessEvent(anon));
 
         verify(activity, never()).recordLogin(anyString());
+        verify(authEvents, never()).recordForEmail(anyString(), any(), any());
     }
 }

@@ -1,5 +1,6 @@
 package com.emailmessenger.auth;
 
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -7,6 +8,7 @@ import org.springframework.security.config.annotation.web.configurers.HeadersCon
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
@@ -20,6 +22,19 @@ class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    // Spring Boot auto-registers Filter beans into the main servlet chain.
+    // The throttle filter is meant to run only inside Spring Security's
+    // chain (where addFilterBefore places it before the form-login
+    // filter); disable the auto-registration so it isn't invoked twice
+    // per request.
+    @Bean
+    FilterRegistrationBean<LoginThrottleFilter> loginThrottleFilterRegistration(
+            LoginThrottleFilter filter) {
+        FilterRegistrationBean<LoginThrottleFilter> reg = new FilterRegistrationBean<>(filter);
+        reg.setEnabled(false);
+        return reg;
+    }
+
     @Bean
     PersistentTokenRepository persistentTokenRepository(DataSource dataSource) {
         JdbcTokenRepositoryImpl repo = new JdbcTokenRepositoryImpl();
@@ -30,7 +45,8 @@ class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http,
                                             PersistentTokenRepository tokenRepository,
-                                            PlanCheckoutSuccessHandler planCheckoutSuccessHandler) throws Exception {
+                                            PlanCheckoutSuccessHandler planCheckoutSuccessHandler,
+                                            LoginThrottleFilter loginThrottleFilter) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -74,7 +90,10 @@ class SecurityConfig {
                 // Spring Security enables CSRF by default; we keep it on. The H2 console
                 // ships its own forms and would 403 with our CsrfToken, so exempt it.
                 // Stripe webhooks POST raw JSON with a signature header, not a CSRF token.
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/billing/webhook"));
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/billing/webhook"))
+                // Throttle has to run before the form-login filter so a locked
+                // email never reaches credentials check.
+                .addFilterBefore(loginThrottleFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

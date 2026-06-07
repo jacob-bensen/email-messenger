@@ -1,5 +1,6 @@
 package com.emailmessenger.auth;
 
+import com.emailmessenger.domain.AuthEventType;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailVerificationTokenRepository;
 import com.emailmessenger.repository.PasswordResetTokenRepository;
@@ -42,6 +43,7 @@ public class AccountService {
     private final PasswordResetTokenRepository passwordResetTokens;
     private final EmailVerificationTokenRepository emailVerificationTokens;
     private final EmailVerificationService emailVerificationService;
+    private final AuthEventService authEvents;
     private final Clock clock;
 
     AccountService(UserRepository users,
@@ -49,12 +51,14 @@ public class AccountService {
                    PasswordResetTokenRepository passwordResetTokens,
                    EmailVerificationTokenRepository emailVerificationTokens,
                    EmailVerificationService emailVerificationService,
+                   AuthEventService authEvents,
                    Clock clock) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.passwordResetTokens = passwordResetTokens;
         this.emailVerificationTokens = emailVerificationTokens;
         this.emailVerificationService = emailVerificationService;
+        this.authEvents = authEvents;
         this.clock = clock;
     }
 
@@ -74,6 +78,8 @@ public class AccountService {
         LocalDateTime now = LocalDateTime.now(clock);
         passwordResetTokens.markAllUsedFor(user, now);
         emailVerificationTokens.markAllUsedFor(user, now);
+        authEvents.record(user, user.getEmail(), AuthEventType.PASSWORD_CHANGED,
+                ClientIp.fromCurrentRequest());
         return PasswordChangeOutcome.OK;
     }
 
@@ -97,6 +103,7 @@ public class AccountService {
         if (users.existsByEmail(normalized)) {
             return EmailChangeOutcome.EMAIL_TAKEN;
         }
+        String previousEmail = user.getEmail();
         user.setEmail(normalized);
         user.setEmailVerifiedAt(null);
         users.save(user);
@@ -104,6 +111,12 @@ public class AccountService {
         passwordResetTokens.markAllUsedFor(user, now);
         emailVerificationTokens.markAllUsedFor(user, now);
         emailVerificationService.sendVerification(user);
+        String ip = ClientIp.fromCurrentRequest();
+        // Two rows so the activity panel shows the change against both
+        // addresses — the old one for the user who'll keep visiting from
+        // muscle-memory bookmarks, the new one as the canonical record.
+        authEvents.record(user, previousEmail, AuthEventType.EMAIL_CHANGED, ip);
+        authEvents.record(user, normalized, AuthEventType.EMAIL_CHANGED, ip);
         return EmailChangeOutcome.OK;
     }
 

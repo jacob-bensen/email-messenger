@@ -1,5 +1,6 @@
 package com.emailmessenger.auth;
 
+import com.emailmessenger.domain.AuthEventType;
 import com.emailmessenger.domain.PasswordResetToken;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.PasswordResetTokenRepository;
@@ -65,6 +66,7 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
     private final SiteProperties site;
+    private final AuthEventService authEvents;
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
@@ -76,12 +78,14 @@ public class PasswordResetService {
                          PasswordEncoder passwordEncoder,
                          JavaMailSender mailSender,
                          SiteProperties site,
+                         AuthEventService authEvents,
                          Clock clock) {
         this.users = users;
         this.tokens = tokens;
         this.passwordEncoder = passwordEncoder;
         this.mailSender = mailSender;
         this.site = site;
+        this.authEvents = authEvents;
         this.clock = clock;
     }
 
@@ -166,6 +170,8 @@ public class PasswordResetService {
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         users.save(user);
         tokens.markAllUsedFor(user, now);
+        authEvents.record(user, user.getEmail(), AuthEventType.PASSWORD_RESET_COMPLETED,
+                ClientIp.fromCurrentRequest());
         return Optional.of(user);
     }
 

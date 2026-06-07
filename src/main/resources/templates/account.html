@@ -118,6 +118,33 @@
     </form>
   </section>
 
+  <section class="account-card">
+    <h2 class="account-card-title">Recent account activity</h2>
+    <p class="auth-sub" th:if="${recentActivity == null or recentActivity.isEmpty()}">
+      No activity recorded yet. Sign-ins and account changes will show up here.
+    </p>
+    <ul class="account-activity" th:if="${recentActivity != null and !recentActivity.isEmpty()}">
+      <li th:each="event : ${recentActivity}" class="account-activity-row">
+        <span class="account-activity-type"
+              th:switch="${event.eventType.name()}">
+          <span th:case="'LOGIN_SUCCESS'">Signed in</span>
+          <span th:case="'LOGIN_FAILURE'">Failed sign-in</span>
+          <span th:case="'ACCOUNT_LOCKED'">Account temporarily locked</span>
+          <span th:case="'PASSWORD_CHANGED'">Password changed</span>
+          <span th:case="'EMAIL_CHANGED'">Email address changed</span>
+          <span th:case="'PASSWORD_RESET_COMPLETED'">Password reset completed</span>
+          <span th:case="*" th:text="${event.eventType.name()}">event</span>
+        </span>
+        <span class="account-activity-meta">
+          <time th:text="${#temporals.format(event.createdAt, 'yyyy-MM-dd HH:mm')}">2026-06-07 12:00</time>
+          <span th:if="${event.ipAddress != null and !event.ipAddress.isEmpty()}"
+                class="account-activity-ip"
+                th:text="${event.ipAddress}">127.0.0.1</span>
+        </span>
+      </li>
+    </ul>
+  </section>
+
 </main>
 
 </body>
