@@ -105,6 +105,59 @@
   </section>
 
   <section class="admin-card">
+    <h2 class="admin-card-title"
+        th:text="|Funnel — last ${funnel.windowDays()} days|">Funnel — last 30 days</h2>
+    <div class="admin-funnel-row">
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Signups</span>
+        <span class="admin-funnel-count" th:text="${funnel.signupsLast30d()}">0</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Trial starts</span>
+        <span class="admin-funnel-count" th:text="${funnel.trialStartsLast30d()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${funnel.trialRatePercent()}% of signups|">0% of signups</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Paid conversions</span>
+        <span class="admin-funnel-count" th:text="${funnel.paidConversionsLast30d()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${funnel.paidRatePercent()}% of trials|">0% of trials</span>
+      </div>
+    </div>
+    <p class="admin-empty"
+       th:if="${funnel.bySource() == null or funnel.bySource().isEmpty()}">
+      No signups in the last 30 days yet — per-source breakdown will appear
+      once the first new account lands.
+    </p>
+    <table class="admin-table"
+           th:if="${funnel.bySource() != null and !funnel.bySource().isEmpty()}">
+      <thead>
+        <tr>
+          <th>Source</th>
+          <th class="admin-num">Signups</th>
+          <th class="admin-num">Trials</th>
+          <th class="admin-num">Trial %</th>
+          <th class="admin-num">Paid</th>
+          <th class="admin-num">Paid %</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="row : ${funnel.bySource()}">
+          <td th:text="${row.sourceLabel()}">organic</td>
+          <td class="admin-num" th:text="${row.signups()}">0</td>
+          <td class="admin-num" th:text="${row.trialStarts()}">0</td>
+          <td class="admin-num" th:text="|${row.trialRatePercent()}%|">0%</td>
+          <td class="admin-num" th:text="${row.paidConversions()}">0</td>
+          <td class="admin-num" th:text="|${row.paidRatePercent()}%|">0%</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="admin-card">
     <h2 class="admin-card-title">Acquisition source</h2>
     <p class="admin-empty"
        th:if="${metrics.sourceBreakdown() == null or metrics.sourceBreakdown().isEmpty()}">

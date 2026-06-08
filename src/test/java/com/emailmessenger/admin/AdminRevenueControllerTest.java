@@ -169,4 +169,27 @@ class AdminRevenueControllerTest {
                 .andExpect(content().string(containsString("/admin/revenue/reconcile-billing-period")))
                 .andExpect(content().string(containsString("Reconcile from Stripe")));
     }
+
+    @Test
+    @WithMockUser(username = "operator@example.com")
+    void revenuePageExposesFunnelModelAndRendersHeading() throws Exception {
+        userService.register("operator@example.com", "password1", null);
+        adminProperties.setEmails(List.of("operator@example.com"));
+
+        userService.register("recent@example.com", "password1", null, "producthunt");
+        User payer = userService.register("payer@example.com", "password1", null, "producthunt");
+        Subscription sub = new Subscription(payer, "cus_payer", "active");
+        sub.setPlan(Plan.PERSONAL);
+        sub.setBillingPeriod(BillingPeriod.MONTHLY);
+        sub.setStripePriceId("price_personal_monthly");
+        subscriptions.save(sub);
+
+        mockMvc.perform(get("/admin/revenue"))
+                .andExpect(status().isOk())
+                .andExpect(model().attributeExists("funnel"))
+                .andExpect(content().string(containsString("Funnel — last 30 days")))
+                .andExpect(content().string(containsString("Trial starts")))
+                .andExpect(content().string(containsString("Paid conversions")))
+                .andExpect(content().string(containsString("producthunt")));
+    }
 }

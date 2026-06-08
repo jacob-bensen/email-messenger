@@ -40,4 +40,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
               AND COALESCE(u.lastLoginAt, u.createdAt) < :cutoff
             """)
     List<User> findDormantSince(@Param("cutoff") LocalDateTime cutoff);
+
+    // Signup cohort feeding the operator funnel dashboard. acquisition_source
+    // is the only field consumed downstream — keeping the projection narrow
+    // avoids dragging the full User graph through the metrics service.
+    @Query("SELECT u FROM User u WHERE u.createdAt >= :cutoff")
+    List<User> findCreatedAtAfter(@Param("cutoff") LocalDateTime cutoff);
 }
