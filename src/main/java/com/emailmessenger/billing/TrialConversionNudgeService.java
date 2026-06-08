@@ -68,6 +68,8 @@ public class TrialConversionNudgeService {
                 plan.name().toLowerCase(Locale.ROOT),
                 days,
                 monthlyPrice(plan),
+                annualMonthlyEquivalent(plan),
+                annualCashAmount(plan),
                 dismissKey));
     }
 
@@ -83,6 +85,22 @@ public class TrialConversionNudgeService {
         return switch (plan) {
             case PERSONAL -> "$9";
             case TEAM -> "$29";
+            case ENTERPRISE, FREE -> "";
+        };
+    }
+
+    private static String annualMonthlyEquivalent(Plan plan) {
+        return switch (plan) {
+            case PERSONAL -> "$7";
+            case TEAM -> "$24";
+            case ENTERPRISE, FREE -> "";
+        };
+    }
+
+    private static String annualCashAmount(Plan plan) {
+        return switch (plan) {
+            case PERSONAL -> "$84";
+            case TEAM -> "$288";
             case ENTERPRISE, FREE -> "";
         };
     }

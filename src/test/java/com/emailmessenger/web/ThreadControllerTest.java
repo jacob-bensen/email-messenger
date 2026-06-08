@@ -234,7 +234,7 @@ class ThreadControllerTest {
         when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
                 .thenReturn(empty);
         UpgradeModal modal = new UpgradeModal(Plan.FREE, PlanLimitKind.THREAD_COUNT,
-                500L, 500L, Plan.PERSONAL);
+                500L, 500L, Plan.PERSONAL, "$9", "$7", "$84");
 
         mockMvc.perform(get("/threads").principal(principal).flashAttr("upgradeModal", modal))
                 .andExpect(status().isOk())
@@ -277,7 +277,8 @@ class ThreadControllerTest {
         when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
                 .thenReturn(empty);
         TrialConversionNudge nudge = new TrialConversionNudge(
-                "Personal", "personal", 2L, "$9", "mailim-trial-nudge-2026-06-07-d2");
+                "Personal", "personal", 2L, "$9", "$7", "$84",
+                "mailim-trial-nudge-2026-06-07-d2");
         when(trialConversionNudgeService.nudgeFor(owner)).thenReturn(Optional.of(nudge));
 
         mockMvc.perform(get("/threads").principal(principal))

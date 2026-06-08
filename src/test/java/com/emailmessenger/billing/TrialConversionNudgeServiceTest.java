@@ -72,8 +72,11 @@ class TrialConversionNudgeServiceTest {
         assertThat(nudge.planLabel()).isEqualTo("Personal");
         assertThat(nudge.planParam()).isEqualTo("personal");
         assertThat(nudge.monthlyPrice()).isEqualTo("$9");
+        assertThat(nudge.annualMonthlyEquivalent()).isEqualTo("$7");
+        assertThat(nudge.annualCashAmount()).isEqualTo("$84");
         assertThat(nudge.daysLeft()).isEqualTo(3L);
         assertThat(nudge.dismissKey()).isEqualTo("mailim-trial-nudge-2026-06-08-d3");
+        assertThat(nudge.inAnnualUpsellWindow()).isTrue();
     }
 
     @Test
@@ -87,8 +90,11 @@ class TrialConversionNudgeServiceTest {
         assertThat(nudge.planLabel()).isEqualTo("Team");
         assertThat(nudge.planParam()).isEqualTo("team");
         assertThat(nudge.monthlyPrice()).isEqualTo("$29");
+        assertThat(nudge.annualMonthlyEquivalent()).isEqualTo("$24");
+        assertThat(nudge.annualCashAmount()).isEqualTo("$288");
         assertThat(nudge.daysLeft()).isEqualTo(1L);
         assertThat(nudge.dismissKey()).endsWith("-d1");
+        assertThat(nudge.inAnnualUpsellWindow()).isTrue();
     }
 
     @Test

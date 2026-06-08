@@ -1,14 +1,22 @@
 package com.emailmessenger.web;
 
 import com.emailmessenger.auth.UserService;
+import com.emailmessenger.billing.PlanLimitKind;
+import com.emailmessenger.billing.TrialConversionNudge;
+import com.emailmessenger.billing.TrialConversionNudgeService;
+import com.emailmessenger.billing.UpgradeModal;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.Participant;
+import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.repository.MessageRepository;
 import com.emailmessenger.repository.ParticipantRepository;
 import com.emailmessenger.service.ReplyService;
+
+import java.util.Optional;
+import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +53,7 @@ class ThreadInboxRenderingIntegrationTest {
     @Autowired ParticipantRepository participantRepository;
 
     @MockBean ReplyService replyService;
+    @MockBean TrialConversionNudgeService trialConversionNudgeService;
 
     private User user;
 
@@ -142,5 +151,73 @@ class ThreadInboxRenderingIntegrationTest {
         assertThat(body).contains("class=\"inbox-search-clear\"");
         // Header reflects both filters via the search-query path.
         assertThat(body).contains("&quot;athena&quot;");
+    }
+
+    @Test
+    @WithMockUser(username = "inbox-render@example.com")
+    void upgradeModalExposesMonthlyAnnualToggleAndAnnualBilledAsLine() throws Exception {
+        UpgradeModal modal = new UpgradeModal(
+                Plan.FREE, PlanLimitKind.THREAD_COUNT, 500L, 500L,
+                Plan.PERSONAL, "$9", "$7", "$84");
+
+        String body = mockMvc.perform(get("/threads").flashAttr("upgradeModal", modal))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // Monthly|Annual sub-toggle is wired to a hidden `billing` input that
+        // posts through to /billing/checkout.
+        assertThat(body).contains("class=\"billing-period-toggle\"");
+        assertThat(body).contains("data-billing-period=\"monthly\"");
+        assertThat(body).contains("data-billing-period=\"annual\"");
+        assertThat(body).contains("id=\"upgrade-modal-billing\"");
+        assertThat(body).contains("2 months free");
+        // Annual line shows both the per-month equivalent and the cash amount
+        // so the user sees both the mental model and what they'll be charged.
+        assertThat(body).contains("$7/mo · billed annually as $84");
+        // Monthly default remains visible without JS.
+        assertThat(body).contains("Personal — $9/mo");
+    }
+
+    @Test
+    @WithMockUser(username = "inbox-render@example.com")
+    void trialNudgeWithinThreeDaysShowsAnnualSwitchCta() throws Exception {
+        when(trialConversionNudgeService.nudgeFor(org.mockito.ArgumentMatchers.any(User.class)))
+                .thenReturn(Optional.of(new TrialConversionNudge(
+                        "Personal", "personal", 2L, "$9", "$7", "$84",
+                        "mailim-trial-nudge-2026-06-10-d2")));
+
+        String body = mockMvc.perform(get("/threads"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // Final-window upsell copy + the dedicated annual CTA form post to
+        // /billing/checkout with billing=annual so the trial-end user
+        // converts at the higher-ARPU SKU.
+        assertThat(body).contains("class=\"trial-nudge-annual\"");
+        assertThat(body).contains("Save 2 months by switching to annual today");
+        assertThat(body).contains("Switch to annual — $84/year");
+        assertThat(body).contains("name=\"billing\" value=\"annual\"");
+        // Monthly continue CTA still present (the annual is additive, not
+        // a replacement) — final-window user still has the original choice.
+        assertThat(body).contains("Continue on Personal — $9/mo");
+    }
+
+    @Test
+    @WithMockUser(username = "inbox-render@example.com")
+    void trialNudgeBeyondThreeDaysOmitsAnnualSwitchCta() throws Exception {
+        // daysLeft=5 → outside the final-window upsell trigger; the annual
+        // sub-block should not render so we don't pre-empt the customer's
+        // own decision earlier in the trial.
+        when(trialConversionNudgeService.nudgeFor(org.mockito.ArgumentMatchers.any(User.class)))
+                .thenReturn(Optional.of(new TrialConversionNudge(
+                        "Personal", "personal", 5L, "$9", "$7", "$84",
+                        "mailim-trial-nudge-2026-06-13-d5")));
+
+        String body = mockMvc.perform(get("/threads"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).doesNotContain("class=\"trial-nudge-annual\"");
+        assertThat(body).doesNotContain("Switch to annual");
     }
 }

@@ -55,11 +55,11 @@
       <button type="button" class="modal-close" aria-label="Dismiss"
               onclick="document.getElementById('upgrade-modal-overlay').remove();">×</button>
       <h2 id="upgrade-modal-title" class="modal-title"
-          th:text="${upgradeModal.kind.name() == 'MAILBOX_COUNT'}
-                   ? 'You''ve hit your Free plan mailbox limit'
-                   : (${upgradeModal.kind.name() == 'SAVED_SEARCH_COUNT'}
-                      ? 'Save more searches on Personal'
-                      : 'You''ve hit your Free plan limit')">
+          th:text="${upgradeModal.kind.name() == 'MAILBOX_COUNT'
+                     ? 'You''ve hit your Free plan mailbox limit'
+                     : (upgradeModal.kind.name() == 'SAVED_SEARCH_COUNT'
+                        ? 'Save more searches on Personal'
+                        : 'You''ve hit your Free plan limit')}">
         You've hit your Free plan limit
       </h2>
       <p class="modal-sub" th:if="${upgradeModal.kind.name() == 'THREAD_COUNT'}"
@@ -86,7 +86,12 @@
         </div>
         <div class="plan-compare-col plan-compare-featured">
           <div class="plan-compare-tag">Recommended</div>
-          <div class="plan-compare-name">Personal — $9/mo</div>
+          <div class="plan-compare-name">
+            <span data-monthly-price
+                  th:text="|Personal — ${upgradeModal.monthlyPrice()}/mo|">Personal — $9/mo</span>
+            <span data-annual-price hidden
+                  th:text="|Personal — ${upgradeModal.annualMonthlyEquivalent()}/mo · billed annually as ${upgradeModal.annualCashAmount()}|">Personal — $7/mo · billed annually as $84</span>
+          </div>
           <ul class="plan-compare-features">
             <li>3 mailboxes</li>
             <li>Unlimited threads</li>
@@ -95,12 +100,29 @@
           </ul>
         </div>
       </div>
-      <form th:action="@{/billing/checkout}" method="post" class="modal-cta-form">
+      <div class="billing-period-toggle" role="tablist" aria-label="Billing period">
+        <button type="button"
+                class="billing-period-toggle-btn billing-period-toggle-btn-active"
+                role="tab"
+                aria-selected="true"
+                data-billing-period="monthly">Monthly</button>
+        <button type="button"
+                class="billing-period-toggle-btn"
+                role="tab"
+                aria-selected="false"
+                data-billing-period="annual">
+          Annual
+          <span class="billing-period-toggle-badge">2 months free</span>
+        </button>
+      </div>
+      <form th:action="@{/billing/checkout}" method="post" class="modal-cta-form" id="upgrade-modal-form">
         <input type="hidden" name="plan" th:value="${upgradeModal.upgradeTargetParam()}">
+        <input type="hidden" name="billing" value="monthly" id="upgrade-modal-billing">
         <input type="hidden" th:if="${_csrf != null}"
                th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
         <button type="submit" class="btn btn-primary modal-cta">
-          Upgrade to Personal
+          <span data-monthly-cta>Upgrade to Personal</span>
+          <span data-annual-cta hidden>Upgrade to Personal · annual</span>
         </button>
       </form>
       <button type="button" class="modal-dismiss-link"
@@ -121,13 +143,13 @@
     <div class="modal-card">
       <button type="button" class="modal-close" aria-label="Dismiss"
               id="trial-nudge-close">&times;</button>
-      <h2 id="trial-nudge-title" class="modal-title"
-          th:text="${trialConversionNudge.daysLeft() == 0}
-                   ? |Your ${trialConversionNudge.planLabel()} trial ends today|
-                   : (${trialConversionNudge.daysLeft() == 1}
-                      ? |Your ${trialConversionNudge.planLabel()} trial ends tomorrow|
-                      : |Your ${trialConversionNudge.planLabel()} trial ends in ${trialConversionNudge.daysLeft()} days|)">
-        Your Personal trial ends in 3 days
+      <h2 id="trial-nudge-title" class="modal-title">
+        <span th:if="${trialConversionNudge.daysLeft() == 0}"
+              th:text="|Your ${trialConversionNudge.planLabel()} trial ends today|">Your Personal trial ends today</span>
+        <span th:if="${trialConversionNudge.daysLeft() == 1}"
+              th:text="|Your ${trialConversionNudge.planLabel()} trial ends tomorrow|">Your Personal trial ends tomorrow</span>
+        <span th:if="${trialConversionNudge.daysLeft() &gt; 1}"
+              th:text="|Your ${trialConversionNudge.planLabel()} trial ends in ${trialConversionNudge.daysLeft()} days|">Your Personal trial ends in 3 days</span>
       </h2>
       <p class="modal-sub"
          th:text="|Continue on ${trialConversionNudge.planLabel()} for ${trialConversionNudge.monthlyPrice()}/month — keep your imported threads and reply tooling without interruption.|">
@@ -149,13 +171,30 @@
       </div>
       <form th:action="@{/billing/checkout}" method="post" class="modal-cta-form">
         <input type="hidden" name="plan" th:value="${trialConversionNudge.planParam()}">
+        <input type="hidden" name="billing" value="monthly">
         <input type="hidden" th:if="${_csrf != null}"
                th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
         <button type="submit" class="btn btn-primary modal-cta"
-                th:text="|Continue on ${trialConversionNudge.planLabel()}|">
-          Continue on Personal
+                th:text="|Continue on ${trialConversionNudge.planLabel()} — ${trialConversionNudge.monthlyPrice()}/mo|">
+          Continue on Personal — $9/mo
         </button>
       </form>
+      <div th:if="${trialConversionNudge.inAnnualUpsellWindow()}" class="trial-nudge-annual">
+        <p class="trial-nudge-annual-pitch"
+           th:text="|Save 2 months by switching to annual today — pay ${trialConversionNudge.annualCashAmount()} for the year instead of ${trialConversionNudge.monthlyPrice()} every month.|">
+          Save 2 months by switching to annual today — pay $84 for the year instead of $9 every month.
+        </p>
+        <form th:action="@{/billing/checkout}" method="post" class="modal-cta-form">
+          <input type="hidden" name="plan" th:value="${trialConversionNudge.planParam()}">
+          <input type="hidden" name="billing" value="annual">
+          <input type="hidden" th:if="${_csrf != null}"
+                 th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+          <button type="submit" class="btn btn-secondary modal-cta modal-cta-annual"
+                  th:text="|Switch to annual — ${trialConversionNudge.annualCashAmount()}/year|">
+            Switch to annual — $84/year
+          </button>
+        </form>
+      </div>
       <button type="button" class="modal-dismiss-link" id="trial-nudge-dismiss">
         Remind me later
       </button>
@@ -519,6 +558,33 @@
 </main>
 <th:block th:replace="~{fragments/install-banner :: banner}"></th:block>
 <script>
+(function () {
+  var card = document.querySelector('#upgrade-modal-overlay .modal-card');
+  if (!card) return;
+  var billingInput = card.querySelector('#upgrade-modal-billing');
+  var buttons = Array.prototype.slice.call(card.querySelectorAll('[data-billing-period]'));
+  if (!billingInput || buttons.length === 0) return;
+  var monthlyPrice = card.querySelector('[data-monthly-price]');
+  var annualPrice = card.querySelector('[data-annual-price]');
+  var monthlyCta = card.querySelector('[data-monthly-cta]');
+  var annualCta = card.querySelector('[data-annual-cta]');
+  buttons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var period = btn.getAttribute('data-billing-period');
+      buttons.forEach(function (b) {
+        var active = b === btn;
+        b.classList.toggle('billing-period-toggle-btn-active', active);
+        b.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      billingInput.value = period;
+      var annual = period === 'annual';
+      if (monthlyPrice) monthlyPrice.hidden = annual;
+      if (annualPrice) annualPrice.hidden = !annual;
+      if (monthlyCta) monthlyCta.hidden = annual;
+      if (annualCta) annualCta.hidden = !annual;
+    });
+  });
+}());
 (function () {
   var overlay = document.getElementById('trial-nudge-overlay');
   if (!overlay) return;
