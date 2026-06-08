@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Revenue — MailIM admin</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <span class="brand">MailIM</span>
+  <nav class="header-nav">
+    <a href="/threads">Inbox</a>
+    <a href="/account">Account</a>
+    <form th:action="@{/logout}" method="post" class="header-logout">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button type="submit" class="link-button">Sign out</button>
+    </form>
+  </nav>
+</header>
+
+<main class="admin-page">
+
+  <h1 class="admin-title">Revenue</h1>
+  <p class="admin-sub">Live MRR, plan mix, and acquisition attribution.</p>
+
+  <section class="admin-kpis">
+    <div class="admin-kpi">
+      <span class="admin-kpi-label">MRR</span>
+      <span class="admin-kpi-value" th:text="${metrics.mrrFormatted()}">$0</span>
+    </div>
+    <div class="admin-kpi">
+      <span class="admin-kpi-label">ARR</span>
+      <span class="admin-kpi-value" th:text="${metrics.arrFormatted()}">$0</span>
+    </div>
+    <div class="admin-kpi">
+      <span class="admin-kpi-label">Active subscribers</span>
+      <span class="admin-kpi-value" th:text="${metrics.activeSubscribers()}">0</span>
+    </div>
+    <div class="admin-kpi">
+      <span class="admin-kpi-label">In trial</span>
+      <span class="admin-kpi-value" th:text="${metrics.trialingSubscribers()}">0</span>
+      <span class="admin-kpi-sub"
+            th:text="|${metrics.trialPipelineFormatted()} pipeline|">$0 pipeline</span>
+    </div>
+    <div class="admin-kpi">
+      <span class="admin-kpi-label">Annual mix</span>
+      <span class="admin-kpi-value"
+            th:text="|${metrics.annualSharePercent()}%|">0%</span>
+      <span class="admin-kpi-sub"
+            th:text="|${metrics.annualActive()} of ${metrics.activeSubscribers()} active|">
+        0 of 0 active
+      </span>
+    </div>
+    <div class="admin-kpi">
+      <span class="admin-kpi-label">Trials ending in 7d</span>
+      <span class="admin-kpi-value" th:text="${metrics.trialsEndingSoon()}">0</span>
+    </div>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title">Plan mix</h2>
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th class="admin-num">Monthly</th>
+          <th class="admin-num">Annual</th>
+          <th class="admin-num">MRR</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="row : ${metrics.planBreakdown()}">
+          <td th:text="${row.planLabel()}">Personal</td>
+          <td class="admin-num" th:text="${row.monthlyActive()}">0</td>
+          <td class="admin-num" th:text="${row.annualActive()}">0</td>
+          <td class="admin-num" th:text="${row.mrrFormatted()}">$0</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title">Acquisition source</h2>
+    <p class="admin-empty"
+       th:if="${metrics.sourceBreakdown() == null or metrics.sourceBreakdown().isEmpty()}">
+      No active paying subscribers yet — source attribution will appear once
+      the first checkout completes.
+    </p>
+    <table class="admin-table"
+           th:if="${metrics.sourceBreakdown() != null and !metrics.sourceBreakdown().isEmpty()}">
+      <thead>
+        <tr>
+          <th>Source</th>
+          <th class="admin-num">Active</th>
+          <th class="admin-num">MRR</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="row : ${metrics.sourceBreakdown()}">
+          <td th:text="${row.sourceLabel()}">organic</td>
+          <td class="admin-num" th:text="${row.activeSubscribers()}">0</td>
+          <td class="admin-num" th:text="${row.mrrFormatted()}">$0</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title">Recent subscription events</h2>
+    <p class="admin-empty"
+       th:if="${metrics.recentEvents() == null or metrics.recentEvents().isEmpty()}">
+      No subscription activity recorded yet.
+    </p>
+    <table class="admin-table"
+           th:if="${metrics.recentEvents() != null and !metrics.recentEvents().isEmpty()}">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Customer</th>
+          <th>Plan</th>
+          <th>Cadence</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="event : ${metrics.recentEvents()}">
+          <td>
+            <time th:text="${#temporals.format(event.at(), 'yyyy-MM-dd HH:mm')}">
+              2026-06-08 10:00
+            </time>
+          </td>
+          <td th:text="${event.userEmail()}">customer@example.com</td>
+          <td th:text="${event.planLabel()}">Personal</td>
+          <td th:text="${event.periodLabel()}">Monthly</td>
+          <td th:text="${event.status()}">active</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+</body>
+</html>

@@ -2479,6 +2479,94 @@ body {
   padding-right: calc(24px + env(safe-area-inset-right, 0));
 }
 
+.admin-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 16px 56px;
+}
+.admin-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.admin-sub {
+  color: var(--text-muted);
+  margin: 0 0 24px;
+}
+.admin-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.admin-kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.admin-kpi-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.admin-kpi-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+}
+.admin-kpi-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.admin-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+.admin-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+.admin-empty {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin: 0;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.admin-table th,
+.admin-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.admin-table th {
+  font-weight: 700;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.admin-table tr:last-child td {
+  border-bottom: 0;
+}
+.admin-table .admin-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 640px) {
   .header-nav { gap: 4px; }
   .header-nav a,

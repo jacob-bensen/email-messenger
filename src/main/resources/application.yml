@@ -101,6 +101,9 @@ reengagement:
   cron: ${REENGAGEMENT_CRON:0 0 13 * * ?}
   zone: ${REENGAGEMENT_ZONE:UTC}
 
+admin:
+  emails: ${ADMIN_EMAILS:}
+
 logging:
   level:
     com.emailmessenger: DEBUG
@@ -193,6 +196,9 @@ reengagement:
   enabled: ${REENGAGEMENT_ENABLED:false}
   cron: ${REENGAGEMENT_CRON:0 0 13 * * ?}
   zone: ${REENGAGEMENT_ZONE:UTC}
+
+admin:
+  emails: ${ADMIN_EMAILS:}
 
 logging:
   level:

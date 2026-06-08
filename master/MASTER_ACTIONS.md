@@ -3,11 +3,11 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
-- [ ] [PLAN-REVIEW] EPIC-11 Annual billing surfacing is code-complete.
-      Adopt first-paying-customer attribution funnel (revenue mix view +
-      Stripe backfill) as the next Primary Objective and update PLAN.md,
-      or pick one of: Gmail OAuth mailbox connection, Testcontainers +
-      GreenMail integration tests, Loom/YouTube demo embed.
+- [ ] Set `ADMIN_EMAILS` on the deploy to the comma-separated list of
+      operator addresses that should see `/admin/revenue`. Empty
+      (default) means no one can reach it — the dashboard is invisible
+      to non-operators and to anonymous visitors. Lowercase, trim, and
+      include all operator/founder addresses.
 
 ## Infrastructure
 
