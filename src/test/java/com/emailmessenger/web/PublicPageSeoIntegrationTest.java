@@ -304,6 +304,56 @@ class PublicPageSeoIntegrationTest {
     }
 
     @Test
+    void pricingPageFramesAnnualBillingAsTwoMonthsFreeWithCashAmount() throws Exception {
+        // EPIC-11 milestone 2: annual savings copy + value framing.
+        // The toggle badge has to read "2 months free" (not "Save 16%") —
+        // SaaS pricing comparison sites describe annual discounts in
+        // months-free terms, which is a stronger anchor for the Free →
+        // Personal decision. Each paid plan card also has to surface the
+        // cash-amount the user will actually be charged today, so they
+        // don't click through expecting $7 and see $84 on the Stripe page.
+        String body = render("/pricing");
+        assertThat(body).contains("2 months free");
+        assertThat(body).doesNotContain("Save 16%");
+        // The annual-cash sub-line is rendered with the cash amount in a
+        // data attribute so the toggle JS can fill it in only when the
+        // Annual tab is active — but the markup itself must already ship
+        // the dollar amount so the value frame survives JS being blocked.
+        assertThat(body).contains("data-annual-cash=\"Billed annually as $84\"");
+        assertThat(body).contains("data-annual-cash=\"Billed annually as $288\"");
+        assertThat(body).contains("data-annual-cash=\"Billed annually as $996\"");
+        // The toggle JS keys on this class to swap the cash line on/off.
+        assertThat(body).contains("class=\"plan-annual-cash\"");
+    }
+
+    @Test
+    void registerPageAcknowledgesAnnualChoiceWhenBillingParamIsAnnual() throws Exception {
+        // EPIC-11 milestone 2: the auth card has to acknowledge the annual
+        // choice picked on /pricing so a user doesn't lose context across
+        // the page transition — without it, the signup form gives the user
+        // no cue that their pricing pick was actually carried through.
+        String body = render("/register?plan=personal&billing=annual");
+        assertThat(body).contains("class=\"auth-billing-badge\"");
+        assertThat(body).contains("Annual billing");
+        assertThat(body).contains("2 months free");
+        // The hidden form fields must round-trip both plan + billing into
+        // the POST so the redirect into Stripe Checkout uses the annual
+        // price ID.
+        assertThat(body).contains("name=\"plan\"").contains("value=\"personal\"");
+        assertThat(body).contains("name=\"billing\"").contains("value=\"annual\"");
+    }
+
+    @Test
+    void registerPageOmitsAnnualBadgeWhenBillingParamAbsent() throws Exception {
+        // Free signups and monthly signups must NOT show the annual badge —
+        // it would mis-frame the price the user is about to commit to.
+        String defaultBody = render("/register");
+        assertThat(defaultBody).doesNotContain("class=\"auth-billing-badge\"");
+        String monthlyBody = render("/register?plan=personal&billing=monthly");
+        assertThat(monthlyBody).doesNotContain("class=\"auth-billing-badge\"");
+    }
+
+    @Test
     void registerPageLinksToTermsAndPrivacyInline() throws Exception {
         String body = render("/register");
         // The /register form must inline a "by creating an account you agree to…"

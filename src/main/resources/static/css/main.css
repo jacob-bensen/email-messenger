@@ -846,6 +846,15 @@ body {
   font-size: 14px;
   color: var(--text-muted);
 }
+.plan-annual-cash {
+  display: none;
+  margin: -2px 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand);
+  letter-spacing: -0.005em;
+}
+.plan-annual-cash.is-visible { display: block; }
 .plan-blurb {
   font-size: 14px;
   color: var(--text-muted);
@@ -952,6 +961,30 @@ body {
   color: var(--text-muted);
   font-size: 14px;
   margin-bottom: 20px;
+}
+.auth-billing-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(79, 128, 255, 0.08);
+  border: 1px solid rgba(79, 128, 255, 0.30);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.auth-billing-badge-label { color: var(--brand); }
+.auth-billing-badge-bonus {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.15);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 .auth-form {
   display: flex;

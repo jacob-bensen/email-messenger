@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <th:block th:replace="~{fragments/seo :: meta(
       pageTitle='Pricing — MailIM',
-      pageDescription='Simple, transparent pricing for MailIM. Free for one mailbox, $9/mo Personal, $29/mo Team, $99/mo Enterprise. Save 16% with annual billing.',
+      pageDescription='Simple, transparent pricing for MailIM. Free for one mailbox, $9/mo Personal, $29/mo Team, $99/mo Enterprise. Choose annual billing and get 2 months free.',
       pagePath='/pricing')}"></th:block>
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
@@ -28,7 +28,7 @@
     <div class="billing-toggle" role="group" aria-label="Billing period">
       <button type="button" class="billing-option is-active" data-period="monthly">Monthly</button>
       <button type="button" class="billing-option" data-period="annual">
-        Annual <span class="save-badge">Save 16%</span>
+        Annual <span class="save-badge">2 months free</span>
       </button>
     </div>
   </section>
@@ -60,6 +60,7 @@
         <span class="price-amount" data-monthly="$9" data-annual="$7">$9</span>
         <span class="price-period">/ month</span>
       </p>
+      <p class="plan-annual-cash" data-annual-cash="Billed annually as $84"></p>
       <p class="plan-blurb">For freelancers and individual professionals.</p>
       <ul class="plan-features">
         <li>3 mailboxes</li>
@@ -79,6 +80,7 @@
         <span class="price-amount" data-monthly="$29" data-annual="$24">$29</span>
         <span class="price-period">/ month</span>
       </p>
+      <p class="plan-annual-cash" data-annual-cash="Billed annually as $288"></p>
       <p class="plan-blurb">For support and sales teams that share an inbox.</p>
       <ul class="plan-features">
         <li>10 mailboxes</li>
@@ -98,6 +100,7 @@
         <span class="price-amount" data-monthly="$99" data-annual="$83">$99</span>
         <span class="price-period">/ month</span>
       </p>
+      <p class="plan-annual-cash" data-annual-cash="Billed annually as $996"></p>
       <p class="plan-blurb">For organizations with strict security needs.</p>
       <ul class="plan-features">
         <li>Unlimited mailboxes</li>
@@ -157,6 +160,7 @@
 (function () {
   var toggles = document.querySelectorAll('.billing-option');
   var amounts = document.querySelectorAll('.price-amount[data-monthly]');
+  var annualCash = document.querySelectorAll('.plan-annual-cash[data-annual-cash]');
   var ctas = document.querySelectorAll('.plan-cta[href]');
   if (!toggles.length) return;
 
@@ -164,6 +168,15 @@
     amounts.forEach(function (el) {
       var v = el.getAttribute('data-' + period);
       if (v) el.textContent = v;
+    });
+    annualCash.forEach(function (el) {
+      if (period === 'annual') {
+        el.textContent = el.getAttribute('data-annual-cash');
+        el.classList.add('is-visible');
+      } else {
+        el.textContent = '';
+        el.classList.remove('is-visible');
+      }
     });
     ctas.forEach(function (link) {
       var href = link.getAttribute('href');
