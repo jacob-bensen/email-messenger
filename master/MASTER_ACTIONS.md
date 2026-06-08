@@ -3,6 +3,12 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
+- [ ] [PLAN-REVIEW] EPIC-11 Annual billing surfacing is code-complete.
+      Adopt first-paying-customer attribution funnel (revenue mix view +
+      Stripe backfill) as the next Primary Objective and update PLAN.md,
+      or pick one of: Gmail OAuth mailbox connection, Testcontainers +
+      GreenMail integration tests, Loom/YouTube demo embed.
+
 ## Infrastructure
 
 - [ ] Provision a PostgreSQL 16 database (Supabase / Neon / Railway /

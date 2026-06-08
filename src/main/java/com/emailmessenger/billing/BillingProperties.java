@@ -71,4 +71,28 @@ public class BillingProperties {
         }
         return map;
     }
+
+    /**
+     * Reverse lookup: given a Stripe price ID (from a webhook payload or a
+     * previously-completed checkout), report which billing cadence it
+     * belongs to. Returns {@code null} when the price ID doesn't match any
+     * configured SKU — leave the existing recorded period alone in that
+     * case rather than guess.
+     */
+    public BillingPeriod periodFor(String priceId) {
+        if (priceId == null || priceId.isEmpty()) {
+            return null;
+        }
+        if (priceId.equals(personalAnnualPriceId)
+                || priceId.equals(teamAnnualPriceId)
+                || priceId.equals(enterpriseAnnualPriceId)) {
+            return BillingPeriod.ANNUAL;
+        }
+        if (priceId.equals(personalPriceId)
+                || priceId.equals(teamPriceId)
+                || priceId.equals(enterprisePriceId)) {
+            return BillingPeriod.MONTHLY;
+        }
+        return null;
+    }
 }

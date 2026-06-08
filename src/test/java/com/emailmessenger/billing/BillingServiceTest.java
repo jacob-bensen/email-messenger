@@ -75,6 +75,7 @@ class BillingServiceTest {
         assertThat(sub.getPlan()).isEqualTo(Plan.PERSONAL);
         assertThat(sub.getStatus()).isEqualTo("incomplete");
         assertThat(sub.getStripeSubscriptionId()).isNull();
+        assertThat(sub.getBillingPeriod()).isEqualTo(BillingPeriod.MONTHLY);
     }
 
     @Test
@@ -94,6 +95,7 @@ class BillingServiceTest {
         Subscription sub = subscriptions.findByUser(user).orElseThrow();
         assertThat(sub.getStripePriceId()).isEqualTo("price_personal_annual_test");
         assertThat(sub.getPlan()).isEqualTo(Plan.PERSONAL);
+        assertThat(sub.getBillingPeriod()).isEqualTo(BillingPeriod.ANNUAL);
     }
 
     @Test
@@ -110,6 +112,10 @@ class BillingServiceTest {
         assertThat(url).isEqualTo("https://checkout.stripe.com/c/pay/cs_fb");
         Subscription sub = subscriptions.findByUser(user).orElseThrow();
         assertThat(sub.getStripePriceId()).isEqualTo("price_personal_test");
+        // Fallback drove the price down to the monthly SKU — the
+        // recorded period has to reflect what Stripe will actually
+        // charge, not what the user originally asked for.
+        assertThat(sub.getBillingPeriod()).isEqualTo(BillingPeriod.MONTHLY);
     }
 
     @Test

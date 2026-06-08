@@ -1,8 +1,12 @@
 package com.emailmessenger.auth;
 
+import com.emailmessenger.billing.BillingPeriod;
 import com.emailmessenger.billing.StripeCheckoutGateway;
 import com.emailmessenger.billing.StripePortalGateway;
+import com.emailmessenger.domain.Plan;
+import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
+import com.emailmessenger.repository.SubscriptionRepository;
 import com.emailmessenger.repository.UserRepository;
 import com.emailmessenger.service.ReplyService;
 import jakarta.mail.Session;
@@ -44,6 +48,7 @@ class AccountControllerTest {
     @Autowired MockMvc mockMvc;
     @Autowired UserService userService;
     @Autowired UserRepository users;
+    @Autowired SubscriptionRepository subscriptions;
     @Autowired PasswordEncoder passwordEncoder;
 
     @MockBean JavaMailSender mailSender;
@@ -184,6 +189,48 @@ class AccountControllerTest {
 
         User reloaded = users.findById(user.getId()).orElseThrow();
         assertThat(reloaded.getEmail()).isEqualTo("emtaken@example.com");
+    }
+
+    @Test
+    @WithMockUser(username = "billed@example.com")
+    void accountPageShowsActiveAnnualCadenceAndRenewalDate() throws Exception {
+        User user = userService.register("billed@example.com", "password1", null);
+        Subscription sub = new Subscription(user, "cus_billed", "active");
+        sub.setPlan(Plan.PERSONAL);
+        sub.setBillingPeriod(BillingPeriod.ANNUAL);
+        sub.setCurrentPeriodEnd(java.time.LocalDateTime.of(2027, 6, 7, 12, 0));
+        subscriptions.save(sub);
+
+        mockMvc.perform(get("/account"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Personal · Annual")))
+                .andExpect(content().string(containsString("2027-06-07")));
+    }
+
+    @Test
+    @WithMockUser(username = "trialing@example.com")
+    void accountPageShowsTrialCadenceWithTrialEnd() throws Exception {
+        User user = userService.register("trialing@example.com", "password1", null);
+        Subscription sub = new Subscription(user, "cus_trial", "trialing");
+        sub.setPlan(Plan.PERSONAL);
+        sub.setBillingPeriod(BillingPeriod.MONTHLY);
+        sub.setTrialEndsAt(java.time.LocalDateTime.of(2026, 6, 22, 12, 0));
+        subscriptions.save(sub);
+
+        mockMvc.perform(get("/account"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Personal · Monthly trial")))
+                .andExpect(content().string(containsString("2026-06-22")));
+    }
+
+    @Test
+    @WithMockUser(username = "nosub@example.com")
+    void accountPageOmitsSubscriptionCardForFreeUser() throws Exception {
+        userService.register("nosub@example.com", "password1", null);
+
+        mockMvc.perform(get("/account"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("billing", (Object) null));
     }
 
     @Test

@@ -1,7 +1,9 @@
 package com.emailmessenger.auth;
 
 import com.emailmessenger.domain.AuthEvent;
+import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
+import com.emailmessenger.repository.SubscriptionRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,13 +35,16 @@ class AccountController {
     private final AccountService accountService;
     private final UserService userService;
     private final AuthEventService authEventService;
+    private final SubscriptionRepository subscriptions;
 
     AccountController(AccountService accountService,
                       UserService userService,
-                      AuthEventService authEventService) {
+                      AuthEventService authEventService,
+                      SubscriptionRepository subscriptions) {
         this.accountService = accountService;
         this.userService = userService;
         this.authEventService = authEventService;
+        this.subscriptions = subscriptions;
     }
 
     @GetMapping("/account")
@@ -48,6 +53,9 @@ class AccountController {
         model.addAttribute("currentEmail", user.getEmail());
         model.addAttribute("displayName", user.getDisplayName());
         model.addAttribute("emailVerified", user.isEmailVerified());
+        Subscription sub = subscriptions.findByUser(user).orElse(null);
+        AccountBillingSummary billing = AccountBillingSummary.from(sub);
+        model.addAttribute("billing", billing);
         List<AuthEvent> recentActivity = authEventService.recentFor(user, RECENT_ACTIVITY_LIMIT);
         model.addAttribute("recentActivity", recentActivity);
         return "account";

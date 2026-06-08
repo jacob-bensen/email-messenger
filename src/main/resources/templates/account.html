@@ -43,6 +43,24 @@
     </dl>
   </section>
 
+  <section class="account-card" th:if="${billing != null}">
+    <h2 class="account-card-title">Subscription</h2>
+    <dl class="account-summary">
+      <dt>Plan</dt>
+      <dd>
+        <span th:text="${billing.label()}">Personal · Monthly</span>
+      </dd>
+      <dt th:if="${billing.renewsOn() != null and !billing.canceled()}">
+        <span th:if="${billing.trialing()}">Trial ends</span>
+        <span th:if="${!billing.trialing()}">Renews</span>
+      </dt>
+      <dd th:if="${billing.renewsOn() != null and !billing.canceled()}"
+          th:text="${#temporals.format(billing.renewsOn(), 'yyyy-MM-dd')}">
+        2027-06-07
+      </dd>
+    </dl>
+  </section>
+
   <section class="account-card">
     <h2 class="account-card-title">Change password</h2>
 

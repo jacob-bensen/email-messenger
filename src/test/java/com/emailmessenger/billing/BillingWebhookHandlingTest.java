@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BillingWebhookHandlingTest {
 
     @Autowired BillingService billingService;
+    @Autowired BillingProperties properties;
     @Autowired UserService userService;
     @Autowired UserRepository users;
     @Autowired SubscriptionRepository subscriptions;
@@ -39,6 +40,10 @@ class BillingWebhookHandlingTest {
 
     @BeforeEach
     void seedIncompleteSubscription() {
+        properties.setPersonalPriceId("price_personal_test");
+        properties.setPersonalAnnualPriceId("price_personal_annual_test");
+        properties.setTeamPriceId("price_team_test");
+        properties.setTeamAnnualPriceId("price_team_annual_test");
         userService.register("payer@example.com", "password1", "Payer");
         user = users.findByEmail("payer@example.com").orElseThrow();
         pending = new Subscription(user, "cus_test_payer", "incomplete");
@@ -141,6 +146,44 @@ class BillingWebhookHandlingTest {
         assertThat(sub.getStatus()).isEqualTo("active");
         assertThat(sub.getStripeSubscriptionId()).isEqualTo("sub_test_replay");
         assertThat(subscriptions.count()).isEqualTo(1L);
+    }
+
+    @Test
+    void subscriptionUpdatedWithAnnualPriceIdFlipsLocalBillingPeriodToAnnual() {
+        pending.setStripeSubscriptionId("sub_test_ann");
+        pending.setStatus("active");
+        pending.setBillingPeriod(BillingPeriod.MONTHLY);
+        subscriptions.save(pending);
+
+        StripeEvent event = new StripeEvent(
+                "evt_period", "customer.subscription.updated",
+                "cus_test_payer", "sub_test_ann",
+                "active", "price_personal_annual_test", null, null);
+
+        billingService.applyStripeEvent(event);
+
+        Subscription sub = subscriptions.findByUser(user).orElseThrow();
+        assertThat(sub.getStripePriceId()).isEqualTo("price_personal_annual_test");
+        assertThat(sub.getBillingPeriod()).isEqualTo(BillingPeriod.ANNUAL);
+    }
+
+    @Test
+    void subscriptionUpdatedWithUnknownPriceIdDoesNotClobberBillingPeriod() {
+        pending.setStripeSubscriptionId("sub_test_keep");
+        pending.setStatus("active");
+        pending.setBillingPeriod(BillingPeriod.ANNUAL);
+        subscriptions.save(pending);
+
+        StripeEvent event = new StripeEvent(
+                "evt_unknown_price", "customer.subscription.updated",
+                "cus_test_payer", "sub_test_keep",
+                "active", "price_promo_test", null, null);
+
+        billingService.applyStripeEvent(event);
+
+        Subscription sub = subscriptions.findByUser(user).orElseThrow();
+        assertThat(sub.getStripePriceId()).isEqualTo("price_promo_test");
+        assertThat(sub.getBillingPeriod()).isEqualTo(BillingPeriod.ANNUAL);
     }
 
     @Test

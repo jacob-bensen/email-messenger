@@ -51,6 +51,7 @@ public class BillingService {
             // checkout. The Stripe Billing Portal will offer the annual
             // swap once the price ID is wired.
             priceId = properties.priceIds(BillingPeriod.MONTHLY).get(plan);
+            resolved = BillingPeriod.MONTHLY;
         }
         if (!StringUtils.hasText(priceId)) {
             throw new BillingException("No price configured for plan " + plan);
@@ -72,6 +73,7 @@ public class BillingService {
                 : new Subscription(user, result.customerId(), "incomplete");
         sub.setPlan(plan);
         sub.setStripePriceId(priceId);
+        sub.setBillingPeriod(resolved);
         if (existing == null) {
             subscriptions.save(sub);
         }
@@ -169,6 +171,10 @@ public class BillingService {
         }
         if (event.priceId() != null) {
             sub.setStripePriceId(event.priceId());
+            BillingPeriod derived = properties.periodFor(event.priceId());
+            if (derived != null) {
+                sub.setBillingPeriod(derived);
+            }
         }
         if (event.trialEnd() != null) {
             sub.setTrialEndsAt(toLocal(event.trialEnd()));

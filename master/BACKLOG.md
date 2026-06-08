@@ -2,9 +2,6 @@
 
 Up to 10 items, each advancing a PLAN.md milestone. Pick from the top.
 
-- [ ] **Subscription billing_period field + active-cadence display**
-      Flyway V17 adds `subscriptions.billing_period VARCHAR(10)`;
-      `applyStripeEvent` derives it from the matched price ID; `/account`
-      shows "Personal · Annual, renews YYYY-MM-DD" so a paying customer
-      can verify their cadence without contacting support.
-      Milestone 4.
+(Empty — all four EPIC-11 milestones are now code-complete. Next session
+should verify against PLAN.md "Done means" and propose the next Primary
+Objective if EPIC-11 is fully done.)

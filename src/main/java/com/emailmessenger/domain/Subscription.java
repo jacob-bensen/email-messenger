@@ -1,5 +1,6 @@
 package com.emailmessenger.domain;
 
+import com.emailmessenger.billing.BillingPeriod;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -44,6 +45,10 @@ public class Subscription {
     @Column(name = "stripe_price_id", length = 255)
     private String stripePriceId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "billing_period", length = 10)
+    private BillingPeriod billingPeriod;
+
     @Column(name = "trial_ends_at")
     private LocalDateTime trialEndsAt;
 
@@ -83,6 +88,7 @@ public class Subscription {
     public String getStripeCustomerId() { return stripeCustomerId; }
     public String getStripeSubscriptionId() { return stripeSubscriptionId; }
     public String getStripePriceId() { return stripePriceId; }
+    public BillingPeriod getBillingPeriod() { return billingPeriod; }
     public LocalDateTime getTrialEndsAt() { return trialEndsAt; }
     public LocalDateTime getCurrentPeriodEnd() { return currentPeriodEnd; }
     public LocalDateTime getCreatedAt() { return createdAt; }
@@ -92,6 +98,7 @@ public class Subscription {
     public void setStatus(String status) { this.status = status; }
     public void setStripeSubscriptionId(String id) { this.stripeSubscriptionId = id; }
     public void setStripePriceId(String id) { this.stripePriceId = id; }
+    public void setBillingPeriod(BillingPeriod p) { this.billingPeriod = p; }
     public void setTrialEndsAt(LocalDateTime t) { this.trialEndsAt = t; }
     public void setCurrentPeriodEnd(LocalDateTime t) { this.currentPeriodEnd = t; }
 }
