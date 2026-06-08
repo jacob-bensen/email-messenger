@@ -24,4 +24,11 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
      */
     @Query("SELECT s FROM Subscription s JOIN FETCH s.user ORDER BY s.updatedAt DESC")
     List<Subscription> findAllWithUserNewestFirst();
+
+    /**
+     * Candidate set for the "Reconcile from Stripe" backfill — every row
+     * whose local cadence is still unknown. Once the backfill fills the
+     * field, the row drops out so a second invocation is a no-op.
+     */
+    List<Subscription> findByBillingPeriodIsNull();
 }

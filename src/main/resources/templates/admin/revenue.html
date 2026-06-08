@@ -27,6 +27,27 @@
   <h1 class="admin-title">Revenue</h1>
   <p class="admin-sub">Live MRR, plan mix, and acquisition attribution.</p>
 
+  <section class="admin-toolbar">
+    <form th:action="@{/admin/revenue/reconcile-billing-period}" method="post"
+          class="admin-toolbar-form">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button type="submit" class="admin-btn">Reconcile from Stripe</button>
+      <span class="admin-toolbar-hint">
+        Fills in missing billing-period values by asking Stripe for the live
+        price ID.
+      </span>
+    </form>
+    <p class="admin-toolbar-result" th:if="${reconcile != null and reconcile.isNoOp()}">
+      Reconcile: no rows needed backfill — every active subscription already
+      has a billing period.
+    </p>
+    <p class="admin-toolbar-result" th:if="${reconcile != null and !reconcile.isNoOp()}"
+       th:text="|Reconcile: scanned ${reconcile.scanned()}, updated ${reconcile.updated()}, missing Stripe id ${reconcile.missingStripeId()}, unmatched price ${reconcile.unmatchedPriceId()}, Stripe misses ${reconcile.stripeMisses()}.|">
+      Reconcile: scanned 0, updated 0, missing Stripe id 0, unmatched price 0, Stripe misses 0.
+    </p>
+  </section>
+
   <section class="admin-kpis">
     <div class="admin-kpi">
       <span class="admin-kpi-label">MRR</span>

@@ -3,6 +3,8 @@ package com.emailmessenger.admin;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
 
@@ -11,10 +13,14 @@ class AdminRevenueController {
 
     private final AdminAuthorizer authorizer;
     private final RevenueMetricsService metricsService;
+    private final BillingPeriodBackfillService backfillService;
 
-    AdminRevenueController(AdminAuthorizer authorizer, RevenueMetricsService metricsService) {
+    AdminRevenueController(AdminAuthorizer authorizer,
+                           RevenueMetricsService metricsService,
+                           BillingPeriodBackfillService backfillService) {
         this.authorizer = authorizer;
         this.metricsService = metricsService;
+        this.backfillService = backfillService;
     }
 
     @GetMapping("/admin/revenue")
@@ -23,5 +29,13 @@ class AdminRevenueController {
         RevenueMetrics metrics = metricsService.snapshot();
         model.addAttribute("metrics", metrics);
         return "admin/revenue";
+    }
+
+    @PostMapping("/admin/revenue/reconcile-billing-period")
+    String reconcileBillingPeriod(Principal principal, RedirectAttributes attrs) {
+        authorizer.requireAdmin(principal.getName());
+        BillingPeriodBackfillResult result = backfillService.reconcile();
+        attrs.addFlashAttribute("reconcile", result);
+        return "redirect:/admin/revenue";
     }
 }

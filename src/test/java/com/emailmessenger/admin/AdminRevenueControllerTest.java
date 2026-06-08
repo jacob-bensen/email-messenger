@@ -2,8 +2,10 @@ package com.emailmessenger.admin;
 
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.billing.BillingPeriod;
+import com.emailmessenger.billing.BillingProperties;
 import com.emailmessenger.billing.StripeCheckoutGateway;
 import com.emailmessenger.billing.StripePortalGateway;
+import com.emailmessenger.billing.StripeSubscriptionGateway;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
@@ -21,10 +23,15 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -40,9 +47,11 @@ class AdminRevenueControllerTest {
     @Autowired UserService userService;
     @Autowired SubscriptionRepository subscriptions;
     @Autowired AdminProperties adminProperties;
+    @Autowired BillingProperties billingProperties;
 
     @MockBean StripeCheckoutGateway stripeCheckout;
     @MockBean StripePortalGateway stripePortal;
+    @MockBean StripeSubscriptionGateway stripeSubscriptionGateway;
     @MockBean ReplyService replyService;
 
     @BeforeEach
@@ -97,5 +106,67 @@ class AdminRevenueControllerTest {
 
         mockMvc.perform(get("/admin/revenue"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "operator@example.com")
+    void adminCanTriggerReconcileAndIsRedirectedBackWithFlashSummary() throws Exception {
+        userService.register("operator@example.com", "password1", null);
+        adminProperties.setEmails(List.of("operator@example.com"));
+        billingProperties.setPersonalAnnualPriceId("price_personal_annual");
+
+        User payer = userService.register("payer@example.com", "password1", null);
+        Subscription sub = new Subscription(payer, "cus_payer", "active");
+        sub.setPlan(Plan.PERSONAL);
+        sub.setStripeSubscriptionId("sub_payer");
+        // billingPeriod is intentionally left null to simulate pre-V17 state.
+        subscriptions.save(sub);
+
+        when(stripeSubscriptionGateway.currentPriceId("sub_payer"))
+                .thenReturn(Optional.of("price_personal_annual"));
+
+        mockMvc.perform(post("/admin/revenue/reconcile-billing-period").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/revenue"))
+                .andExpect(flash().attributeExists("reconcile"));
+
+        Subscription reloaded = subscriptions.findById(sub.getId()).orElseThrow();
+        org.assertj.core.api.Assertions.assertThat(reloaded.getBillingPeriod())
+                .isEqualTo(BillingPeriod.ANNUAL);
+    }
+
+    @Test
+    @WithMockUser(username = "intruder@example.com")
+    void nonAdminCannotTriggerReconcileEvenWithValidCsrf() throws Exception {
+        userService.register("intruder@example.com", "password1", null);
+        adminProperties.setEmails(List.of("operator@example.com"));
+
+        mockMvc.perform(post("/admin/revenue/reconcile-billing-period").with(csrf()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "operator@example.com")
+    void reconcileWithNoCandidatesYieldsNoOpFlashResult() throws Exception {
+        userService.register("operator@example.com", "password1", null);
+        adminProperties.setEmails(List.of("operator@example.com"));
+
+        mockMvc.perform(post("/admin/revenue/reconcile-billing-period").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/revenue"))
+                .andExpect(flash().attribute("reconcile",
+                        org.hamcrest.Matchers.hasProperty("noOp", org.hamcrest.Matchers.is(true))));
+    }
+
+    @Test
+    @WithMockUser(username = "operator@example.com")
+    void revenuePageRendersReconcileButton() throws Exception {
+        userService.register("operator@example.com", "password1", null);
+        adminProperties.setEmails(List.of("operator@example.com"));
+
+        mockMvc.perform(get("/admin/revenue"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("/admin/revenue/reconcile-billing-period")))
+                .andExpect(content().string(containsString("Reconcile from Stripe")));
     }
 }
