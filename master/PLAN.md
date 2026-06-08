@@ -65,13 +65,13 @@ so the operator doesn't have to remember to check.
    `users.acquisition_source` so the operator can see channel-quality
    differences. Adds the data needed to make per-channel
    acquisition-spend decisions.
-4. **Weekly operator email digest.** Reuses the existing `JavaMailSender`
-   path. Cron at Monday 09:00 UTC behind a feature flag
-   (`admin.weekly-digest.enabled`). Mails MRR / ARR / new paying
-   customers this week / churn count to every address in
-   `admin.emails`. Delivers the dashboard to where the operator already
-   reads — without it, the operator forgets to check until something
-   feels off.
+4. **Weekly operator email digest.** [shipped 2026-06-08] Mails MRR /
+   ARR / active subscriber count / monthly-annual mix / trial pipeline +
+   trials ending in 7 days / new paying customers in last 7 days /
+   churn in last 7 days / `/admin/revenue` link to every
+   `admin.emails` address. Cron `ADMIN_WEEKLY_DIGEST_CRON` (default
+   `0 0 9 ? * MON` UTC), zone `ADMIN_WEEKLY_DIGEST_ZONE`, scheduler
+   gated by `ADMIN_WEEKLY_DIGEST_ENABLED=true`.
 
 ## Done means
 

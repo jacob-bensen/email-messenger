@@ -103,6 +103,10 @@ reengagement:
 
 admin:
   emails: ${ADMIN_EMAILS:}
+  weekly-digest:
+    enabled: ${ADMIN_WEEKLY_DIGEST_ENABLED:false}
+    cron: ${ADMIN_WEEKLY_DIGEST_CRON:0 0 9 ? * MON}
+    zone: ${ADMIN_WEEKLY_DIGEST_ZONE:UTC}
 
 logging:
   level:
@@ -199,6 +203,10 @@ reengagement:
 
 admin:
   emails: ${ADMIN_EMAILS:}
+  weekly-digest:
+    enabled: ${ADMIN_WEEKLY_DIGEST_ENABLED:false}
+    cron: ${ADMIN_WEEKLY_DIGEST_CRON:0 0 9 ? * MON}
+    zone: ${ADMIN_WEEKLY_DIGEST_ZONE:UTC}
 
 logging:
   level:

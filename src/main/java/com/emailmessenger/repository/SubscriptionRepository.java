@@ -35,6 +35,14 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     List<Subscription> findByBillingPeriodIsNull();
 
     /**
+     * Week-over-week counter used by the operator digest. The status sweep
+     * keys on {@code updatedAt} so a trial-to-paid conversion (createdAt
+     * older than the window but status flipped this week) and a true
+     * brand-new paid signup both register as "new paying customers".
+     */
+    long countByStatusAndUpdatedAtAfter(String status, LocalDateTime cutoff);
+
+    /**
      * Funnel-anchor cohort for the operator dashboard: subscription rows
      * created inside the rolling window, with their owning user eager-joined
      * so the metrics service can group by {@code acquisition_source} without
