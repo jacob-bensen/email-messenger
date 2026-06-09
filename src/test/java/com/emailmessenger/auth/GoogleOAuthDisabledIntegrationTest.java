@@ -46,6 +46,7 @@ class GoogleOAuthDisabledIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         assertThat(body).doesNotContain("Continue with Google");
         assertThat(body).doesNotContain("/oauth2/authorization/google");
+        assertThat(body).doesNotContain("/auth/google/start");
     }
 
     @Test
@@ -55,6 +56,7 @@ class GoogleOAuthDisabledIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         assertThat(body).doesNotContain("Continue with Google");
         assertThat(body).doesNotContain("/oauth2/authorization/google");
+        assertThat(body).doesNotContain("/auth/google/start");
     }
 
     @Test

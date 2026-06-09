@@ -2,11 +2,6 @@
 
 Up to 10 items, each advancing a PLAN.md milestone. Pick from the top.
 
-- **Carry plan + billing + utm_source through OAuth state.**
-  Wrap the inbound `?plan=…&billing=…&utm_source=…` in session state
-  before redirecting to Google, restore in the success handler.
-  PLAN milestone 2.
-
 - **Account linking via `users.google_subject`.**
   Flyway V18 adds the column; provisioner writes it on first OAuth
   login; existing email-password rows match by email and gain the link.

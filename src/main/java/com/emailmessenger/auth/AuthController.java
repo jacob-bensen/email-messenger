@@ -39,12 +39,16 @@ class AuthController {
     @GetMapping("/login")
     String loginPage(@RequestParam(name = "plan", required = false) String plan,
                      @RequestParam(name = "billing", required = false) String billing,
+                     @RequestParam(name = "utm_source", required = false) String utmSource,
                      Model model) {
         if (StringUtils.hasText(plan)) {
             model.addAttribute("plan", plan);
         }
         if (StringUtils.hasText(billing)) {
             model.addAttribute("billing", BillingPeriod.parse(billing).paramValue());
+        }
+        if (StringUtils.hasText(utmSource)) {
+            model.addAttribute("utmSource", utmSource);
         }
         return "login";
     }

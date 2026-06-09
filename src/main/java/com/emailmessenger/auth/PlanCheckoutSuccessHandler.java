@@ -23,6 +23,11 @@ import java.io.IOException;
  * Checkout session and redirect there. Otherwise fall back to the standard
  * saved-request / default-URL behaviour so users redirected to login from
  * a protected page still land where they were going.
+ *
+ * <p>For Google OAuth logins the request params are absent on the callback
+ * — the visitor's plan/billing intent was stashed in the session by
+ * {@link OAuthStartController} before the Google redirect, so this
+ * handler also consumes that session intent as a fallback.
  */
 @Component
 class PlanCheckoutSuccessHandler extends SavedRequestAwareAuthenticationSuccessHandler {
@@ -31,11 +36,15 @@ class PlanCheckoutSuccessHandler extends SavedRequestAwareAuthenticationSuccessH
 
     private final UserService userService;
     private final BillingService billingService;
+    private final OAuthIntentStore intents;
     private final HttpSessionRequestCache requestCache = new HttpSessionRequestCache();
 
-    PlanCheckoutSuccessHandler(UserService userService, BillingService billingService) {
+    PlanCheckoutSuccessHandler(UserService userService,
+                               BillingService billingService,
+                               OAuthIntentStore intents) {
         this.userService = userService;
         this.billingService = billingService;
+        this.intents = intents;
         setDefaultTargetUrl("/threads");
     }
 
@@ -56,6 +65,14 @@ class PlanCheckoutSuccessHandler extends SavedRequestAwareAuthenticationSuccessH
 
     private String checkoutUrlFor(HttpServletRequest request, Authentication authentication) {
         String planParam = request.getParameter("plan");
+        String billingParam = request.getParameter("billing");
+        if (!StringUtils.hasText(planParam)) {
+            OAuthIntent intent = intents.consume(request);
+            planParam = intent.plan();
+            if (!StringUtils.hasText(billingParam)) {
+                billingParam = intent.billing();
+            }
+        }
         if (!StringUtils.hasText(planParam)) {
             return null;
         }
@@ -66,7 +83,7 @@ class PlanCheckoutSuccessHandler extends SavedRequestAwareAuthenticationSuccessH
             log.warn("Ignoring unknown plan '{}' at login for {}", planParam, authentication.getName());
             return null;
         }
-        BillingPeriod period = BillingPeriod.parse(request.getParameter("billing"));
+        BillingPeriod period = BillingPeriod.parse(billingParam);
         try {
             User user = userService.requireByEmail(authentication.getName());
             return billingService.startCheckout(user, plan, period);

@@ -248,6 +248,30 @@ class AuthFlowIntegrationTest {
     }
 
     @Test
+    void loginConsumesSessionStoredOauthIntentToReachCheckout() throws Exception {
+        userService.register("oauthcarry@example.com", "password1", null);
+        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.ANNUAL)))
+                .thenReturn("https://checkout.stripe.com/c/pay/cs_test_oauth_carry");
+
+        org.springframework.mock.web.MockHttpSession session = new org.springframework.mock.web.MockHttpSession();
+        session.setAttribute("mailim.oauth.plan", "personal");
+        session.setAttribute("mailim.oauth.billing", "annual");
+
+        mockMvc.perform(post("/login")
+                        .session(session)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("email", "oauthcarry@example.com")
+                        .param("password", "password1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("https://checkout.stripe.com/c/pay/cs_test_oauth_carry"));
+
+        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.ANNUAL));
+        // Intent must not stick around for the next login on the same session.
+        assertThat(session.getAttribute("mailim.oauth.plan")).isNull();
+        assertThat(session.getAttribute("mailim.oauth.billing")).isNull();
+    }
+
+    @Test
     void registrationCarriesUtmSourceOntoUser() throws Exception {
         mockMvc.perform(post("/register")
                         .with(SecurityMockMvcRequestPostProcessors.csrf())

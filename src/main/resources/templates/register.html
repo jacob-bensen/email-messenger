@@ -38,7 +38,8 @@
     </div>
 
     <th:block th:if="${oauthGoogleEnabled}">
-      <a th:href="@{/oauth2/authorization/google}" class="btn-oauth btn-oauth-google" rel="nofollow">
+      <a th:href="@{/auth/google/start(plan=${plan},billing=${billing},utm_source=${utmSource})}"
+         class="btn-oauth btn-oauth-google" rel="nofollow">
         <svg class="btn-oauth-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
           <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34 5.1 29.3 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.2-.1-2.3-.4-3.5z"/>
           <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 18.9 13 24 13c3.1 0 5.9 1.2 8 3l5.7-5.7C34 5.1 29.3 3 24 3 16.3 3 9.7 7.5 6.3 14.7z"/>

@@ -56,6 +56,7 @@ class SecurityConfig {
                         .requestMatchers(
                                 "/", "/pricing", "/demo",
                                 "/login", "/register",
+                                "/auth/google/start",
                                 "/password/forgot", "/password/reset",
                                 "/verify-email",
                                 "/privacy", "/terms", "/refund",

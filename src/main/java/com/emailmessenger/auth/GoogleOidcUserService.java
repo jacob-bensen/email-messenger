@@ -27,9 +27,12 @@ import java.util.Set;
 class GoogleOidcUserService extends OidcUserService {
 
     private final OAuth2ProvisioningService provisioner;
+    private final OAuthIntentStore intents;
 
-    GoogleOidcUserService(OAuth2ProvisioningService provisioner) {
+    GoogleOidcUserService(OAuth2ProvisioningService provisioner,
+                          OAuthIntentStore intents) {
         this.provisioner = provisioner;
+        this.intents = intents;
     }
 
     @Override
@@ -43,7 +46,8 @@ class GoogleOidcUserService extends OidcUserService {
         }
         String name = (String) delegate.getAttributes().get("name");
         Boolean verified = (Boolean) delegate.getAttributes().get("email_verified");
-        provisioner.provisionFromGoogle(email, name, Boolean.TRUE.equals(verified));
+        String utmSource = intents.peekCurrent().utmSource();
+        provisioner.provisionFromGoogle(email, name, Boolean.TRUE.equals(verified), utmSource);
         Set<GrantedAuthority> authorities = Set.copyOf(delegate.getAuthorities());
         return new DefaultOidcUser(authorities, delegate.getIdToken(),
                 delegate.getUserInfo(), "email");

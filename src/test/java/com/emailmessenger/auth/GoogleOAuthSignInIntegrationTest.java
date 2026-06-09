@@ -55,7 +55,7 @@ class GoogleOAuthSignInIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(body).contains("Continue with Google");
-        assertThat(body).contains("/oauth2/authorization/google");
+        assertThat(body).contains("/auth/google/start");
         assertThat(body).contains("class=\"btn-oauth btn-oauth-google\"");
         assertThat(body).contains("class=\"auth-divider\"");
     }
@@ -66,7 +66,21 @@ class GoogleOAuthSignInIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(body).contains("Continue with Google");
-        assertThat(body).contains("/oauth2/authorization/google");
+        assertThat(body).contains("/auth/google/start");
+    }
+
+    @Test
+    void registerPageGoogleButtonCarriesPlanBillingAndUtm() throws Exception {
+        String body = mockMvc.perform(get("/register")
+                        .param("plan", "personal")
+                        .param("billing", "annual")
+                        .param("utm_source", "producthunt"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(body).contains("/auth/google/start");
+        assertThat(body).contains("plan=personal");
+        assertThat(body).contains("billing=annual");
+        assertThat(body).contains("utm_source=producthunt");
     }
 
     @Test

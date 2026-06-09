@@ -31,6 +31,9 @@ import java.util.Base64;
 @Service
 public class OAuth2ProvisioningService {
 
+    static final String DEFAULT_SOURCE = "google";
+    private static final int SOURCE_MAX = 64;
+
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
     private final Clock clock;
@@ -46,6 +49,22 @@ public class OAuth2ProvisioningService {
 
     @Transactional
     public User provisionFromGoogle(String email, String displayName, boolean emailVerified) {
+        return provisionFromGoogle(email, displayName, emailVerified, null);
+    }
+
+    /**
+     * @param acquisitionSource utm_source (or other inbound channel tag)
+     *        captured before the OAuth round-trip — drives EPIC-12's
+     *        funnel attribution. Null/blank falls back to
+     *        {@value #DEFAULT_SOURCE} so a direct Google sign-up is
+     *        still credited to the channel. Only used on first
+     *        provision; an existing row's source is never overwritten.
+     */
+    @Transactional
+    public User provisionFromGoogle(String email,
+                                    String displayName,
+                                    boolean emailVerified,
+                                    String acquisitionSource) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("Google sign-in returned no email");
         }
@@ -61,11 +80,22 @@ public class OAuth2ProvisioningService {
         }
         String trimmedName = (displayName == null || displayName.isBlank()) ? null : displayName.trim();
         User fresh = new User(normalized, passwordEncoder.encode(randomSecret()), trimmedName);
-        fresh.setAcquisitionSource("google");
+        fresh.setAcquisitionSource(normalizeSource(acquisitionSource));
         if (emailVerified) {
             fresh.setEmailVerifiedAt(now);
         }
         return users.save(fresh);
+    }
+
+    private static String normalizeSource(String raw) {
+        if (raw == null) {
+            return DEFAULT_SOURCE;
+        }
+        String trimmed = raw.trim();
+        if (trimmed.isEmpty()) {
+            return DEFAULT_SOURCE;
+        }
+        return trimmed.length() > SOURCE_MAX ? trimmed.substring(0, SOURCE_MAX) : trimmed;
     }
 
     private String randomSecret() {

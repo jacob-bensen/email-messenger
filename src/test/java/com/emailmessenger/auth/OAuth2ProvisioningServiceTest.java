@@ -116,4 +116,44 @@ class OAuth2ProvisioningServiceTest {
 
         assertThat(users.findByEmail("spaced.mixed@example.com")).isPresent();
     }
+
+    @Test
+    void utmSourceOverridesGoogleAsAcquisitionSourceOnFirstProvision() {
+        User created = provisioner.provisionFromGoogle(
+                "ph@example.com", "P", true, "producthunt");
+
+        assertThat(created.getAcquisitionSource()).isEqualTo("producthunt");
+    }
+
+    @Test
+    void blankAcquisitionSourceFallsBackToGoogle() {
+        User a = provisioner.provisionFromGoogle("a@example.com", null, true, "   ");
+        User b = provisioner.provisionFromGoogle("b@example.com", null, true, null);
+
+        assertThat(a.getAcquisitionSource()).isEqualTo("google");
+        assertThat(b.getAcquisitionSource()).isEqualTo("google");
+    }
+
+    @Test
+    void overlongAcquisitionSourceClampedToColumnWidth() {
+        String overlong = "x".repeat(200);
+
+        User created = provisioner.provisionFromGoogle(
+                "long@example.com", null, true, overlong);
+
+        assertThat(created.getAcquisitionSource()).hasSize(64);
+    }
+
+    @Test
+    void utmSourceDoesNotOverwriteExistingUsersSource() {
+        User original = new User("incumbent2@example.com",
+                passwordEncoder.encode("pw"), null);
+        original.setAcquisitionSource("organic");
+        users.save(original);
+
+        User returned = provisioner.provisionFromGoogle(
+                "incumbent2@example.com", null, true, "producthunt");
+
+        assertThat(returned.getAcquisitionSource()).isEqualTo("organic");
+    }
 }

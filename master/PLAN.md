@@ -53,19 +53,21 @@ clicking through a separate email-verification link.
    Google's `email_verified` claim (no separate verification round-trip).
    `/login` and `/register` render the brand-styled button only when
    the registration is live; an unconfigured deploy hides it.
-2. **Carry plan + billing + utm_source through OAuth state.** The
-   PlanCheckoutSuccessHandler already redirects form-login users with
-   `?plan=…&billing=…` to Stripe Checkout. The OAuth callback URL
-   doesn't carry those params back, so a Google sign-up from
-   `/pricing?plan=personal&billing=annual` currently lands on `/threads`
-   instead of Checkout — bleeding paid-intent at the most leveraged
-   step. Wrap the params in a session attribute / signed state token
-   before redirecting to Google, restore them in the OAuth2 success
-   handler, and feed them into the existing checkout redirect path.
-   Also propagates the inbound `utm_source` into `acquisition_source`
-   on first provision so EPIC-12's funnel dashboard attributes the
-   Google sign-up to the actual referring channel, not the literal
-   string `"google"`.
+2. **Carry plan + billing + utm_source through OAuth state.** [shipped
+   2026-06-09] New `GET /auth/google/start` reads `plan`, `billing`,
+   and `utm_source` off the click URL, validates them
+   (`Plan.parse`/`BillingPeriod.parse`, utm trimmed and clamped to 64
+   chars), stores them in the HTTP session under namespaced keys,
+   then 302s to `/oauth2/authorization/google` — the buttons on
+   `/login` and `/register` now point at this endpoint and carry the
+   inbound params via Thymeleaf. `PlanCheckoutSuccessHandler` falls
+   back to the session intent when the callback request has no plan
+   param and clears it on consume so a stale intent can't follow the
+   visitor into a later session. `GoogleOidcUserService` peeks the
+   stored `utm_source` and threads it into
+   `OAuth2ProvisioningService.provisionFromGoogle`, which credits the
+   inbound channel on first provision (falling back to `"google"`)
+   without touching the source on any existing row.
 3. **Account linking for existing email-password users.** When a Google
    email matches an existing User row, transparently link the accounts
    (new `users.google_subject` column carrying the OIDC `sub` claim so
