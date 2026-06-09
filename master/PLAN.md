@@ -68,12 +68,15 @@ clicking through a separate email-verification link.
    `OAuth2ProvisioningService.provisionFromGoogle`, which credits the
    inbound channel on first provision (falling back to `"google"`)
    without touching the source on any existing row.
-3. **Account linking for existing email-password users.** When a Google
-   email matches an existing User row, transparently link the accounts
-   (new `users.google_subject` column carrying the OIDC `sub` claim so
-   the link survives email changes). Without this an existing customer
-   who clicks "Continue with Google" sees their familiar account by
-   email match but a future email change would orphan the link.
+3. **Account linking for existing email-password users.** [shipped
+   2026-06-09] Flyway V18 adds a nullable, uniquely indexed
+   `users.google_subject` column. `OAuth2ProvisioningService.provisionFromGoogle`
+   now accepts the OIDC `sub`; it looks subject up first, then falls
+   back to email match — both miss creates a fresh row with the subject
+   stamped, an email-match writes the subject onto the existing row
+   (linking the password account), and a subject-match resolves the row
+   even when the Google address has since changed. `GoogleOidcUserService`
+   threads `delegate.getSubject()` through on every OIDC callback.
 4. **Hide /password/forgot for Google-only users + helpful redirects.**
    A user who only ever signed in with Google has a random bcrypt hash
    they don't know; clicking `Forgot password?` and pasting the reset

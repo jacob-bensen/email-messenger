@@ -1660,3 +1660,8 @@ Shipped: Stripe-driven backfill for pre-V17 `billing_period` — new `StripeSubs
 Advances: EPIC-12 First-paying-customer attribution funnel — Milestone 2 (Stripe backfill for pre-V17 billing_period).
 Master action: none
 Master action: [PLAN-REVIEW] EPIC-11 Annual billing surfacing is code-complete — adopt first-paying-customer attribution funnel as the next Primary Objective and update PLAN.md, or pick one of the listed alternatives.
+
+## 2026-06-09
+Shipped: account linking via `users.google_subject` — Flyway V18 adds the nullable, uniquely indexed column; `OAuth2ProvisioningService.provisionFromGoogle` now takes the OIDC `sub` and prefers a subject lookup over email match, so a Google address change still resolves to the same MailIM row. An email-match hit writes the subject onto the row (linking the existing email-password account); a fresh provision stamps it on create. `GoogleOidcUserService` threads `delegate.getSubject()` through on every callback. 5 new `OAuth2ProvisioningServiceTest` cases cover stamp-on-fresh, link-on-email-match, resolve-by-subject-after-email-change, no-overwrite on second login, and blank-subject defensive null. 586 tests pass.
+Advances: EPIC-13 Google OAuth signup — Milestone 3 (account linking via google_subject).
+Master action: none

@@ -156,4 +156,64 @@ class OAuth2ProvisioningServiceTest {
 
         assertThat(returned.getAcquisitionSource()).isEqualTo("organic");
     }
+
+    @Test
+    void firstOAuthLoginStampsGoogleSubjectOnFreshRow() {
+        User created = provisioner.provisionFromGoogle(
+                "new@example.com", "N", true, null, "google-sub-123");
+
+        assertThat(created.getGoogleSubject()).isEqualTo("google-sub-123");
+    }
+
+    @Test
+    void existingEmailPasswordRowGetsGoogleSubjectLinkedOnFirstOAuthLogin() {
+        User original = users.save(new User("linkable@example.com",
+                passwordEncoder.encode("their-password"), "Linkable"));
+        String originalHash = original.getPasswordHash();
+        assertThat(original.getGoogleSubject()).isNull();
+
+        User returned = provisioner.provisionFromGoogle(
+                "linkable@example.com", "Different Name", true, "producthunt", "google-sub-link");
+
+        assertThat(returned.getId()).isEqualTo(original.getId());
+        assertThat(returned.getGoogleSubject()).isEqualTo("google-sub-link");
+        assertThat(returned.getPasswordHash()).isEqualTo(originalHash);
+        assertThat(returned.getDisplayName()).isEqualTo("Linkable");
+    }
+
+    @Test
+    void subjectMatchResolvesEvenWhenGoogleEmailChanged() {
+        User original = users.save(new User("oldaddress@example.com",
+                passwordEncoder.encode("pw"), "Renamer"));
+        original.setGoogleSubject("stable-sub-42");
+        users.save(original);
+
+        User returned = provisioner.provisionFromGoogle(
+                "newaddress@example.com", "Renamer", true, null, "stable-sub-42");
+
+        assertThat(returned.getId()).isEqualTo(original.getId());
+        assertThat(returned.getEmail()).isEqualTo("oldaddress@example.com");
+        assertThat(returned.getGoogleSubject()).isEqualTo("stable-sub-42");
+    }
+
+    @Test
+    void secondOAuthLoginDoesNotOverwriteExistingGoogleSubject() {
+        User original = users.save(new User("already-linked@example.com",
+                passwordEncoder.encode("pw"), null));
+        original.setGoogleSubject("first-sub");
+        users.save(original);
+
+        User returned = provisioner.provisionFromGoogle(
+                "already-linked@example.com", null, true, null, "first-sub");
+
+        assertThat(returned.getGoogleSubject()).isEqualTo("first-sub");
+    }
+
+    @Test
+    void blankGoogleSubjectStoredAsNullOnFreshRow() {
+        User created = provisioner.provisionFromGoogle(
+                "nosubject@example.com", null, true, null, "   ");
+
+        assertThat(created.getGoogleSubject()).isNull();
+    }
 }

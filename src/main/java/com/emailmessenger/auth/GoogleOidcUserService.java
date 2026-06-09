@@ -47,7 +47,8 @@ class GoogleOidcUserService extends OidcUserService {
         String name = (String) delegate.getAttributes().get("name");
         Boolean verified = (Boolean) delegate.getAttributes().get("email_verified");
         String utmSource = intents.peekCurrent().utmSource();
-        provisioner.provisionFromGoogle(email, name, Boolean.TRUE.equals(verified), utmSource);
+        String subject = delegate.getSubject();
+        provisioner.provisionFromGoogle(email, name, Boolean.TRUE.equals(verified), utmSource, subject);
         Set<GrantedAuthority> authorities = Set.copyOf(delegate.getAuthorities());
         return new DefaultOidcUser(authorities, delegate.getIdToken(),
                 delegate.getUserInfo(), "email");
