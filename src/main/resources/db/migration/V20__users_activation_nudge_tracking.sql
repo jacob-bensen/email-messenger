@@ -1,0 +1,13 @@
+-- EPIC-14 Milestone 1: day-1 "connect your mailbox" activation email.
+--
+-- Users who sign up and never connect a mailbox never accumulate threads,
+-- which means the existing 7-day reengagement sweep (gated on unread count)
+-- silently skips them. They are the largest activation leak in the funnel:
+-- a signed-up visitor who never crosses the IMAP-credentials chasm.
+--
+-- `last_activation_nudge_sent_at` is the one-shot stamp the activation
+-- service writes after sending the nudge so a candidate doesn't get
+-- re-emailed on every scheduler tick. The column is nullable; a NULL
+-- value means "eligible for the nudge if every other gate clears
+-- (created >24h ago, enabled, no mail account, not opted out)".
+ALTER TABLE users ADD COLUMN last_activation_nudge_sent_at TIMESTAMP;

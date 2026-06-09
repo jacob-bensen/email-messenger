@@ -55,6 +55,9 @@ public class User {
     @Column(name = "last_reengagement_sent_at")
     private LocalDateTime lastReengagementSentAt;
 
+    @Column(name = "last_activation_nudge_sent_at")
+    private LocalDateTime lastActivationNudgeSentAt;
+
     @Column(name = "email_verified_at")
     private LocalDateTime emailVerifiedAt;
 
@@ -92,6 +95,7 @@ public class User {
     public LocalDateTime getLastLoginAt() { return lastLoginAt; }
     public LocalDateTime getLastInboxVisitAt() { return lastInboxVisitAt; }
     public LocalDateTime getLastReengagementSentAt() { return lastReengagementSentAt; }
+    public LocalDateTime getLastActivationNudgeSentAt() { return lastActivationNudgeSentAt; }
     public LocalDateTime getEmailVerifiedAt() { return emailVerifiedAt; }
     public boolean isEmailVerified() { return emailVerifiedAt != null; }
 
@@ -105,5 +109,6 @@ public class User {
     public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
     public void setLastInboxVisitAt(LocalDateTime lastInboxVisitAt) { this.lastInboxVisitAt = lastInboxVisitAt; }
     public void setLastReengagementSentAt(LocalDateTime ts) { this.lastReengagementSentAt = ts; }
+    public void setLastActivationNudgeSentAt(LocalDateTime ts) { this.lastActivationNudgeSentAt = ts; }
     public void setEmailVerifiedAt(LocalDateTime ts) { this.emailVerifiedAt = ts; }
 }

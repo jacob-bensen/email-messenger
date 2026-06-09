@@ -30,6 +30,27 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("UPDATE User u SET u.lastReengagementSentAt = :ts WHERE u.id = :id")
     int touchReengagementSent(@Param("id") Long id, @Param("ts") LocalDateTime ts);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE User u SET u.lastActivationNudgeSentAt = :ts WHERE u.id = :id")
+    int touchActivationNudgeSent(@Param("id") Long id, @Param("ts") LocalDateTime ts);
+
+    // Signups that haven't crossed the IMAP-credentials chasm: enabled,
+    // signed up at least the cool-off window ago, never previously nudged,
+    // and no mail_account row at all. The activation service still
+    // post-filters by opt-out so a single unsubscribe link kills every
+    // automated marketing email; cheap full-scan, no index needed at our
+    // scale because the candidate set is bounded by daily signups.
+    @Query("""
+            SELECT u FROM User u
+            WHERE u.enabled = true
+              AND u.createdAt < :cutoff
+              AND u.lastActivationNudgeSentAt IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM MailAccount a WHERE a.user = u
+              )
+            """)
+    List<User> findActivationCandidates(@Param("cutoff") LocalDateTime cutoff);
+
     // Users whose most recent observable activity (login OR inbox visit, with
     // created_at as the fallback for pre-tracking rows) is older than the
     // cutoff. The reengagement service post-filters by unread count, opt-out,

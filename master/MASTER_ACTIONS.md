@@ -3,13 +3,14 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
-[PLAN-REVIEW] EPIC-13 (Google OAuth signup) is code-complete in
-`claude_routine` — all four milestones shipped. Set the next Primary
-Objective once `AUTH_GOOGLE_CLIENT_ID`/`AUTH_GOOGLE_CLIENT_SECRET` are
-provisioned and the funnel has shown real Google sign-ups vs.
-email-password sign-ups; the natural successor is end-to-end live deploy
-(domain, Stripe live keys, Postgres, encryption secrets), which is
-itself a chain of Master ops items below.
+- [ ] Set `ACTIVATION_ENABLED=true` on the deploy once `ADMIN_EMAILS` is
+      wired and at least one live mail send has been verified end-to-end
+      (existing transactional-email provider — see "OAuth & third-party
+      APIs" below). Default cron `0 30 13 * * ?` UTC fires daily at
+      13:30; override via `ACTIVATION_CRON` / `ACTIVATION_ZONE`. With the
+      flag off, `ActivationService` stays in the context so direct
+      invocation from tests or admin tooling still works but no scheduler
+      fires.
 
 - [ ] Set `ADMIN_EMAILS` on the deploy to the comma-separated list of
       operator addresses that should see `/admin/revenue`. Empty
