@@ -1,5 +1,6 @@
 package com.emailmessenger.auth;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -7,6 +8,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
@@ -46,7 +48,9 @@ class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http,
                                             PersistentTokenRepository tokenRepository,
                                             PlanCheckoutSuccessHandler planCheckoutSuccessHandler,
-                                            LoginThrottleFilter loginThrottleFilter) throws Exception {
+                                            LoginThrottleFilter loginThrottleFilter,
+                                            ObjectProvider<ClientRegistrationRepository> oauthRegistrations,
+                                            ObjectProvider<GoogleOidcUserService> googleOidcUserService) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -96,6 +100,24 @@ class SecurityConfig {
                 // Throttle has to run before the form-login filter so a locked
                 // email never reaches credentials check.
                 .addFilterBefore(loginThrottleFilter, UsernamePasswordAuthenticationFilter.class);
+
+        // OAuth2 login wires in only when a ClientRegistrationRepository
+        // bean exists (i.e. GOOGLE_CLIENT_ID env var is set). Without the
+        // env vars there are no registrations and oauth2Login() would 500
+        // on every page load — so we gate the whole feature behind the
+        // ObjectProvider check.
+        if (oauthRegistrations.getIfAvailable() != null) {
+            GoogleOidcUserService oidcService = googleOidcUserService.getIfAvailable();
+            http.oauth2Login(o -> {
+                o.loginPage("/login")
+                        .successHandler(planCheckoutSuccessHandler)
+                        .failureUrl("/login?error=oauth");
+                if (oidcService != null) {
+                    o.userInfoEndpoint(u -> u.oidcUserService(oidcService));
+                }
+            });
+        }
+
         return http.build();
     }
 }

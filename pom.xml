@@ -76,6 +76,12 @@
       <artifactId>spring-boot-starter-security</artifactId>
     </dependency>
 
+    <!-- OAuth2 client: Google "Continue with Google" sign-in. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-oauth2-client</artifactId>
+    </dependency>
+
     <!-- HTML sanitization (prevent XSS from email body HTML) -->
     <dependency>
       <groupId>org.jsoup</groupId>

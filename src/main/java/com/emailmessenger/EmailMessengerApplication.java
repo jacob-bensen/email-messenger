@@ -1,6 +1,7 @@
 package com.emailmessenger;
 
 import com.emailmessenger.admin.AdminProperties;
+import com.emailmessenger.auth.GoogleOAuthProperties;
 import com.emailmessenger.billing.BillingProperties;
 import com.emailmessenger.web.LandingProperties;
 import com.emailmessenger.web.LegalProperties;
@@ -15,7 +16,7 @@ import java.time.Clock;
 
 @SpringBootApplication
 @EnableConfigurationProperties({BillingProperties.class, SiteProperties.class, LegalProperties.class,
-        LandingProperties.class, AdminProperties.class})
+        LandingProperties.class, AdminProperties.class, GoogleOAuthProperties.class})
 @EnableScheduling
 public class EmailMessengerApplication {
 

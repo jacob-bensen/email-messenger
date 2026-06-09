@@ -3,24 +3,6 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
-- [ ] [PLAN-REVIEW] EPIC-12 First-paying-customer attribution funnel is
-      code-complete on all four milestones — `/admin/revenue` dashboard,
-      Stripe pre-V17 billing-period backfill button, 30-day signup →
-      trial → paid funnel pane, and the Monday 09:00 UTC operator email
-      digest behind `ADMIN_WEEKLY_DIGEST_ENABLED`. Propose adopting
-      **EPIC-13 Google OAuth signup** as the next Primary Objective —
-      adds the "Continue with Google" path on `/login` and `/register`,
-      auto-provisions the account on first OAuth callback, and lifts the
-      `acquisition_source` from the OAuth state so the funnel dashboard
-      starts attributing Google-sourced conversions. Unblocks the
-      Google-credentials MASTER_ACTIONS line below and removes the
-      "make another password" friction at the most leveraged conversion
-      step (account-creation). Alternative: Mailbox onboarding wizard
-      (first-run IMAP credential test + import-progress UI) or
-      GreenMail-backed Testcontainers integration tests for the
-      end-to-end IMAP → reply round-trip. Adopt one, update PLAN.md,
-      then this line should be removed.
-
 - [ ] Set `ADMIN_EMAILS` on the deploy to the comma-separated list of
       operator addresses that should see `/admin/revenue`. Empty
       (default) means no one can reach it — the dashboard is invisible
@@ -77,8 +59,12 @@ asset delivery — that the agent cannot complete in code. Group by area.
 ## OAuth & third-party APIs
 
 - [ ] Create a Google Cloud project, enable OAuth 2.0, register the
-      production redirect URI, and provide `GOOGLE_CLIENT_ID` /
-      `GOOGLE_CLIENT_SECRET`.
+      production redirect URI `https://<prod-domain>/login/oauth2/code/google`,
+      and provide `AUTH_GOOGLE_CLIENT_ID` / `AUTH_GOOGLE_CLIENT_SECRET`
+      on the deploy (legacy `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
+      env names are also accepted as fallbacks). With both blank the
+      "Continue with Google" button is hidden site-wide and the OAuth
+      filter chain isn't wired — required to activate EPIC-13.
 - [ ] Pick a transactional email provider (Postmark / Resend / SendGrid),
       verify the sending domain, and provide the API key.
 

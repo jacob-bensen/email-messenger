@@ -4,6 +4,18 @@ spring:
   profiles:
     active: dev
 
+# Google "Continue with Google" sign-in. Activated only when
+# AUTH_GOOGLE_CLIENT_ID is non-blank — see auth.google.client-id below.
+# Spring Boot's OAuth2 auto-config refuses to build a registration with
+# blank client-id, so we keep the wiring out of spring.security.oauth2
+# and supply our own ClientRegistrationRepository @Bean that the
+# ObjectProvider in SecurityConfig keys off.
+auth:
+  google:
+    client-id: ${AUTH_GOOGLE_CLIENT_ID:${GOOGLE_CLIENT_ID:}}
+    client-secret: ${AUTH_GOOGLE_CLIENT_SECRET:${GOOGLE_CLIENT_SECRET:}}
+    redirect-uri: ${AUTH_GOOGLE_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}
+
 # Actuator: only /actuator/health is exposed over HTTP. It aggregates the
 # DataSource probe (so a 200 confirms Flyway + Postgres are reachable) and
 # powers Docker HEALTHCHECK + every hosting platform's deploy gate.
