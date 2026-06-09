@@ -28,7 +28,13 @@
       Too many failed sign-in attempts. Please wait a few minutes before
       trying again, or reset your password.
     </div>
-    <div th:if="${param.error != null and param.error[0] != 'locked'}"
+    <div th:if="${param.error != null and param.error[0] == 'google'}"
+         class="alert alert-info">
+      That account is linked to Google. Try
+      <strong>Continue with Google</strong> above instead of typing a
+      password.
+    </div>
+    <div th:if="${param.error != null and param.error[0] != 'locked' and param.error[0] != 'google'}"
          class="alert alert-error">
       Incorrect email or password.
     </div>

@@ -156,6 +156,31 @@ class AuthFlowIntegrationTest {
     }
 
     @Test
+    void loginFailureForGoogleLinkedRowRedirectsToGoogleNudge() throws Exception {
+        userService.register("glink@example.com", "password1", null);
+        User u = users.findByEmail("glink@example.com").orElseThrow();
+        u.setGoogleSubject("sub-glink");
+        users.save(u);
+
+        mockMvc.perform(post("/login")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("email", "glink@example.com")
+                        .param("password", "wrongpass"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login?error=google"));
+    }
+
+    @Test
+    void loginFailureForUnknownEmailDoesNotLeakGoogleStatus() throws Exception {
+        mockMvc.perform(post("/login")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("email", "no-such-account@example.com")
+                        .param("password", "wrongpass"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login?error"));
+    }
+
+    @Test
     void loginWithPlanRedirectsToCheckout() throws Exception {
         userService.register("funnel@example.com", "password1", null);
         when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.MONTHLY)))

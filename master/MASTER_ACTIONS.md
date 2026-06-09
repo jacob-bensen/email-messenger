@@ -3,6 +3,14 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
+[PLAN-REVIEW] EPIC-13 (Google OAuth signup) is code-complete in
+`claude_routine` — all four milestones shipped. Set the next Primary
+Objective once `AUTH_GOOGLE_CLIENT_ID`/`AUTH_GOOGLE_CLIENT_SECRET` are
+provisioned and the funnel has shown real Google sign-ups vs.
+email-password sign-ups; the natural successor is end-to-end live deploy
+(domain, Stripe live keys, Postgres, encryption secrets), which is
+itself a chain of Master ops items below.
+
 - [ ] Set `ADMIN_EMAILS` on the deploy to the comma-separated list of
       operator addresses that should see `/admin/revenue`. Empty
       (default) means no one can reach it — the dashboard is invisible

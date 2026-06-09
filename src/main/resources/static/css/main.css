@@ -1161,6 +1161,15 @@ body {
   font-size: 14px;
   margin-bottom: 16px;
 }
+.alert-info {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
 
 /* Header logout button — looks like the surrounding links */
 .header-logout { display: inline; margin: 0; }
@@ -1180,6 +1189,11 @@ body {
     background: #2a1414;
     color: #fecaca;
     border-color: #5a2a2a;
+  }
+  .alert-info {
+    background: #0f1a30;
+    color: #bfdbfe;
+    border-color: #1e3a8a;
   }
 }
 

@@ -95,6 +95,25 @@ class PasswordResetControllerTest {
     }
 
     @Test
+    void postForgotForGoogleOnlyUserRendersGoogleStatusInsteadOfSendingReset() throws Exception {
+        userService.register("g-only@example.com", "irrelevant", "G");
+        User u = users.findByEmail("g-only@example.com").orElseThrow();
+        u.setGoogleSubject("sub-g-only");
+        u.setPasswordSet(false);
+        users.save(u);
+
+        mockMvc.perform(post("/password/forgot")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("email", "g-only@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("password/forgot"))
+                .andExpect(model().attribute("status", "google"));
+
+        verify(mailSender, never()).send(any(MimeMessage.class));
+        assertThat(tokens.count()).isZero();
+    }
+
+    @Test
     void resetFormWithValidTokenRendersForm() throws Exception {
         User user = userService.register("rf@example.com", "password1", "RF");
         String plain = issueRawToken(user);

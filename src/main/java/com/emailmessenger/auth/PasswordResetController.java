@@ -38,8 +38,12 @@ class PasswordResetController {
     @PostMapping("/password/forgot")
     String requestReset(@RequestParam(value = "email", required = false) String email,
                         Model model) {
-        passwordResetService.requestReset(email);
-        model.addAttribute("status", "sent");
+        PasswordResetService.Outcome outcome = passwordResetService.requestReset(email);
+        if (outcome == PasswordResetService.Outcome.GOOGLE_ONLY) {
+            model.addAttribute("status", "google");
+        } else {
+            model.addAttribute("status", "sent");
+        }
         return "password/forgot";
     }
 

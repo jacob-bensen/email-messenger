@@ -78,12 +78,21 @@ clicking through a separate email-verification link.
    even when the Google address has since changed. `GoogleOidcUserService`
    threads `delegate.getSubject()` through on every OIDC callback.
 4. **Hide /password/forgot for Google-only users + helpful redirects.**
-   A user who only ever signed in with Google has a random bcrypt hash
-   they don't know; clicking `Forgot password?` and pasting the reset
-   link would reset to a password they didn't choose. Detect the
-   Google-only flag, render a "Sign in with Google" hint instead of
-   the form, and on `/login` failure show a "Did you mean to sign in
-   with Google?" nudge when the email matches a Google-linked row.
+   [shipped 2026-06-09] Flyway V19 adds `users.password_set` (default
+   TRUE for legacy email-password rows). `OAuth2ProvisioningService`
+   stamps FALSE on a fresh Google-provisioned row, and
+   `PasswordResetService.consumeToken` flips it back to TRUE so a user
+   who later set a chosen password is no longer Google-only.
+   `requestReset` now returns a tri-state `Outcome`
+   (`SENT`/`IGNORED`/`GOOGLE_ONLY`) and `PasswordResetController`
+   renders the new `status=google` branch on `forgot.html` — replacing
+   the form with a "Continue with Google" button instead of mailing a
+   reset link that would have minted a credential bypassing Google.
+   New `LoginFailureHandler` swaps Spring Security's default
+   `failureUrl("/login?error")` for a lookup-based redirect: failures
+   for emails whose row has `google_subject` set go to
+   `/login?error=google`, where `login.html` shows a "Did you mean to
+   sign in with Google?" `alert-info` nudge above the form.
 
 ## Done means
 

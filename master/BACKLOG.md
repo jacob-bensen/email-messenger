@@ -2,7 +2,7 @@
 
 Up to 10 items, each advancing a PLAN.md milestone. Pick from the top.
 
-- **Hide /password/forgot for Google-only users + helpful nudges.**
-  Provisioned-via-Google flag drives a "Sign in with Google" hint on
-  `/login?error` and on `/password/forgot` when the email is recognised
-  as Google-linked. PLAN milestone 4.
+_All EPIC-13 milestones are now shipped. PLAN.md's Done condition is met
+in code; live confirmation is gated on Master ops (Google OAuth client
+credentials, Stripe live keys, hosting, domain) — see MASTER_ACTIONS.md.
+Add the next Primary Objective on a [PLAN-REVIEW] pass once those land._

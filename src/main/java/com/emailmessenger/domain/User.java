@@ -34,6 +34,9 @@ public class User {
     @Column(name = "google_subject", length = 255)
     private String googleSubject;
 
+    @Column(name = "password_set", nullable = false)
+    private boolean passwordSet = true;
+
     @Column(nullable = false)
     private boolean enabled = true;
 
@@ -81,6 +84,8 @@ public class User {
     public String getDisplayName() { return displayName; }
     public String getAcquisitionSource() { return acquisitionSource; }
     public String getGoogleSubject() { return googleSubject; }
+    public boolean isPasswordSet() { return passwordSet; }
+    public boolean isGoogleOnly() { return googleSubject != null && !passwordSet; }
     public boolean isEnabled() { return enabled; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
@@ -95,6 +100,7 @@ public class User {
     public void setDisplayName(String displayName) { this.displayName = displayName; }
     public void setAcquisitionSource(String acquisitionSource) { this.acquisitionSource = acquisitionSource; }
     public void setGoogleSubject(String googleSubject) { this.googleSubject = googleSubject; }
+    public void setPasswordSet(boolean passwordSet) { this.passwordSet = passwordSet; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
     public void setLastInboxVisitAt(LocalDateTime lastInboxVisitAt) { this.lastInboxVisitAt = lastInboxVisitAt; }

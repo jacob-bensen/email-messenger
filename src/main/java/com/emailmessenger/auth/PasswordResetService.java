@@ -90,24 +90,44 @@ public class PasswordResetService {
     }
 
     /**
-     * Issue a reset email if we know the address; silently ignore if we
-     * don't. Returns true when an email was sent (callers can log
-     * outcome metrics, but must not branch UI on the boolean — that
-     * would leak which emails are registered).
+     * Outcome of {@link #requestReset(String)}. Callers map this to UI:
+     * {@link #SENT} and {@link #IGNORED} both render the generic
+     * "if we know it, you'll get a link" confirmation so the response
+     * can't enumerate registered addresses, while {@link #GOOGLE_ONLY}
+     * intentionally tells the visitor to use "Continue with Google"
+     * instead — letting a Google-provisioned user reset to a chosen
+     * password would silently mint a credential they could later use to
+     * bypass Google entirely, which is the opposite of what
+     * single-sign-on offered.
+     */
+    public enum Outcome { SENT, IGNORED, GOOGLE_ONLY }
+
+    /**
+     * Issue a reset email when we know the address and the user has a
+     * password to reset; return {@link Outcome#GOOGLE_ONLY} for a
+     * Google-provisioned user (no email sent — they have no password to
+     * reset); {@link Outcome#IGNORED} for an unknown / disabled row /
+     * mail send failure. Callers must not branch the generic
+     * confirmation UI on {@link Outcome#SENT} vs {@link Outcome#IGNORED}
+     * — that would leak which emails are registered — but
+     * {@link Outcome#GOOGLE_ONLY} drives a deliberately distinct UI.
      */
     @Transactional
-    public boolean requestReset(String email) {
+    public Outcome requestReset(String email) {
         String normalized = UserService.normalizeEmail(email);
         if (normalized == null || normalized.isEmpty()) {
-            return false;
+            return Outcome.IGNORED;
         }
         Optional<User> match = users.findByEmail(normalized);
         if (match.isEmpty()) {
-            return false;
+            return Outcome.IGNORED;
         }
         User user = match.get();
         if (!user.isEnabled()) {
-            return false;
+            return Outcome.IGNORED;
+        }
+        if (user.isGoogleOnly()) {
+            return Outcome.GOOGLE_ONLY;
         }
         String plain = newPlainToken();
         LocalDateTime now = LocalDateTime.now(clock);
@@ -119,9 +139,9 @@ public class PasswordResetService {
         } catch (MailException e) {
             log.warn("Password-reset mail send failed for user id={}: {}",
                     user.getId(), e.getMessage());
-            return false;
+            return Outcome.IGNORED;
         }
-        return true;
+        return Outcome.SENT;
     }
 
     /**
@@ -168,6 +188,9 @@ public class PasswordResetService {
         }
         User user = token.getUser();
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        // The user just picked this password, so they're no longer
+        // Google-only — future /password/forgot requests should work.
+        user.setPasswordSet(true);
         users.save(user);
         tokens.markAllUsedFor(user, now);
         authEvents.record(user, user.getEmail(), AuthEventType.PASSWORD_RESET_COMPLETED,

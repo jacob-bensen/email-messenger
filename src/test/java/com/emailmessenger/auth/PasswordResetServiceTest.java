@@ -61,9 +61,9 @@ class PasswordResetServiceTest {
     void requestResetForKnownUserSendsEmailWithTokenUrlAndPersistsHash() throws Exception {
         User user = newUser("known@example.com");
 
-        boolean sent = passwordResetService.requestReset("Known@Example.com");
+        PasswordResetService.Outcome outcome = passwordResetService.requestReset("Known@Example.com");
 
-        assertThat(sent).isTrue();
+        assertThat(outcome).isEqualTo(PasswordResetService.Outcome.SENT);
         ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
         verify(mailSender).send(captor.capture());
         MimeMessage mime = captor.getValue();
@@ -88,9 +88,9 @@ class PasswordResetServiceTest {
 
     @Test
     void requestResetForUnknownEmailIsSilentNoOp() {
-        boolean sent = passwordResetService.requestReset("ghost@example.com");
+        PasswordResetService.Outcome outcome = passwordResetService.requestReset("ghost@example.com");
 
-        assertThat(sent).isFalse();
+        assertThat(outcome).isEqualTo(PasswordResetService.Outcome.IGNORED);
         verify(mailSender, never()).send(any(MimeMessage.class));
         assertThat(tokens.count()).isZero();
     }
@@ -101,11 +101,58 @@ class PasswordResetServiceTest {
         user.setEnabled(false);
         users.save(user);
 
-        boolean sent = passwordResetService.requestReset("disabled@example.com");
+        PasswordResetService.Outcome outcome = passwordResetService.requestReset("disabled@example.com");
 
-        assertThat(sent).isFalse();
+        assertThat(outcome).isEqualTo(PasswordResetService.Outcome.IGNORED);
         verify(mailSender, never()).send(any(MimeMessage.class));
         assertThat(tokens.count()).isZero();
+    }
+
+    @Test
+    void requestResetForGoogleOnlyUserReturnsGoogleOnlyOutcomeAndSendsNoEmail() {
+        User user = newUser("g@example.com");
+        user.setGoogleSubject("sub-789");
+        user.setPasswordSet(false);
+        users.save(user);
+
+        PasswordResetService.Outcome outcome = passwordResetService.requestReset("g@example.com");
+
+        assertThat(outcome).isEqualTo(PasswordResetService.Outcome.GOOGLE_ONLY);
+        verify(mailSender, never()).send(any(MimeMessage.class));
+        assertThat(tokens.count()).isZero();
+    }
+
+    @Test
+    void requestResetForGoogleLinkedUserWhoChoseAPasswordStillSendsResetEmail() {
+        // An email-password user later clicks "Continue with Google", linking
+        // the row. They still know a password they chose, so /password/forgot
+        // must work the same as for any other email-password user.
+        User user = newUser("linked@example.com");
+        user.setGoogleSubject("sub-linked");
+        users.save(user);
+
+        PasswordResetService.Outcome outcome = passwordResetService.requestReset("linked@example.com");
+
+        assertThat(outcome).isEqualTo(PasswordResetService.Outcome.SENT);
+        verify(mailSender).send(any(MimeMessage.class));
+        assertThat(tokens.count()).isOne();
+    }
+
+    @Test
+    void consumingResetTokenStampsPasswordSetTrueOnUser() throws Exception {
+        // Email-password row that for some reason has password_set=false
+        // (e.g. an admin tool forced it back). Completing a reset must
+        // mark them as having a known password again.
+        User user = newUser("goog-then-pw@example.com");
+        passwordResetService.requestReset("goog-then-pw@example.com");
+        String plain = extractTokenFromCapturedEmail();
+        user.setPasswordSet(false);
+        users.save(user);
+
+        assertThat(passwordResetService.consumeToken(plain, "i-chose-this")).isPresent();
+        User reloaded = users.findById(user.getId()).orElseThrow();
+        assertThat(reloaded.isPasswordSet()).isTrue();
+        assertThat(reloaded.isGoogleOnly()).isFalse();
     }
 
     @Test

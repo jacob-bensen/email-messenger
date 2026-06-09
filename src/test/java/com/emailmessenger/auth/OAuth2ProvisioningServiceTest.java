@@ -47,6 +47,37 @@ class OAuth2ProvisioningServiceTest {
                 .isEqualTo(LocalDateTime.ofInstant(fixedNow, ZoneOffset.UTC));
         assertThat(created.getPasswordHash()).isNotBlank();
         assertThat(passwordEncoder.matches("", created.getPasswordHash())).isFalse();
+        // Random password hash → the user can't sign in with it, so flag
+        // them Google-only so /password/forgot routes them to "Sign in
+        // with Google" instead of letting them reset.
+        assertThat(created.isPasswordSet()).isFalse();
+        assertThat(created.isGoogleOnly()).isFalse(); // no subject yet on this overload
+    }
+
+    @Test
+    void brandNewGoogleEmailWithSubjectMarksUserGoogleOnly() {
+        User created = provisioner.provisionFromGoogle(
+                "g-only@example.com", "G", true, null, "sub-google-only");
+
+        assertThat(created.isPasswordSet()).isFalse();
+        assertThat(created.getGoogleSubject()).isEqualTo("sub-google-only");
+        assertThat(created.isGoogleOnly()).isTrue();
+    }
+
+    @Test
+    void linkingExistingEmailPasswordUserDoesNotMarkThemGoogleOnly() {
+        User original = users.save(new User("has-pw@example.com",
+                passwordEncoder.encode("their-password"), "Has PW"));
+        // Default for an existing row is password_set=true.
+        assertThat(original.isPasswordSet()).isTrue();
+
+        User returned = provisioner.provisionFromGoogle(
+                "has-pw@example.com", null, true, null, "sub-link");
+
+        assertThat(returned.getId()).isEqualTo(original.getId());
+        assertThat(returned.getGoogleSubject()).isEqualTo("sub-link");
+        assertThat(returned.isPasswordSet()).isTrue();
+        assertThat(returned.isGoogleOnly()).isFalse();
     }
 
     @Test

@@ -114,6 +114,10 @@ public class OAuth2ProvisioningService {
         User fresh = new User(normalized, passwordEncoder.encode(randomSecret()), trimmedName);
         fresh.setAcquisitionSource(normalizeSource(acquisitionSource));
         fresh.setGoogleSubject(trimmedSubject);
+        // Random unguessable password hash — the user never picked it, so
+        // /password/forgot routes them to "Sign in with Google" instead of
+        // letting them reset to a password they never chose.
+        fresh.setPasswordSet(false);
         if (emailVerified) {
             fresh.setEmailVerifiedAt(now);
         }

@@ -49,6 +49,7 @@ class SecurityConfig {
                                             PersistentTokenRepository tokenRepository,
                                             PlanCheckoutSuccessHandler planCheckoutSuccessHandler,
                                             LoginThrottleFilter loginThrottleFilter,
+                                            LoginFailureHandler loginFailureHandler,
                                             ObjectProvider<ClientRegistrationRepository> oauthRegistrations,
                                             ObjectProvider<GoogleOidcUserService> googleOidcUserService) throws Exception {
         http
@@ -77,7 +78,7 @@ class SecurityConfig {
                         .usernameParameter("email")
                         .passwordParameter("password")
                         .successHandler(planCheckoutSuccessHandler)
-                        .failureUrl("/login?error")
+                        .failureHandler(loginFailureHandler)
                         .permitAll()
                 )
                 .logout(logout -> logout
