@@ -172,6 +172,131 @@ class ActivationServiceTest {
         assertThat(body).contains("/digest/opt-out?token=" + prefs.getOptOutToken());
     }
 
+    @Test
+    void followupCandidateWhoAlreadyGotDay1GetsDemoLedEmailAndStamp() throws Exception {
+        User user = newUser("followup@example.com");
+        backdateCreatedAt(user.getId(), 4);
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(3));
+
+        int sent = activationService.runActivationFollowupCycle();
+
+        assertThat(sent).isEqualTo(1);
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(captor.capture());
+        MimeMessage mime = captor.getValue();
+        assertThat(mime.getSubject()).contains("MailIM in action");
+        String body = (String) mime.getContent();
+        DigestEmailPreference prefs = preferences.findByUser(user).orElseThrow();
+        int demoIndex = body.indexOf("/demo");
+        int mailboxIndex = body.indexOf("/mailboxes/new");
+        assertThat(demoIndex).as("/demo link present").isGreaterThan(-1);
+        assertThat(mailboxIndex).as("/mailboxes/new link present").isGreaterThan(-1);
+        assertThat(demoIndex).as("demo lead — appears before mailbox link").isLessThan(mailboxIndex);
+        assertThat(body).contains("/digest/opt-out?token=" + prefs.getOptOutToken());
+        User after = users.findById(user.getId()).orElseThrow();
+        assertThat(after.getLastActivationFollowupSentAt()).isNotNull();
+    }
+
+    @Test
+    void followupNeverFiresBeforeDay1NudgeWasSent() {
+        // 4 days old, no day-1 stamp — sequencing must hold the day-3 send
+        // even though the cohort otherwise looks identical.
+        User user = newUser("nodaysone@example.com");
+        backdateCreatedAt(user.getId(), 4);
+
+        int sent = activationService.runActivationFollowupCycle();
+
+        assertThat(sent).isEqualTo(0);
+        verify(mailSender, never()).send(any(MimeMessage.class));
+        User after = users.findById(user.getId()).orElseThrow();
+        assertThat(after.getLastActivationFollowupSentAt()).isNull();
+    }
+
+    @Test
+    void followupSkippedWhenUserConnectedMailboxAfterDay1() {
+        User user = newUser("connectedlate@example.com");
+        backdateCreatedAt(user.getId(), 4);
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(3));
+        mailAccounts.save(new MailAccount(user, "imap.example.com", 993, true,
+                "connectedlate@example.com", "ct"));
+
+        int sent = activationService.runActivationFollowupCycle();
+
+        assertThat(sent).isEqualTo(0);
+        verify(mailSender, never()).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void followupSkippedWithinThe72hCooloff() {
+        // Day-1 nudge sent (yesterday), but only 2 days since signup —
+        // still inside the 72h cool-off for the follow-up.
+        User user = newUser("toonew@example.com");
+        backdateCreatedAt(user.getId(), 2);
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(1));
+
+        int sent = activationService.runActivationFollowupCycle();
+
+        assertThat(sent).isEqualTo(0);
+        verify(mailSender, never()).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void followupIsIdempotentOncePerUser() {
+        User user = newUser("dupe@example.com");
+        backdateCreatedAt(user.getId(), 4);
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(3));
+
+        int first = activationService.runActivationFollowupCycle();
+        int second = activationService.runActivationFollowupCycle();
+
+        assertThat(first).isEqualTo(1);
+        assertThat(second).isEqualTo(0);
+        verify(mailSender).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void followupSkippedForOptedOutUser() {
+        User user = newUser("followup-optout@example.com");
+        backdateCreatedAt(user.getId(), 4);
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(3));
+        DigestEmailPreference prefs = preferences.save(
+                new DigestEmailPreference(user, "preset-followup-optout-token"));
+        prefs.setOptedOut(true);
+        preferences.save(prefs);
+
+        boolean sent = activationService.sendActivationFollowupFor(
+                users.findById(user.getId()).orElseThrow(), LocalDateTime.now());
+
+        assertThat(sent).isFalse();
+        verify(mailSender, never()).send(any(MimeMessage.class));
+        User after = users.findById(user.getId()).orElseThrow();
+        assertThat(after.getLastActivationFollowupSentAt()).isNull();
+    }
+
+    @Test
+    void followupCycleSweepsOnlyTheRightCohort() {
+        // Eligible: 4d old, day-1 stamped, no mailbox.
+        User eligible = newUser("fu-a@example.com");
+        backdateCreatedAt(eligible.getId(), 4);
+        users.touchActivationNudgeSent(eligible.getId(), LocalDateTime.now().minusDays(3));
+        // Ineligible: 4d old, day-1 stamped, but mailbox now connected.
+        User connected = newUser("fu-b@example.com");
+        backdateCreatedAt(connected.getId(), 4);
+        users.touchActivationNudgeSent(connected.getId(), LocalDateTime.now().minusDays(3));
+        mailAccounts.save(new MailAccount(connected, "imap.example.com", 993, true,
+                "fu-b@example.com", "ct"));
+        // Ineligible: 4d old, no day-1 stamp.
+        User noDayOne = newUser("fu-c@example.com");
+        backdateCreatedAt(noDayOne.getId(), 4);
+        // Ineligible: 1d old, no day-1 stamp — too new.
+        newUser("fu-d@example.com");
+
+        int sent = activationService.runActivationFollowupCycle();
+
+        assertThat(sent).isEqualTo(1);
+        verify(mailSender).send(any(MimeMessage.class));
+    }
+
     @Autowired ActivationTestSupport testSupport;
 
     private int backdateCreatedAt(Long userId, int daysAgo) {

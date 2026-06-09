@@ -117,6 +117,8 @@ activation:
   enabled: ${ACTIVATION_ENABLED:false}
   cron: ${ACTIVATION_CRON:0 30 13 * * ?}
   zone: ${ACTIVATION_ZONE:UTC}
+  followup:
+    cron: ${ACTIVATION_FOLLOWUP_CRON:0 45 13 * * ?}
 
 admin:
   emails: ${ADMIN_EMAILS:}
@@ -222,6 +224,8 @@ activation:
   enabled: ${ACTIVATION_ENABLED:false}
   cron: ${ACTIVATION_CRON:0 30 13 * * ?}
   zone: ${ACTIVATION_ZONE:UTC}
+  followup:
+    cron: ${ACTIVATION_FOLLOWUP_CRON:0 45 13 * * ?}
 
 admin:
   emails: ${ADMIN_EMAILS:}

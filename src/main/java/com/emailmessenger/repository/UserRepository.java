@@ -34,6 +34,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("UPDATE User u SET u.lastActivationNudgeSentAt = :ts WHERE u.id = :id")
     int touchActivationNudgeSent(@Param("id") Long id, @Param("ts") LocalDateTime ts);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE User u SET u.lastActivationFollowupSentAt = :ts WHERE u.id = :id")
+    int touchActivationFollowupSent(@Param("id") Long id, @Param("ts") LocalDateTime ts);
+
     // Signups that haven't crossed the IMAP-credentials chasm: enabled,
     // signed up at least the cool-off window ago, never previously nudged,
     // and no mail_account row at all. The activation service still
@@ -50,6 +54,24 @@ public interface UserRepository extends JpaRepository<User, Long> {
               )
             """)
     List<User> findActivationCandidates(@Param("cutoff") LocalDateTime cutoff);
+
+    // Day-3 follow-up cohort: signups that cleared the 72h window, already
+    // received the day-1 nudge, never got the follow-up, and still have
+    // no mail_account row. Sequencing on `lastActivationNudgeSentAt IS NOT
+    // NULL` keeps the drip in order — a user can't receive day-3 before
+    // day-1 even if the day-1 scheduler skipped a tick or was wired up
+    // after they crossed the 72h threshold.
+    @Query("""
+            SELECT u FROM User u
+            WHERE u.enabled = true
+              AND u.createdAt < :cutoff
+              AND u.lastActivationNudgeSentAt IS NOT NULL
+              AND u.lastActivationFollowupSentAt IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM MailAccount a WHERE a.user = u
+              )
+            """)
+    List<User> findActivationFollowupCandidates(@Param("cutoff") LocalDateTime cutoff);
 
     // Users whose most recent observable activity (login OR inbox visit, with
     // created_at as the fallback for pre-tracking rows) is older than the

@@ -29,4 +29,10 @@ class ActivationScheduler {
         int sent = service.runActivationCycle();
         log.info("Activation cycle: sent {} nudge email(s)", sent);
     }
+
+    @Scheduled(cron = "${activation.followup.cron:0 45 13 * * ?}", zone = "${activation.zone:UTC}")
+    void runActivationFollowup() {
+        int sent = service.runActivationFollowupCycle();
+        log.info("Activation follow-up cycle: sent {} follow-up email(s)", sent);
+    }
 }

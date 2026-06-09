@@ -46,6 +46,7 @@ public class ActivationService {
     private static final Logger log = LoggerFactory.getLogger(ActivationService.class);
 
     static final Duration ACTIVATION_DELAY = Duration.ofHours(24);
+    static final Duration ACTIVATION_FOLLOWUP_DELAY = Duration.ofHours(72);
 
     private final UserRepository users;
     private final DigestEmailPreferenceRepository preferences;
@@ -85,6 +86,23 @@ public class ActivationService {
         return sent;
     }
 
+    public int runActivationFollowupCycle() {
+        LocalDateTime now = LocalDateTime.now(clock);
+        LocalDateTime cutoff = now.minus(ACTIVATION_FOLLOWUP_DELAY);
+        int sent = 0;
+        for (User user : users.findActivationFollowupCandidates(cutoff)) {
+            try {
+                if (sendActivationFollowupFor(user, now)) {
+                    sent++;
+                }
+            } catch (RuntimeException e) {
+                log.warn("Activation follow-up send failed for user id={}: {}",
+                        user.getId(), e.getMessage());
+            }
+        }
+        return sent;
+    }
+
     @Transactional
     public boolean sendActivationFor(User user, LocalDateTime now) {
         if (user.getLastActivationNudgeSentAt() != null) {
@@ -105,6 +123,26 @@ public class ActivationService {
         return true;
     }
 
+    @Transactional
+    public boolean sendActivationFollowupFor(User user, LocalDateTime now) {
+        if (user.getLastActivationFollowupSentAt() != null) {
+            return false;
+        }
+        DigestEmailPreference prefs = preferences.findByUser(user)
+                .orElseGet(() -> preferences.save(new DigestEmailPreference(user, newToken())));
+        if (prefs.isOptedOut()) {
+            return false;
+        }
+        try {
+            mailSender.send(composeFollowup(user, prefs));
+        } catch (MailException e) {
+            log.warn("Activation follow-up mail send failed for user id={}: {}", user.getId(), e.getMessage());
+            return false;
+        }
+        users.touchActivationFollowupSent(user.getId(), now);
+        return true;
+    }
+
     private MimeMessage compose(User user, DigestEmailPreference prefs) {
         MimeMessage mime = mailSender.createMimeMessage();
         try {
@@ -115,6 +153,20 @@ public class ActivationService {
             helper.setText(renderBody(user, prefs), false);
         } catch (MessagingException e) {
             throw new MailPreparationException("Could not compose activation email", e);
+        }
+        return mime;
+    }
+
+    private MimeMessage composeFollowup(User user, DigestEmailPreference prefs) {
+        MimeMessage mime = mailSender.createMimeMessage();
+        try {
+            MimeMessageHelper helper = new MimeMessageHelper(mime, false, "UTF-8");
+            helper.setFrom(fromAddress);
+            helper.setTo(user.getEmail());
+            helper.setSubject("See MailIM in action — no mailbox needed");
+            helper.setText(renderFollowupBody(user, prefs), false);
+        } catch (MessagingException e) {
+            throw new MailPreparationException("Could not compose activation follow-up email", e);
         }
         return mime;
     }
@@ -130,6 +182,26 @@ public class ActivationService {
         sb.append("Connect in about 60 seconds: ").append(base).append("/mailboxes/new\n\n");
         sb.append("Curious what it looks like first? Here's a live demo conversation: ")
           .append(base).append("/demo\n\n");
+        sb.append("Don't want these emails? Unsubscribe: ")
+          .append(base).append("/digest/opt-out?token=").append(prefs.getOptOutToken()).append('\n');
+        return sb.toString();
+    }
+
+    private String renderFollowupBody(User user, DigestEmailPreference prefs) {
+        String greeting = (user.getDisplayName() != null && !user.getDisplayName().isBlank())
+                ? user.getDisplayName().trim() : "there";
+        String base = site.getBaseUrl();
+        StringBuilder sb = new StringBuilder();
+        sb.append("Hi ").append(greeting).append(",\n\n");
+        sb.append("No pressure on connecting a mailbox — handing over IMAP credentials\n")
+          .append("is a real ask. Want to see what you'd get first?\n\n");
+        sb.append("Open the live demo (no signup, no credentials): ")
+          .append(base).append("/demo\n\n");
+        sb.append("It's a real multi-participant thread rendered as a chat — bubbles,\n")
+          .append("avatars, day separators, dark mode — exactly how your own inbox\n")
+          .append("would look.\n\n");
+        sb.append("When you're ready, connecting your mailbox takes about 60 seconds: ")
+          .append(base).append("/mailboxes/new\n\n");
         sb.append("Don't want these emails? Unsubscribe: ")
           .append(base).append("/digest/opt-out?token=").append(prefs.getOptOutToken()).append('\n');
         return sb.toString();

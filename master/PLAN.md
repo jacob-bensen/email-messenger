@@ -51,10 +51,24 @@ connect a mailbox is visibly higher on the operator dashboard.
    2 feature-flag tests cover cohort selection, idempotency, opt-out,
    mailbox-already-connected exclusion, the 24h cool-off, and the email
    body content.
-2. **Day-3 follow-up linking to the demo conversation.** Pending —
-   second-tier nudge for signups still cold 72h after registration,
-   re-using the stamp + opt-out plumbing but with a content variant
-   that leads with the `/demo` link rather than the IMAP form.
+2. **Day-3 follow-up linking to the demo conversation.** [shipped
+   2026-06-09] Flyway V21 adds nullable
+   `users.last_activation_followup_sent_at` as a second one-shot stamp,
+   tracked independently of the day-1 stamp. New
+   `ActivationService.runActivationFollowupCycle` sweeps signups whose
+   `created_at` is older than `ACTIVATION_FOLLOWUP_DELAY` (72h), have
+   `last_activation_nudge_sent_at IS NOT NULL` (sequencing: day-1
+   already fired), `last_activation_followup_sent_at IS NULL`, and no
+   `MailAccount` row. Body leads with `/demo` (no signup, no credentials)
+   and only mentions `/mailboxes/new` after — different framing for a
+   cohort that didn't act on the day-1 IMAP-form CTA. Same
+   `digest_email_preferences` opt-out token, so one unsubscribe still
+   kills every automated channel. `ActivationScheduler` gains a second
+   `@Scheduled` at `0 45 13 * * ?` UTC (override via
+   `ACTIVATION_FOLLOWUP_CRON`) under the same `activation.enabled`
+   flag. 7 new tests cover demo-lead body ordering, sequencing (no
+   send before day-1), mailbox-connected exclusion, 72h cool-off,
+   idempotency, opt-out, and cohort partitioning.
 3. **Day-7 last-chance "here's what you're missing".** Pending —
    final nudge for signups still cold one week in, with a
    trial-extension or downgrade-to-Free framing depending on plan
