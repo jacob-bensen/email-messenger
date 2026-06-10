@@ -5,6 +5,7 @@ import com.emailmessenger.auth.UserService;
 import com.emailmessenger.billing.BillingBanner;
 import com.emailmessenger.billing.BillingBannerService;
 import com.emailmessenger.billing.BillingService;
+import com.emailmessenger.billing.PlanLimitService;
 import com.emailmessenger.billing.TrialConversionNudgeService;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.User;
@@ -42,6 +43,7 @@ class ThreadController {
     private final BillingBannerService billingBannerService;
     private final BillingService billingService;
     private final OnboardingService onboardingService;
+    private final PlanLimitService planLimitService;
     private final TrialConversionNudgeService trialConversionNudgeService;
     private final ThreadSearchService threadSearchService;
     private final SenderGroupService senderGroupService;
@@ -56,6 +58,7 @@ class ThreadController {
                      BillingBannerService billingBannerService,
                      BillingService billingService,
                      OnboardingService onboardingService,
+                     PlanLimitService planLimitService,
                      TrialConversionNudgeService trialConversionNudgeService,
                      ThreadSearchService threadSearchService,
                      SenderGroupService senderGroupService,
@@ -69,6 +72,7 @@ class ThreadController {
         this.billingBannerService = billingBannerService;
         this.billingService = billingService;
         this.onboardingService = onboardingService;
+        this.planLimitService = planLimitService;
         this.trialConversionNudgeService = trialConversionNudgeService;
         this.threadSearchService = threadSearchService;
         this.senderGroupService = senderGroupService;
@@ -129,6 +133,8 @@ class ThreadController {
         if (!checklist.isComplete()) {
             model.addAttribute("onboarding", checklist);
         }
+        OnboardingNudge.from(planLimitService.currentPlan(owner), checklist)
+                .ifPresent(n -> model.addAttribute("onboardingNudge", n));
         trialConversionNudgeService.nudgeFor(owner)
                 .ifPresent(n -> model.addAttribute("trialConversionNudge", n));
         return "threads";

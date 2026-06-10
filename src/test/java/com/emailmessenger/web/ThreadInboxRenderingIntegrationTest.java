@@ -220,4 +220,55 @@ class ThreadInboxRenderingIntegrationTest {
         assertThat(body).doesNotContain("class=\"trial-nudge-annual\"");
         assertThat(body).doesNotContain("Switch to annual");
     }
+
+    @Test
+    @WithMockUser(username = "inbox-render@example.com")
+    void onboardingNudgeRendersInsideProgressCardWithUpgradeCta() throws Exception {
+        OnboardingNudge nudge = new OnboardingNudge(
+                Plan.PERSONAL,
+                "Free includes 1 saved search",
+                "Personal is unlimited saved searches.",
+                "Upgrade to Personal — $9/mo",
+                "step3");
+
+        String body = mockMvc.perform(get("/threads").flashAttr("onboardingNudge", nudge))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // Nudge fragment renders inside the .onboarding-progress section and
+        // posts to the same /billing/checkout entry point the upgrade modal
+        // uses, so the Free user converts via the existing Stripe path.
+        assertThat(body).contains("class=\"onboarding-nudge\"");
+        assertThat(body).contains("data-trigger=\"step3\"");
+        assertThat(body).contains("Free includes 1 saved search");
+        assertThat(body).contains("Personal is unlimited saved searches.");
+        assertThat(body).contains("Upgrade to Personal — $9/mo");
+        assertThat(body).contains("action=\"/billing/checkout\"");
+        assertThat(body).contains("name=\"plan\" value=\"personal\"");
+    }
+
+    @Test
+    @WithMockUser(username = "inbox-render@example.com")
+    void teamPlanNudgeRendersStandaloneWhenChecklistIsHidden() throws Exception {
+        // When the checklist is complete (all four steps done) `onboarding`
+        // is null but a Free user's Team-plan nudge still surfaces — the
+        // .onboarding-progress section persists with just the nudge body,
+        // no step list or progress bar.
+        OnboardingNudge nudge = new OnboardingNudge(
+                Plan.TEAM,
+                "Sharing your inbox is on the Team plan",
+                "Team adds shared threads.",
+                "Upgrade to Team — $29/mo",
+                "step4");
+
+        String body = mockMvc.perform(get("/threads").flashAttr("onboardingNudge", nudge))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).contains("class=\"onboarding-nudge\"");
+        assertThat(body).contains("data-trigger=\"step4\"");
+        assertThat(body).contains("Sharing your inbox is on the Team plan");
+        assertThat(body).contains("Upgrade to Team — $29/mo");
+        assertThat(body).contains("name=\"plan\" value=\"team\"");
+    }
 }

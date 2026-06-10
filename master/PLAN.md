@@ -75,14 +75,20 @@ is visibly higher than the pre-EPIC-15 baseline on `/admin/revenue`.
    renders step 4 in both the progress strip and the empty-inbox card.
    M3 (per-step upgrade nudges that monetize) will swap the post-step
    sub-copy for a Team plan CTA on Free/Personal.
-3. **Per-step upgrade nudges that monetize the steps directly.** When
-   the user completes step 2 (10 threads imported) on a Free plan
-   trending toward the 500-thread cap, the progress card swaps the
-   step-3 sub-copy for a Personal upgrade prompt. When the user
-   completes step 3 (saved a search) on Free, the card reminds them
-   Free caps at 1 saved search and offers Personal. When they hit
-   step 4 (invited a teammate) the card surfaces the Team plan. Each
-   nudge ties to existing `UpgradeModal` infrastructure.
+3. **Per-step upgrade nudges that monetize the steps directly.**
+   [shipped 2026-06-10] New `OnboardingNudge` view-model in
+   `com.emailmessenger.web` with static `from(Plan, OnboardingChecklist)`
+   factory: Free + threadsImported → Personal nudge (threads-cap copy);
+   Free + savedSearchSaved → Personal nudge (saved-search-cap copy);
+   Free + teammateInvited → Team plan nudge (sharing-inbox copy). Paid
+   plans → no nudge. `ThreadController` injects `PlanLimitService`,
+   computes the nudge after the checklist, exposes `onboardingNudge`
+   model attribute. `threads.html` renders an `.onboarding-nudge` panel
+   inside the existing `.onboarding-progress` section, posting `plan` +
+   `billing=monthly` to `/billing/checkout` (same Stripe entry point as
+   the upgrade modal); the section stays visible when the checklist is
+   complete but a Team nudge is active, so a Free user who just
+   invited a teammate still sees the Team CTA.
 4. **Operator dashboard card for onboarding-step conversion.** Add
    "Onboarding funnel — last 30 days" to `/admin/revenue` showing
    signups → mailbox-connected → 10-threads → saved-search →

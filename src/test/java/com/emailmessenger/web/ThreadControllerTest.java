@@ -6,6 +6,7 @@ import com.emailmessenger.billing.BillingBanner;
 import com.emailmessenger.billing.BillingBannerService;
 import com.emailmessenger.billing.BillingService;
 import com.emailmessenger.billing.PlanLimitKind;
+import com.emailmessenger.billing.PlanLimitService;
 import com.emailmessenger.billing.TrialConversionNudge;
 import com.emailmessenger.billing.TrialConversionNudgeService;
 import com.emailmessenger.billing.UpgradeModal;
@@ -65,6 +66,7 @@ class ThreadControllerTest {
     @Mock BillingBannerService billingBannerService;
     @Mock BillingService billingService;
     @Mock OnboardingService onboardingService;
+    @Mock PlanLimitService planLimitService;
     @Mock TrialConversionNudgeService trialConversionNudgeService;
     @Mock ThreadSearchService threadSearchService;
     @Mock SenderGroupService senderGroupService;
@@ -84,12 +86,15 @@ class ThreadControllerTest {
         ThreadController controller = new ThreadController(
                 threadRepository, threadViewService, replyService, userService,
                 billingBannerService, billingService, onboardingService,
-                trialConversionNudgeService, threadSearchService, senderGroupService,
-                savedSearchService, userActivityService, CLOCK);
+                planLimitService, trialConversionNudgeService, threadSearchService,
+                senderGroupService, savedSearchService, userActivityService, CLOCK);
         lenient().when(userService.requireByEmail("owner@example.com")).thenReturn(owner);
         lenient().when(billingBannerService.bannerFor(owner)).thenReturn(Optional.empty());
         lenient().when(onboardingService.checklistFor(owner))
                 .thenReturn(new OnboardingChecklist(false, 0L, false, false));
+        // Default the plan to PERSONAL so the existing checklist scenarios don't
+        // accidentally surface a nudge unless a test opts in to FREE.
+        lenient().when(planLimitService.currentPlan(owner)).thenReturn(Plan.PERSONAL);
         lenient().when(trialConversionNudgeService.nudgeFor(owner)).thenReturn(Optional.empty());
         lenient().when(senderGroupService.topSenders(owner)).thenReturn(List.of());
         lenient().when(savedSearchService.viewsFor(owner)).thenReturn(List.of());
@@ -284,6 +289,82 @@ class ThreadControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("threads"))
                 .andExpect(model().attribute("onboarding", nullValue()));
+    }
+
+    @Test
+    void freeUserPastTenThreadsExposesPersonalUpgradeNudge() throws Exception {
+        EmailThread thread = new EmailThread(owner, "Hello", "<a@b>");
+        Page<EmailThread> populated = new PageImpl<>(List.of(thread));
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(populated);
+        OnboardingChecklist checklist = new OnboardingChecklist(true, 12L, false, false);
+        when(onboardingService.checklistFor(owner)).thenReturn(checklist);
+        when(planLimitService.currentPlan(owner)).thenReturn(Plan.FREE);
+
+        mockMvc.perform(get("/threads").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(view().name("threads"))
+                .andExpect(model().attribute("onboarding", checklist))
+                .andExpect(model().attribute("onboardingNudge", notNullValue()));
+    }
+
+    @Test
+    void freeUserAfterSavedSearchSurfacesPersonalSavedSearchNudge() throws Exception {
+        EmailThread thread = new EmailThread(owner, "Hello", "<a@b>");
+        Page<EmailThread> populated = new PageImpl<>(List.of(thread));
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(populated);
+        OnboardingChecklist checklist = new OnboardingChecklist(true, 12L, true, false);
+        when(onboardingService.checklistFor(owner)).thenReturn(checklist);
+        when(planLimitService.currentPlan(owner)).thenReturn(Plan.FREE);
+
+        org.springframework.test.web.servlet.MvcResult result = mockMvc.perform(get("/threads").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("onboardingNudge", notNullValue()))
+                .andReturn();
+        OnboardingNudge nudge = (OnboardingNudge) result.getModelAndView()
+                .getModel().get("onboardingNudge");
+        org.assertj.core.api.Assertions.assertThat(nudge.trigger()).isEqualTo("step3");
+        org.assertj.core.api.Assertions.assertThat(nudge.upgradeTarget()).isEqualTo(Plan.PERSONAL);
+    }
+
+    @Test
+    void freeUserAfterTeammateInvitedSurfacesTeamPlanNudgeEvenWhenChecklistComplete() throws Exception {
+        EmailThread thread = new EmailThread(owner, "Hello", "<a@b>");
+        Page<EmailThread> populated = new PageImpl<>(List.of(thread));
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(populated);
+        // All 4 steps complete — `onboarding` is NOT exposed, but the Team
+        // nudge keeps the card visible so the Free user sees the upsell at
+        // the moment they've just felt the sharing-inbox feature gap.
+        OnboardingChecklist done = new OnboardingChecklist(true, 25L, true, true);
+        when(onboardingService.checklistFor(owner)).thenReturn(done);
+        when(planLimitService.currentPlan(owner)).thenReturn(Plan.FREE);
+
+        org.springframework.test.web.servlet.MvcResult result = mockMvc.perform(get("/threads").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("onboarding", nullValue()))
+                .andExpect(model().attribute("onboardingNudge", notNullValue()))
+                .andReturn();
+        OnboardingNudge nudge = (OnboardingNudge) result.getModelAndView()
+                .getModel().get("onboardingNudge");
+        org.assertj.core.api.Assertions.assertThat(nudge.trigger()).isEqualTo("step4");
+        org.assertj.core.api.Assertions.assertThat(nudge.upgradeTarget()).isEqualTo(Plan.TEAM);
+    }
+
+    @Test
+    void paidUserDoesNotGetUpgradeNudgeEvenAtSameProgress() throws Exception {
+        EmailThread thread = new EmailThread(owner, "Hello", "<a@b>");
+        Page<EmailThread> populated = new PageImpl<>(List.of(thread));
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(populated);
+        OnboardingChecklist checklist = new OnboardingChecklist(true, 12L, true, false);
+        when(onboardingService.checklistFor(owner)).thenReturn(checklist);
+        when(planLimitService.currentPlan(owner)).thenReturn(Plan.PERSONAL);
+
+        mockMvc.perform(get("/threads").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("onboardingNudge", nullValue()));
     }
 
     @Test
