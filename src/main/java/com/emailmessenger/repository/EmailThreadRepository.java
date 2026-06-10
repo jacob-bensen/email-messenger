@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,6 +23,22 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
     long countByOwner(User owner);
 
     long countByOwnerAndUnreadTrue(User owner);
+
+    /**
+     * Onboarding-funnel slice: which users in the supplied cohort have at
+     * least {@code threshold} threads. Returns the matching owner IDs so
+     * the caller can take {@code .size()} without paying for a derived-
+     * table {@code COUNT}-over-{@code GROUP BY HAVING} (which JPQL doesn't
+     * portably support). Empty cohort returns an empty list.
+     */
+    @Query("""
+            SELECT t.owner.id FROM EmailThread t
+            WHERE t.owner.id IN :userIds
+            GROUP BY t.owner.id
+            HAVING COUNT(t) >= :threshold
+            """)
+    List<Long> findOwnerIdsWithAtLeastThreadsAmong(@Param("userIds") Collection<Long> userIds,
+                                                   @Param("threshold") long threshold);
 
     // Filtered no-search listing — powers `/threads` when no `?q=` / `?from=` is set
     // but one or more of the filter chips (since / unread / attachments) is on.

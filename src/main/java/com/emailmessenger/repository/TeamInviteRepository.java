@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,6 +24,16 @@ public interface TeamInviteRepository extends JpaRepository<TeamInvite, Long> {
     @Query("SELECT COUNT(i) FROM TeamInvite i " +
             "WHERE i.invitedBy = :inviter AND i.revokedAt IS NULL")
     long countNonRevokedByInviter(@Param("inviter") User inviter);
+
+    /**
+     * Onboarding-funnel slice: how many users in the supplied cohort have
+     * sent at least one non-revoked invite. Mirrors the per-user predicate
+     * the onboarding checklist already uses, so the funnel and the
+     * in-product checkmark stay in agreement. Empty cohort returns 0.
+     */
+    @Query("SELECT COUNT(DISTINCT i.invitedBy.id) FROM TeamInvite i " +
+            "WHERE i.invitedBy.id IN :userIds AND i.revokedAt IS NULL")
+    long countDistinctInvitersIn(@Param("userIds") Collection<Long> userIds);
 
     List<TeamInvite> findByTeamOrderByCreatedAtDesc(Team team);
 

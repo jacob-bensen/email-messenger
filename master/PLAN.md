@@ -89,11 +89,23 @@ is visibly higher than the pre-EPIC-15 baseline on `/admin/revenue`.
    the upgrade modal); the section stays visible when the checklist is
    complete but a Team nudge is active, so a Free user who just
    invited a teammate still sees the Team CTA.
-4. **Operator dashboard card for onboarding-step conversion.** Add
-   "Onboarding funnel — last 30 days" to `/admin/revenue` showing
-   signups → mailbox-connected → 10-threads → saved-search →
-   invite-sent → paid, anchored on user/subscription timestamps so the
-   operator can tell which step is the next monetization leak.
+4. **Operator dashboard card for onboarding-step conversion.** [shipped
+   2026-06-10] New `OnboardingFunnelMetrics` record + `…Service` in
+   `com.emailmessenger.admin` anchored on `users.created_at` >= now-30d.
+   For the cohort it counts mailbox-connected (≥1 `MailAccount`),
+   10-threads (≥10 `EmailThread`, matching `OnboardingChecklist.THREADS_TARGET`),
+   saved-search (≥1 `SavedSearch`), invite-sent (≥1 non-revoked
+   `TeamInvite`, matching the checklist's step-4 predicate), and paid
+   (any `Subscription` with `status='active'`). Each step rate is
+   {step}/signups so the largest drop between two adjacent columns
+   names the next monetization leak. New repo queries
+   `countDistinctOwnersIn` / `findOwnerIdsWithAtLeastThreadsAmong` /
+   `countDistinctInvitersIn` / `countActiveOwnersIn` take a cohort-ID
+   collection; empty-cohort short-circuit avoids 5 round-trips on a
+   fresh-deploy instance with zero signups. `AdminRevenueController`
+   injects the service and exposes `onboardingFunnel`; `revenue.html`
+   renders an "Onboarding funnel — last 30 days" card between the
+   acquisition funnel and the trial-end conversion card.
 
 ## Done means
 

@@ -195,6 +195,28 @@ class AdminRevenueControllerTest {
 
     @Test
     @WithMockUser(username = "operator@example.com")
+    void revenuePageRendersOnboardingFunnelCardWithEverySignupBucket() throws Exception {
+        userService.register("operator@example.com", "password1", null);
+        adminProperties.setEmails(List.of("operator@example.com"));
+
+        // One signup gives the funnel a non-zero denominator; the per-step
+        // figures don't matter for this test — we're proving the model
+        // attribute is exposed and the new card heading + step labels
+        // make it through to the rendered HTML.
+        userService.register("recent-signup@example.com", "password1", null);
+
+        mockMvc.perform(get("/admin/revenue"))
+                .andExpect(status().isOk())
+                .andExpect(model().attributeExists("onboardingFunnel"))
+                .andExpect(content().string(containsString("Onboarding funnel")))
+                .andExpect(content().string(containsString("Mailbox connected")))
+                .andExpect(content().string(containsString("10 threads imported")))
+                .andExpect(content().string(containsString("Saved a search")))
+                .andExpect(content().string(containsString("Invite sent")));
+    }
+
+    @Test
+    @WithMockUser(username = "operator@example.com")
     void revenuePageRendersTrialEndConversionCardWithSentAndConvertedCounts() throws Exception {
         userService.register("operator@example.com", "password1", null);
         adminProperties.setEmails(List.of("operator@example.com"));

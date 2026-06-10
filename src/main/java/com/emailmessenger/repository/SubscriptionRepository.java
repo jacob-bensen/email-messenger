@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -97,4 +98,18 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
               AND s.lastTrialEndEmailSentAt >= :cutoff
             """)
     List<Subscription> findTrialEndEmailedSince(@Param("cutoff") LocalDateTime cutoff);
+
+    /**
+     * Onboarding-funnel terminal step: how many users in the supplied
+     * cohort currently have an active paid subscription. Status is
+     * compared lower-case to match {@link RevenueMetricsService}'s
+     * normalization, even though all writers go through the
+     * {@code "active"} literal today. Empty cohort returns 0.
+     */
+    @Query("""
+            SELECT COUNT(DISTINCT s.user.id) FROM Subscription s
+            WHERE s.user.id IN :userIds
+              AND LOWER(s.status) = 'active'
+            """)
+    long countActiveOwnersIn(@Param("userIds") Collection<Long> userIds);
 }

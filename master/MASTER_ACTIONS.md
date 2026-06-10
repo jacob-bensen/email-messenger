@@ -3,6 +3,19 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
+- [PLAN-REVIEW] EPIC-15 is code-complete across all four milestones
+  (progress card, team-invite step, per-step upgrade nudges, operator
+  funnel card). "Done means" — _post-EPIC-15 7-day onboarding-completion
+  rate and Free→paid conversion among onboarded users are visibly
+  higher than the pre-EPIC-15 baseline_ — needs live traffic against
+  `/admin/revenue` to assess. Proposed next Primary Objective:
+  **EPIC-16 Shared-inbox features that justify the Team plan**
+  (real-time collaborator presence on a thread, internal comments
+  attached to messages, @mention notifications) — Team $29/mo currently
+  upgrades on mailbox-cap + scaffolded invite flow, which doesn't make
+  the recurring charge feel earned once a team has more than one user
+  inside it. Sharing is the obvious next leak in the freemium curve.
+
 - [ ] Set `ACTIVATION_ENABLED=true` on the deploy once `ADMIN_EMAILS` is
       wired and at least one live mail send has been verified end-to-end
       (existing transactional-email provider — see "OAuth & third-party

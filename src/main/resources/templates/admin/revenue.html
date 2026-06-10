@@ -159,6 +159,68 @@
 
   <section class="admin-card">
     <h2 class="admin-card-title"
+        th:text="|Onboarding funnel — last ${onboardingFunnel.windowDays()} days|">
+      Onboarding funnel — last 30 days
+    </h2>
+    <p class="admin-card-sub">
+      How many of this window's signups crossed each activation step.
+      The biggest drop between two adjacent steps is the next monetization
+      leak to fix.
+    </p>
+    <div class="admin-funnel-row">
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Signups</span>
+        <span class="admin-funnel-count" th:text="${onboardingFunnel.signups()}">0</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Mailbox connected</span>
+        <span class="admin-funnel-count"
+              th:text="${onboardingFunnel.mailboxConnected()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${onboardingFunnel.mailboxRatePercent()}% of signups|">0% of signups</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">10 threads imported</span>
+        <span class="admin-funnel-count"
+              th:text="${onboardingFunnel.tenThreadsImported()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${onboardingFunnel.tenThreadsRatePercent()}% of signups|">0% of signups</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Saved a search</span>
+        <span class="admin-funnel-count"
+              th:text="${onboardingFunnel.savedSearchSaved()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${onboardingFunnel.savedSearchRatePercent()}% of signups|">0% of signups</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Invite sent</span>
+        <span class="admin-funnel-count"
+              th:text="${onboardingFunnel.inviteSent()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${onboardingFunnel.inviteRatePercent()}% of signups|">0% of signups</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Paid</span>
+        <span class="admin-funnel-count"
+              th:text="${onboardingFunnel.paid()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${onboardingFunnel.paidRatePercent()}% of signups|">0% of signups</span>
+      </div>
+    </div>
+    <p class="admin-empty" th:if="${onboardingFunnel.signups() == 0}">
+      No signups in the window yet — the onboarding funnel will populate
+      once the first new account lands.
+    </p>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title"
         th:text="|Trial-end conversion — last ${trialEnd.windowDays()} days|">
       Trial-end conversion — last 30 days
     </h2>
