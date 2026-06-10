@@ -2,18 +2,50 @@ package com.emailmessenger.web;
 
 public record OnboardingChecklist(
         boolean mailboxConnected,
-        boolean firstThreadImported) {
+        long threadCount,
+        boolean savedSearchSaved) {
+
+    public static final long THREADS_TARGET = 10;
+    public static final int TOTAL_STEPS = 3;
+
+    public boolean threadsImported() {
+        return threadCount >= THREADS_TARGET;
+    }
+
+    public int completedSteps() {
+        int n = 0;
+        if (mailboxConnected) n++;
+        if (threadsImported()) n++;
+        if (savedSearchSaved) n++;
+        return n;
+    }
+
+    public int totalSteps() {
+        return TOTAL_STEPS;
+    }
 
     public boolean isComplete() {
-        return mailboxConnected && firstThreadImported;
+        return completedSteps() >= TOTAL_STEPS;
+    }
+
+    public int percentComplete() {
+        return (int) Math.round(100.0 * completedSteps() / TOTAL_STEPS);
+    }
+
+    public long threadsRemaining() {
+        long remaining = THREADS_TARGET - threadCount;
+        return remaining < 0 ? 0 : remaining;
     }
 
     public String nextStepCtaUrl() {
         if (!mailboxConnected) {
             return "/mailboxes/new";
         }
-        if (!firstThreadImported) {
+        if (!threadsImported()) {
             return "/mailboxes";
+        }
+        if (!savedSearchSaved) {
+            return "/threads";
         }
         return "/threads";
     }
@@ -22,8 +54,11 @@ public record OnboardingChecklist(
         if (!mailboxConnected) {
             return "Connect your inbox";
         }
-        if (!firstThreadImported) {
+        if (!threadsImported()) {
             return "Sync now";
+        }
+        if (!savedSearchSaved) {
+            return "Save your first search";
         }
         return "Open inbox";
     }

@@ -326,6 +326,53 @@
 
   <div class="thread-main">
 
+  <section th:if="${onboarding != null and threads != null and threads.totalElements > 0}"
+           class="onboarding-progress"
+           aria-label="Getting started progress">
+    <div class="onboarding-progress-header">
+      <span class="onboarding-progress-title">Get the most out of MailIM</span>
+      <span class="onboarding-progress-count"
+            th:text="|${onboarding.completedSteps()} of ${onboarding.totalSteps()} done|">1 of 3 done</span>
+    </div>
+    <div class="onboarding-progress-bar" role="progressbar"
+         th:attr="aria-valuenow=${onboarding.completedSteps()},
+                  aria-valuemax=${onboarding.totalSteps()}">
+      <div class="onboarding-progress-bar-fill"
+           th:style="|width: ${onboarding.percentComplete()}%|"></div>
+    </div>
+    <div class="onboarding-progress-row">
+      <ol class="onboarding-progress-steps">
+        <li class="onboarding-progress-step"
+            th:classappend="${onboarding.mailboxConnected} ? ' onboarding-progress-step-done'
+                            : ' onboarding-progress-step-current'">
+          <span class="onboarding-progress-step-mark" aria-hidden="true"
+                th:text="${onboarding.mailboxConnected} ? '&#10003;' : '1'">1</span>
+          <span class="onboarding-progress-step-text">Connect a mailbox</span>
+        </li>
+        <li class="onboarding-progress-step"
+            th:classappend="${onboarding.threadsImported} ? ' onboarding-progress-step-done'
+                            : (onboarding.mailboxConnected ? ' onboarding-progress-step-current' : '')">
+          <span class="onboarding-progress-step-mark" aria-hidden="true"
+                th:text="${onboarding.threadsImported} ? '&#10003;' : '2'">2</span>
+          <span class="onboarding-progress-step-text"
+                th:text="${onboarding.threadsImported}
+                         ? 'Imported 10 threads'
+                         : |Import 10 threads (${onboarding.threadsRemaining()} to go)|">Import 10 threads</span>
+        </li>
+        <li class="onboarding-progress-step"
+            th:classappend="${onboarding.savedSearchSaved} ? ' onboarding-progress-step-done'
+                            : (onboarding.threadsImported ? ' onboarding-progress-step-current' : '')">
+          <span class="onboarding-progress-step-mark" aria-hidden="true"
+                th:text="${onboarding.savedSearchSaved} ? '&#10003;' : '3'">3</span>
+          <span class="onboarding-progress-step-text">Save a search</span>
+        </li>
+      </ol>
+      <a th:href="@{${onboarding.nextStepCtaUrl()}}"
+         th:text="${onboarding.nextStepCtaLabel()}"
+         class="btn btn-primary onboarding-progress-cta">Connect a mailbox</a>
+    </div>
+  </section>
+
   <div th:if="${savedSearchMessage != null}" class="saved-search-flash saved-search-flash-success"
        role="status" th:text="${savedSearchMessage}">Saved.</div>
   <div th:if="${savedSearchError != null}" class="saved-search-flash saved-search-flash-error"
@@ -519,9 +566,9 @@
     </h2>
     <p class="onboarding-sub"
        th:text="${!onboarding.mailboxConnected}
-                ? 'Two quick steps and your email becomes a chat.'
+                ? 'A few quick steps and your email becomes a chat.'
                 : 'We''re importing your conversations. Sync now or check back in a minute.'">
-      Two quick steps and your email becomes a chat.
+      A few quick steps and your email becomes a chat.
     </p>
 
     <ol class="onboarding-steps">
@@ -538,12 +585,20 @@
         <span class="onboarding-step-text">Connect your inbox</span>
       </li>
       <li class="onboarding-step"
-          th:classappend="${onboarding.firstThreadImported}
+          th:classappend="${onboarding.threadsImported}
                           ? ' onboarding-step-done'
                           : (onboarding.mailboxConnected ? ' onboarding-step-current' : '')">
         <span class="onboarding-step-mark" aria-hidden="true"
-              th:text="${onboarding.firstThreadImported} ? '&#10003;' : '3'">3</span>
-        <span class="onboarding-step-text">See your first conversation</span>
+              th:text="${onboarding.threadsImported} ? '&#10003;' : '3'">3</span>
+        <span class="onboarding-step-text">Import your first 10 threads</span>
+      </li>
+      <li class="onboarding-step"
+          th:classappend="${onboarding.savedSearchSaved}
+                          ? ' onboarding-step-done'
+                          : (onboarding.threadsImported ? ' onboarding-step-current' : '')">
+        <span class="onboarding-step-mark" aria-hidden="true"
+              th:text="${onboarding.savedSearchSaved} ? '&#10003;' : '4'">4</span>
+        <span class="onboarding-step-text">Save a search</span>
       </li>
     </ol>
 

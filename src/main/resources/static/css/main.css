@@ -417,6 +417,115 @@ body {
   min-width: 200px;
 }
 
+/* ── Onboarding Progress Bar (always-visible on /threads) ───── */
+.onboarding-progress {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.onboarding-progress-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.onboarding-progress-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.onboarding-progress-count {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.onboarding-progress-bar {
+  height: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.onboarding-progress-bar-fill {
+  height: 100%;
+  background: var(--brand);
+  border-radius: inherit;
+  transition: width 240ms ease;
+}
+.onboarding-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.onboarding-progress-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+}
+.onboarding-progress-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.onboarding-progress-step-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.onboarding-progress-step-current .onboarding-progress-step-mark {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+.onboarding-progress-step-current .onboarding-progress-step-text {
+  color: var(--text);
+  font-weight: 600;
+}
+.onboarding-progress-step-done .onboarding-progress-step-mark {
+  background: #d1fae5;
+  color: #047857;
+  border-color: #6ee7b7;
+}
+.onboarding-progress-step-done .onboarding-progress-step-text {
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+.onboarding-progress-cta {
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .onboarding-progress {
+    padding: 14px 16px;
+  }
+  .onboarding-progress-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .onboarding-progress-cta {
+    align-self: flex-start;
+  }
+}
+
 /* ── Pagination ─────────────────────────────────────── */
 .pagination {
   display: flex;

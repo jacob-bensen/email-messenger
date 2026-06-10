@@ -89,7 +89,7 @@ class ThreadControllerTest {
         lenient().when(userService.requireByEmail("owner@example.com")).thenReturn(owner);
         lenient().when(billingBannerService.bannerFor(owner)).thenReturn(Optional.empty());
         lenient().when(onboardingService.checklistFor(owner))
-                .thenReturn(new OnboardingChecklist(false, false));
+                .thenReturn(new OnboardingChecklist(false, 0L, false));
         lenient().when(trialConversionNudgeService.nudgeFor(owner)).thenReturn(Optional.empty());
         lenient().when(senderGroupService.topSenders(owner)).thenReturn(List.of());
         lenient().when(savedSearchService.viewsFor(owner)).thenReturn(List.of());
@@ -247,7 +247,7 @@ class ThreadControllerTest {
         Page<EmailThread> empty = new PageImpl<>(List.of());
         when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
                 .thenReturn(empty);
-        OnboardingChecklist checklist = new OnboardingChecklist(false, false);
+        OnboardingChecklist checklist = new OnboardingChecklist(false, 0L, false);
         when(onboardingService.checklistFor(owner)).thenReturn(checklist);
 
         mockMvc.perform(get("/threads").principal(principal))
@@ -257,18 +257,33 @@ class ThreadControllerTest {
     }
 
     @Test
-    void nonEmptyInboxDoesNotExposeOnboardingChecklist() throws Exception {
+    void nonEmptyInboxStillExposesOnboardingChecklistWhileIncomplete() throws Exception {
         EmailThread thread = new EmailThread(owner, "Hello", "<a@b>");
         Page<EmailThread> populated = new PageImpl<>(List.of(thread));
         when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
                 .thenReturn(populated);
+        OnboardingChecklist incomplete = new OnboardingChecklist(true, 1L, false);
+        when(onboardingService.checklistFor(owner)).thenReturn(incomplete);
+
+        mockMvc.perform(get("/threads").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(view().name("threads"))
+                .andExpect(model().attribute("onboarding", incomplete));
+    }
+
+    @Test
+    void completedChecklistIsNotExposedSoProgressBarDisappears() throws Exception {
+        EmailThread thread = new EmailThread(owner, "Hello", "<a@b>");
+        Page<EmailThread> populated = new PageImpl<>(List.of(thread));
+        when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
+                .thenReturn(populated);
+        OnboardingChecklist done = new OnboardingChecklist(true, 25L, true);
+        when(onboardingService.checklistFor(owner)).thenReturn(done);
 
         mockMvc.perform(get("/threads").principal(principal))
                 .andExpect(status().isOk())
                 .andExpect(view().name("threads"))
                 .andExpect(model().attribute("onboarding", nullValue()));
-
-        verify(onboardingService, never()).checklistFor(any(User.class));
     }
 
     @Test
@@ -347,17 +362,17 @@ class ThreadControllerTest {
     }
 
     @Test
-    void searchWithNoResultsSuppressesOnboardingChecklist() throws Exception {
+    void searchWithNoResultsStillShowsOnboardingProgressWhileIncomplete() throws Exception {
         Page<EmailThread> empty = new PageImpl<>(List.of());
         when(threadSearchService.search(eq(owner), eq("nope"), eq(null), any(ThreadFilters.class), any(Pageable.class)))
                 .thenReturn(new ThreadSearchService.Result(empty, false));
+        OnboardingChecklist incomplete = new OnboardingChecklist(true, 5L, false);
+        when(onboardingService.checklistFor(owner)).thenReturn(incomplete);
 
         mockMvc.perform(get("/threads").principal(principal).param("q", "nope"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("threads"))
-                .andExpect(model().attribute("onboarding", nullValue()));
-
-        verify(onboardingService, never()).checklistFor(any(User.class));
+                .andExpect(model().attribute("onboarding", incomplete));
     }
 
     @Test
@@ -420,16 +435,16 @@ class ThreadControllerTest {
     }
 
     @Test
-    void senderFilterActiveSuppressesOnboardingCard() throws Exception {
+    void senderFilterActiveStillShowsOnboardingProgressWhileIncomplete() throws Exception {
         Page<EmailThread> empty = new PageImpl<>(List.of());
         when(threadSearchService.search(eq(owner), eq(""), eq("ada@acme.com"), any(ThreadFilters.class), any(Pageable.class)))
                 .thenReturn(new ThreadSearchService.Result(empty, false));
+        OnboardingChecklist incomplete = new OnboardingChecklist(true, 12L, false);
+        when(onboardingService.checklistFor(owner)).thenReturn(incomplete);
 
         mockMvc.perform(get("/threads").principal(principal).param("from", "ada@acme.com"))
                 .andExpect(status().isOk())
-                .andExpect(model().attribute("onboarding", nullValue()));
-
-        verify(onboardingService, never()).checklistFor(any(User.class));
+                .andExpect(model().attribute("onboarding", incomplete));
     }
 
     @Test
@@ -500,16 +515,16 @@ class ThreadControllerTest {
     }
 
     @Test
-    void filterChipsActiveSuppressesOnboardingCard() throws Exception {
+    void filterChipsActiveStillShowsOnboardingProgressWhileIncomplete() throws Exception {
         Page<EmailThread> empty = new PageImpl<>(List.of());
         when(threadSearchService.search(eq(owner), eq(""), eq(null), any(ThreadFilters.class), any(Pageable.class)))
                 .thenReturn(new ThreadSearchService.Result(empty, false));
+        OnboardingChecklist incomplete = new OnboardingChecklist(true, 12L, false);
+        when(onboardingService.checklistFor(owner)).thenReturn(incomplete);
 
         mockMvc.perform(get("/threads").principal(principal).param("unread", "true"))
                 .andExpect(status().isOk())
-                .andExpect(model().attribute("onboarding", nullValue()));
-
-        verify(onboardingService, never()).checklistFor(any(User.class));
+                .andExpect(model().attribute("onboarding", incomplete));
     }
 
     @Test

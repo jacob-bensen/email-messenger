@@ -3,20 +3,6 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
-- [ ] **[PLAN-REVIEW]** EPIC-14 (activation drip) is code-complete on
-      all four milestones — Milestones 1–3 (day-1/day-3/day-7) and
-      Milestone 4 (trial-end conversion email + `/admin/revenue` card)
-      shipped 2026-06-09/2026-06-10. The next session needs to pick the
-      next Primary Objective. Leading candidate: **EPIC-15
-      In-app onboarding checklist** — visible progress bar on `/threads`
-      ("Connect mailbox → Import 10 threads → Save a search → Invite a
-      teammate") that drives Free→Personal→Team upgrade on natural
-      activation, since the email drip has now covered everyone who
-      bounces before connecting. Alternative: deeper trial-conversion
-      work (drip cadence within the 14-day trial window, abandoned-cart
-      after Checkout abandons) if `/admin/revenue` shows the trial-end
-      email is a small lever.
-
 - [ ] Set `ACTIVATION_ENABLED=true` on the deploy once `ADMIN_EMAILS` is
       wired and at least one live mail send has been verified end-to-end
       (existing transactional-email provider — see "OAuth & third-party

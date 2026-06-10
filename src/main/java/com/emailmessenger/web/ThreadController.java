@@ -125,9 +125,9 @@ class ThreadController {
         model.addAttribute("savedSearches", savedSearches);
         model.addAttribute("hasActiveSearchToSave",
                 !trimmedQuery.isEmpty() || trimmedFrom != null || filters.isActive());
-        if (trimmedQuery.isEmpty() && trimmedFrom == null && !filters.isActive()
-                && threads.getTotalElements() == 0) {
-            model.addAttribute("onboarding", onboardingService.checklistFor(owner));
+        OnboardingChecklist checklist = onboardingService.checklistFor(owner);
+        if (!checklist.isComplete()) {
+            model.addAttribute("onboarding", checklist);
         }
         trialConversionNudgeService.nudgeFor(owner)
                 .ifPresent(n -> model.addAttribute("trialConversionNudge", n));
