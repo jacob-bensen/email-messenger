@@ -3,6 +3,7 @@ package com.emailmessenger.repository;
 import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -55,4 +56,45 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
               AND s.status IN ('trialing','active','canceled')
             """)
     List<Subscription> findTrialCohortSince(@Param("cutoff") LocalDateTime cutoff);
+
+    /**
+     * Trial-end conversion email cohort: trialing rows on a paid plan whose
+     * {@code trial_ends_at} lands inside the cool-off window from "now",
+     * never previously stamped, with the owning user eager-joined for the
+     * opt-out / addressee lookup. Status filter on {@code trialing} keeps
+     * already-converted ({@code active}) and canceled rows out — the
+     * email is meant only for the conversion-leak cohort. ENTERPRISE
+     * is excluded because that's a sales-led path, mirroring the
+     * existing in-app {@link com.emailmessenger.billing.TrialConversionNudgeService}.
+     */
+    @Query("""
+            SELECT s FROM Subscription s JOIN FETCH s.user
+            WHERE s.status = 'trialing'
+              AND s.plan IN (com.emailmessenger.domain.Plan.PERSONAL,
+                             com.emailmessenger.domain.Plan.TEAM)
+              AND s.trialEndsAt IS NOT NULL
+              AND s.trialEndsAt <= :endingBy
+              AND s.lastTrialEndEmailSentAt IS NULL
+            """)
+    List<Subscription> findTrialEndCandidates(@Param("endingBy") LocalDateTime endingBy);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE Subscription s SET s.lastTrialEndEmailSentAt = :ts WHERE s.id = :id")
+    int touchTrialEndEmailSent(@Param("id") Long id, @Param("ts") LocalDateTime ts);
+
+    /**
+     * Conversion-attribution slice for {@code /admin/revenue}: every
+     * subscription touched by the trial-end email inside the rolling
+     * window, with the owning user eager-joined so the metrics service
+     * can compute "sent → active" without an N+1. Status is read straight
+     * off the row, so a sub that's since flipped to {@code active} counts
+     * as converted, and one that lapsed to {@code canceled} counts as a
+     * non-conversion.
+     */
+    @Query("""
+            SELECT s FROM Subscription s JOIN FETCH s.user
+            WHERE s.lastTrialEndEmailSentAt IS NOT NULL
+              AND s.lastTrialEndEmailSentAt >= :cutoff
+            """)
+    List<Subscription> findTrialEndEmailedSince(@Param("cutoff") LocalDateTime cutoff);
 }

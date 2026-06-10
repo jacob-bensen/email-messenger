@@ -158,6 +158,34 @@
   </section>
 
   <section class="admin-card">
+    <h2 class="admin-card-title"
+        th:text="|Trial-end conversion — last ${trialEnd.windowDays()} days|">
+      Trial-end conversion — last 30 days
+    </h2>
+    <p class="admin-card-sub">
+      Trial-end emails fire ~24h before the trial clock runs out. Conversion
+      counts trial-end recipients whose subscription is currently active.
+    </p>
+    <div class="admin-funnel-row">
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Emails sent</span>
+        <span class="admin-funnel-count" th:text="${trialEnd.emailsSent()}">0</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Converted to active</span>
+        <span class="admin-funnel-count" th:text="${trialEnd.converted()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${trialEnd.conversionRatePercent()}% of sent|">0% of sent</span>
+      </div>
+    </div>
+    <p class="admin-empty" th:if="${trialEnd.emailsSent() == 0}">
+      No trial-end nudges sent in the window yet — figures populate once the
+      first trialing subscription crosses T-1 day.
+    </p>
+  </section>
+
+  <section class="admin-card">
     <h2 class="admin-card-title">Acquisition source</h2>
     <p class="admin-empty"
        th:if="${metrics.sourceBreakdown() == null or metrics.sourceBreakdown().isEmpty()}">

@@ -192,4 +192,32 @@ class AdminRevenueControllerTest {
                 .andExpect(content().string(containsString("Paid conversions")))
                 .andExpect(content().string(containsString("producthunt")));
     }
+
+    @Test
+    @WithMockUser(username = "operator@example.com")
+    void revenuePageRendersTrialEndConversionCardWithSentAndConvertedCounts() throws Exception {
+        userService.register("operator@example.com", "password1", null);
+        adminProperties.setEmails(List.of("operator@example.com"));
+
+        User payer = userService.register("paid-after-nudge@example.com", "password1", null);
+        Subscription paid = new Subscription(payer, "cus_paid", "active");
+        paid.setPlan(Plan.PERSONAL);
+        paid.setBillingPeriod(BillingPeriod.MONTHLY);
+        paid.setLastTrialEndEmailSentAt(java.time.LocalDateTime.now().minusHours(6));
+        subscriptions.save(paid);
+
+        User lapsed = userService.register("lapsed-after-nudge@example.com", "password1", null);
+        Subscription gone = new Subscription(lapsed, "cus_lapsed", "canceled");
+        gone.setPlan(Plan.PERSONAL);
+        gone.setBillingPeriod(BillingPeriod.MONTHLY);
+        gone.setLastTrialEndEmailSentAt(java.time.LocalDateTime.now().minusHours(6));
+        subscriptions.save(gone);
+
+        mockMvc.perform(get("/admin/revenue"))
+                .andExpect(status().isOk())
+                .andExpect(model().attributeExists("trialEnd"))
+                .andExpect(content().string(containsString("Trial-end conversion")))
+                .andExpect(content().string(containsString("Emails sent")))
+                .andExpect(content().string(containsString("Converted to active")));
+    }
 }

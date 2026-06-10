@@ -14,15 +14,18 @@ class AdminRevenueController {
     private final AdminAuthorizer authorizer;
     private final RevenueMetricsService metricsService;
     private final FunnelMetricsService funnelService;
+    private final TrialEndConversionMetricsService trialEndMetricsService;
     private final BillingPeriodBackfillService backfillService;
 
     AdminRevenueController(AdminAuthorizer authorizer,
                            RevenueMetricsService metricsService,
                            FunnelMetricsService funnelService,
+                           TrialEndConversionMetricsService trialEndMetricsService,
                            BillingPeriodBackfillService backfillService) {
         this.authorizer = authorizer;
         this.metricsService = metricsService;
         this.funnelService = funnelService;
+        this.trialEndMetricsService = trialEndMetricsService;
         this.backfillService = backfillService;
     }
 
@@ -31,8 +34,10 @@ class AdminRevenueController {
         authorizer.requireAdmin(principal.getName());
         RevenueMetrics metrics = metricsService.snapshot();
         FunnelMetrics funnel = funnelService.snapshot();
+        TrialEndConversionMetrics trialEnd = trialEndMetricsService.snapshot();
         model.addAttribute("metrics", metrics);
         model.addAttribute("funnel", funnel);
+        model.addAttribute("trialEnd", trialEnd);
         return "admin/revenue";
     }
 

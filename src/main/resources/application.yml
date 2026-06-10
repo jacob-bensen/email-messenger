@@ -122,6 +122,11 @@ activation:
   lastchance:
     cron: ${ACTIVATION_LASTCHANCE_CRON:0 0 14 * * ?}
 
+trial-end:
+  enabled: ${TRIAL_END_ENABLED:false}
+  cron: ${TRIAL_END_CRON:0 30 14 * * ?}
+  zone: ${TRIAL_END_ZONE:UTC}
+
 admin:
   emails: ${ADMIN_EMAILS:}
   weekly-digest:
@@ -230,6 +235,11 @@ activation:
     cron: ${ACTIVATION_FOLLOWUP_CRON:0 45 13 * * ?}
   lastchance:
     cron: ${ACTIVATION_LASTCHANCE_CRON:0 0 14 * * ?}
+
+trial-end:
+  enabled: ${TRIAL_END_ENABLED:false}
+  cron: ${TRIAL_END_CRON:0 30 14 * * ?}
+  zone: ${TRIAL_END_ZONE:UTC}
 
 admin:
   emails: ${ADMIN_EMAILS:}

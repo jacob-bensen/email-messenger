@@ -55,6 +55,9 @@ public class Subscription {
     @Column(name = "current_period_end")
     private LocalDateTime currentPeriodEnd;
 
+    @Column(name = "last_trial_end_email_sent_at")
+    private LocalDateTime lastTrialEndEmailSentAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -91,6 +94,7 @@ public class Subscription {
     public BillingPeriod getBillingPeriod() { return billingPeriod; }
     public LocalDateTime getTrialEndsAt() { return trialEndsAt; }
     public LocalDateTime getCurrentPeriodEnd() { return currentPeriodEnd; }
+    public LocalDateTime getLastTrialEndEmailSentAt() { return lastTrialEndEmailSentAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
@@ -101,4 +105,5 @@ public class Subscription {
     public void setBillingPeriod(BillingPeriod p) { this.billingPeriod = p; }
     public void setTrialEndsAt(LocalDateTime t) { this.trialEndsAt = t; }
     public void setCurrentPeriodEnd(LocalDateTime t) { this.currentPeriodEnd = t; }
+    public void setLastTrialEndEmailSentAt(LocalDateTime t) { this.lastTrialEndEmailSentAt = t; }
 }

@@ -87,10 +87,27 @@ connect a mailbox is visibly higher on the operator dashboard.
    opt-out token. `ActivationScheduler` gains a third `@Scheduled` at
    `0 0 14 * * ?` UTC (override via `ACTIVATION_LASTCHANCE_CRON`)
    under the same `activation.enabled` flag.
-4. **Trial-end conversion email when paid trials expire.** Pending —
-   `subscriptions.trial_ends_at` is already tracked; sweep the
-   T-1 / T-0 days, send a conversion push, and surface
-   conversion-from-trial as a separate column on `/admin/revenue`.
+4. **Trial-end conversion email when paid trials expire.** [shipped
+   2026-06-10] Flyway V23 adds nullable
+   `subscriptions.last_trial_end_email_sent_at` as a one-shot stamp
+   on the subscription row (not `users`, since the trial lifecycle
+   belongs to the subscription and a future re-trial should re-open
+   the cohort). New `TrialEndConversionService.runTrialEndCycle`
+   sweeps `subscriptions` rows where `status='trialing'`, `plan IN
+   (PERSONAL, TEAM)` (ENTERPRISE excluded — sales-led, matching the
+   existing `TrialConversionNudgeService`), `trial_ends_at` lands
+   inside the next 24h, and `last_trial_end_email_sent_at IS NULL`.
+   Body leads with `/pricing` ("pick a plan to keep going"), then
+   `/billing` (manage payment / downgrade to Free), then `/demo`,
+   ending with the existing `digest_email_preferences` opt-out
+   token so one unsubscribe still kills every automated channel.
+   `TrialEndConversionScheduler` runs `0 30 14 * * ?` UTC (override
+   via `TRIAL_END_CRON`) under a `trial-end.enabled=true` flag.
+   New `TrialEndConversionMetricsService` powers a "Trial-end
+   conversion — last 30 days" card on `/admin/revenue` with emails
+   sent + converted-to-active + conversion rate, anchored on the
+   one-shot stamp so the operator can compare against the
+   pre-EPIC-14 baseline.
 
 ## Done means
 

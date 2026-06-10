@@ -2593,6 +2593,11 @@ body {
   font-weight: 700;
   margin: 0 0 12px;
 }
+.admin-card-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: -8px 0 12px;
+}
 .admin-empty {
   color: var(--text-muted);
   font-size: 14px;
