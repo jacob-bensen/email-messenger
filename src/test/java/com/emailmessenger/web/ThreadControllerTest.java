@@ -14,8 +14,10 @@ import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
+import com.emailmessenger.domain.ThreadNote;
 import com.emailmessenger.service.Conversation;
 import com.emailmessenger.service.ReplyService;
+import com.emailmessenger.team.ThreadNoteService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -72,6 +74,7 @@ class ThreadControllerTest {
     @Mock SenderGroupService senderGroupService;
     @Mock SavedSearchService savedSearchService;
     @Mock UserActivityService userActivityService;
+    @Mock ThreadNoteService threadNoteService;
 
     MockMvc mockMvc;
 
@@ -87,7 +90,8 @@ class ThreadControllerTest {
                 threadRepository, threadViewService, replyService, userService,
                 billingBannerService, billingService, onboardingService,
                 planLimitService, trialConversionNudgeService, threadSearchService,
-                senderGroupService, savedSearchService, userActivityService, CLOCK);
+                senderGroupService, savedSearchService, userActivityService,
+                threadNoteService, CLOCK);
         lenient().when(userService.requireByEmail("owner@example.com")).thenReturn(owner);
         lenient().when(billingBannerService.bannerFor(owner)).thenReturn(Optional.empty());
         lenient().when(onboardingService.checklistFor(owner))
@@ -98,6 +102,8 @@ class ThreadControllerTest {
         lenient().when(trialConversionNudgeService.nudgeFor(owner)).thenReturn(Optional.empty());
         lenient().when(senderGroupService.topSenders(owner)).thenReturn(List.of());
         lenient().when(savedSearchService.viewsFor(owner)).thenReturn(List.of());
+        lenient().when(threadNoteService.canAccessNotes(owner)).thenReturn(false);
+        lenient().when(threadNoteService.notesFor(any(EmailThread.class), eq(owner))).thenReturn(List.of());
         // Prefix/suffix prevents InternalResourceViewResolver from producing a path that
         // matches the request URL (which would cause a circular-dispatch error in standalone mode).
         InternalResourceViewResolver viewResolver = new InternalResourceViewResolver();
@@ -678,5 +684,62 @@ class ThreadControllerTest {
         mockMvc.perform(get("/threads").principal(principal).param("from", "ada@example.com"))
                 .andExpect(status().isOk())
                 .andExpect(model().attribute("hasActiveSearchToSave", is(true)));
+    }
+
+    @Test
+    void teamPlanOwnerSeesNotesAndCanPostFlagOnConversationView() throws Exception {
+        EmailThread thread = new EmailThread(owner, "Subject", "<root@test>");
+        Conversation conv = new Conversation(thread, List.of());
+        when(threadViewService.getConversation(1L, owner)).thenReturn(conv);
+        when(threadNoteService.canAccessNotes(owner)).thenReturn(true);
+        when(threadNoteService.notesFor(thread, owner)).thenReturn(List.of());
+
+        mockMvc.perform(get("/threads/1").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(view().name("conversation"))
+                .andExpect(model().attribute("canPostTeamNote", is(true)))
+                .andExpect(model().attribute("teamNotes", notNullValue()))
+                .andExpect(model().attribute("teamNotesUpgradeNudge", nullValue()));
+    }
+
+    @Test
+    void freePlanOwnerSeesUpgradeNudgeAndEmptyNotesOnConversationView() throws Exception {
+        EmailThread thread = new EmailThread(owner, "Subject", "<root@test>");
+        Conversation conv = new Conversation(thread, List.of());
+        when(threadViewService.getConversation(1L, owner)).thenReturn(conv);
+        when(threadNoteService.canAccessNotes(owner)).thenReturn(false);
+        when(threadNoteService.notesFor(thread, owner)).thenReturn(List.of());
+
+        mockMvc.perform(get("/threads/1").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(view().name("conversation"))
+                .andExpect(model().attribute("canPostTeamNote", is(false)))
+                .andExpect(model().attribute("teamNotesUpgradeNudge", is(true)));
+    }
+
+    @Test
+    void postNoteRedirectsBackToThreadWithFlash() throws Exception {
+        EmailThread thread = new EmailThread(owner, "Subject", "<root@test>");
+        when(threadRepository.findByIdAndOwner(7L, owner)).thenReturn(Optional.of(thread));
+        when(threadNoteService.post(eq(thread), eq(owner), eq("Heads-up for the team")))
+                .thenReturn(ThreadNoteService.PostResult.posted(new ThreadNote(thread, null, owner, "Heads-up for the team")));
+
+        mockMvc.perform(post("/threads/7/note").principal(principal)
+                        .param("body", "Heads-up for the team"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/threads/7"));
+
+        verify(threadNoteService).post(eq(thread), eq(owner), eq("Heads-up for the team"));
+    }
+
+    @Test
+    void postNoteOnSomeoneElsesThreadReturns404() throws Exception {
+        when(threadRepository.findByIdAndOwner(42L, owner)).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/threads/42/note").principal(principal)
+                        .param("body", "Trying to add a note to someone else's thread"))
+                .andExpect(status().isNotFound());
+
+        verify(threadNoteService, never()).post(any(EmailThread.class), any(User.class), anyString());
     }
 }

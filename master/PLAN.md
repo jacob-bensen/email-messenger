@@ -11,108 +11,67 @@ SaaS: Free (1 mailbox, 500 threads, 1 saved search), Personal $9/mo
 Team $29/mo (10 mailboxes, sharing), Enterprise $99/mo (SSO, audit).
 Annual billing offers 2 months free. Money comes from recurring
 subscriptions, with natural Free → Personal → Team upgrades as mailbox
-count, history, and saved-search counts grow. EPICs 02–14 (Monetization
-through activation drip) are code-complete in `claude_routine`; live
-deploy is gated on Master ops (hosting, domain, Stripe live keys,
-encryption secrets, Google OAuth credentials, demo video URL).
+count, history, and saved-search counts grow. EPICs 02–15 (Monetization
+through in-app onboarding checklist) are code-complete in
+`claude_routine`; live deploy is gated on Master ops (hosting, domain,
+Stripe live keys, encryption secrets, Google OAuth credentials, demo
+video URL).
 
 ## Primary Objective
 
-**Ship EPIC-15 in-app onboarding checklist — drive Free→Personal→Team
-upgrades on natural activation.** EPIC-14's drip catches cold signups in
-their own inbox before they bounce; EPIC-15 catches the next leak: the
-signup who *did* connect a mailbox but never makes it deep enough into
-the product to feel why Personal (unlimited threads, unlimited saved
-searches) or Team (sharing) is worth $9/$29 a month. The activation
-arc — connect a mailbox → see real threads flowing → save a search you
-care about → invite a teammate — is exactly the arc that turns Free
-into paid. A visible progress card on `/threads` makes that arc legible,
-ties each step to a one-click CTA, and naturally points the last two
-steps at the saved-search and team-sharing features that gate paid
-plans. This Objective ends when a brand-new signup who lands on
-`/threads` sees a 4-step progress card naming each step, the card
-disappears once all four are done, and the post-EPIC-15 7-day
-"connected mailbox → saved a search → first invite" conversion rate
-is visibly higher than the pre-EPIC-15 baseline on `/admin/revenue`.
+**Ship EPIC-16 shared-inbox features that make the Team plan feel
+earned.** Team $29/mo currently upgrades on mailbox-cap + scaffolded
+invite flow, neither of which is *experienced* daily inside the
+product — a freshly-invited teammate logs in and finds the same
+single-user inbox the inviter already had. The Team plan needs visible
+collaboration surface inside a thread: an internal note (separate from
+the email reply) that other team members will see, attribution + time
+on every note, and a clear paid-feature boundary so Free/Personal users
+encounter a "this is Team-only — upgrade to add notes" CTA on the same
+spot. That moment is the upgrade event. This Objective ends when any
+Team-plan thread owner can pin private notes onto a thread, those
+notes are attributed and visible to all members of their team viewing
+that thread, Free/Personal users see the upgrade CTA in the same
+spot, and `/admin/revenue` shows the Free→Team conversion rate
+trending up versus the pre-EPIC-16 baseline.
 
 ## Milestones
 
-1. **Always-visible 3-step progress card on `/threads`.** [shipped
-   2026-06-10] Replaces the empty-state-only welcome card with a
-   compact progress strip that sits above the thread list whenever the
-   checklist is incomplete. Steps: (1) Connect a mailbox,
-   (2) Import 10 threads (live count + "N to go" copy until 10 is
-   hit), (3) Save a search. `OnboardingChecklist` carries
-   `mailboxConnected`, `threadCount`, `savedSearchSaved` plus derived
-   `completedSteps()`, `percentComplete()`, `nextStepCtaUrl/Label`,
-   `isComplete()`. `OnboardingService` now also reads
-   `SavedSearchRepository.countByOwner` and the raw thread count from
-   `EmailThreadRepository.countByOwner`. `ThreadController` always
-   exposes the checklist on `/threads` (including search/filter
-   views) until `isComplete()` flips, at which point the attribute is
-   omitted and the strip silently disappears. The legacy big
-   welcome-state card still renders on a totally empty inbox, with
-   the same three steps. 5 service tests + 3 controller tests cover
-   per-step transitions, the 10-thread threshold, the
-   suppress-when-complete contract, and the search/filter-active
-   variants.
-2. **Step 4 — invite a teammate.** [shipped 2026-06-10] Lightweight
-   team-invite flow scaffolded end-to-end: V24 adds `teams`,
-   `team_members`, `team_invites`; `TeamService.findOrCreateOwnedTeam`
-   lazy-creates the inviter's team on first invite and stamps an
-   `OWNER` member row; `TeamInviteService.invite` mints a SHA-256
-   hashed 7-day-TTL token, rejects self-invites / blanks / duplicate
-   pending addresses, and emails the invitee a `/team/invite/accept`
-   link; `TeamInviteService.acceptInvite` validates the token, refuses
-   to redeem when the signed-in email doesn't match the invitee, adds
-   a `MEMBER` row, and consumes the token. `TeamInviteController`
-   exposes `GET/POST /team/invite` (form + outstanding list) and
-   `GET/POST /team/invite/accept` (ready / emailMismatch / invalid
-   branches). `OnboardingChecklist` grows `teammateInvited` (true when
-   the user has any non-revoked invite), `TOTAL_STEPS = 4`, with a 4th
-   CTA `/team/invite` "Invite a teammate". `OnboardingService` reads
-   `TeamInviteRepository.countNonRevokedByInviter`. `threads.html`
-   renders step 4 in both the progress strip and the empty-inbox card.
-   M3 (per-step upgrade nudges that monetize) will swap the post-step
-   sub-copy for a Team plan CTA on Free/Personal.
-3. **Per-step upgrade nudges that monetize the steps directly.**
-   [shipped 2026-06-10] New `OnboardingNudge` view-model in
-   `com.emailmessenger.web` with static `from(Plan, OnboardingChecklist)`
-   factory: Free + threadsImported → Personal nudge (threads-cap copy);
-   Free + savedSearchSaved → Personal nudge (saved-search-cap copy);
-   Free + teammateInvited → Team plan nudge (sharing-inbox copy). Paid
-   plans → no nudge. `ThreadController` injects `PlanLimitService`,
-   computes the nudge after the checklist, exposes `onboardingNudge`
-   model attribute. `threads.html` renders an `.onboarding-nudge` panel
-   inside the existing `.onboarding-progress` section, posting `plan` +
-   `billing=monthly` to `/billing/checkout` (same Stripe entry point as
-   the upgrade modal); the section stays visible when the checklist is
-   complete but a Team nudge is active, so a Free user who just
-   invited a teammate still sees the Team CTA.
-4. **Operator dashboard card for onboarding-step conversion.** [shipped
-   2026-06-10] New `OnboardingFunnelMetrics` record + `…Service` in
-   `com.emailmessenger.admin` anchored on `users.created_at` >= now-30d.
-   For the cohort it counts mailbox-connected (≥1 `MailAccount`),
-   10-threads (≥10 `EmailThread`, matching `OnboardingChecklist.THREADS_TARGET`),
-   saved-search (≥1 `SavedSearch`), invite-sent (≥1 non-revoked
-   `TeamInvite`, matching the checklist's step-4 predicate), and paid
-   (any `Subscription` with `status='active'`). Each step rate is
-   {step}/signups so the largest drop between two adjacent columns
-   names the next monetization leak. New repo queries
-   `countDistinctOwnersIn` / `findOwnerIdsWithAtLeastThreadsAmong` /
-   `countDistinctInvitersIn` / `countActiveOwnersIn` take a cohort-ID
-   collection; empty-cohort short-circuit avoids 5 round-trips on a
-   fresh-deploy instance with zero signups. `AdminRevenueController`
-   injects the service and exposes `onboardingFunnel`; `revenue.html`
-   renders an "Onboarding funnel — last 30 days" card between the
-   acquisition funnel and the trial-end conversion card.
+1. **Internal team notes on a thread — owner-side, Team-gated.** New
+   `thread_notes` table (V25) keyed by `thread_id` + `team_id` +
+   `author_user_id`. `ThreadNote` entity, `ThreadNoteRepository`,
+   `ThreadNoteService` with `canAccessNotes(user)` (TEAM/ENTERPRISE
+   on entitling status), `notesFor(thread, viewer)` (owner-only for
+   M1), and `post(thread, author, body)` returning POSTED / GATED /
+   BLANK / TOO_LONG (4 KB cap). `ThreadController.viewConversation`
+   loads notes + `canPostNote` + a `notesUpgradeNudge` for non-Team
+   plans; new `POST /threads/{id}/note` handles posting. The
+   `conversation.html` template renders a sticky-note panel between
+   messages and the reply form: existing notes with author + time,
+   a textarea + submit for Team users, an upgrade-to-Team CTA for
+   Free/Personal.
+2. **Thread visibility for invited teammates — notes work cross-user.**
+   Lift thread access from `findByIdAndOwner` to a team-scoped check
+   so a team member who follows a shared link to a teammate's thread
+   sees the same conversation view + notes panel. Notes posted by
+   either party show on both sides with proper attribution.
+3. **@mention notifications inside a note.** Parse `@email` /
+   `@name` tokens against the team membership; matched mentions get
+   a transactional email pointing back at `/threads/{id}#note-{id}`.
+   The "@" trigger in the textarea opens a name picker bound to the
+   team members.
+4. **Operator dashboard card: Team-plan conversion lift.** Add a
+   "Team-plan adoption — last 30 days" card on `/admin/revenue`
+   showing notes-posted, thread-share-clicks, mentions-sent for the
+   cohort plus a Free→Team vs Personal→Team split so the lift over
+   the pre-EPIC-16 baseline is legible at a glance.
 
 ## Done means
 
-A brand-new signup who lands on `/threads` sees a 4-step progress card
-("Connect a mailbox → Import 10 threads → Save a search → Invite a
-teammate") with each step linked to a one-click action. The card
-updates in real time as each step is completed and disappears once
-all four are done. The post-EPIC-15 7-day onboarding-completion rate
-and the Free→Personal/Team conversion rate among onboarded users are
-visibly higher on `/admin/revenue` than the pre-EPIC-15 baseline.
+A Team-plan thread owner sees an "Internal notes" panel under the
+messages, can pin a private note, and any teammate who follows a
+shared thread link sees the same panel and the same notes attributed
+to the right person. Free/Personal users see an "Upgrade to Team to
+add internal notes" CTA in the same spot. The post-EPIC-16
+Free→Team conversion rate on `/admin/revenue` is visibly higher than
+the pre-EPIC-16 baseline.

@@ -102,6 +102,71 @@
 
   </div>
 
+  <!--
+    Internal team notes — Team-plan only. Free/Personal users see the
+    upgrade CTA in the same spot so the value of the Team plan is
+    legible at the moment they'd reach for it.
+  -->
+  <section th:unless="${demoMode}" class="team-notes" aria-labelledby="team-notes-heading">
+    <header class="team-notes-header">
+      <h2 id="team-notes-heading">Internal notes</h2>
+      <span class="team-notes-sub">Visible to your team only — never sent in the email reply.</span>
+    </header>
+
+    <div th:if="${noteFlash == 'posted'}" class="alert alert-success">Note added.</div>
+    <div th:if="${noteFlash == 'blank'}" class="alert alert-error">Write something before saving.</div>
+    <div th:if="${noteFlash == 'tooLong'}" class="alert alert-error">Note is too long (max 4,000 characters).</div>
+    <div th:if="${noteFlash == 'gated'}" class="alert alert-error">Internal notes are a Team-plan feature.</div>
+
+    <ul class="note-list" th:if="${teamNotes != null and !teamNotes.isEmpty()}">
+      <li class="note-bubble" th:each="note : ${teamNotes}">
+        <div class="note-meta">
+          <span class="note-author"
+                th:text="${note.authorUser.displayName != null and !#strings.isEmpty(note.authorUser.displayName) ? note.authorUser.displayName : note.authorUser.email}">Author</span>
+          <span class="note-time"
+                th:text="${#temporals.format(note.createdAt, 'MMM d, h:mm a')}">Jan 1, 12:00 PM</span>
+        </div>
+        <div class="note-body" th:text="${note.body}">Note body</div>
+      </li>
+    </ul>
+
+    <p class="note-empty"
+       th:if="${canPostTeamNote and (teamNotes == null or teamNotes.isEmpty())}">
+      No notes yet — pin one to capture context for the rest of the team.
+    </p>
+
+    <form th:if="${canPostTeamNote}"
+          th:action="@{/threads/{id}/note(id=${conversation.thread().id})}"
+          method="post"
+          class="note-form">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <textarea name="body"
+                placeholder="Add an internal note…"
+                rows="2"
+                maxlength="4000"></textarea>
+      <div class="note-actions">
+        <button type="submit" class="btn btn-secondary">Add note</button>
+      </div>
+    </form>
+
+    <div th:if="${teamNotesUpgradeNudge}" class="note-upgrade">
+      <p class="note-upgrade-copy">
+        <strong>Pin context where your team can see it.</strong>
+        Internal notes are part of the <strong>Team plan</strong> —
+        attach private comments to a thread so the next teammate on it
+        already has the backstory.
+      </p>
+      <form action="/billing/checkout" method="post" class="note-upgrade-form">
+        <input type="hidden" th:if="${_csrf != null}"
+               th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <input type="hidden" name="plan" value="TEAM">
+        <input type="hidden" name="billing" value="monthly">
+        <button type="submit" class="btn btn-primary">Upgrade to Team — $29/mo</button>
+      </form>
+    </div>
+  </section>
+
   <!-- Reply area: real threads only. Demo mode renders a conversion CTA instead. -->
   <div th:unless="${demoMode}" class="reply-area">
     <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Reply sent.</div>

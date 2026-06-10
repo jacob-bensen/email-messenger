@@ -781,6 +781,122 @@ body {
   border: 1px solid #a7f3d0;
 }
 
+/* ── Internal team notes ────────────────────────────── */
+.team-notes {
+  background: #fffaf0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  flex-shrink: 0;
+}
+.team-notes-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+  margin-bottom: 10px;
+}
+.team-notes-header h2 {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #92400e;
+  margin: 0;
+}
+.team-notes-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.note-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.note-bubble {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.note-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  color: #78350f;
+  margin-bottom: 4px;
+}
+.note-author { font-weight: 600; }
+.note-time { color: var(--text-muted); }
+.note-body {
+  font-size: 14px;
+  color: #1f2937;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.note-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+}
+.note-form textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 14px;
+  resize: vertical;
+  background: #fff;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.note-form textarea:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+}
+.note-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.note-upgrade {
+  background: #fff;
+  border: 1px dashed #fcd34d;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.note-upgrade-copy {
+  font-size: 13px;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.5;
+}
+.note-upgrade-form { margin: 0; }
+
+@media (prefers-color-scheme: dark) {
+  .team-notes { background: #2a2410; }
+  .team-notes-header h2 { color: #fbbf24; }
+  .note-bubble { background: #3b3414; border-color: #92400e; }
+  .note-meta { color: #fde68a; }
+  .note-body { color: #fef3c7; }
+  .note-form textarea { background: #1f1b0d; color: #fef3c7; border-color: #92400e; }
+  .note-upgrade { background: #1f1b0d; border-color: #92400e; }
+  .note-upgrade-copy { color: #fef3c7; }
+}
+
+@media (max-width: 640px) {
+  .team-notes { padding: 12px 16px; }
+}
+
 /* ── Header Nav (replaces inline styles) ────────────── */
 .header-nav {
   margin-left: auto;

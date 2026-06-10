@@ -12,6 +12,7 @@ import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.service.Conversation;
 import com.emailmessenger.service.ReplyService;
+import com.emailmessenger.team.ThreadNoteService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -49,6 +50,7 @@ class ThreadController {
     private final SenderGroupService senderGroupService;
     private final SavedSearchService savedSearchService;
     private final UserActivityService userActivityService;
+    private final ThreadNoteService threadNoteService;
     private final Clock clock;
 
     ThreadController(EmailThreadRepository threadRepository,
@@ -64,6 +66,7 @@ class ThreadController {
                      SenderGroupService senderGroupService,
                      SavedSearchService savedSearchService,
                      UserActivityService userActivityService,
+                     ThreadNoteService threadNoteService,
                      Clock clock) {
         this.threadRepository = threadRepository;
         this.threadViewService = threadViewService;
@@ -78,6 +81,7 @@ class ThreadController {
         this.senderGroupService = senderGroupService;
         this.savedSearchService = savedSearchService;
         this.userActivityService = userActivityService;
+        this.threadNoteService = threadNoteService;
         this.clock = clock;
     }
 
@@ -147,7 +151,32 @@ class ThreadController {
         model.addAttribute("conversation", conversation);
         model.addAttribute("replyForm", new ReplyForm());
         model.addAttribute("billingBanner", billingBannerService.bannerFor(owner).orElse(null));
+        boolean canPostNote = threadNoteService.canAccessNotes(owner);
+        model.addAttribute("teamNotes", threadNoteService.notesFor(conversation.thread(), owner));
+        model.addAttribute("canPostTeamNote", canPostNote);
+        model.addAttribute("teamNoteForm", new ThreadNoteForm());
+        if (!canPostNote) {
+            model.addAttribute("teamNotesUpgradeNudge", true);
+        }
         return "conversation";
+    }
+
+    @PostMapping("/threads/{id}/note")
+    String postNote(@PathVariable Long id,
+                    @RequestParam(value = "body", required = false) String body,
+                    Principal principal,
+                    RedirectAttributes redirectAttributes) {
+        User owner = userService.requireByEmail(principal.getName());
+        EmailThread thread = threadRepository.findByIdAndOwner(id, owner)
+                .orElseThrow(NoSuchElementException::new);
+        ThreadNoteService.PostResult result = threadNoteService.post(thread, owner, body);
+        switch (result.outcome()) {
+            case POSTED -> redirectAttributes.addFlashAttribute("noteFlash", "posted");
+            case GATED -> redirectAttributes.addFlashAttribute("noteFlash", "gated");
+            case BLANK -> redirectAttributes.addFlashAttribute("noteFlash", "blank");
+            case TOO_LONG -> redirectAttributes.addFlashAttribute("noteFlash", "tooLong");
+        }
+        return "redirect:/threads/" + id;
     }
 
     @PostMapping("/threads/{id}/reply")
