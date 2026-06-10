@@ -56,16 +56,25 @@ is visibly higher than the pre-EPIC-15 baseline on `/admin/revenue`.
    per-step transitions, the 10-thread threshold, the
    suppress-when-complete contract, and the search/filter-active
    variants.
-2. **Step 4 — invite a teammate.** Add a lightweight team-invite flow
-   (record an `Invite` row with token + invitee email, send the
-   transactional email, accept-link wires the invitee into the
-   inviter's `Team`). `OnboardingChecklist` gains `teammateInvited`
-   (count > 0). The invite CTA on the progress card points at Team
-   plan upgrade when the inviter is on Free or Personal — that's where
-   the dollars are. Without team infra in the codebase yet, this
-   milestone scaffolds enough of the team model (`Team`, `TeamMember`,
-   `Invite`) to make "invite a teammate" a real action; full
-   permissions/sharing land in a later EPIC.
+2. **Step 4 — invite a teammate.** [shipped 2026-06-10] Lightweight
+   team-invite flow scaffolded end-to-end: V24 adds `teams`,
+   `team_members`, `team_invites`; `TeamService.findOrCreateOwnedTeam`
+   lazy-creates the inviter's team on first invite and stamps an
+   `OWNER` member row; `TeamInviteService.invite` mints a SHA-256
+   hashed 7-day-TTL token, rejects self-invites / blanks / duplicate
+   pending addresses, and emails the invitee a `/team/invite/accept`
+   link; `TeamInviteService.acceptInvite` validates the token, refuses
+   to redeem when the signed-in email doesn't match the invitee, adds
+   a `MEMBER` row, and consumes the token. `TeamInviteController`
+   exposes `GET/POST /team/invite` (form + outstanding list) and
+   `GET/POST /team/invite/accept` (ready / emailMismatch / invalid
+   branches). `OnboardingChecklist` grows `teammateInvited` (true when
+   the user has any non-revoked invite), `TOTAL_STEPS = 4`, with a 4th
+   CTA `/team/invite` "Invite a teammate". `OnboardingService` reads
+   `TeamInviteRepository.countNonRevokedByInviter`. `threads.html`
+   renders step 4 in both the progress strip and the empty-inbox card.
+   M3 (per-step upgrade nudges that monetize) will swap the post-step
+   sub-copy for a Team plan CTA on Free/Personal.
 3. **Per-step upgrade nudges that monetize the steps directly.** When
    the user completes step 2 (10 threads imported) on a Free plan
    trending toward the 500-thread cap, the progress card swaps the

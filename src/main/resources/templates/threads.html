@@ -366,6 +366,13 @@
                 th:text="${onboarding.savedSearchSaved} ? '&#10003;' : '3'">3</span>
           <span class="onboarding-progress-step-text">Save a search</span>
         </li>
+        <li class="onboarding-progress-step"
+            th:classappend="${onboarding.teammateInvited} ? ' onboarding-progress-step-done'
+                            : (onboarding.savedSearchSaved ? ' onboarding-progress-step-current' : '')">
+          <span class="onboarding-progress-step-mark" aria-hidden="true"
+                th:text="${onboarding.teammateInvited} ? '&#10003;' : '4'">4</span>
+          <span class="onboarding-progress-step-text">Invite a teammate</span>
+        </li>
       </ol>
       <a th:href="@{${onboarding.nextStepCtaUrl()}}"
          th:text="${onboarding.nextStepCtaLabel()}"
@@ -599,6 +606,14 @@
         <span class="onboarding-step-mark" aria-hidden="true"
               th:text="${onboarding.savedSearchSaved} ? '&#10003;' : '4'">4</span>
         <span class="onboarding-step-text">Save a search</span>
+      </li>
+      <li class="onboarding-step"
+          th:classappend="${onboarding.teammateInvited}
+                          ? ' onboarding-step-done'
+                          : (onboarding.savedSearchSaved ? ' onboarding-step-current' : '')">
+        <span class="onboarding-step-mark" aria-hidden="true"
+              th:text="${onboarding.teammateInvited} ? '&#10003;' : '5'">5</span>
+        <span class="onboarding-step-text">Invite a teammate</span>
       </li>
     </ol>
 

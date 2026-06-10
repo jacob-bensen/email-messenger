@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Accept team invite — MailIM</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/" class="brand">MailIM</a>
+  <nav class="header-nav">
+    <a href="/pricing">Pricing</a>
+    <a href="/login">Sign in</a>
+  </nav>
+</header>
+
+<main class="auth-page">
+  <section class="auth-card">
+    <h1>Join the team</h1>
+
+    <div th:if="${status == 'invalid'}" class="alert alert-error">
+      This invite link is invalid or has expired. Ask the team owner to send a fresh invite.
+    </div>
+
+    <div th:if="${status == 'emailMismatch'}" class="alert alert-error">
+      You're signed in as <strong th:text="${signedInEmail}">you@example.com</strong>, but this
+      invite was sent to <strong th:text="${invite.inviteeEmail}">invitee@example.com</strong>.
+      Sign out and sign back in with the invited address to accept.
+    </div>
+
+    <th:block th:if="${status == 'ready'}">
+      <p class="auth-sub"
+         th:text="|You've been invited to join &quot;${invite.team.name}&quot;.|">
+        You've been invited.
+      </p>
+      <form method="post" th:action="@{/team/invite/accept}" class="auth-form">
+        <input type="hidden" name="token" th:value="${token}">
+        <input type="hidden" th:if="${_csrf != null}"
+               th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <button type="submit" class="btn btn-primary auth-submit">Accept invite</button>
+      </form>
+    </th:block>
+  </section>
+</main>
+
+</body>
+</html>

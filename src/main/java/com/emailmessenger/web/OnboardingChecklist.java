@@ -3,10 +3,11 @@ package com.emailmessenger.web;
 public record OnboardingChecklist(
         boolean mailboxConnected,
         long threadCount,
-        boolean savedSearchSaved) {
+        boolean savedSearchSaved,
+        boolean teammateInvited) {
 
     public static final long THREADS_TARGET = 10;
-    public static final int TOTAL_STEPS = 3;
+    public static final int TOTAL_STEPS = 4;
 
     public boolean threadsImported() {
         return threadCount >= THREADS_TARGET;
@@ -17,6 +18,7 @@ public record OnboardingChecklist(
         if (mailboxConnected) n++;
         if (threadsImported()) n++;
         if (savedSearchSaved) n++;
+        if (teammateInvited) n++;
         return n;
     }
 
@@ -47,6 +49,9 @@ public record OnboardingChecklist(
         if (!savedSearchSaved) {
             return "/threads";
         }
+        if (!teammateInvited) {
+            return "/team/invite";
+        }
         return "/threads";
     }
 
@@ -59,6 +64,9 @@ public record OnboardingChecklist(
         }
         if (!savedSearchSaved) {
             return "Save your first search";
+        }
+        if (!teammateInvited) {
+            return "Invite a teammate";
         }
         return "Open inbox";
     }

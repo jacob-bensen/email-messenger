@@ -89,7 +89,7 @@ class ThreadControllerTest {
         lenient().when(userService.requireByEmail("owner@example.com")).thenReturn(owner);
         lenient().when(billingBannerService.bannerFor(owner)).thenReturn(Optional.empty());
         lenient().when(onboardingService.checklistFor(owner))
-                .thenReturn(new OnboardingChecklist(false, 0L, false));
+                .thenReturn(new OnboardingChecklist(false, 0L, false, false));
         lenient().when(trialConversionNudgeService.nudgeFor(owner)).thenReturn(Optional.empty());
         lenient().when(senderGroupService.topSenders(owner)).thenReturn(List.of());
         lenient().when(savedSearchService.viewsFor(owner)).thenReturn(List.of());
@@ -247,7 +247,7 @@ class ThreadControllerTest {
         Page<EmailThread> empty = new PageImpl<>(List.of());
         when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
                 .thenReturn(empty);
-        OnboardingChecklist checklist = new OnboardingChecklist(false, 0L, false);
+        OnboardingChecklist checklist = new OnboardingChecklist(false, 0L, false, false);
         when(onboardingService.checklistFor(owner)).thenReturn(checklist);
 
         mockMvc.perform(get("/threads").principal(principal))
@@ -262,7 +262,7 @@ class ThreadControllerTest {
         Page<EmailThread> populated = new PageImpl<>(List.of(thread));
         when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
                 .thenReturn(populated);
-        OnboardingChecklist incomplete = new OnboardingChecklist(true, 1L, false);
+        OnboardingChecklist incomplete = new OnboardingChecklist(true, 1L, false, false);
         when(onboardingService.checklistFor(owner)).thenReturn(incomplete);
 
         mockMvc.perform(get("/threads").principal(principal))
@@ -277,7 +277,7 @@ class ThreadControllerTest {
         Page<EmailThread> populated = new PageImpl<>(List.of(thread));
         when(threadRepository.findByOwnerOrderByUpdatedAtDesc(eq(owner), any(Pageable.class)))
                 .thenReturn(populated);
-        OnboardingChecklist done = new OnboardingChecklist(true, 25L, true);
+        OnboardingChecklist done = new OnboardingChecklist(true, 25L, true, true);
         when(onboardingService.checklistFor(owner)).thenReturn(done);
 
         mockMvc.perform(get("/threads").principal(principal))
@@ -366,7 +366,7 @@ class ThreadControllerTest {
         Page<EmailThread> empty = new PageImpl<>(List.of());
         when(threadSearchService.search(eq(owner), eq("nope"), eq(null), any(ThreadFilters.class), any(Pageable.class)))
                 .thenReturn(new ThreadSearchService.Result(empty, false));
-        OnboardingChecklist incomplete = new OnboardingChecklist(true, 5L, false);
+        OnboardingChecklist incomplete = new OnboardingChecklist(true, 5L, false, false);
         when(onboardingService.checklistFor(owner)).thenReturn(incomplete);
 
         mockMvc.perform(get("/threads").principal(principal).param("q", "nope"))
@@ -439,7 +439,7 @@ class ThreadControllerTest {
         Page<EmailThread> empty = new PageImpl<>(List.of());
         when(threadSearchService.search(eq(owner), eq(""), eq("ada@acme.com"), any(ThreadFilters.class), any(Pageable.class)))
                 .thenReturn(new ThreadSearchService.Result(empty, false));
-        OnboardingChecklist incomplete = new OnboardingChecklist(true, 12L, false);
+        OnboardingChecklist incomplete = new OnboardingChecklist(true, 12L, false, false);
         when(onboardingService.checklistFor(owner)).thenReturn(incomplete);
 
         mockMvc.perform(get("/threads").principal(principal).param("from", "ada@acme.com"))
@@ -519,7 +519,7 @@ class ThreadControllerTest {
         Page<EmailThread> empty = new PageImpl<>(List.of());
         when(threadSearchService.search(eq(owner), eq(""), eq(null), any(ThreadFilters.class), any(Pageable.class)))
                 .thenReturn(new ThreadSearchService.Result(empty, false));
-        OnboardingChecklist incomplete = new OnboardingChecklist(true, 12L, false);
+        OnboardingChecklist incomplete = new OnboardingChecklist(true, 12L, false, false);
         when(onboardingService.checklistFor(owner)).thenReturn(incomplete);
 
         mockMvc.perform(get("/threads").principal(principal).param("unread", "true"))

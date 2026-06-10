@@ -2,11 +2,6 @@
 
 Up to 10 items, each advancing a PLAN.md milestone. Pick from the top.
 
-- **EPIC-15 M2 — team-invite flow + step 4 of progress card.**
-  Scaffold `Team`/`TeamMember`/`Invite` + transactional invite email +
-  accept link; wire `OnboardingChecklist.teammateInvited`. Advances:
-  Step 4 — invite a teammate.
-
 - **EPIC-15 M3 — per-step upgrade nudges in the progress card.**
   After step 2/3/4 completion, swap sub-copy for the corresponding
   Personal/Team upgrade CTA via existing `UpgradeModal`. Advances:
