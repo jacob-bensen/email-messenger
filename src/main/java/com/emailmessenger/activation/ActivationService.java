@@ -1,8 +1,11 @@
 package com.emailmessenger.activation;
 
 import com.emailmessenger.domain.DigestEmailPreference;
+import com.emailmessenger.domain.Plan;
+import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.DigestEmailPreferenceRepository;
+import com.emailmessenger.repository.SubscriptionRepository;
 import com.emailmessenger.repository.UserRepository;
 import com.emailmessenger.web.SiteProperties;
 import jakarta.mail.MessagingException;
@@ -47,8 +50,10 @@ public class ActivationService {
 
     static final Duration ACTIVATION_DELAY = Duration.ofHours(24);
     static final Duration ACTIVATION_FOLLOWUP_DELAY = Duration.ofHours(72);
+    static final Duration ACTIVATION_LAST_CHANCE_DELAY = Duration.ofHours(168);
 
     private final UserRepository users;
+    private final SubscriptionRepository subscriptions;
     private final DigestEmailPreferenceRepository preferences;
     private final JavaMailSender mailSender;
     private final SiteProperties site;
@@ -58,11 +63,13 @@ public class ActivationService {
     private String fromAddress = "noreply@mailaim.app";
 
     ActivationService(UserRepository users,
+                      SubscriptionRepository subscriptions,
                       DigestEmailPreferenceRepository preferences,
                       JavaMailSender mailSender,
                       SiteProperties site,
                       Clock clock) {
         this.users = users;
+        this.subscriptions = subscriptions;
         this.preferences = preferences;
         this.mailSender = mailSender;
         this.site = site;
@@ -97,6 +104,23 @@ public class ActivationService {
                 }
             } catch (RuntimeException e) {
                 log.warn("Activation follow-up send failed for user id={}: {}",
+                        user.getId(), e.getMessage());
+            }
+        }
+        return sent;
+    }
+
+    public int runActivationLastChanceCycle() {
+        LocalDateTime now = LocalDateTime.now(clock);
+        LocalDateTime cutoff = now.minus(ACTIVATION_LAST_CHANCE_DELAY);
+        int sent = 0;
+        for (User user : users.findActivationLastChanceCandidates(cutoff)) {
+            try {
+                if (sendActivationLastChanceFor(user, now)) {
+                    sent++;
+                }
+            } catch (RuntimeException e) {
+                log.warn("Activation last-chance send failed for user id={}: {}",
                         user.getId(), e.getMessage());
             }
         }
@@ -143,6 +167,42 @@ public class ActivationService {
         return true;
     }
 
+    @Transactional
+    public boolean sendActivationLastChanceFor(User user, LocalDateTime now) {
+        if (user.getLastActivationLastChanceSentAt() != null) {
+            return false;
+        }
+        DigestEmailPreference prefs = preferences.findByUser(user)
+                .orElseGet(() -> preferences.save(new DigestEmailPreference(user, newToken())));
+        if (prefs.isOptedOut()) {
+            return false;
+        }
+        boolean paidIntent = hasPaidIntent(user);
+        try {
+            mailSender.send(composeLastChance(user, prefs, paidIntent));
+        } catch (MailException e) {
+            log.warn("Activation last-chance mail send failed for user id={}: {}", user.getId(), e.getMessage());
+            return false;
+        }
+        users.touchActivationLastChanceSent(user.getId(), now);
+        return true;
+    }
+
+    // Paid intent = the signup picked PERSONAL/TEAM/ENTERPRISE at /pricing
+    // and got far enough into Stripe Checkout to materialize a Subscription
+    // row (status ranges from "incomplete" through "trialing"/"active").
+    // Free-tier signups have no Subscription at all; users who explicitly
+    // picked Free or whose paid attempt was wiped get FREE plan. Both
+    // collapse to the "no trial clock, take your time" framing.
+    private boolean hasPaidIntent(User user) {
+        Subscription sub = subscriptions.findByUser(user).orElse(null);
+        if (sub == null) {
+            return false;
+        }
+        Plan plan = sub.getPlan();
+        return plan != null && plan != Plan.FREE;
+    }
+
     private MimeMessage compose(User user, DigestEmailPreference prefs) {
         MimeMessage mime = mailSender.createMimeMessage();
         try {
@@ -167,6 +227,22 @@ public class ActivationService {
             helper.setText(renderFollowupBody(user, prefs), false);
         } catch (MessagingException e) {
             throw new MailPreparationException("Could not compose activation follow-up email", e);
+        }
+        return mime;
+    }
+
+    private MimeMessage composeLastChance(User user, DigestEmailPreference prefs, boolean paidIntent) {
+        MimeMessage mime = mailSender.createMimeMessage();
+        try {
+            MimeMessageHelper helper = new MimeMessageHelper(mime, false, "UTF-8");
+            helper.setFrom(fromAddress);
+            helper.setTo(user.getEmail());
+            helper.setSubject(paidIntent
+                    ? "Your MailIM trial is winding down — connect to use it"
+                    : "Still curious about MailIM? Free is here whenever you're ready");
+            helper.setText(renderLastChanceBody(user, prefs, paidIntent), false);
+        } catch (MessagingException e) {
+            throw new MailPreparationException("Could not compose activation last-chance email", e);
         }
         return mime;
     }
@@ -203,6 +279,41 @@ public class ActivationService {
         sb.append("When you're ready, connecting your mailbox takes about 60 seconds: ")
           .append(base).append("/mailboxes/new\n\n");
         sb.append("Don't want these emails? Unsubscribe: ")
+          .append(base).append("/digest/opt-out?token=").append(prefs.getOptOutToken()).append('\n');
+        return sb.toString();
+    }
+
+    private String renderLastChanceBody(User user, DigestEmailPreference prefs, boolean paidIntent) {
+        String greeting = (user.getDisplayName() != null && !user.getDisplayName().isBlank())
+                ? user.getDisplayName().trim() : "there";
+        String base = site.getBaseUrl();
+        StringBuilder sb = new StringBuilder();
+        sb.append("Hi ").append(greeting).append(",\n\n");
+        if (paidIntent) {
+            sb.append("It's been a week since you signed up for a MailIM trial, and the\n")
+              .append("14-day clock is still running even though there's no mailbox\n")
+              .append("connected yet. Here's what you're missing: your real inbox\n")
+              .append("rendered as a chat — bubbles, avatars, day separators, dark mode\n")
+              .append("— instead of a wall of nested-quote replies.\n\n");
+            sb.append("Connect in about 60 seconds and use the rest of your trial: ")
+              .append(base).append("/mailboxes/new\n\n");
+            sb.append("Or downgrade to Free anytime from your billing page — 1 mailbox,\n")
+              .append("500 threads, no card on file, no trial clock: ")
+              .append(base).append("/billing\n\n");
+        } else {
+            sb.append("It's been a week since you signed up, and you picked Free — so\n")
+              .append("there's no trial clock and no card on file. Here's what you're\n")
+              .append("missing while we wait: your real inbox rendered as a chat —\n")
+              .append("bubbles, avatars, day separators, dark mode — instead of a wall\n")
+              .append("of nested-quote replies.\n\n");
+            sb.append("Free covers 1 mailbox and 500 threads — enough for most personal\n")
+              .append("use. Connect when you're ready, takes about 60 seconds: ")
+              .append(base).append("/mailboxes/new\n\n");
+        }
+        sb.append("Still want to see it working without signing in? Live demo: ")
+          .append(base).append("/demo\n\n");
+        sb.append("This is the last activation email you'll get from us. Don't want\n")
+          .append("any further updates either? Unsubscribe: ")
           .append(base).append("/digest/opt-out?token=").append(prefs.getOptOutToken()).append('\n');
         return sb.toString();
     }

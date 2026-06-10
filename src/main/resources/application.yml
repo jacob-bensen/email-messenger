@@ -119,6 +119,8 @@ activation:
   zone: ${ACTIVATION_ZONE:UTC}
   followup:
     cron: ${ACTIVATION_FOLLOWUP_CRON:0 45 13 * * ?}
+  lastchance:
+    cron: ${ACTIVATION_LASTCHANCE_CRON:0 0 14 * * ?}
 
 admin:
   emails: ${ADMIN_EMAILS:}
@@ -226,6 +228,8 @@ activation:
   zone: ${ACTIVATION_ZONE:UTC}
   followup:
     cron: ${ACTIVATION_FOLLOWUP_CRON:0 45 13 * * ?}
+  lastchance:
+    cron: ${ACTIVATION_LASTCHANCE_CRON:0 0 14 * * ?}
 
 admin:
   emails: ${ADMIN_EMAILS:}

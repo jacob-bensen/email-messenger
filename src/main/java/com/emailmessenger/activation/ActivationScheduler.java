@@ -35,4 +35,10 @@ class ActivationScheduler {
         int sent = service.runActivationFollowupCycle();
         log.info("Activation follow-up cycle: sent {} follow-up email(s)", sent);
     }
+
+    @Scheduled(cron = "${activation.lastchance.cron:0 0 14 * * ?}", zone = "${activation.zone:UTC}")
+    void runActivationLastChance() {
+        int sent = service.runActivationLastChanceCycle();
+        log.info("Activation last-chance cycle: sent {} last-chance email(s)", sent);
+    }
 }

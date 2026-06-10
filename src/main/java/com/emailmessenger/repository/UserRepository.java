@@ -38,6 +38,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("UPDATE User u SET u.lastActivationFollowupSentAt = :ts WHERE u.id = :id")
     int touchActivationFollowupSent(@Param("id") Long id, @Param("ts") LocalDateTime ts);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE User u SET u.lastActivationLastChanceSentAt = :ts WHERE u.id = :id")
+    int touchActivationLastChanceSent(@Param("id") Long id, @Param("ts") LocalDateTime ts);
+
     // Signups that haven't crossed the IMAP-credentials chasm: enabled,
     // signed up at least the cool-off window ago, never previously nudged,
     // and no mail_account row at all. The activation service still
@@ -72,6 +76,24 @@ public interface UserRepository extends JpaRepository<User, Long> {
               )
             """)
     List<User> findActivationFollowupCandidates(@Param("cutoff") LocalDateTime cutoff);
+
+    // Day-7 last-chance cohort: signups a full week old, already received
+    // both day-1 and day-3, never got the last-chance, still no
+    // mail_account row. Sequencing on `lastActivationFollowupSentAt IS
+    // NOT NULL` (transitively requires day-1 too — day-3 won't fire
+    // without day-1) keeps the drip in order so this is the third and
+    // final touch in the sequence.
+    @Query("""
+            SELECT u FROM User u
+            WHERE u.enabled = true
+              AND u.createdAt < :cutoff
+              AND u.lastActivationFollowupSentAt IS NOT NULL
+              AND u.lastActivationLastChanceSentAt IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM MailAccount a WHERE a.user = u
+              )
+            """)
+    List<User> findActivationLastChanceCandidates(@Param("cutoff") LocalDateTime cutoff);
 
     // Users whose most recent observable activity (login OR inbox visit, with
     // created_at as the fallback for pre-tracking rows) is older than the

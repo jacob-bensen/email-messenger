@@ -69,10 +69,24 @@ connect a mailbox is visibly higher on the operator dashboard.
    flag. 7 new tests cover demo-lead body ordering, sequencing (no
    send before day-1), mailbox-connected exclusion, 72h cool-off,
    idempotency, opt-out, and cohort partitioning.
-3. **Day-7 last-chance "here's what you're missing".** Pending —
-   final nudge for signups still cold one week in, with a
-   trial-extension or downgrade-to-Free framing depending on plan
-   intent captured at signup.
+3. **Day-7 last-chance "here's what you're missing".** [shipped
+   2026-06-10] Flyway V22 adds nullable
+   `users.last_activation_lastchance_sent_at` as a third one-shot
+   stamp, tracked independently of the day-1 and day-3 stamps. New
+   `ActivationService.runActivationLastChanceCycle` sweeps signups
+   whose `created_at` is older than `ACTIVATION_LAST_CHANCE_DELAY`
+   (168h), have `last_activation_followup_sent_at IS NOT NULL`
+   (sequencing: day-3 already fired — transitively requires day-1
+   too), `last_activation_lastchance_sent_at IS NULL`, and no
+   `MailAccount` row. Body branches on plan intent: paid-trial signups
+   (Subscription row exists with PERSONAL/TEAM/ENTERPRISE plan) get
+   "your 14-day trial clock is running" + a downgrade-to-Free
+   `/billing` fallback; everyone else (no Subscription or FREE plan)
+   gets "you picked Free, no trial clock, take your time". Both end
+   with a `/demo` link and the existing `digest_email_preferences`
+   opt-out token. `ActivationScheduler` gains a third `@Scheduled` at
+   `0 0 14 * * ?` UTC (override via `ACTIVATION_LASTCHANCE_CRON`)
+   under the same `activation.enabled` flag.
 4. **Trial-end conversion email when paid trials expire.** Pending —
    `subscriptions.trial_ends_at` is already tracked; sweep the
    T-1 / T-0 days, send a conversion push, and surface

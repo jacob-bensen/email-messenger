@@ -5,9 +5,12 @@ import com.emailmessenger.billing.StripeCheckoutGateway;
 import com.emailmessenger.billing.StripePortalGateway;
 import com.emailmessenger.domain.DigestEmailPreference;
 import com.emailmessenger.domain.MailAccount;
+import com.emailmessenger.domain.Plan;
+import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.DigestEmailPreferenceRepository;
 import com.emailmessenger.repository.MailAccountRepository;
+import com.emailmessenger.repository.SubscriptionRepository;
 import com.emailmessenger.repository.UserRepository;
 import com.emailmessenger.service.ReplyService;
 import jakarta.mail.Session;
@@ -40,6 +43,7 @@ class ActivationServiceTest {
     @Autowired UserRepository users;
     @Autowired MailAccountRepository mailAccounts;
     @Autowired DigestEmailPreferenceRepository preferences;
+    @Autowired SubscriptionRepository subscriptions;
 
     @MockBean JavaMailSender mailSender;
     @MockBean StripeCheckoutGateway stripeCheckout;
@@ -295,6 +299,137 @@ class ActivationServiceTest {
 
         assertThat(sent).isEqualTo(1);
         verify(mailSender).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void lastChanceForFreeIntentUserGetsFreeFramedBodyAndStamp() throws Exception {
+        User user = newUser("lastchance-free@example.com");
+        backdateCreatedAt(user.getId(), 8);
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(7));
+        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now().minusDays(5));
+
+        int sent = activationService.runActivationLastChanceCycle();
+
+        assertThat(sent).isEqualTo(1);
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(captor.capture());
+        MimeMessage mime = captor.getValue();
+        assertThat(mime.getSubject()).contains("Free is here");
+        String body = (String) mime.getContent();
+        DigestEmailPreference prefs = preferences.findByUser(user).orElseThrow();
+        assertThat(body).contains("you picked Free");
+        assertThat(body).contains("/mailboxes/new");
+        assertThat(body).contains("/demo");
+        assertThat(body).doesNotContain("14-day clock");
+        assertThat(body).contains("/digest/opt-out?token=" + prefs.getOptOutToken());
+        User after = users.findById(user.getId()).orElseThrow();
+        assertThat(after.getLastActivationLastChanceSentAt()).isNotNull();
+    }
+
+    @Test
+    void lastChanceForPaidIntentUserGetsTrialFramedBodyWithBillingFallback() throws Exception {
+        User user = newUser("lastchance-paid@example.com");
+        backdateCreatedAt(user.getId(), 8);
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(7));
+        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now().minusDays(5));
+        Subscription sub = new Subscription(user, "cus_test_paid_intent", "trialing");
+        sub.setPlan(Plan.PERSONAL);
+        subscriptions.save(sub);
+
+        int sent = activationService.runActivationLastChanceCycle();
+
+        assertThat(sent).isEqualTo(1);
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(captor.capture());
+        MimeMessage mime = captor.getValue();
+        assertThat(mime.getSubject()).contains("trial is winding down");
+        String body = (String) mime.getContent();
+        assertThat(body).contains("14-day clock");
+        assertThat(body).contains("/mailboxes/new");
+        assertThat(body).contains("/billing");
+        assertThat(body).contains("/demo");
+        // Free-framed prose is the wrong cohort — must not leak in.
+        assertThat(body).doesNotContain("you picked Free");
+    }
+
+    @Test
+    void lastChanceNeverFiresBeforeFollowupStampWasSet() {
+        // 8 days old, day-1 stamped but day-3 not — sequencing must hold.
+        User user = newUser("lastchance-nofollowup@example.com");
+        backdateCreatedAt(user.getId(), 8);
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(7));
+
+        int sent = activationService.runActivationLastChanceCycle();
+
+        assertThat(sent).isEqualTo(0);
+        verify(mailSender, never()).send(any(MimeMessage.class));
+        User after = users.findById(user.getId()).orElseThrow();
+        assertThat(after.getLastActivationLastChanceSentAt()).isNull();
+    }
+
+    @Test
+    void lastChanceSkippedWhenUserConnectedMailboxAfterFollowup() {
+        User user = newUser("lastchance-connected@example.com");
+        backdateCreatedAt(user.getId(), 8);
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(7));
+        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now().minusDays(5));
+        mailAccounts.save(new MailAccount(user, "imap.example.com", 993, true,
+                "lastchance-connected@example.com", "ct"));
+
+        int sent = activationService.runActivationLastChanceCycle();
+
+        assertThat(sent).isEqualTo(0);
+        verify(mailSender, never()).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void lastChanceSkippedWithinThe168hCooloff() {
+        // Day-1 and day-3 both sent, but only 5 days since signup — still
+        // inside the 168h cool-off for the last-chance.
+        User user = newUser("lastchance-toonew@example.com");
+        backdateCreatedAt(user.getId(), 5);
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(4));
+        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now().minusDays(2));
+
+        int sent = activationService.runActivationLastChanceCycle();
+
+        assertThat(sent).isEqualTo(0);
+        verify(mailSender, never()).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void lastChanceIsIdempotentOncePerUser() {
+        User user = newUser("lastchance-dupe@example.com");
+        backdateCreatedAt(user.getId(), 8);
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(7));
+        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now().minusDays(5));
+
+        int first = activationService.runActivationLastChanceCycle();
+        int second = activationService.runActivationLastChanceCycle();
+
+        assertThat(first).isEqualTo(1);
+        assertThat(second).isEqualTo(0);
+        verify(mailSender).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void lastChanceSkippedForOptedOutUser() {
+        User user = newUser("lastchance-optout@example.com");
+        backdateCreatedAt(user.getId(), 8);
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(7));
+        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now().minusDays(5));
+        DigestEmailPreference prefs = preferences.save(
+                new DigestEmailPreference(user, "preset-lastchance-optout-token"));
+        prefs.setOptedOut(true);
+        preferences.save(prefs);
+
+        boolean sent = activationService.sendActivationLastChanceFor(
+                users.findById(user.getId()).orElseThrow(), LocalDateTime.now());
+
+        assertThat(sent).isFalse();
+        verify(mailSender, never()).send(any(MimeMessage.class));
+        User after = users.findById(user.getId()).orElseThrow();
+        assertThat(after.getLastActivationLastChanceSentAt()).isNull();
     }
 
     @Autowired ActivationTestSupport testSupport;
