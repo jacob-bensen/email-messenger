@@ -59,6 +59,11 @@
         2027-06-07
       </dd>
     </dl>
+    <p th:if="${!billing.canceled()}" class="account-billing-actions">
+      <a href="/billing/cancel-subscription" class="link-button danger-link">
+        Cancel subscription
+      </a>
+    </p>
   </section>
 
   <section class="account-card">

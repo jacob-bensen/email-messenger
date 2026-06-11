@@ -2719,6 +2719,40 @@ body {
   }
   .account-summary dd { margin-bottom: 8px; }
 }
+.account-billing-actions {
+  margin-top: 12px;
+  margin-bottom: 0;
+  font-size: 13px;
+}
+.danger-link { color: #b91c1c; }
+.danger-link:hover { color: #7f1d1d; }
+@media (prefers-color-scheme: dark) {
+  .danger-link { color: #fca5a5; }
+  .danger-link:hover { color: #fecaca; }
+}
+.cancel-reason-form { gap: 10px; }
+.cancel-reason-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.cancel-reason-option input[type="radio"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+.cancel-reason-option:hover { border-color: var(--brand); }
+.cancel-reason-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
 @media (prefers-color-scheme: dark) {
   .account-verified-badge {
     background: rgba(34, 197, 94, 0.15);

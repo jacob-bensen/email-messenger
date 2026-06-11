@@ -1,6 +1,7 @@
 package com.emailmessenger.billing;
 
 import com.emailmessenger.auth.UserService;
+import com.emailmessenger.domain.CancellationReason;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.PlanChangeEvent;
 import com.emailmessenger.domain.Subscription;
@@ -275,5 +276,57 @@ class BillingServiceTest {
         billingService.startCheckout(user, Plan.PERSONAL, BillingPeriod.MONTHLY);
 
         assertThat(billingService.hasManagedBilling(user)).isTrue();
+    }
+
+    @Test
+    void recordCancellationReasonStampsTheSubscriptionRow() {
+        User user = newUser("canceler@example.com");
+        when(gateway.createSubscriptionSession(eq(null), any(), eq("price_team_test"),
+                any(), any(), any()))
+                .thenReturn(new CheckoutSessionResult(
+                        "https://checkout.stripe.com/c/pay/cs_cx", "cs_cx", "cus_cx"));
+        billingService.startCheckout(user, Plan.TEAM, BillingPeriod.MONTHLY);
+
+        boolean recorded = billingService.recordCancellationReason(user, CancellationReason.TOO_EXPENSIVE);
+
+        assertThat(recorded).isTrue();
+        Subscription sub = subscriptions.findByUser(user).orElseThrow();
+        assertThat(sub.getCancellationReason()).isEqualTo(CancellationReason.TOO_EXPENSIVE);
+        assertThat(sub.getCancellationReasonAt()).isNotNull();
+        // Stamp is the in-app pick time, not the Stripe canceled-at time —
+        // status is still 'incomplete' here because no Stripe webhook
+        // has flipped it yet.
+        assertThat(sub.getStatus()).isEqualTo("incomplete");
+    }
+
+    @Test
+    void recordCancellationReasonOverwritesAPriorReasonOnSameSubscription() {
+        User user = newUser("rethinker@example.com");
+        when(gateway.createSubscriptionSession(eq(null), any(), eq("price_personal_test"),
+                any(), any(), any()))
+                .thenReturn(new CheckoutSessionResult(
+                        "https://checkout.stripe.com/c/pay/cs_re", "cs_re", "cus_re"));
+        billingService.startCheckout(user, Plan.PERSONAL, BillingPeriod.MONTHLY);
+
+        billingService.recordCancellationReason(user, CancellationReason.TEMPORARY);
+        billingService.recordCancellationReason(user, CancellationReason.SWITCHING);
+
+        assertThat(subscriptions.findByUser(user).orElseThrow().getCancellationReason())
+                .isEqualTo(CancellationReason.SWITCHING);
+    }
+
+    @Test
+    void recordCancellationReasonReturnsFalseWhenNoSubscriptionExists() {
+        User user = newUser("nosub-cancel@example.com");
+        assertThat(billingService.recordCancellationReason(user, CancellationReason.OTHER))
+                .isFalse();
+    }
+
+    @Test
+    void recordCancellationReasonRejectsNullReason() {
+        User user = newUser("nullreason@example.com");
+        assertThatThrownBy(() -> billingService.recordCancellationReason(user, null))
+                .isInstanceOf(BillingException.class)
+                .hasMessageContaining("required");
     }
 }

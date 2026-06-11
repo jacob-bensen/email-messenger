@@ -1,6 +1,7 @@
 package com.emailmessenger.billing;
 
 import com.emailmessenger.auth.UserService;
+import com.emailmessenger.domain.CancellationReason;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
 import org.springframework.stereotype.Controller;
@@ -51,5 +52,26 @@ class BillingController {
     @GetMapping("/billing/cancel")
     String canceled() {
         return "redirect:/pricing?canceled=1";
+    }
+
+    @GetMapping("/billing/cancel-subscription")
+    String cancelSubscription(Principal principal, Model model) {
+        User user = userService.requireByEmail(principal.getName());
+        if (!billingService.hasManagedBilling(user)) {
+            return "redirect:/pricing";
+        }
+        model.addAttribute("reasons", CancellationReason.values());
+        return "billing/cancel-subscription";
+    }
+
+    @PostMapping("/billing/cancel-subscription")
+    String submitCancelSubscription(@RequestParam("reason") String reasonParam,
+                                    Principal principal) {
+        CancellationReason reason = CancellationReason.parse(reasonParam);
+        User user = userService.requireByEmail(principal.getName());
+        billingService.recordCancellationReason(user, reason);
+        return billingService.startPortal(user)
+                .map(url -> "redirect:" + url)
+                .orElse("redirect:/pricing");
     }
 }

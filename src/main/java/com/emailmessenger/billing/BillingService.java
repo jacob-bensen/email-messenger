@@ -1,5 +1,6 @@
 package com.emailmessenger.billing;
 
+import com.emailmessenger.domain.CancellationReason;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.PlanChangeEvent;
 import com.emailmessenger.domain.Subscription;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -27,17 +29,20 @@ public class BillingService {
     private final StripeCheckoutGateway gateway;
     private final StripePortalGateway portalGateway;
     private final BillingProperties properties;
+    private final Clock clock;
 
     BillingService(SubscriptionRepository subscriptions,
                    PlanChangeEventRepository planChanges,
                    StripeCheckoutGateway gateway,
                    StripePortalGateway portalGateway,
-                   BillingProperties properties) {
+                   BillingProperties properties,
+                   Clock clock) {
         this.subscriptions = subscriptions;
         this.planChanges = planChanges;
         this.gateway = gateway;
         this.portalGateway = portalGateway;
         this.properties = properties;
+        this.clock = clock;
     }
 
     @Transactional
@@ -102,6 +107,33 @@ public class BillingService {
             return;
         }
         planChanges.save(new PlanChangeEvent(sub, user, from, newPlan));
+    }
+
+    /**
+     * Stamps the captured cancellation reason on the user's subscription row
+     * just before they're handed off to the Stripe Billing Portal to finalize
+     * the cancel. The stamp is the in-app picker time, not the Stripe
+     * canceled-at time — the Stripe webhook arrives moments later and flips
+     * {@link Subscription#getStatus()} independently. Returns {@code true}
+     * when a row was found and written; {@code false} when the user has no
+     * Subscription / no paid plan to cancel (defensive — the route guard
+     * should prevent this).
+     */
+    @Transactional
+    public boolean recordCancellationReason(User user, CancellationReason reason) {
+        if (reason == null) {
+            throw new BillingException("Cancellation reason is required.");
+        }
+        Subscription sub = subscriptions.findByUser(user).orElse(null);
+        if (sub == null) {
+            return false;
+        }
+        if (sub.getPlan() == null || sub.getPlan() == Plan.FREE) {
+            return false;
+        }
+        sub.setCancellationReason(reason);
+        sub.setCancellationReasonAt(LocalDateTime.now(clock));
+        return true;
     }
 
     /**

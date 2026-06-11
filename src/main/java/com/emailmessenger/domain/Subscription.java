@@ -58,6 +58,13 @@ public class Subscription {
     @Column(name = "last_trial_end_email_sent_at")
     private LocalDateTime lastTrialEndEmailSentAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cancellation_reason", length = 32)
+    private CancellationReason cancellationReason;
+
+    @Column(name = "cancellation_reason_at")
+    private LocalDateTime cancellationReasonAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -95,6 +102,8 @@ public class Subscription {
     public LocalDateTime getTrialEndsAt() { return trialEndsAt; }
     public LocalDateTime getCurrentPeriodEnd() { return currentPeriodEnd; }
     public LocalDateTime getLastTrialEndEmailSentAt() { return lastTrialEndEmailSentAt; }
+    public CancellationReason getCancellationReason() { return cancellationReason; }
+    public LocalDateTime getCancellationReasonAt() { return cancellationReasonAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
@@ -106,4 +115,6 @@ public class Subscription {
     public void setTrialEndsAt(LocalDateTime t) { this.trialEndsAt = t; }
     public void setCurrentPeriodEnd(LocalDateTime t) { this.currentPeriodEnd = t; }
     public void setLastTrialEndEmailSentAt(LocalDateTime t) { this.lastTrialEndEmailSentAt = t; }
+    public void setCancellationReason(CancellationReason r) { this.cancellationReason = r; }
+    public void setCancellationReasonAt(LocalDateTime t) { this.cancellationReasonAt = t; }
 }
