@@ -167,8 +167,12 @@
     </div>
   </section>
 
-  <!-- Reply area: real threads only. Demo mode renders a conversion CTA instead. -->
-  <div th:unless="${demoMode}" class="reply-area">
+  <!--
+    Reply area: real threads only, and only the mailbox owner can send replies
+    (SMTP credentials are owner-scoped). A teammate following a shared link
+    sees the messages + notes panel but no reply form.
+  -->
+  <div th:if="${!demoMode and isThreadOwner}" class="reply-area">
     <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Reply sent.</div>
 
     <form th:action="@{/threads/{id}/reply(id=${conversation.thread().id})}"
@@ -188,6 +192,13 @@
         <button type="submit" class="btn btn-primary">Send Reply</button>
       </div>
     </form>
+  </div>
+
+  <div th:if="${!demoMode and !isThreadOwner}" class="reply-area reply-area-readonly" role="note">
+    <p class="reply-readonly-text">
+      Viewing a teammate's thread. Replies go through the mailbox owner — drop an
+      internal note above to share context with the team.
+    </p>
   </div>
 
   <div th:if="${demoMode}" class="demo-footer">

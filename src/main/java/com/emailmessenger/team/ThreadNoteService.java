@@ -16,12 +16,10 @@ import java.util.Set;
 /**
  * Internal team notes on a thread.
  *
- * <p>Notes are the first concrete shared-inbox feature that justifies
- * the Team plan: an author drops a private comment on a thread; other
- * team members will see it (M2 extends the view to invitees). M1 ships
- * the owner-side surface: the thread owner sees their own notes, and
- * the feature is gated to TEAM / ENTERPRISE plans so Free / Personal
- * users hit an upgrade CTA in the same spot.
+ * <p>EPIC-16 M2: notes are visible to (and writable by) any member of the
+ * thread-owner's team — not just the owner. Plan gating is anchored on the
+ * owner (they pay for the seat), so an invited teammate on a personal Free
+ * plan can still drop notes inside a Team-plan owner's thread.
  */
 @Service
 public class ThreadNoteService {
@@ -32,13 +30,16 @@ public class ThreadNoteService {
 
     private final ThreadNoteRepository notes;
     private final TeamService teamService;
+    private final ThreadAccessService threadAccess;
     private final PlanLimitService planLimits;
 
     ThreadNoteService(ThreadNoteRepository notes,
                       TeamService teamService,
+                      ThreadAccessService threadAccess,
                       PlanLimitService planLimits) {
         this.notes = notes;
         this.teamService = teamService;
+        this.threadAccess = threadAccess;
         this.planLimits = planLimits;
     }
 
@@ -50,9 +51,9 @@ public class ThreadNoteService {
     }
 
     /**
-     * Is the viewer on a plan that includes internal team notes? Drives
-     * both the panel render (Team-only textarea vs upgrade CTA) and the
-     * server-side post gate so a tampered form can't bypass the modal.
+     * Owner-side gate: does {@code viewer}'s own plan include notes? Used to
+     * decide whether to show the "Upgrade to Team" CTA on the viewer's own
+     * threads. Teammate-side access goes through {@link #canAccessNotesOn}.
      */
     @Transactional(readOnly = true)
     public boolean canAccessNotes(User viewer) {
@@ -60,16 +61,24 @@ public class ThreadNoteService {
     }
 
     /**
-     * Notes visible to {@code viewer} on this thread. M1 only returns
-     * rows when the viewer owns the thread and is on a Team plan; M2
-     * will extend this to fellow team members following a shared link.
+     * Can {@code viewer} see/post notes on this thread? True when the
+     * thread's owner is on a Team/Enterprise plan and the viewer is the
+     * owner or in the owner's team.
+     */
+    @Transactional(readOnly = true)
+    public boolean canAccessNotesOn(EmailThread thread, User viewer) {
+        if (!TEAM_PLANS.contains(planLimits.currentPlan(thread.getOwner()))) {
+            return false;
+        }
+        return threadAccess.isAccessibleTo(thread, viewer);
+    }
+
+    /**
+     * Notes visible to {@code viewer} on this thread.
      */
     @Transactional(readOnly = true)
     public List<ThreadNote> notesFor(EmailThread thread, User viewer) {
-        if (!canAccessNotes(viewer)) {
-            return List.of();
-        }
-        if (!ownsThread(viewer, thread)) {
+        if (!canAccessNotesOn(thread, viewer)) {
             return List.of();
         }
         return notes.findByThreadOrderByCreatedAtAsc(thread);
@@ -77,13 +86,13 @@ public class ThreadNoteService {
 
     /**
      * Add a note to {@code thread} authored by {@code author}. Returns
-     * {@link PostOutcome#GATED} when the author isn't on a Team plan or
-     * doesn't own the thread (M1 only — M2 widens to teammates), so the
-     * controller can surface the same upgrade CTA the panel already shows.
+     * {@link PostOutcome#GATED} when the author can't access notes on this
+     * thread (owner not on a Team plan, or author is neither owner nor a
+     * member of the owner's team).
      */
     @Transactional
     public PostResult post(EmailThread thread, User author, String body) {
-        if (!canAccessNotes(author) || !ownsThread(author, thread)) {
+        if (!canAccessNotesOn(thread, author)) {
             return PostResult.of(PostOutcome.GATED);
         }
         if (body == null) {
@@ -99,10 +108,5 @@ public class ThreadNoteService {
         Team team = teamService.findOrCreateOwnedTeam(thread.getOwner());
         ThreadNote saved = notes.save(new ThreadNote(thread, team, author, trimmed));
         return PostResult.posted(saved);
-    }
-
-    private static boolean ownsThread(User user, EmailThread thread) {
-        Long ownerId = thread.getOwner().getId();
-        return ownerId != null && ownerId.equals(user.getId());
     }
 }

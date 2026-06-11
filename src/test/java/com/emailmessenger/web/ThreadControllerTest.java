@@ -17,6 +17,7 @@ import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.domain.ThreadNote;
 import com.emailmessenger.service.Conversation;
 import com.emailmessenger.service.ReplyService;
+import com.emailmessenger.team.ThreadAccessService;
 import com.emailmessenger.team.ThreadNoteService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,6 +76,7 @@ class ThreadControllerTest {
     @Mock SavedSearchService savedSearchService;
     @Mock UserActivityService userActivityService;
     @Mock ThreadNoteService threadNoteService;
+    @Mock ThreadAccessService threadAccessService;
 
     MockMvc mockMvc;
 
@@ -91,7 +93,7 @@ class ThreadControllerTest {
                 billingBannerService, billingService, onboardingService,
                 planLimitService, trialConversionNudgeService, threadSearchService,
                 senderGroupService, savedSearchService, userActivityService,
-                threadNoteService, CLOCK);
+                threadNoteService, threadAccessService, CLOCK);
         lenient().when(userService.requireByEmail("owner@example.com")).thenReturn(owner);
         lenient().when(billingBannerService.bannerFor(owner)).thenReturn(Optional.empty());
         lenient().when(onboardingService.checklistFor(owner))
@@ -103,7 +105,11 @@ class ThreadControllerTest {
         lenient().when(senderGroupService.topSenders(owner)).thenReturn(List.of());
         lenient().when(savedSearchService.viewsFor(owner)).thenReturn(List.of());
         lenient().when(threadNoteService.canAccessNotes(owner)).thenReturn(false);
+        lenient().when(threadNoteService.canAccessNotesOn(any(EmailThread.class), eq(owner))).thenReturn(false);
         lenient().when(threadNoteService.notesFor(any(EmailThread.class), eq(owner))).thenReturn(List.of());
+        // By default the principal IS the owner of any thread the controller renders;
+        // teammate-viewer tests opt in by overriding this stub.
+        lenient().when(threadAccessService.isOwner(any(EmailThread.class), eq(owner))).thenReturn(true);
         // Prefix/suffix prevents InternalResourceViewResolver from producing a path that
         // matches the request URL (which would cause a circular-dispatch error in standalone mode).
         InternalResourceViewResolver viewResolver = new InternalResourceViewResolver();
@@ -691,12 +697,13 @@ class ThreadControllerTest {
         EmailThread thread = new EmailThread(owner, "Subject", "<root@test>");
         Conversation conv = new Conversation(thread, List.of());
         when(threadViewService.getConversation(1L, owner)).thenReturn(conv);
-        when(threadNoteService.canAccessNotes(owner)).thenReturn(true);
+        when(threadNoteService.canAccessNotesOn(thread, owner)).thenReturn(true);
         when(threadNoteService.notesFor(thread, owner)).thenReturn(List.of());
 
         mockMvc.perform(get("/threads/1").principal(principal))
                 .andExpect(status().isOk())
                 .andExpect(view().name("conversation"))
+                .andExpect(model().attribute("isThreadOwner", is(true)))
                 .andExpect(model().attribute("canPostTeamNote", is(true)))
                 .andExpect(model().attribute("teamNotes", notNullValue()))
                 .andExpect(model().attribute("teamNotesUpgradeNudge", nullValue()));
@@ -707,20 +714,56 @@ class ThreadControllerTest {
         EmailThread thread = new EmailThread(owner, "Subject", "<root@test>");
         Conversation conv = new Conversation(thread, List.of());
         when(threadViewService.getConversation(1L, owner)).thenReturn(conv);
-        when(threadNoteService.canAccessNotes(owner)).thenReturn(false);
+        when(threadNoteService.canAccessNotesOn(thread, owner)).thenReturn(false);
         when(threadNoteService.notesFor(thread, owner)).thenReturn(List.of());
 
         mockMvc.perform(get("/threads/1").principal(principal))
                 .andExpect(status().isOk())
                 .andExpect(view().name("conversation"))
+                .andExpect(model().attribute("isThreadOwner", is(true)))
                 .andExpect(model().attribute("canPostTeamNote", is(false)))
                 .andExpect(model().attribute("teamNotesUpgradeNudge", is(true)));
     }
 
     @Test
+    void teammateViewerSeesNotesPanelWithoutUpgradeNudge() throws Exception {
+        User mailboxOwner = new User("mailbox@example.com", "hash", "Mailbox");
+        EmailThread thread = new EmailThread(mailboxOwner, "Subject", "<root@test>");
+        Conversation conv = new Conversation(thread, List.of());
+        when(threadViewService.getConversation(9L, owner)).thenReturn(conv);
+        when(threadAccessService.isOwner(thread, owner)).thenReturn(false);
+        when(threadNoteService.canAccessNotesOn(thread, owner)).thenReturn(true);
+        when(threadNoteService.notesFor(thread, owner)).thenReturn(List.of());
+
+        mockMvc.perform(get("/threads/9").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(view().name("conversation"))
+                .andExpect(model().attribute("isThreadOwner", is(false)))
+                .andExpect(model().attribute("canPostTeamNote", is(true)))
+                .andExpect(model().attribute("teamNotesUpgradeNudge", nullValue()));
+    }
+
+    @Test
+    void teammateViewerWithoutNotesAccessSeesNoUpgradeNudge() throws Exception {
+        User mailboxOwner = new User("mailbox@example.com", "hash", "Mailbox");
+        EmailThread thread = new EmailThread(mailboxOwner, "Subject", "<root@test>");
+        Conversation conv = new Conversation(thread, List.of());
+        when(threadViewService.getConversation(9L, owner)).thenReturn(conv);
+        when(threadAccessService.isOwner(thread, owner)).thenReturn(false);
+        when(threadNoteService.canAccessNotesOn(thread, owner)).thenReturn(false);
+        when(threadNoteService.notesFor(thread, owner)).thenReturn(List.of());
+
+        mockMvc.perform(get("/threads/9").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("isThreadOwner", is(false)))
+                .andExpect(model().attribute("canPostTeamNote", is(false)))
+                .andExpect(model().attribute("teamNotesUpgradeNudge", nullValue()));
+    }
+
+    @Test
     void postNoteRedirectsBackToThreadWithFlash() throws Exception {
         EmailThread thread = new EmailThread(owner, "Subject", "<root@test>");
-        when(threadRepository.findByIdAndOwner(7L, owner)).thenReturn(Optional.of(thread));
+        when(threadAccessService.findAccessibleThread(7L, owner)).thenReturn(Optional.of(thread));
         when(threadNoteService.post(eq(thread), eq(owner), eq("Heads-up for the team")))
                 .thenReturn(ThreadNoteService.PostResult.posted(new ThreadNote(thread, null, owner, "Heads-up for the team")));
 
@@ -733,13 +776,29 @@ class ThreadControllerTest {
     }
 
     @Test
-    void postNoteOnSomeoneElsesThreadReturns404() throws Exception {
-        when(threadRepository.findByIdAndOwner(42L, owner)).thenReturn(Optional.empty());
+    void postNoteOnInaccessibleThreadReturns404() throws Exception {
+        when(threadAccessService.findAccessibleThread(42L, owner)).thenReturn(Optional.empty());
 
         mockMvc.perform(post("/threads/42/note").principal(principal)
-                        .param("body", "Trying to add a note to someone else's thread"))
+                        .param("body", "Trying to add a note to a thread we can't reach"))
                 .andExpect(status().isNotFound());
 
         verify(threadNoteService, never()).post(any(EmailThread.class), any(User.class), anyString());
+    }
+
+    @Test
+    void postNoteByTeammateGoesThroughTeamScopedAccess() throws Exception {
+        User mailboxOwner = new User("mailbox@example.com", "hash", "Mailbox");
+        EmailThread thread = new EmailThread(mailboxOwner, "Subject", "<root@test>");
+        when(threadAccessService.findAccessibleThread(11L, owner)).thenReturn(Optional.of(thread));
+        when(threadNoteService.post(eq(thread), eq(owner), eq("Looping you in")))
+                .thenReturn(ThreadNoteService.PostResult.posted(new ThreadNote(thread, null, owner, "Looping you in")));
+
+        mockMvc.perform(post("/threads/11/note").principal(principal)
+                        .param("body", "Looping you in"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/threads/11"));
+
+        verify(threadNoteService).post(eq(thread), eq(owner), eq("Looping you in"));
     }
 }

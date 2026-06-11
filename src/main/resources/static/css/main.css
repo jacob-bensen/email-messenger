@@ -781,6 +781,21 @@ body {
   border: 1px solid #a7f3d0;
 }
 
+/* Read-only reply area shown to teammates following a shared thread link. */
+.reply-area-readonly {
+  background: var(--bg);
+  color: var(--text);
+}
+.reply-readonly-text {
+  margin: 0;
+  font-size: 13px;
+  color: #475569;
+  text-align: center;
+}
+@media (prefers-color-scheme: dark) {
+  .reply-readonly-text { color: #94a3b8; }
+}
+
 /* ── Internal team notes ────────────────────────────── */
 .team-notes {
   background: #fffaf0;

@@ -6,9 +6,14 @@ import com.emailmessenger.billing.StripePortalGateway;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.Subscription;
+import com.emailmessenger.domain.Team;
+import com.emailmessenger.domain.TeamMember;
+import com.emailmessenger.domain.TeamMemberRole;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.repository.SubscriptionRepository;
+import com.emailmessenger.repository.TeamMemberRepository;
+import com.emailmessenger.repository.TeamRepository;
 import com.emailmessenger.repository.ThreadNoteRepository;
 import com.emailmessenger.repository.UserRepository;
 import com.emailmessenger.service.ReplyService;
@@ -33,6 +38,8 @@ class ThreadNoteServiceTest {
     @Autowired EmailThreadRepository threads;
     @Autowired ThreadNoteRepository notes;
     @Autowired SubscriptionRepository subscriptions;
+    @Autowired TeamRepository teamRepository;
+    @Autowired TeamMemberRepository teamMembers;
 
     @MockBean JavaMailSender mailSender;
     @MockBean StripeCheckoutGateway stripeCheckout;
@@ -134,7 +141,7 @@ class ThreadNoteServiceTest {
     }
 
     @Test
-    void notesForReturnsEmptyForNonOwnerEvenOnTeamPlan() {
+    void notesForReturnsEmptyForStrangerNotInOwnerTeam() {
         User owner = newUser("owner@example.com", "Owner");
         activatePlan(owner, Plan.TEAM);
         User stranger = newUser("stranger@example.com", "Stranger");
@@ -144,6 +151,69 @@ class ThreadNoteServiceTest {
 
         assertThat(threadNoteService.notesFor(thread, stranger)).isEmpty();
         assertThat(threadNoteService.notesFor(thread, owner)).hasSize(1);
+    }
+
+    @Test
+    void teammateInOwnerTeamSeesNotesEvenOnPersonalPlan() {
+        User owner = newUser("teamowner@example.com", "Owner");
+        activatePlan(owner, Plan.TEAM);
+        User teammate = newUser("teammate@example.com", "Teammate");
+        // Teammate's own plan is Free — owner pays for the seat.
+        EmailThread thread = newThreadOwnedBy(owner);
+        threadNoteService.post(thread, owner, "Owner's note");
+        joinTeam(owner, teammate);
+
+        assertThat(threadNoteService.notesFor(thread, teammate)).hasSize(1);
+        assertThat(threadNoteService.canAccessNotesOn(thread, teammate)).isTrue();
+    }
+
+    @Test
+    void teammateCanPostNotesAttributedToThemselves() {
+        User owner = newUser("teamowner2@example.com", "Owner");
+        activatePlan(owner, Plan.TEAM);
+        User teammate = newUser("teammate2@example.com", "Teammate");
+        EmailThread thread = newThreadOwnedBy(owner);
+        joinTeam(owner, teammate);
+
+        ThreadNoteService.PostResult result =
+                threadNoteService.post(thread, teammate, "I'll take this one");
+
+        assertThat(result.outcome()).isEqualTo(ThreadNoteService.PostOutcome.POSTED);
+        var loaded = notes.findByThreadOrderByCreatedAtAsc(thread);
+        assertThat(loaded).hasSize(1);
+        assertThat(loaded.get(0).getAuthorUser().getId()).isEqualTo(teammate.getId());
+        assertThat(loaded.get(0).getBody()).isEqualTo("I'll take this one");
+    }
+
+    @Test
+    void teammateLosesNotesAccessWhenOwnerDowngradesFromTeamPlan() {
+        User owner = newUser("downgrade@example.com", "Owner");
+        activatePlan(owner, Plan.TEAM);
+        User teammate = newUser("downgradeteammate@example.com", "Teammate");
+        EmailThread thread = newThreadOwnedBy(owner);
+        joinTeam(owner, teammate);
+        threadNoteService.post(thread, teammate, "Visible while Team");
+
+        assertThat(threadNoteService.notesFor(thread, teammate)).hasSize(1);
+
+        Subscription sub = subscriptions.findByUser(owner).orElseThrow();
+        sub.setPlan(Plan.PERSONAL);
+        subscriptions.save(sub);
+
+        assertThat(threadNoteService.notesFor(thread, teammate)).isEmpty();
+        assertThat(threadNoteService.canAccessNotesOn(thread, teammate)).isFalse();
+        ThreadNoteService.PostResult result =
+                threadNoteService.post(thread, teammate, "Should be gated");
+        assertThat(result.outcome()).isEqualTo(ThreadNoteService.PostOutcome.GATED);
+    }
+
+    private void joinTeam(User owner, User teammate) {
+        Team team = teamRepository.findByOwnerUser(owner).orElseGet(() -> {
+            Team created = teamRepository.save(new Team(owner.getEmail() + "'s team", owner));
+            teamMembers.save(new TeamMember(created, owner, TeamMemberRole.OWNER));
+            return created;
+        });
+        teamMembers.save(new TeamMember(team, teammate, TeamMemberRole.MEMBER));
     }
 
     @Test
