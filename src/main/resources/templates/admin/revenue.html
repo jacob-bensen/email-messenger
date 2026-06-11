@@ -235,6 +235,8 @@
       <div class="admin-kpi">
         <span class="admin-kpi-label">Notes posted</span>
         <span class="admin-kpi-value" th:text="${teamAdoption.notesPosted()}">0</span>
+        <span class="admin-kpi-sub"
+              th:text="${teamAdoption.notesPostedDeltaLabel()}">vs. prior 30 days</span>
       </div>
       <div class="admin-kpi">
         <span class="admin-kpi-label">Active note authors</span>
@@ -268,6 +270,8 @@
               th:text="|${teamAdoption.freeToTeamSharePercent()}% of Team conversions|">
           0% of Team conversions
         </span>
+        <span class="admin-funnel-delta"
+              th:text="${teamAdoption.freeToTeamDeltaLabel()}">vs. prior 30 days</span>
       </div>
       <div class="admin-funnel-arrow" aria-hidden="true">·</div>
       <div class="admin-funnel-step">
@@ -278,12 +282,16 @@
               th:text="|${teamAdoption.personalToTeamSharePercent()}% of Team conversions|">
           0% of Team conversions
         </span>
+        <span class="admin-funnel-delta"
+              th:text="${teamAdoption.personalToTeamDeltaLabel()}">vs. prior 30 days</span>
       </div>
       <div class="admin-funnel-arrow" aria-hidden="true">=</div>
       <div class="admin-funnel-step">
         <span class="admin-funnel-label">Total Team conversions</span>
         <span class="admin-funnel-count"
               th:text="${teamAdoption.totalTeamConversions()}">0</span>
+        <span class="admin-funnel-delta"
+              th:text="${teamAdoption.totalTeamConversionsDeltaLabel()}">vs. prior 30 days</span>
       </div>
     </div>
     <p class="admin-empty"

@@ -48,7 +48,10 @@ class TeamAdoptionMetricsServiceTest {
     @Test
     void cutoffPassedDownIsThirtyDaysBeforeClockNow() {
         when(notes.countByCreatedAtAfter(any())).thenReturn(0L);
+        when(notes.countByCreatedAtBetween(any(), any())).thenReturn(0L);
         when(planChanges.countDistinctUsersByTransitionSince(any(), any(), any())).thenReturn(0L);
+        when(planChanges.countDistinctUsersByTransitionBetween(any(), any(), any(), any()))
+                .thenReturn(0L);
         when(subscriptions.countEntitledOn(any())).thenReturn(0L);
 
         service.snapshot();
@@ -61,6 +64,115 @@ class TeamAdoptionMetricsServiceTest {
         verify(planChanges).countDistinctUsersByTransitionSince(
                 eq(Plan.FREE), eq(Plan.TEAM), txnCutoff.capture());
         assertThat(txnCutoff.getValue()).isEqualTo(now.minusDays(30));
+    }
+
+    @Test
+    void priorWindowQueriesUseTheTwoToOneTimesThirtyDayBracket() {
+        when(notes.countByCreatedAtAfter(any())).thenReturn(0L);
+        when(notes.countByCreatedAtBetween(any(), any())).thenReturn(0L);
+        when(planChanges.countDistinctUsersByTransitionSince(any(), any(), any())).thenReturn(0L);
+        when(planChanges.countDistinctUsersByTransitionBetween(any(), any(), any(), any()))
+                .thenReturn(0L);
+        when(subscriptions.countEntitledOn(any())).thenReturn(0L);
+
+        service.snapshot();
+
+        ArgumentCaptor<LocalDateTime> priorStart = ArgumentCaptor.forClass(LocalDateTime.class);
+        ArgumentCaptor<LocalDateTime> priorEnd = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(notes).countByCreatedAtBetween(priorStart.capture(), priorEnd.capture());
+        assertThat(priorStart.getValue()).isEqualTo(now.minusDays(60));
+        assertThat(priorEnd.getValue()).isEqualTo(now.minusDays(30));
+
+        ArgumentCaptor<LocalDateTime> txnPriorStart = ArgumentCaptor.forClass(LocalDateTime.class);
+        ArgumentCaptor<LocalDateTime> txnPriorEnd = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(planChanges).countDistinctUsersByTransitionBetween(
+                eq(Plan.FREE), eq(Plan.TEAM), txnPriorStart.capture(), txnPriorEnd.capture());
+        assertThat(txnPriorStart.getValue()).isEqualTo(now.minusDays(60));
+        assertThat(txnPriorEnd.getValue()).isEqualTo(now.minusDays(30));
+    }
+
+    @Test
+    void priorWindowCountsArePropagatedAndDeltaPercentReflectsLift() {
+        when(notes.countByCreatedAtAfter(any())).thenReturn(20L);
+        when(notes.findCreatedSince(any())).thenReturn(List.of());
+        when(notes.countByCreatedAtBetween(any(), any())).thenReturn(10L);
+        when(planChanges.countDistinctUsersByTransitionSince(eq(Plan.FREE), eq(Plan.TEAM), any()))
+                .thenReturn(8L);
+        when(planChanges.countDistinctUsersByTransitionSince(eq(Plan.PERSONAL), eq(Plan.TEAM), any()))
+                .thenReturn(2L);
+        when(planChanges.countDistinctUsersByTransitionBetween(
+                eq(Plan.FREE), eq(Plan.TEAM), any(), any())).thenReturn(4L);
+        when(planChanges.countDistinctUsersByTransitionBetween(
+                eq(Plan.PERSONAL), eq(Plan.TEAM), any(), any())).thenReturn(2L);
+        when(subscriptions.countEntitledOn(any())).thenReturn(0L);
+
+        TeamAdoptionMetrics m = service.snapshot();
+
+        assertThat(m.priorNotesPosted()).isEqualTo(10);
+        assertThat(m.priorFreeToTeamConversions()).isEqualTo(4);
+        assertThat(m.priorPersonalToTeamConversions()).isEqualTo(2);
+        assertThat(m.priorTotalTeamConversions()).isEqualTo(6);
+
+        assertThat(m.notesPostedDeltaPercent()).isEqualTo(100);
+        assertThat(m.freeToTeamDeltaPercent()).isEqualTo(100);
+        assertThat(m.personalToTeamDeltaPercent()).isEqualTo(0);
+        assertThat(m.totalTeamConversionsDeltaPercent()).isEqualTo(67);
+
+        assertThat(m.notesPostedDeltaLabel()).isEqualTo("▲ 100% vs. prior 30 days");
+        assertThat(m.freeToTeamDeltaLabel()).isEqualTo("▲ 100% vs. prior 30 days");
+        assertThat(m.personalToTeamDeltaLabel()).isEqualTo("flat vs. prior 30 days");
+        assertThat(m.totalTeamConversionsDeltaLabel()).isEqualTo("▲ 67% vs. prior 30 days");
+    }
+
+    @Test
+    void deltaLabelReadsNewWhenPriorWindowWasEmpty() {
+        when(notes.countByCreatedAtAfter(any())).thenReturn(5L);
+        when(notes.findCreatedSince(any())).thenReturn(List.of());
+        when(notes.countByCreatedAtBetween(any(), any())).thenReturn(0L);
+        when(planChanges.countDistinctUsersByTransitionSince(any(), any(), any())).thenReturn(0L);
+        when(planChanges.countDistinctUsersByTransitionBetween(any(), any(), any(), any()))
+                .thenReturn(0L);
+        when(subscriptions.countEntitledOn(any())).thenReturn(0L);
+
+        TeamAdoptionMetrics m = service.snapshot();
+
+        assertThat(m.notesPostedDeltaLabel()).isEqualTo("new vs. prior 30 days");
+        assertThat(m.notesPostedDeltaPercent()).isZero();
+    }
+
+    @Test
+    void deltaLabelReadsNoPriorDataWhenBothWindowsAreZero() {
+        when(notes.countByCreatedAtAfter(any())).thenReturn(0L);
+        when(notes.countByCreatedAtBetween(any(), any())).thenReturn(0L);
+        when(planChanges.countDistinctUsersByTransitionSince(any(), any(), any())).thenReturn(0L);
+        when(planChanges.countDistinctUsersByTransitionBetween(any(), any(), any(), any()))
+                .thenReturn(0L);
+        when(subscriptions.countEntitledOn(any())).thenReturn(0L);
+
+        TeamAdoptionMetrics m = service.snapshot();
+
+        assertThat(m.notesPostedDeltaLabel()).isEqualTo("no prior-window data");
+        assertThat(m.totalTeamConversionsDeltaLabel()).isEqualTo("no prior-window data");
+    }
+
+    @Test
+    void deltaLabelReadsDownWhenCurrentWindowIsBelowPrior() {
+        when(notes.countByCreatedAtAfter(any())).thenReturn(0L);
+        when(notes.countByCreatedAtBetween(any(), any())).thenReturn(0L);
+        when(planChanges.countDistinctUsersByTransitionSince(eq(Plan.FREE), eq(Plan.TEAM), any()))
+                .thenReturn(3L);
+        when(planChanges.countDistinctUsersByTransitionSince(eq(Plan.PERSONAL), eq(Plan.TEAM), any()))
+                .thenReturn(0L);
+        when(planChanges.countDistinctUsersByTransitionBetween(
+                eq(Plan.FREE), eq(Plan.TEAM), any(), any())).thenReturn(10L);
+        when(planChanges.countDistinctUsersByTransitionBetween(
+                eq(Plan.PERSONAL), eq(Plan.TEAM), any(), any())).thenReturn(0L);
+        when(subscriptions.countEntitledOn(any())).thenReturn(0L);
+
+        TeamAdoptionMetrics m = service.snapshot();
+
+        assertThat(m.freeToTeamDeltaPercent()).isEqualTo(-70);
+        assertThat(m.freeToTeamDeltaLabel()).isEqualTo("▼ 70% vs. prior 30 days");
     }
 
     @Test

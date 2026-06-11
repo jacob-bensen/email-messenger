@@ -3034,6 +3034,11 @@ body {
   font-size: 12px;
   color: var(--text-muted);
 }
+.admin-funnel-delta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
 .admin-funnel-arrow {
   align-self: center;
   font-size: 18px;

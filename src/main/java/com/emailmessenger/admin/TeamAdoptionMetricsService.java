@@ -26,6 +26,11 @@ import java.util.regex.Matcher;
  * see in their inbox, (c) plan-transition conversions logged by
  * {@link com.emailmessenger.billing.BillingService} into
  * {@code plan_change_events}, bucketed by from-plan.
+ *
+ * <p>Each window-scoped metric is also computed for the prior 30-day
+ * window so the operator can see the conversion lift PLAN.md's "Done
+ * means" calls out — a single 30-day number can't show "visibly higher
+ * than the pre-EPIC-16 baseline" without something to compare to.
  */
 @Service
 public class TeamAdoptionMetricsService {
@@ -49,12 +54,14 @@ public class TeamAdoptionMetricsService {
 
     @Transactional(readOnly = true)
     public TeamAdoptionMetrics snapshot() {
-        LocalDateTime cutoff = LocalDateTime.now(clock).minusDays(WINDOW_DAYS);
+        LocalDateTime now = LocalDateTime.now(clock);
+        LocalDateTime windowStart = now.minusDays(WINDOW_DAYS);
+        LocalDateTime priorStart = now.minusDays(2L * WINDOW_DAYS);
 
-        long notesPosted = notes.countByCreatedAtAfter(cutoff);
+        long notesPosted = notes.countByCreatedAtAfter(windowStart);
         List<ThreadNote> windowNotes = notesPosted == 0
                 ? List.of()
-                : notes.findCreatedSince(cutoff);
+                : notes.findCreatedSince(windowStart);
 
         Set<Long> distinctAuthors = new HashSet<>();
         Set<Long> distinctTeams = new HashSet<>();
@@ -70,11 +77,17 @@ public class TeamAdoptionMetricsService {
         }
 
         long freeToTeam = planChanges.countDistinctUsersByTransitionSince(
-                Plan.FREE, Plan.TEAM, cutoff);
+                Plan.FREE, Plan.TEAM, windowStart);
         long personalToTeam = planChanges.countDistinctUsersByTransitionSince(
-                Plan.PERSONAL, Plan.TEAM, cutoff);
+                Plan.PERSONAL, Plan.TEAM, windowStart);
         long entitledTeam = subscriptions.countEntitledOn(Plan.TEAM);
         long entitledEnterprise = subscriptions.countEntitledOn(Plan.ENTERPRISE);
+
+        long priorNotesPosted = notes.countByCreatedAtBetween(priorStart, windowStart);
+        long priorFreeToTeam = planChanges.countDistinctUsersByTransitionBetween(
+                Plan.FREE, Plan.TEAM, priorStart, windowStart);
+        long priorPersonalToTeam = planChanges.countDistinctUsersByTransitionBetween(
+                Plan.PERSONAL, Plan.TEAM, priorStart, windowStart);
 
         return new TeamAdoptionMetrics(
                 WINDOW_DAYS,
@@ -85,7 +98,10 @@ public class TeamAdoptionMetricsService {
                 freeToTeam,
                 personalToTeam,
                 entitledTeam,
-                entitledEnterprise);
+                entitledEnterprise,
+                priorNotesPosted,
+                priorFreeToTeam,
+                priorPersonalToTeam);
     }
 
     static long countMentionTokens(String body) {

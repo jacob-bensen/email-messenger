@@ -25,4 +25,22 @@ public interface PlanChangeEventRepository extends JpaRepository<PlanChangeEvent
     long countDistinctUsersByTransitionSince(@Param("fromPlan") Plan fromPlan,
                                              @Param("toPlan") Plan toPlan,
                                              @Param("since") LocalDateTime since);
+
+    /**
+     * Distinct users who transitioned {@code fromPlan -> toPlan} strictly
+     * inside [start, end). Powers the prior-window baseline on the
+     * Team-plan adoption card so the operator can compare last-30d
+     * conversions to the 30d before that without writing SQL.
+     */
+    @Query("""
+            SELECT COUNT(DISTINCT e.user.id) FROM PlanChangeEvent e
+            WHERE e.toPlan = :toPlan
+              AND e.fromPlan = :fromPlan
+              AND e.occurredAt >= :start
+              AND e.occurredAt < :end
+            """)
+    long countDistinctUsersByTransitionBetween(@Param("fromPlan") Plan fromPlan,
+                                               @Param("toPlan") Plan toPlan,
+                                               @Param("start") LocalDateTime start,
+                                               @Param("end") LocalDateTime end);
 }

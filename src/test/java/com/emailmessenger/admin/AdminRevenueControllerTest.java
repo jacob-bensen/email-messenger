@@ -229,7 +229,12 @@ class AdminRevenueControllerTest {
                 .andExpect(content().string(containsString("Active note authors")))
                 .andExpect(content().string(containsString("@mentions written")))
                 .andExpect(content().string(containsString("Free → Team")))
-                .andExpect(content().string(containsString("Personal → Team")));
+                .andExpect(content().string(containsString("Personal → Team")))
+                // Prior-window comparison labels must render so the
+                // operator can see the EPIC-16 conversion lift instead
+                // of a single 30-day number with no baseline.
+                .andExpect(content().string(containsString("prior-window data")))
+                .andExpect(content().string(containsString("admin-funnel-delta")));
     }
 
     @Test
