@@ -124,4 +124,25 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
               AND LOWER(s.status) IN ('active','trialing')
             """)
     long countEntitledOn(@Param("plan") com.emailmessenger.domain.Plan plan);
+
+    /**
+     * Cancellation cohort for the operator churn card: rows whose status is
+     * {@code canceled} with the cancel write landing inside the half-open
+     * window {@code [from, to)}, with the owning user eager-fetched. The
+     * window is keyed on {@code updatedAt} because Stripe's
+     * {@code customer.subscription.deleted} webhook is the writer of the
+     * canceled status and {@code updatedAt} is stamped by the {@code @PreUpdate}
+     * the same transaction the status flips. A subscription created last
+     * year and canceled this morning therefore shows up as this morning's
+     * churn — which is what the operator wants — instead of vanishing into
+     * a year-old anchor.
+     */
+    @Query("""
+            SELECT s FROM Subscription s JOIN FETCH s.user
+            WHERE LOWER(s.status) = 'canceled'
+              AND s.updatedAt >= :from
+              AND s.updatedAt < :to
+            """)
+    List<Subscription> findCanceledBetween(@Param("from") LocalDateTime from,
+                                           @Param("to") LocalDateTime to);
 }

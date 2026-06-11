@@ -304,6 +304,70 @@
 
   <section class="admin-card">
     <h2 class="admin-card-title"
+        th:text="|Churn &amp; MRR retention — last ${churn.windowDays()} days|">
+      Churn &amp; MRR retention — last 30 days
+    </h2>
+    <p class="admin-card-sub">
+      Lost MRR is the monthly-equivalent dollar value of subscriptions that
+      flipped to <code>canceled</code> in the window. Gross revenue churn
+      compares lost MRR against the MRR that was active at the start of the
+      window — a falling rate is the signal Team-plan retention work is
+      landing.
+    </p>
+    <div class="admin-kpis">
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Canceled subscribers</span>
+        <span class="admin-kpi-value" th:text="${churn.canceledSubscribers()}">0</span>
+        <span class="admin-kpi-sub"
+              th:text="${churn.canceledDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Lost MRR</span>
+        <span class="admin-kpi-value" th:text="${churn.lostMrrFormatted()}">$0</span>
+        <span class="admin-kpi-sub"
+              th:text="${churn.lostMrrDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Lost ARR</span>
+        <span class="admin-kpi-value" th:text="${churn.lostArrFormatted()}">$0</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Gross revenue churn</span>
+        <span class="admin-kpi-value"
+              th:text="|${churn.grossRevenueChurnRatePercent()}%|">0%</span>
+        <span class="admin-kpi-sub"
+              th:text="${churn.churnRateDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Starting MRR</span>
+        <span class="admin-kpi-value" th:text="${churn.startingMrrFormatted()}">$0</span>
+        <span class="admin-kpi-sub">current MRR + lost MRR</span>
+      </div>
+    </div>
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th class="admin-num">Canceled</th>
+          <th class="admin-num">Lost MRR</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="row : ${churn.byPlan()}">
+          <td th:text="${row.planLabel()}">Personal</td>
+          <td class="admin-num" th:text="${row.canceledSubscribers()}">0</td>
+          <td class="admin-num" th:text="${row.lostMrrFormatted()}">$0</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="admin-empty" th:if="${churn.canceledSubscribers() == 0}">
+      No cancellations recorded in the window — the per-plan table will
+      populate once the first paid subscription lapses.
+    </p>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title"
         th:text="|Trial-end conversion — last ${trialEnd.windowDays()} days|">
       Trial-end conversion — last 30 days
     </h2>

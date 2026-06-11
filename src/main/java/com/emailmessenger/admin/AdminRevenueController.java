@@ -17,6 +17,7 @@ class AdminRevenueController {
     private final TrialEndConversionMetricsService trialEndMetricsService;
     private final OnboardingFunnelMetricsService onboardingFunnelService;
     private final TeamAdoptionMetricsService teamAdoptionService;
+    private final ChurnMetricsService churnMetricsService;
     private final BillingPeriodBackfillService backfillService;
 
     AdminRevenueController(AdminAuthorizer authorizer,
@@ -25,6 +26,7 @@ class AdminRevenueController {
                            TrialEndConversionMetricsService trialEndMetricsService,
                            OnboardingFunnelMetricsService onboardingFunnelService,
                            TeamAdoptionMetricsService teamAdoptionService,
+                           ChurnMetricsService churnMetricsService,
                            BillingPeriodBackfillService backfillService) {
         this.authorizer = authorizer;
         this.metricsService = metricsService;
@@ -32,6 +34,7 @@ class AdminRevenueController {
         this.trialEndMetricsService = trialEndMetricsService;
         this.onboardingFunnelService = onboardingFunnelService;
         this.teamAdoptionService = teamAdoptionService;
+        this.churnMetricsService = churnMetricsService;
         this.backfillService = backfillService;
     }
 
@@ -43,11 +46,13 @@ class AdminRevenueController {
         TrialEndConversionMetrics trialEnd = trialEndMetricsService.snapshot();
         OnboardingFunnelMetrics onboardingFunnel = onboardingFunnelService.snapshot();
         TeamAdoptionMetrics teamAdoption = teamAdoptionService.snapshot();
+        ChurnMetrics churn = churnMetricsService.snapshot();
         model.addAttribute("metrics", metrics);
         model.addAttribute("funnel", funnel);
         model.addAttribute("trialEnd", trialEnd);
         model.addAttribute("onboardingFunnel", onboardingFunnel);
         model.addAttribute("teamAdoption", teamAdoption);
+        model.addAttribute("churn", churn);
         return "admin/revenue";
     }
 

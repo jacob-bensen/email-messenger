@@ -3,15 +3,13 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
-- [ ] [PLAN-REVIEW] EPIC-16 shared-inbox features are code-complete on
-      all four milestones; the Team-plan adoption card on
-      `/admin/revenue` is live but cannot prove the conversion-lift
-      "Done means" without real-traffic data no agent run can produce.
-      Propose the next Primary Objective once live numbers come in
-      (candidates: EPIC-17 outbound saved-search digests that turn
-      Personal's "unlimited saved searches" into a daily-mail habit; or
-      paid-customer dashboarding to surface per-team retention so the
-      Team plan's churn floor is measurable).
+- [ ] [PLAN-REVIEW] EPIC-16 shared-inbox is code-complete; the
+      conversion-lift "Done means" still requires real-traffic data
+      no agent run can produce. PLAN.md has rolled forward to
+      **EPIC-17 churn telemetry** (per-plan churn + lost-MRR card on
+      `/admin/revenue`, cancellation-reason capture, at-risk retention
+      queue, per-plan churn line in the operator weekly digest). Confirm
+      the new Objective once live churn numbers come in.
 
 - [ ] Set `ACTIVATION_ENABLED=true` on the deploy once `ADMIN_EMAILS` is
       wired and at least one live mail send has been verified end-to-end

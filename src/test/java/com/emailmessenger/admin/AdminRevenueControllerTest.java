@@ -239,6 +239,35 @@ class AdminRevenueControllerTest {
 
     @Test
     @WithMockUser(username = "operator@example.com")
+    void revenuePageRendersChurnCardWithCancellationsLostMrrAndPerPlanBreakdown() throws Exception {
+        userService.register("operator@example.com", "password1", null);
+        adminProperties.setEmails(List.of("operator@example.com"));
+
+        User survivor = userService.register("keep@example.com", "password1", null);
+        Subscription kept = new Subscription(survivor, "cus_keep", "active");
+        kept.setPlan(Plan.TEAM);
+        kept.setBillingPeriod(BillingPeriod.MONTHLY);
+        subscriptions.save(kept);
+
+        User gone = userService.register("gone@example.com", "password1", null);
+        Subscription canceled = new Subscription(gone, "cus_gone", "canceled");
+        canceled.setPlan(Plan.PERSONAL);
+        canceled.setBillingPeriod(BillingPeriod.MONTHLY);
+        subscriptions.save(canceled);
+
+        mockMvc.perform(get("/admin/revenue"))
+                .andExpect(status().isOk())
+                .andExpect(model().attributeExists("churn"))
+                .andExpect(content().string(containsString("Churn")))
+                .andExpect(content().string(containsString("Lost MRR")))
+                .andExpect(content().string(containsString("Gross revenue churn")))
+                .andExpect(content().string(containsString("Canceled subscribers")))
+                // Per-plan breakdown header — both row count and "Canceled" column.
+                .andExpect(content().string(containsString("Starting MRR")));
+    }
+
+    @Test
+    @WithMockUser(username = "operator@example.com")
     void revenuePageRendersTrialEndConversionCardWithSentAndConvertedCounts() throws Exception {
         userService.register("operator@example.com", "password1", null);
         adminProperties.setEmails(List.of("operator@example.com"));
