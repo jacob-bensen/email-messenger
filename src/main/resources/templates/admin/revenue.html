@@ -368,6 +368,57 @@
 
   <section class="admin-card">
     <h2 class="admin-card-title"
+        th:text="|At-risk retention queue — last ${atRiskRetention.windowDays()} days|">
+      At-risk retention queue — last 30 days
+    </h2>
+    <p class="admin-card-sub">
+      Most recent <code>active → canceled</code> rows in the window, newest
+      first. The win-back list: open one row to know the plan they paid for,
+      the cadence dollar weight, where they came in from, and the reason
+      they picked at the point of cancel.
+    </p>
+    <p class="admin-empty"
+       th:if="${atRiskRetention.entries() == null or atRiskRetention.entries().isEmpty()}">
+      No paid cancellations in the window yet — the win-back queue will
+      populate once the first paid subscription lapses.
+    </p>
+    <table class="admin-table"
+           th:if="${atRiskRetention.entries() != null and !atRiskRetention.entries().isEmpty()}">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Customer</th>
+          <th>Plan</th>
+          <th>Cadence</th>
+          <th class="admin-num">MRR lost</th>
+          <th>Source</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="row : ${atRiskRetention.entries()}">
+          <td>
+            <time th:text="${#temporals.format(row.canceledAt(), 'yyyy-MM-dd HH:mm')}">
+              2026-06-11 09:32
+            </time>
+          </td>
+          <td th:text="${row.customerEmail()}">customer@example.com</td>
+          <td th:text="${row.planLabel()}">Personal</td>
+          <td th:text="${row.cadenceLabel()}">Monthly</td>
+          <td class="admin-num" th:text="${row.monthlyEquivalentFormatted()}">$9</td>
+          <td th:text="${row.sourceLabel()}">producthunt</td>
+          <td th:text="${row.reasonLabel()}">Too expensive</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="admin-card-sub" th:if="${atRiskRetention.isTruncated()}"
+       th:text="|Showing ${atRiskRetention.entries().size()} of ${atRiskRetention.totalCanceledInWindow()} cancellations — older rows are still in the Churn card totals.|">
+      Showing 20 of 25 cancellations — older rows are still in the Churn card totals.
+    </p>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title"
         th:text="|Trial-end conversion — last ${trialEnd.windowDays()} days|">
       Trial-end conversion — last 30 days
     </h2>

@@ -268,6 +268,30 @@ class AdminRevenueControllerTest {
 
     @Test
     @WithMockUser(username = "operator@example.com")
+    void revenuePageRendersAtRiskRetentionCardWithCustomerPlanSourceAndReason() throws Exception {
+        userService.register("operator@example.com", "password1", null);
+        adminProperties.setEmails(List.of("operator@example.com"));
+
+        User gone = userService.register("gone@example.com", "password1", null, "producthunt");
+        Subscription canceled = new Subscription(gone, "cus_gone", "canceled");
+        canceled.setPlan(Plan.TEAM);
+        canceled.setBillingPeriod(BillingPeriod.MONTHLY);
+        canceled.setCancellationReason(com.emailmessenger.domain.CancellationReason.TOO_EXPENSIVE);
+        canceled.setCancellationReasonAt(java.time.LocalDateTime.now().minusHours(1));
+        subscriptions.save(canceled);
+
+        mockMvc.perform(get("/admin/revenue"))
+                .andExpect(status().isOk())
+                .andExpect(model().attributeExists("atRiskRetention"))
+                .andExpect(content().string(containsString("At-risk retention queue")))
+                .andExpect(content().string(containsString("MRR lost")))
+                .andExpect(content().string(containsString("gone@example.com")))
+                .andExpect(content().string(containsString("Too expensive")))
+                .andExpect(content().string(containsString("producthunt")));
+    }
+
+    @Test
+    @WithMockUser(username = "operator@example.com")
     void revenuePageRendersTrialEndConversionCardWithSentAndConvertedCounts() throws Exception {
         userService.register("operator@example.com", "password1", null);
         adminProperties.setEmails(List.of("operator@example.com"));

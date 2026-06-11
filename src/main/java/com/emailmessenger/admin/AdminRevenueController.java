@@ -18,6 +18,7 @@ class AdminRevenueController {
     private final OnboardingFunnelMetricsService onboardingFunnelService;
     private final TeamAdoptionMetricsService teamAdoptionService;
     private final ChurnMetricsService churnMetricsService;
+    private final AtRiskRetentionService atRiskRetentionService;
     private final BillingPeriodBackfillService backfillService;
 
     AdminRevenueController(AdminAuthorizer authorizer,
@@ -27,6 +28,7 @@ class AdminRevenueController {
                            OnboardingFunnelMetricsService onboardingFunnelService,
                            TeamAdoptionMetricsService teamAdoptionService,
                            ChurnMetricsService churnMetricsService,
+                           AtRiskRetentionService atRiskRetentionService,
                            BillingPeriodBackfillService backfillService) {
         this.authorizer = authorizer;
         this.metricsService = metricsService;
@@ -35,6 +37,7 @@ class AdminRevenueController {
         this.onboardingFunnelService = onboardingFunnelService;
         this.teamAdoptionService = teamAdoptionService;
         this.churnMetricsService = churnMetricsService;
+        this.atRiskRetentionService = atRiskRetentionService;
         this.backfillService = backfillService;
     }
 
@@ -47,12 +50,14 @@ class AdminRevenueController {
         OnboardingFunnelMetrics onboardingFunnel = onboardingFunnelService.snapshot();
         TeamAdoptionMetrics teamAdoption = teamAdoptionService.snapshot();
         ChurnMetrics churn = churnMetricsService.snapshot();
+        AtRiskRetentionMetrics atRiskRetention = atRiskRetentionService.snapshot();
         model.addAttribute("metrics", metrics);
         model.addAttribute("funnel", funnel);
         model.addAttribute("trialEnd", trialEnd);
         model.addAttribute("onboardingFunnel", onboardingFunnel);
         model.addAttribute("teamAdoption", teamAdoption);
         model.addAttribute("churn", churn);
+        model.addAttribute("atRiskRetention", atRiskRetention);
         return "admin/revenue";
     }
 
