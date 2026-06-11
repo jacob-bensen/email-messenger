@@ -32,15 +32,18 @@ public class ThreadNoteService {
     private final TeamService teamService;
     private final ThreadAccessService threadAccess;
     private final PlanLimitService planLimits;
+    private final NoteMentionService mentions;
 
     ThreadNoteService(ThreadNoteRepository notes,
                       TeamService teamService,
                       ThreadAccessService threadAccess,
-                      PlanLimitService planLimits) {
+                      PlanLimitService planLimits,
+                      NoteMentionService mentions) {
         this.notes = notes;
         this.teamService = teamService;
         this.threadAccess = threadAccess;
         this.planLimits = planLimits;
+        this.mentions = mentions;
     }
 
     public enum PostOutcome { POSTED, GATED, BLANK, TOO_LONG }
@@ -107,6 +110,7 @@ public class ThreadNoteService {
         }
         Team team = teamService.findOrCreateOwnedTeam(thread.getOwner());
         ThreadNote saved = notes.save(new ThreadNote(thread, team, author, trimmed));
+        mentions.notify(saved);
         return PostResult.posted(saved);
     }
 }

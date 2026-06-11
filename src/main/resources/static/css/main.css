@@ -877,8 +877,49 @@ body {
 }
 .note-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 12px;
   margin-top: 8px;
+}
+.note-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-right: auto;
+}
+.note-hint code {
+  font-family: var(--font-mono, monospace);
+  background: rgba(0, 0, 0, 0.06);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+.note-input-wrap { position: relative; }
+.mention-picker {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  bottom: 100%;
+  margin: 0 0 4px;
+  padding: 4px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  min-width: 220px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.mention-picker li {
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.mention-picker li.active,
+.mention-picker li:hover {
+  background: #fef3c7;
 }
 .note-upgrade {
   background: #fff;
@@ -906,6 +947,10 @@ body {
   .note-form textarea { background: #1f1b0d; color: #fef3c7; border-color: #92400e; }
   .note-upgrade { background: #1f1b0d; border-color: #92400e; }
   .note-upgrade-copy { color: #fef3c7; }
+  .mention-picker { background: #1f1b0d; border-color: #92400e; color: #fef3c7; }
+  .mention-picker li { color: #fef3c7; }
+  .mention-picker li.active, .mention-picker li:hover { background: #3b3414; }
+  .note-hint code { background: rgba(255, 255, 255, 0.1); }
 }
 
 @media (max-width: 640px) {

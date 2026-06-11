@@ -17,6 +17,7 @@ import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.domain.ThreadNote;
 import com.emailmessenger.service.Conversation;
 import com.emailmessenger.service.ReplyService;
+import com.emailmessenger.team.NoteMentionService;
 import com.emailmessenger.team.ThreadAccessService;
 import com.emailmessenger.team.ThreadNoteService;
 import org.junit.jupiter.api.BeforeEach;
@@ -77,6 +78,7 @@ class ThreadControllerTest {
     @Mock UserActivityService userActivityService;
     @Mock ThreadNoteService threadNoteService;
     @Mock ThreadAccessService threadAccessService;
+    @Mock NoteMentionService noteMentionService;
 
     MockMvc mockMvc;
 
@@ -93,7 +95,7 @@ class ThreadControllerTest {
                 billingBannerService, billingService, onboardingService,
                 planLimitService, trialConversionNudgeService, threadSearchService,
                 senderGroupService, savedSearchService, userActivityService,
-                threadNoteService, threadAccessService, CLOCK);
+                threadNoteService, threadAccessService, noteMentionService, CLOCK);
         lenient().when(userService.requireByEmail("owner@example.com")).thenReturn(owner);
         lenient().when(billingBannerService.bannerFor(owner)).thenReturn(Optional.empty());
         lenient().when(onboardingService.checklistFor(owner))
@@ -107,6 +109,8 @@ class ThreadControllerTest {
         lenient().when(threadNoteService.canAccessNotes(owner)).thenReturn(false);
         lenient().when(threadNoteService.canAccessNotesOn(any(EmailThread.class), eq(owner))).thenReturn(false);
         lenient().when(threadNoteService.notesFor(any(EmailThread.class), eq(owner))).thenReturn(List.of());
+        lenient().when(noteMentionService.candidatesForThread(any(EmailThread.class), eq(owner)))
+                .thenReturn(List.of());
         // By default the principal IS the owner of any thread the controller renders;
         // teammate-viewer tests opt in by overriding this stub.
         lenient().when(threadAccessService.isOwner(any(EmailThread.class), eq(owner))).thenReturn(true);

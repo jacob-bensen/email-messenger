@@ -12,6 +12,7 @@ import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.service.Conversation;
 import com.emailmessenger.service.ReplyService;
+import com.emailmessenger.team.NoteMentionService;
 import com.emailmessenger.team.ThreadAccessService;
 import com.emailmessenger.team.ThreadNoteService;
 import jakarta.validation.Valid;
@@ -53,6 +54,7 @@ class ThreadController {
     private final UserActivityService userActivityService;
     private final ThreadNoteService threadNoteService;
     private final ThreadAccessService threadAccessService;
+    private final NoteMentionService noteMentionService;
     private final Clock clock;
 
     ThreadController(EmailThreadRepository threadRepository,
@@ -70,6 +72,7 @@ class ThreadController {
                      UserActivityService userActivityService,
                      ThreadNoteService threadNoteService,
                      ThreadAccessService threadAccessService,
+                     NoteMentionService noteMentionService,
                      Clock clock) {
         this.threadRepository = threadRepository;
         this.threadViewService = threadViewService;
@@ -86,6 +89,7 @@ class ThreadController {
         this.userActivityService = userActivityService;
         this.threadNoteService = threadNoteService;
         this.threadAccessService = threadAccessService;
+        this.noteMentionService = noteMentionService;
         this.clock = clock;
     }
 
@@ -162,6 +166,8 @@ class ThreadController {
         model.addAttribute("teamNotes", threadNoteService.notesFor(thread, viewer));
         model.addAttribute("canPostTeamNote", canPostNote);
         model.addAttribute("teamNoteForm", new ThreadNoteForm());
+        model.addAttribute("teamMentionCandidates",
+                canPostNote ? noteMentionService.candidatesForThread(thread, viewer) : List.of());
         // Only the owner sees the upgrade-to-Team CTA — a teammate viewing the
         // thread can't upgrade for someone else; we just hide the notes panel.
         if (isOwner && !canPostNote) {

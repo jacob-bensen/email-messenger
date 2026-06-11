@@ -5,6 +5,7 @@ import com.emailmessenger.domain.TeamMember;
 import com.emailmessenger.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface TeamMemberRepository extends JpaRepository<TeamMember, Long> {
@@ -14,4 +15,6 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, Long> {
     boolean existsByTeamAndUser(Team team, User user);
 
     long countByTeam(Team team);
+
+    List<TeamMember> findByTeamOrderByJoinedAtAsc(Team team);
 }

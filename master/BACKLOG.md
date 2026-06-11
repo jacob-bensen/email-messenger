@@ -2,8 +2,8 @@
 
 Up to 10 items, each advancing a PLAN.md milestone. Pick from the top.
 
-- **@mention picker + email notification on a note.**
-  Parse `@token` against team members on save; matched users get a
-  transactional email pointing at `/threads/{id}#note-{noteId}`.
-  Textarea opens a `@` picker bound to the team membership.
-  PLAN milestone 3.
+- **Operator dashboard card: Team-plan conversion lift.**
+  Add a "Team-plan adoption — last 30 days" card to `/admin/revenue`
+  showing notes-posted, mentions-sent, and a Free→Team vs Personal→Team
+  conversion split so the post-EPIC-16 lift is legible at a glance.
+  PLAN milestone 4.
