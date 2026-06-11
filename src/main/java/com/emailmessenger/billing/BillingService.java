@@ -1,8 +1,10 @@
 package com.emailmessenger.billing;
 
 import com.emailmessenger.domain.Plan;
+import com.emailmessenger.domain.PlanChangeEvent;
 import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
+import com.emailmessenger.repository.PlanChangeEventRepository;
 import com.emailmessenger.repository.SubscriptionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,15 +23,18 @@ public class BillingService {
     private static final Logger log = LoggerFactory.getLogger(BillingService.class);
 
     private final SubscriptionRepository subscriptions;
+    private final PlanChangeEventRepository planChanges;
     private final StripeCheckoutGateway gateway;
     private final StripePortalGateway portalGateway;
     private final BillingProperties properties;
 
     BillingService(SubscriptionRepository subscriptions,
+                   PlanChangeEventRepository planChanges,
                    StripeCheckoutGateway gateway,
                    StripePortalGateway portalGateway,
                    BillingProperties properties) {
         this.subscriptions = subscriptions;
+        this.planChanges = planChanges;
         this.gateway = gateway;
         this.portalGateway = portalGateway;
         this.properties = properties;
@@ -71,13 +76,32 @@ public class BillingService {
         Subscription sub = existing != null
                 ? existing
                 : new Subscription(user, result.customerId(), "incomplete");
+        Plan previousPlan = existing != null ? existing.getPlan() : null;
         sub.setPlan(plan);
         sub.setStripePriceId(priceId);
         sub.setBillingPeriod(resolved);
         if (existing == null) {
-            subscriptions.save(sub);
+            sub = subscriptions.save(sub);
         }
+        recordPlanChangeIfTransitioned(sub, user, previousPlan, plan);
         return result.url();
+    }
+
+    /**
+     * Logs a plan transition the first time the user crosses into a new
+     * tier. Free→Personal and Personal→Team are both transitions; restarting
+     * checkout on the same plan, or re-attempting a failed checkout into
+     * the same plan, is not — those produce no event. Used by the operator
+     * dashboard's Team-plan adoption card to split fresh paid conversions
+     * (Free→Team) from existing-customer upgrades (Personal→Team).
+     */
+    private void recordPlanChangeIfTransitioned(Subscription sub, User user,
+                                                Plan previousPlan, Plan newPlan) {
+        Plan from = previousPlan == null ? Plan.FREE : previousPlan;
+        if (from == newPlan) {
+            return;
+        }
+        planChanges.save(new PlanChangeEvent(sub, user, from, newPlan));
     }
 
     /**

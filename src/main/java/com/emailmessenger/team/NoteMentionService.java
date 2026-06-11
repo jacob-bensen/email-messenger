@@ -48,7 +48,7 @@ public class NoteMentionService {
     // Negative lookbehind keeps "@" embedded in an email address (e.g.
     // "jane@example.com") from registering as a mention — only an "@" at
     // the start of input or after a non-handle character counts.
-    static final Pattern MENTION_TOKEN =
+    public static final Pattern MENTION_TOKEN =
             Pattern.compile("(?<![A-Za-z0-9._-])@([A-Za-z0-9._-]{1,64})");
     static final int SNIPPET_MAX = 280;
 

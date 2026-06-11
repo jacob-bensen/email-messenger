@@ -112,4 +112,16 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
               AND LOWER(s.status) = 'active'
             """)
     long countActiveOwnersIn(@Param("userIds") Collection<Long> userIds);
+
+    /**
+     * Currently-active subscribers on the given plan. Used by the Team-plan
+     * adoption card to anchor "this is what the install base looks like
+     * right now" alongside the rolling-window conversion split.
+     */
+    @Query("""
+            SELECT COUNT(s) FROM Subscription s
+            WHERE s.plan = :plan
+              AND LOWER(s.status) IN ('active','trialing')
+            """)
+    long countEntitledOn(@Param("plan") com.emailmessenger.domain.Plan plan);
 }

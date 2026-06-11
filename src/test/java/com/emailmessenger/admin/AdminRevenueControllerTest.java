@@ -217,6 +217,23 @@ class AdminRevenueControllerTest {
 
     @Test
     @WithMockUser(username = "operator@example.com")
+    void revenuePageRendersTeamAdoptionCardWithEngagementAndConversionLabels() throws Exception {
+        userService.register("operator@example.com", "password1", null);
+        adminProperties.setEmails(List.of("operator@example.com"));
+
+        mockMvc.perform(get("/admin/revenue"))
+                .andExpect(status().isOk())
+                .andExpect(model().attributeExists("teamAdoption"))
+                .andExpect(content().string(containsString("Team-plan adoption")))
+                .andExpect(content().string(containsString("Notes posted")))
+                .andExpect(content().string(containsString("Active note authors")))
+                .andExpect(content().string(containsString("@mentions written")))
+                .andExpect(content().string(containsString("Free → Team")))
+                .andExpect(content().string(containsString("Personal → Team")));
+    }
+
+    @Test
+    @WithMockUser(username = "operator@example.com")
     void revenuePageRendersTrialEndConversionCardWithSentAndConvertedCounts() throws Exception {
         userService.register("operator@example.com", "password1", null);
         adminProperties.setEmails(List.of("operator@example.com"));

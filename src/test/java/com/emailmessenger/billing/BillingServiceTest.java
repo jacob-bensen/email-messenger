@@ -2,8 +2,10 @@ package com.emailmessenger.billing;
 
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.domain.Plan;
+import com.emailmessenger.domain.PlanChangeEvent;
 import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
+import com.emailmessenger.repository.PlanChangeEventRepository;
 import com.emailmessenger.repository.SubscriptionRepository;
 import com.emailmessenger.repository.UserRepository;
 import com.emailmessenger.service.ReplyService;
@@ -32,6 +34,7 @@ class BillingServiceTest {
     @Autowired UserService userService;
     @Autowired UserRepository users;
     @Autowired SubscriptionRepository subscriptions;
+    @Autowired PlanChangeEventRepository planChanges;
 
     @MockBean StripeCheckoutGateway gateway;
     @MockBean StripePortalGateway portalGateway;
@@ -206,6 +209,59 @@ class BillingServiceTest {
     void startPortalReturnsEmptyWhenUserHasNoSubscription() {
         User user = newUser("nosub@example.com");
         assertThat(billingService.startPortal(user)).isEmpty();
+    }
+
+    @Test
+    void firstCheckoutLogsFreeToTargetPlanTransition() {
+        User user = newUser("first@example.com");
+        when(gateway.createSubscriptionSession(eq(null), any(), eq("price_personal_test"),
+                any(), any(), any()))
+                .thenReturn(new CheckoutSessionResult(
+                        "https://checkout.stripe.com/c/pay/cs_pt", "cs_pt", "cus_pt"));
+
+        billingService.startCheckout(user, Plan.PERSONAL, BillingPeriod.MONTHLY);
+
+        java.util.List<PlanChangeEvent> events = planChanges.findAll();
+        assertThat(events).hasSize(1);
+        assertThat(events.get(0).getFromPlan()).isEqualTo(Plan.FREE);
+        assertThat(events.get(0).getToPlan()).isEqualTo(Plan.PERSONAL);
+        assertThat(events.get(0).getUser().getId()).isEqualTo(user.getId());
+    }
+
+    @Test
+    void upgradingPersonalToTeamLogsPersonalToTeamTransition() {
+        User user = newUser("upgrader@example.com");
+        when(gateway.createSubscriptionSession(eq(null), any(), eq("price_personal_test"),
+                any(), any(), any()))
+                .thenReturn(new CheckoutSessionResult(
+                        "https://checkout.stripe.com/c/pay/cs_p1", "cs_p1", "cus_up"));
+        billingService.startCheckout(user, Plan.PERSONAL, BillingPeriod.MONTHLY);
+
+        when(gateway.createSubscriptionSession(eq("cus_up"), any(), eq("price_team_test"),
+                any(), any(), any()))
+                .thenReturn(new CheckoutSessionResult(
+                        "https://checkout.stripe.com/c/pay/cs_t1", "cs_t1", "cus_up"));
+        billingService.startCheckout(user, Plan.TEAM, BillingPeriod.MONTHLY);
+
+        java.util.List<PlanChangeEvent> events = planChanges.findAll();
+        assertThat(events).hasSize(2);
+        assertThat(events.get(0).getFromPlan()).isEqualTo(Plan.FREE);
+        assertThat(events.get(0).getToPlan()).isEqualTo(Plan.PERSONAL);
+        assertThat(events.get(1).getFromPlan()).isEqualTo(Plan.PERSONAL);
+        assertThat(events.get(1).getToPlan()).isEqualTo(Plan.TEAM);
+    }
+
+    @Test
+    void restartingCheckoutOnSamePlanDoesNotLogADuplicateTransition() {
+        User user = newUser("retry@example.com");
+        when(gateway.createSubscriptionSession(any(), any(), eq("price_personal_test"),
+                any(), any(), any()))
+                .thenReturn(new CheckoutSessionResult(
+                        "https://checkout.stripe.com/c/pay/cs_a", "cs_a", "cus_a"));
+        billingService.startCheckout(user, Plan.PERSONAL, BillingPeriod.MONTHLY);
+        billingService.startCheckout(user, Plan.PERSONAL, BillingPeriod.MONTHLY);
+
+        assertThat(planChanges.findAll()).hasSize(1);
     }
 
     @Test
