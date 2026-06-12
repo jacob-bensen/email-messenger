@@ -104,6 +104,24 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     List<Subscription> findTrialEndEmailedSince(@Param("cutoff") LocalDateTime cutoff);
 
     /**
+     * Win-back conversion-attribution slice for {@code /admin/revenue}: every
+     * subscription touched by the EPIC-18 win-back email since {@code cutoff},
+     * with the owning user eager-joined so the metrics service can compute
+     * "emailed → reactivated" without an N+1. Status is read straight off the
+     * row, so a row that's since flipped back to {@code active} counts as a
+     * reactivation and one that stays {@code canceled} counts as a non-
+     * conversion. Two windows (current + prior 30 days) are partitioned in
+     * the service by comparing {@code lastWinBackEmailSentAt} against the
+     * window-boundary timestamp.
+     */
+    @Query("""
+            SELECT s FROM Subscription s JOIN FETCH s.user
+            WHERE s.lastWinBackEmailSentAt IS NOT NULL
+              AND s.lastWinBackEmailSentAt >= :cutoff
+            """)
+    List<Subscription> findWinBackEmailedSince(@Param("cutoff") LocalDateTime cutoff);
+
+    /**
      * Onboarding-funnel terminal step: how many users in the supplied
      * cohort currently have an active paid subscription. Status is
      * compared lower-case to match {@link RevenueMetricsService}'s

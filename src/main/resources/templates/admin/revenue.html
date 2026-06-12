@@ -458,6 +458,52 @@
 
   <section class="admin-card">
     <h2 class="admin-card-title"
+        th:text="|Win-back conversion — last ${winBackConversion.windowDays()} days|">
+      Win-back conversion — last 30 days
+    </h2>
+    <p class="admin-card-sub">
+      How many "Send win-back" emails went out, how many of those canceled
+      subscribers are currently <code>active</code> again, and the monthly-
+      equivalent MRR that came back through the door. A rising conversion
+      rate means the copy / offer is landing; a falling rate is the signal
+      to change the email or the discount.
+    </p>
+    <div class="admin-kpis">
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Emails sent</span>
+        <span class="admin-kpi-value" th:text="${winBackConversion.emailsSent()}">0</span>
+        <span class="admin-kpi-sub"
+              th:text="${winBackConversion.emailsSentDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Reactivated</span>
+        <span class="admin-kpi-value" th:text="${winBackConversion.reactivated()}">0</span>
+        <span class="admin-kpi-sub"
+              th:text="${winBackConversion.reactivatedDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">MRR recovered</span>
+        <span class="admin-kpi-value"
+              th:text="${winBackConversion.mrrRecoveredFormatted()}">$0</span>
+        <span class="admin-kpi-sub"
+              th:text="${winBackConversion.mrrRecoveredDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Conversion rate</span>
+        <span class="admin-kpi-value"
+              th:text="|${winBackConversion.conversionRatePercent()}%|">0%</span>
+        <span class="admin-kpi-sub"
+              th:text="${winBackConversion.conversionRateDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+    </div>
+    <p class="admin-empty" th:if="${winBackConversion.emailsSent() == 0}">
+      No win-back emails fired in the window yet — figures populate once you
+      send the first one from the at-risk queue above.
+    </p>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title"
         th:text="|Trial-end conversion — last ${trialEnd.windowDays()} days|">
       Trial-end conversion — last 30 days
     </h2>

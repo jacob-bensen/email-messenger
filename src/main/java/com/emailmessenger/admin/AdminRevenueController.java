@@ -22,6 +22,7 @@ class AdminRevenueController {
     private final AtRiskRetentionService atRiskRetentionService;
     private final BillingPeriodBackfillService backfillService;
     private final WinBackOutreachService winBackService;
+    private final WinBackConversionMetricsService winBackConversionService;
 
     AdminRevenueController(AdminAuthorizer authorizer,
                            RevenueMetricsService metricsService,
@@ -32,7 +33,8 @@ class AdminRevenueController {
                            ChurnMetricsService churnMetricsService,
                            AtRiskRetentionService atRiskRetentionService,
                            BillingPeriodBackfillService backfillService,
-                           WinBackOutreachService winBackService) {
+                           WinBackOutreachService winBackService,
+                           WinBackConversionMetricsService winBackConversionService) {
         this.authorizer = authorizer;
         this.metricsService = metricsService;
         this.funnelService = funnelService;
@@ -43,6 +45,7 @@ class AdminRevenueController {
         this.atRiskRetentionService = atRiskRetentionService;
         this.backfillService = backfillService;
         this.winBackService = winBackService;
+        this.winBackConversionService = winBackConversionService;
     }
 
     @GetMapping("/admin/revenue")
@@ -55,6 +58,7 @@ class AdminRevenueController {
         TeamAdoptionMetrics teamAdoption = teamAdoptionService.snapshot();
         ChurnMetrics churn = churnMetricsService.snapshot();
         AtRiskRetentionMetrics atRiskRetention = atRiskRetentionService.snapshot();
+        WinBackConversionMetrics winBackConversion = winBackConversionService.snapshot();
         model.addAttribute("metrics", metrics);
         model.addAttribute("funnel", funnel);
         model.addAttribute("trialEnd", trialEnd);
@@ -62,6 +66,7 @@ class AdminRevenueController {
         model.addAttribute("teamAdoption", teamAdoption);
         model.addAttribute("churn", churn);
         model.addAttribute("atRiskRetention", atRiskRetention);
+        model.addAttribute("winBackConversion", winBackConversion);
         return "admin/revenue";
     }
 
