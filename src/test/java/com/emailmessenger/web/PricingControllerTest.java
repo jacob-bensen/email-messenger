@@ -10,22 +10,23 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
-class MarketingControllerTest {
+class PricingControllerTest {
 
-    MockMvc mockMvc;
+    private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        InternalResourceViewResolver viewResolver = new InternalResourceViewResolver();
-        viewResolver.setPrefix("/WEB-INF/templates/");
-        viewResolver.setSuffix(".html");
-        mockMvc = MockMvcBuilders.standaloneSetup(new MarketingController())
-                .setViewResolvers(viewResolver)
+        InternalResourceViewResolver resolver = new InternalResourceViewResolver();
+        resolver.setPrefix("/WEB-INF/templates/");
+        resolver.setSuffix(".html");
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(new PricingController())
+                .setViewResolvers(resolver)
                 .build();
     }
 
     @Test
-    void pricingPageReturnsPricingView() throws Exception {
+    void pricingPageReturns200AndPricingView() throws Exception {
         mockMvc.perform(get("/pricing"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("pricing"));

@@ -36,14 +36,17 @@ the nested-quote mess most mail clients show you.
 ### Prerequisites
 
 - Java 21
-- Docker (for the Postgres container)
 
 ### Run locally
 
 ```bash
-docker compose up -d postgres
 ./mvnw spring-boot:run
 ```
+
+The default `dev` profile uses an in-memory H2 database, so no external
+services are needed. For the `prod` profile, point the app at a
+PostgreSQL 16 instance via the environment variables below (see
+`.env.example` for the full list).
 
 The app starts on `http://localhost:8080`. On first launch you connect a
 mailbox (IMAP host, port, username, app password).
@@ -53,6 +56,9 @@ mailbox (IMAP host, port, username, app password).
 ```bash
 ./mvnw test
 ```
+
+The Testcontainers-based integration tests need a local Docker daemon;
+they skip automatically when Docker isn't available.
 
 ### Build a jar
 

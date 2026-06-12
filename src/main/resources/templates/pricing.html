@@ -4,164 +4,188 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pricing — MailIM</title>
-  <meta name="description"
-        content="Simple, transparent pricing for MailIM. Free for personal use. $9/mo Personal, $29/mo Team, $99/mo Enterprise. Save 16% with annual billing.">
+  <meta name="description" content="MailIM turns your email inbox into a chat-style conversation view. Free for one mailbox. Upgrade for unlimited history, AI summaries, and team sharing.">
+  <meta property="og:title" content="MailIM Pricing — Email as instant messages">
+  <meta property="og:description" content="Simple, transparent pricing. Start free, upgrade when your team grows.">
+  <meta property="og:type" content="website">
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>
 
 <header class="app-header">
-  <a href="/" class="brand">MailIM</a>
+  <a href="/" class="brand brand-link">MailIM</a>
   <nav class="header-nav">
-    <a href="/threads">Inbox</a>
+    <a href="/demo">Demo</a>
     <a href="/pricing" class="nav-active">Pricing</a>
+    <a href="/waitlist" class="btn btn-primary btn-sm">Join waitlist →</a>
   </nav>
 </header>
 
-<main class="marketing">
+<main class="pricing-page">
 
-  <section class="hero-narrow">
-    <h1>Simple, predictable pricing</h1>
-    <p class="hero-sub">Start free. Upgrade when your inbox grows. Cancel anytime.</p>
+  <section class="pricing-hero">
+    <h1>Simple, transparent pricing</h1>
+    <p>Start free. Upgrade when you need more mailboxes or history.</p>
 
-    <div class="billing-toggle" role="group" aria-label="Billing period">
-      <button type="button" class="billing-option is-active" data-period="monthly">Monthly</button>
-      <button type="button" class="billing-option" data-period="annual">
+    <div class="billing-toggle" id="billingToggle" role="group" aria-label="Billing period">
+      <button class="toggle-btn active" data-period="monthly" onclick="setPeriod('monthly')" aria-pressed="true">Monthly</button>
+      <button class="toggle-btn" data-period="annual" onclick="setPeriod('annual')" aria-pressed="false">
         Annual <span class="save-badge">Save 16%</span>
       </button>
     </div>
+    <p class="pricing-demo-hint">Not sure yet? <a href="/demo">Try the live demo</a> — no signup required.</p>
   </section>
 
-  <section class="plan-grid">
+  <section class="pricing-cards">
 
-    <article class="plan-card">
-      <h2 class="plan-name">Free</h2>
-      <p class="plan-price">
+    <!-- Free -->
+    <div class="plan-card">
+      <div class="plan-name">Free</div>
+      <div class="plan-price">
         <span class="price-amount">$0</span>
-        <span class="price-period">/ forever</span>
-      </p>
-      <p class="plan-blurb">Try MailIM with one mailbox. No credit card.</p>
+        <span class="price-period">/mo</span>
+      </div>
+      <div class="plan-desc">Perfect for trying out MailIM</div>
+      <a href="/waitlist" class="btn btn-outline plan-cta">Get early access →</a>
+      <p class="plan-trust-note">Free forever · No credit card required</p>
       <ul class="plan-features">
-        <li>1 mailbox</li>
-        <li>30-day thread history</li>
-        <li>Up to 500 threads</li>
-        <li>IM-style conversation view</li>
-        <li>Dark mode</li>
+        <li class="feature-item"><span class="check">✓</span> 1 mailbox</li>
+        <li class="feature-item"><span class="check">✓</span> 30-day history</li>
+        <li class="feature-item"><span class="check">✓</span> 500 threads</li>
+        <li class="feature-item"><span class="check">✓</span> IM-style chat view</li>
+        <li class="feature-item"><span class="check">✓</span> Dark mode</li>
+        <li class="feature-item"><span class="check">✓</span> Inline reply</li>
+        <li class="feature-item muted"><span class="cross">✗</span> AI thread summary</li>
+        <li class="feature-item muted"><span class="cross">✗</span> Team sharing</li>
+        <li class="feature-item muted"><span class="cross">✗</span> REST API</li>
       </ul>
-      <a href="/threads" class="btn btn-secondary plan-cta">Get started</a>
-    </article>
+    </div>
 
-    <article class="plan-card plan-card-featured">
-      <span class="plan-tag">Most popular</span>
-      <h2 class="plan-name">Personal</h2>
-      <p class="plan-price">
-        <span class="price-amount" data-monthly="$9" data-annual="$7">$9</span>
-        <span class="price-period">/ month</span>
-      </p>
-      <p class="plan-blurb">For freelancers and individual professionals.</p>
+    <!-- Personal -->
+    <div class="plan-card plan-card--featured">
+      <div class="plan-badge">Most popular</div>
+      <div class="plan-name">Personal</div>
+      <div class="plan-price">
+        <span class="price-amount" data-monthly="$9" data-annual="$7.50">$9</span>
+        <span class="price-period">/mo</span>
+      </div>
+      <div class="plan-annual-note" style="display:none;">Billed $90/year</div>
+      <div class="plan-desc">For individuals managing a real inbox</div>
+      <a href="/waitlist" class="btn btn-primary plan-cta">Join waitlist →</a>
+      <p class="plan-trust-note">14-day free trial · Cancel anytime</p>
       <ul class="plan-features">
-        <li>3 mailboxes</li>
-        <li>Unlimited thread history</li>
-        <li>Full-text search</li>
-        <li>Custom from-address &amp; signature</li>
-        <li>Reply send-later scheduling</li>
-        <li>Priority email support</li>
+        <li class="feature-item"><span class="check">✓</span> 3 mailboxes</li>
+        <li class="feature-item"><span class="check">✓</span> Unlimited history</li>
+        <li class="feature-item"><span class="check">✓</span> Unlimited threads</li>
+        <li class="feature-item"><span class="check">✓</span> IM-style chat view</li>
+        <li class="feature-item"><span class="check">✓</span> Dark mode</li>
+        <li class="feature-item"><span class="check">✓</span> Inline reply</li>
+        <li class="feature-item"><span class="check">✓</span> AI thread summary</li>
+        <li class="feature-item"><span class="check">✓</span> REST API access</li>
+        <li class="feature-item muted"><span class="cross">✗</span> Team sharing</li>
       </ul>
-      <a href="/threads" class="btn btn-primary plan-cta">Start 14-day free trial</a>
-    </article>
+    </div>
 
-    <article class="plan-card">
-      <h2 class="plan-name">Team</h2>
-      <p class="plan-price">
+    <!-- Team -->
+    <div class="plan-card">
+      <div class="plan-name">Team</div>
+      <div class="plan-price">
         <span class="price-amount" data-monthly="$29" data-annual="$24">$29</span>
-        <span class="price-period">/ month</span>
-      </p>
-      <p class="plan-blurb">For support and sales teams that share an inbox.</p>
+        <span class="price-period">/mo</span>
+      </div>
+      <div class="plan-annual-note" style="display:none;">Billed $290/year</div>
+      <div class="plan-desc">For support teams and small businesses</div>
+      <a href="/waitlist" class="btn btn-outline plan-cta">Join waitlist →</a>
+      <p class="plan-trust-note">14-day free trial · Cancel anytime</p>
       <ul class="plan-features">
-        <li>10 mailboxes</li>
-        <li>Shared team inbox view</li>
-        <li>Slack &amp; Discord webhooks</li>
-        <li>Thread labels &amp; pinning</li>
-        <li>REST API access</li>
-        <li>Priority chat support</li>
+        <li class="feature-item"><span class="check">✓</span> 10 mailboxes</li>
+        <li class="feature-item"><span class="check">✓</span> Unlimited history</li>
+        <li class="feature-item"><span class="check">✓</span> Unlimited threads</li>
+        <li class="feature-item"><span class="check">✓</span> IM-style chat view</li>
+        <li class="feature-item"><span class="check">✓</span> Dark mode</li>
+        <li class="feature-item"><span class="check">✓</span> Inline reply</li>
+        <li class="feature-item"><span class="check">✓</span> AI thread summary</li>
+        <li class="feature-item"><span class="check">✓</span> REST API access</li>
+        <li class="feature-item"><span class="check">✓</span> Team sharing</li>
+        <li class="feature-item"><span class="check">✓</span> Priority support</li>
+        <li class="feature-item"><span class="check">✓</span> Slack/Discord webhooks</li>
       </ul>
-      <a href="/threads" class="btn btn-secondary plan-cta">Start 14-day free trial</a>
-    </article>
+    </div>
 
-    <article class="plan-card">
-      <h2 class="plan-name">Enterprise</h2>
-      <p class="plan-price">
+    <!-- Enterprise -->
+    <div class="plan-card">
+      <div class="plan-name">Enterprise</div>
+      <div class="plan-price">
         <span class="price-amount" data-monthly="$99" data-annual="$83">$99</span>
-        <span class="price-period">/ month</span>
-      </p>
-      <p class="plan-blurb">For organizations with strict security needs.</p>
+        <span class="price-period">/mo</span>
+      </div>
+      <div class="plan-annual-note" style="display:none;">Billed $990/year</div>
+      <div class="plan-desc">For large teams with security requirements</div>
+      <a href="mailto:sales@mailaim.app" class="btn btn-outline plan-cta">Contact sales</a>
       <ul class="plan-features">
-        <li>Unlimited mailboxes</li>
-        <li>SSO (Google, SAML)</li>
-        <li>Audit logs</li>
-        <li>Dedicated onboarding</li>
-        <li>99.9% uptime SLA</li>
-        <li>Annual invoicing available</li>
+        <li class="feature-item"><span class="check">✓</span> Unlimited mailboxes</li>
+        <li class="feature-item"><span class="check">✓</span> Unlimited history</li>
+        <li class="feature-item"><span class="check">✓</span> Unlimited threads</li>
+        <li class="feature-item"><span class="check">✓</span> Everything in Team</li>
+        <li class="feature-item"><span class="check">✓</span> SSO (Google, SAML)</li>
+        <li class="feature-item"><span class="check">✓</span> Audit logs</li>
+        <li class="feature-item"><span class="check">✓</span> Dedicated support</li>
+        <li class="feature-item"><span class="check">✓</span> Custom SLA</li>
       </ul>
-      <a href="mailto:sales@mailaim.app" class="btn btn-secondary plan-cta">Contact sales</a>
-    </article>
+    </div>
 
   </section>
 
-  <section class="faq">
-    <h2>Frequently asked questions</h2>
-    <details class="faq-item">
-      <summary>Can I switch plans later?</summary>
-      <p>Yes — upgrade, downgrade, or cancel anytime from your account settings.
-         Annual subscribers get a prorated refund on downgrade.</p>
-    </details>
-    <details class="faq-item">
-      <summary>Is there a free trial on paid plans?</summary>
-      <p>Personal and Team plans include a 14-day free trial. No credit card
-         is required to start the trial.</p>
-    </details>
-    <details class="faq-item">
-      <summary>What happens if I exceed my plan's mailbox limit?</summary>
-      <p>You'll see a prompt to upgrade in-app. Existing mailboxes keep
-         working — you just can't add more until you upgrade.</p>
-    </details>
-    <details class="faq-item">
-      <summary>How is my email data handled?</summary>
-      <p>Email content is stored only to render your conversation view —
-         we never read it for advertising or sell it to third parties.
-         Full details, including data retention and deletion, are in our
-         privacy policy (coming with launch).</p>
-    </details>
+  <section class="pricing-faq">
+    <h2>Common questions</h2>
+    <div class="faq-grid">
+      <div class="faq-item">
+        <h3>Do I need a credit card to start?</h3>
+        <p>No. The Free plan requires no payment info. Paid trials also start without a card.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Which email providers work?</h3>
+        <p>Any IMAP/SMTP mailbox — Gmail, Outlook, Fastmail, iCloud, ProtonMail Bridge, or self-hosted.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Can I change plans or get a refund?</h3>
+        <p>Yes. Upgrade or downgrade at any time. Downgrades take effect at the next billing cycle. Annual plans are eligible for a full refund within 14 days of purchase — see our <a href="/refund">Refund Policy</a>.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Is my email data safe?</h3>
+        <p>MailIM reads your emails to display them as conversations. We never sell or share your data. See our <a href="/privacy">Privacy Policy</a>.</p>
+      </div>
+    </div>
   </section>
 
 </main>
 
-<footer class="marketing-footer">
-  <span>&copy; MailIM</span>
-  <nav>
-    <a href="/pricing">Pricing</a>
-    <a href="/threads">Inbox</a>
-  </nav>
+<footer class="pricing-footer">
+  <span>© 2026 MailIM</span>
+  <a href="/privacy">Privacy Policy</a>
+  <a href="/terms">Terms of Service</a>
+  <a href="/refund">Refund Policy</a>
+  <a href="mailto:support@mailaim.app">Support</a>
 </footer>
 
 <script>
-(function () {
-  var toggles = document.querySelectorAll('.billing-option');
-  var amounts = document.querySelectorAll('.price-amount[data-monthly]');
-  if (!toggles.length || !amounts.length) return;
-
-  toggles.forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var period = btn.getAttribute('data-period');
-      toggles.forEach(function (b) { b.classList.toggle('is-active', b === btn); });
-      amounts.forEach(function (el) {
-        var v = el.getAttribute('data-' + period);
-        if (v) el.textContent = v;
-      });
-    });
+function setPeriod(period) {
+  var isAnnual = period === 'annual';
+  document.querySelectorAll('.toggle-btn').forEach(function(btn) {
+    var active = btn.dataset.period === period;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
-}());
+  document.querySelectorAll('.price-amount[data-monthly]').forEach(function(el) {
+    el.textContent = isAnnual ? el.dataset.annual : el.dataset.monthly;
+  });
+  document.querySelectorAll('.plan-annual-note').forEach(function(el) {
+    el.style.display = isAnnual ? 'block' : 'none';
+  });
+}
 </script>
+
+<div th:replace="~{fragments/cookie-banner :: banner}"></div>
 
 </body>
 </html>

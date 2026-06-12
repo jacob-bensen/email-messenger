@@ -77,10 +77,12 @@ commit. Add follow-ups as they emerge.
 - [x] Thymeleaf templates: thread list, conversation view with chat bubbles,
       reply form.
 - [x] CSS for the IM look: avatars, bubbles, day separators, dark mode.
-- [ ] IMAP polling job (`@Scheduled`) behind a feature flag.
-- [ ] Integration tests with Testcontainers (Postgres) + GreenMail (SMTP/IMAP).
-- [ ] `Dockerfile` + `docker-compose.yml` (app + postgres).
-- [ ] GitHub Actions CI: build, test, cache Maven deps.
+- [x] IMAP polling job (`@Scheduled`) behind a feature flag.
+- [x] Integration tests with Testcontainers (Postgres) + GreenMail (SMTP/IMAP).
+- [x] ~~`Dockerfile` + `docker-compose.yml` (app + postgres).~~ Removed
+      2026-06-11 — not deploying via Docker; run locally instead.
+- [x] ~~GitHub Actions CI: build, test, cache Maven deps.~~ Removed
+      2026-06-11 — tests run locally with `./mvnw test`; do not re-add CI.
 
 ## Conventions
 
@@ -109,5 +111,6 @@ commit. Add follow-ups as they emerge.
 ## Definition of done for the MVP
 
 A user can connect a mailbox, see imported threads rendered as IM-style
-conversations, and reply inline. Tests pass and the app boots against
-Postgres in Docker via `docker compose up`.
+conversations, and reply inline. Tests pass via `./mvnw test` and the app
+boots locally via `./mvnw spring-boot:run` (H2 in dev; point the `prod`
+profile at a PostgreSQL 16 instance).

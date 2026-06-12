@@ -75,4 +75,6 @@ public class EmailThread {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public List<Message> getMessages() { return Collections.unmodifiableList(messages); }
+
+    public void setMessageCount(int messageCount) { this.messageCount = messageCount; }
 }

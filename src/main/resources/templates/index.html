@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MailIM — Email as instant messages</title>
+  <meta name="description" content="MailIM transforms your email inbox into a modern chat-style interface. See threads as chat bubbles, strip quoted noise, and reply inline — just like messaging.">
+  <meta property="og:title" content="MailIM — Email that feels like messaging">
+  <meta property="og:description" content="Turn your inbox into a chat-style conversation view. Connect any IMAP mailbox and see threads as instant-message bubbles.">
+  <meta property="og:type" content="website">
+  <link rel="canonical" href="/">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "MailIM",
+    "applicationCategory": "CommunicationApplication",
+    "description": "MailIM transforms email inboxes into a modern instant-message-style conversation interface.",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body class="landing-body">
+
+<header class="app-header">
+  <a href="/" class="brand brand-link">MailIM</a>
+  <nav class="header-nav">
+    <a href="/demo">Demo</a>
+    <a href="/pricing">Pricing</a>
+    <a href="/waitlist" class="btn btn-primary btn-sm">Join waitlist →</a>
+  </nav>
+</header>
+
+<!-- Hero -->
+<section class="landing-hero">
+  <div class="landing-container">
+    <h1 class="hero-headline">Email, reimagined as chat</h1>
+    <p class="hero-subhead">
+      Connect your inbox and see every thread as a clean, instant-message conversation.
+      No more walls of quoted text — just the signal.
+    </p>
+    <div class="hero-ctas">
+      <a href="/waitlist" class="btn btn-primary btn-lg">Join the waitlist →</a>
+      <a href="/demo" class="btn btn-outline btn-lg">Try the live demo</a>
+    </div>
+    <p class="hero-trust-note">Free to join · No credit card required · Cancel anytime</p>
+    <p class="hero-social-proof" th:if="${waitlistCount > 0}">
+      Join <strong th:text="${waitlistCount}">0</strong> others already on the list.
+    </p>
+  </div>
+</section>
+
+<!-- Why MailIM (Inbox vs MailIM comparison) -->
+<section class="landing-why" aria-labelledby="why-heading">
+  <div class="landing-container">
+    <h2 id="why-heading" class="section-heading">Inbox today vs. inbox with MailIM</h2>
+    <p class="section-subhead">Same email. Different experience. See the difference at a glance.</p>
+    <div class="why-grid">
+
+      <div class="why-col why-col-before">
+        <div class="why-col-label">Your inbox today</div>
+        <ul class="why-list">
+          <li>
+            <span class="why-icon why-icon-bad" aria-hidden="true">✕</span>
+            Walls of quoted text — every reply repeats every previous reply.
+          </li>
+          <li>
+            <span class="why-icon why-icon-bad" aria-hidden="true">✕</span>
+            Subject lines, headers, and signatures bury the actual message.
+          </li>
+          <li>
+            <span class="why-icon why-icon-bad" aria-hidden="true">✕</span>
+            Reading a 12-message thread feels like archaeology, not communication.
+          </li>
+        </ul>
+      </div>
+
+      <div class="why-col why-col-after">
+        <div class="why-col-label why-col-label-good">Your inbox with MailIM</div>
+        <ul class="why-list">
+          <li>
+            <span class="why-icon why-icon-good" aria-hidden="true">✓</span>
+            Quoted-reply noise stripped automatically — only new content shown.
+          </li>
+          <li>
+            <span class="why-icon why-icon-good" aria-hidden="true">✓</span>
+            Each message is a chat bubble. Same-sender runs are grouped, like iMessage.
+          </li>
+          <li>
+            <span class="why-icon why-icon-good" aria-hidden="true">✓</span>
+            A 12-message thread reads in 30 seconds. Reply inline with <kbd>r</kbd>.
+          </li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section class="landing-how-it-works">
+  <div class="landing-container">
+    <h2 class="section-heading">How it works</h2>
+    <div class="how-steps">
+
+      <div class="how-step">
+        <div class="how-step-number">1</div>
+        <h3>Connect your mailbox</h3>
+        <p>Link any IMAP mailbox — Gmail, Outlook, Fastmail, or your own server. No forwarding rules. No lock-in.</p>
+      </div>
+
+      <div class="how-step-arrow">→</div>
+
+      <div class="how-step">
+        <div class="how-step-number">2</div>
+        <h3>Threads auto-import</h3>
+        <p>MailIM fetches your threads, strips quoted-reply noise, and groups consecutive messages into bubble runs.</p>
+      </div>
+
+      <div class="how-step-arrow">→</div>
+
+      <div class="how-step">
+        <div class="how-step-number">3</div>
+        <h3>Read as chat</h3>
+        <p>Every conversation looks like iMessage or Slack. Reply inline with <kbd>r</kbd>. Your inbox, finally readable.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Feature grid -->
+<section class="landing-features">
+  <div class="landing-container">
+    <h2 class="section-heading">Everything you hate about email, fixed</h2>
+    <div class="feature-grid">
+
+      <div class="feature-card">
+        <div class="feature-icon">💬</div>
+        <h3>Chat bubbles, not walls of text</h3>
+        <p>Every reply is a bubble. Consecutive messages from the same person are grouped into a run — exactly like iMessage or Slack.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">✂️</div>
+        <h3>Quoted-reply noise stripped</h3>
+        <p>MailIM automatically removes "On Mon, Jan 1 … wrote:" blocks and <code>&gt; </code> quote markers so you only read new content.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">📬</div>
+        <h3>Any IMAP mailbox</h3>
+        <p>Gmail, Outlook, Fastmail, iCloud, or any standard IMAP server. No forwarding rules, no lock-in.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">↩️</div>
+        <h3>Reply inline</h3>
+        <p>Hit <kbd>r</kbd> or click the reply box at the bottom of any thread and send without leaving the conversation view.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🌙</div>
+        <h3>Dark mode</h3>
+        <p>Follows your system preference automatically. Your eyes will thank you at midnight.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>Keyboard-first</h3>
+        <p>Navigate threads with <kbd>j</kbd>/<kbd>k</kbd>, open with <kbd>Enter</kbd>, reply with <kbd>r</kbd>. Your hands never leave the keyboard.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Pricing preview -->
+<section class="landing-pricing-preview">
+  <div class="landing-container">
+    <h2 class="section-heading">Simple pricing</h2>
+    <p class="section-subhead">Start free. Upgrade when you need more.</p>
+    <div class="preview-plan-row">
+
+      <div class="preview-plan">
+        <div class="preview-plan-name">Free</div>
+        <div class="preview-plan-price">$0<span>/mo</span></div>
+        <ul>
+          <li>1 mailbox</li>
+          <li>30-day history</li>
+          <li>500 threads</li>
+        </ul>
+      </div>
+
+      <div class="preview-plan preview-plan-highlight">
+        <div class="preview-plan-badge">Most popular</div>
+        <div class="preview-plan-name">Personal</div>
+        <div class="preview-plan-price">$9<span>/mo</span></div>
+        <ul>
+          <li>3 mailboxes</li>
+          <li>Unlimited history</li>
+          <li>AI thread summaries</li>
+        </ul>
+      </div>
+
+      <div class="preview-plan">
+        <div class="preview-plan-name">Team</div>
+        <div class="preview-plan-price">$29<span>/mo</span></div>
+        <ul>
+          <li>10 mailboxes</li>
+          <li>Team sharing</li>
+          <li>Priority support</li>
+        </ul>
+      </div>
+
+    </div>
+    <div class="preview-pricing-link">
+      <a href="/pricing">See full pricing and feature comparison →</a>
+    </div>
+  </div>
+</section>
+
+<!-- Bottom CTA -->
+<section class="landing-cta-section">
+  <div class="landing-container landing-cta-inner">
+    <h2>Ready to see your inbox differently?</h2>
+    <p>Try the live demo now — no signup needed. Join the waitlist to get early access.</p>
+    <div class="hero-ctas">
+      <a href="/waitlist" class="btn btn-primary btn-lg">Join the waitlist →</a>
+      <a href="/demo" class="btn btn-outline btn-lg btn-outline-inv">Try the demo</a>
+    </div>
+  </div>
+</section>
+
+<footer class="landing-footer">
+  <div class="landing-container landing-footer-inner">
+    <span class="brand">MailIM</span>
+    <nav class="footer-links">
+      <a href="/demo">Demo</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/waitlist">Waitlist</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+      <a href="/refund">Refund Policy</a>
+    </nav>
+  </div>
+</footer>
+
+<div th:replace="~{fragments/cookie-banner :: banner}"></div>
+
+</body>
+</html>
