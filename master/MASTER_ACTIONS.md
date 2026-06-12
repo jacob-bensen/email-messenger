@@ -3,13 +3,14 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
-- [ ] [PLAN-REVIEW] EPIC-16 shared-inbox is code-complete; the
-      conversion-lift "Done means" still requires real-traffic data
-      no agent run can produce. PLAN.md has rolled forward to
-      **EPIC-17 churn telemetry** (per-plan churn + lost-MRR card on
-      `/admin/revenue`, cancellation-reason capture, at-risk retention
-      queue, per-plan churn line in the operator weekly digest). Confirm
-      the new Objective once live churn numbers come in.
+- [ ] [PLAN-REVIEW] EPIC-17 churn telemetry is code-complete
+      (per-plan churn card, cancellation reason picker, at-risk queue,
+      per-plan churn line in the Monday digest). PLAN.md has rolled
+      forward to **EPIC-18 operator-initiated win-back outreach**
+      (per-row "Send win-back" CTA shipped 2026-06-12; win-back
+      conversion card, recovered-row badge, and digest queue-line still
+      open). Confirm the new Objective once a live operator has fired
+      at least one win-back and a reactivation has been observed.
 
 - [ ] Set `ACTIVATION_ENABLED=true` on the deploy once `ADMIN_EMAILS` is
       wired and at least one live mail send has been verified end-to-end

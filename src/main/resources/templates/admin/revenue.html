@@ -382,6 +382,30 @@
       No paid cancellations in the window yet — the win-back queue will
       populate once the first paid subscription lapses.
     </p>
+    <p class="admin-toolbar-result" th:if="${winBack != null and winBack == 'SENT'}">
+      Win-back: email sent. The row now reads "Sent just now" — refresh to
+      double-check before composing the next one.
+    </p>
+    <p class="admin-toolbar-result" th:if="${winBack != null and winBack == 'ALREADY_SENT'}">
+      Win-back: this customer already had a win-back email fired in the
+      window — no second send.
+    </p>
+    <p class="admin-toolbar-result" th:if="${winBack != null and winBack == 'OPTED_OUT'}">
+      Win-back: customer has opted out of automated emails — nothing sent.
+    </p>
+    <p class="admin-toolbar-result" th:if="${winBack != null and winBack == 'NOT_CANCELED'}">
+      Win-back: subscription is no longer canceled (they re-subscribed!) —
+      nothing sent.
+    </p>
+    <p class="admin-toolbar-result" th:if="${winBack != null and winBack == 'UNSUPPORTED_PLAN'}">
+      Win-back: a Free / unknown plan row can't be a win-back target.
+    </p>
+    <p class="admin-toolbar-result" th:if="${winBack != null and winBack == 'NOT_FOUND'}">
+      Win-back: subscription id not found — likely a stale dashboard tab.
+    </p>
+    <p class="admin-toolbar-result" th:if="${winBack != null and winBack == 'MAIL_FAILED'}">
+      Win-back: mail send failed — the row stays in the queue so you can retry.
+    </p>
     <table class="admin-table"
            th:if="${atRiskRetention.entries() != null and !atRiskRetention.entries().isEmpty()}">
       <thead>
@@ -393,6 +417,7 @@
           <th class="admin-num">MRR lost</th>
           <th>Source</th>
           <th>Reason</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody>
@@ -408,6 +433,20 @@
           <td class="admin-num" th:text="${row.monthlyEquivalentFormatted()}">$9</td>
           <td th:text="${row.sourceLabel()}">producthunt</td>
           <td th:text="${row.reasonLabel()}">Too expensive</td>
+          <td>
+            <span th:if="${row.winBackAlreadySent()}" class="admin-winback-sent"
+                  th:text="|Sent ${#temporals.format(row.winBackSentAt(), 'yyyy-MM-dd HH:mm')}|">
+              Sent 2026-06-12 09:32
+            </span>
+            <form th:if="${!row.winBackAlreadySent()}"
+                  th:action="@{/admin/retention/win-back}" method="post"
+                  class="admin-winback-form">
+              <input type="hidden" th:if="${_csrf != null}"
+                     th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+              <input type="hidden" name="subscriptionId" th:value="${row.subscriptionId()}">
+              <button type="submit" class="admin-btn admin-btn-sm">Send win-back</button>
+            </form>
+          </td>
         </tr>
       </tbody>
     </table>

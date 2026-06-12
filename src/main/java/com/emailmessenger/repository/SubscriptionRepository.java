@@ -83,6 +83,10 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     @Query("UPDATE Subscription s SET s.lastTrialEndEmailSentAt = :ts WHERE s.id = :id")
     int touchTrialEndEmailSent(@Param("id") Long id, @Param("ts") LocalDateTime ts);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE Subscription s SET s.lastWinBackEmailSentAt = :ts WHERE s.id = :id")
+    int touchWinBackEmailSent(@Param("id") Long id, @Param("ts") LocalDateTime ts);
+
     /**
      * Conversion-attribution slice for {@code /admin/revenue}: every
      * subscription touched by the trial-end email inside the rolling

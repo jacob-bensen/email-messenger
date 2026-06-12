@@ -62,6 +62,7 @@ public class AtRiskRetentionService {
                 : sub.getBillingPeriod();
         int priceCents = PlanPricing.monthlyCents(sub.getPlan(), period);
         return new Entry(
+                sub.getId(),
                 sub.getUser().getEmail(),
                 planLabel(sub.getPlan()),
                 periodLabel(period),
@@ -69,7 +70,8 @@ public class AtRiskRetentionService {
                 RevenueMetricsService.formatCents(priceCents),
                 sourceLabel(sub.getUser().getAcquisitionSource()),
                 reasonLabel(sub.getCancellationReason()),
-                sub.getUpdatedAt());
+                sub.getUpdatedAt(),
+                sub.getLastWinBackEmailSentAt());
     }
 
     private static String planLabel(Plan plan) {

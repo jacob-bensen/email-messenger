@@ -11,6 +11,9 @@ import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.SubscriptionRepository;
 import com.emailmessenger.service.ReplyService;
+import jakarta.mail.Session;
+import jakarta.mail.internet.MimeMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,10 +56,13 @@ class AdminRevenueControllerTest {
     @MockBean StripePortalGateway stripePortal;
     @MockBean StripeSubscriptionGateway stripeSubscriptionGateway;
     @MockBean ReplyService replyService;
+    @MockBean JavaMailSender mailSender;
 
     @BeforeEach
     void resetAdminEmails() {
         adminProperties.setEmails(List.of());
+        when(mailSender.createMimeMessage())
+                .thenAnswer(inv -> new MimeMessage((Session) null));
     }
 
     @Test
@@ -316,5 +322,74 @@ class AdminRevenueControllerTest {
                 .andExpect(content().string(containsString("Trial-end conversion")))
                 .andExpect(content().string(containsString("Emails sent")))
                 .andExpect(content().string(containsString("Converted to active")));
+    }
+
+    @Test
+    @WithMockUser(username = "operator@example.com")
+    void adminCanFireWinBackEmailAndRowFlipsToSentTimestamp() throws Exception {
+        userService.register("operator@example.com", "password1", null);
+        adminProperties.setEmails(List.of("operator@example.com"));
+
+        User gone = userService.register("walked@example.com", "password1", null);
+        Subscription canceled = new Subscription(gone, "cus_walked", "canceled");
+        canceled.setPlan(Plan.PERSONAL);
+        canceled.setBillingPeriod(BillingPeriod.MONTHLY);
+        canceled.setCancellationReason(com.emailmessenger.domain.CancellationReason.TOO_EXPENSIVE);
+        canceled.setCancellationReasonAt(java.time.LocalDateTime.now().minusHours(1));
+        Subscription saved = subscriptions.save(canceled);
+
+        mockMvc.perform(post("/admin/retention/win-back")
+                        .param("subscriptionId", String.valueOf(saved.getId()))
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/revenue"))
+                .andExpect(flash().attribute("winBack", "SENT"));
+
+        Subscription reloaded = subscriptions.findById(saved.getId()).orElseThrow();
+        org.assertj.core.api.Assertions.assertThat(reloaded.getLastWinBackEmailSentAt())
+                .isNotNull();
+    }
+
+    @Test
+    @WithMockUser(username = "intruder@example.com")
+    void nonAdminCannotFireWinBackEvenWithValidCsrf() throws Exception {
+        userService.register("intruder@example.com", "password1", null);
+        adminProperties.setEmails(List.of("operator@example.com"));
+
+        mockMvc.perform(post("/admin/retention/win-back")
+                        .param("subscriptionId", "1")
+                        .with(csrf()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "operator@example.com")
+    void atRiskRowRendersSendButtonAndAfterFirePresentsSentTimestamp() throws Exception {
+        userService.register("operator@example.com", "password1", null);
+        adminProperties.setEmails(List.of("operator@example.com"));
+
+        User gone = userService.register("renderbutton@example.com", "password1", null);
+        Subscription canceled = new Subscription(gone, "cus_render", "canceled");
+        canceled.setPlan(Plan.TEAM);
+        canceled.setBillingPeriod(BillingPeriod.MONTHLY);
+        canceled.setCancellationReason(com.emailmessenger.domain.CancellationReason.OTHER);
+        Subscription saved = subscriptions.save(canceled);
+
+        mockMvc.perform(get("/admin/revenue"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Send win-back")))
+                .andExpect(content().string(containsString("/admin/retention/win-back")))
+                .andExpect(content().string(containsString(
+                        "value=\"" + saved.getId() + "\"")));
+
+        subscriptions.touchWinBackEmailSent(saved.getId(),
+                java.time.LocalDateTime.now().minusMinutes(2));
+
+        mockMvc.perform(get("/admin/revenue"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Sent ")))
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.not(containsString("name=\"subscriptionId\" value=\""
+                                + saved.getId() + "\""))));
     }
 }

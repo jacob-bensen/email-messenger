@@ -10,66 +10,69 @@ SaaS: Free (1 mailbox, 500 threads, 1 saved search), Personal $9/mo
 (3 mailboxes, unlimited history, unlimited saved searches),
 Team $29/mo (10 mailboxes, sharing), Enterprise $99/mo (SSO, audit).
 Annual billing offers 2 months free. Money comes from recurring
-subscriptions, with natural Free → Personal → Team upgrades. The
-conversion funnel (EPIC-02 through EPIC-16) is code-complete; live
-deploy is gated on Master ops (hosting, domain, Stripe live keys,
+subscriptions, with natural Free → Personal → Team upgrades and reclaim
+revenue from win-back of canceled paid customers. Conversion funnel
+(EPIC-02 through EPIC-16) and churn telemetry (EPIC-17) are code-complete;
+live deploy is gated on Master ops (hosting, domain, Stripe live keys,
 encryption secrets, Google OAuth credentials, demo video URL).
 
 ## Primary Objective
 
-**Ship EPIC-17 churn telemetry so the Team plan's $29/mo unit
-economics are measurable.** The dashboard at `/admin/revenue` has
-acquisition (funnel, source, onboarding) and upgrade (Team-plan
-adoption) cards but no churn surface — the operator currently can't
-tell if MRR growth is being chewed up by cancellations, can't see
-per-plan churn (a single Team cancel costs ~3 Personal cancels), and
-can't see whether retention work is landing. EPIC-17 closes that gap
-end-to-end: an operator-readable churn card that pairs raw cancellation
-counts with lost monthly-equivalent revenue, a gross-revenue-churn rate
-that compares lost MRR against the MRR active at the start of the
-window, a per-plan breakdown so a Team-plan cancel reads differently
-from a Personal cancel, and a prior-30-day baseline so the rate is
-read as a trend rather than a single number. This Objective ends when
-the operator can open `/admin/revenue` and answer "is the Team plan
-retaining better month-over-month?" in five seconds.
+**Ship EPIC-18 operator-initiated win-back outreach so canceled paid
+customers are a measurable reclaim channel, not a one-way exit.**
+EPIC-17 turned cancellations into numbers the operator can see; EPIC-18
+turns each row in the at-risk retention queue into an action. The
+operator can click "Send win-back" on a canceled row, the customer
+receives a reason-aware templated email through the existing
+transactional path, the one-shot stamp prevents double-sends, and the
+operator can later see how many of those emails actually reactivated a
+subscription and how much MRR walked back through the door. Once the
+loop closes, the at-risk queue stops being a list of regrets and starts
+being a pipeline. This Objective ends when the operator can open
+`/admin/revenue`, fire a win-back, and read the win-back-→-reactivation
+conversion rate against the prior 30-day baseline in the same five
+seconds the churn read takes today.
 
 ## Milestones
 
-1. **Churn & MRR-retention card — last 30 days.** New `ChurnMetrics`
-   record + `ChurnMetricsService` in `com.emailmessenger.admin` reading
-   from `SubscriptionRepository.findCanceledBetween(from, to)`. Counts
-   canceled subscribers, sums monthly-equivalent lost MRR (and ARR),
-   computes gross revenue churn rate as `lostMrr / (currentMrr +
-   lostMrr)`, breaks the cancellation cohort down by plan, and pairs
-   each metric with the prior-30-day counterpart so the delta is
-   visible. Wired into `AdminRevenueController` + rendered on
-   `templates/admin/revenue.html`.
-2. **Cancellation reason capture at the point of cancel.** Add a
-   one-question reason picker on the Stripe-Portal-return path (or an
-   in-app pre-cancel step) so each `subscriptions.canceled_at` event
-   carries a stable enum (`too_expensive` / `missing_feature` /
-   `switching` / `temporary` / `other`). Persist on the Subscription row
-   so the operator can see *why* the Team-plan cancels happened, not
-   just how many.
-3. **At-risk retention queue — trial-end conversions that lapsed.** A
-   new `/admin/retention` page (or a card on `/admin/revenue`) listing
-   the last N subscriptions that flipped `active` → `canceled` inside
-   the window, with their plan, cadence, acquisition source, and the
-   recorded cancellation reason. This is the one-click "who do I email
-   to win back" list.
-4. **Operator weekly digest gains the per-plan churn line.** Extend
-   `AdminWeeklyDigestService` so the Monday morning email reads
-   "Personal: N canceled (-$X MRR); Team: N canceled (-$Y MRR);
-   Enterprise: …" — pushes the retention number into the operator's
-   inbox instead of relying on them visiting the dashboard.
+1. **Per-row "Send win-back" CTA + templated send + one-shot stamp.**
+   `WinBackOutreachService` (in `com.emailmessenger.admin`) sends a
+   reason-aware templated email through the existing `JavaMailSender`,
+   gating on the subscription still being a canceled paid row, the
+   `DigestEmailPreference` opt-out flag, and a null
+   `last_win_back_email_sent_at`. A `POST /admin/retention/win-back`
+   on `AdminRevenueController` drives the per-row button. Flyway V28
+   adds the stamp column. The at-risk table swaps the action cell to
+   a "Sent X ago" timestamp on re-render.
+2. **Win-back conversion card on `/admin/revenue`.** New
+   `WinBackConversionMetrics(Service)` reading from
+   `SubscriptionRepository.findWinBackEmailedSince(...)`: emails sent,
+   how many flipped back to `active` after the stamp, MRR recovered,
+   and the same prior-30-day delta pattern the churn card uses. Tells
+   the operator whether these emails are actually landing or whether
+   the copy / pricing offer needs to change.
+3. **Auto-suppress recovered rows + flag re-subscriptions.** When a
+   subscription flips `canceled → active` after a win-back stamp,
+   surface that as a "Recovered" badge in the at-risk queue (the row
+   stays visible for context but loses the "Send win-back" CTA) and
+   counts the row as a conversion in the M2 card. Closes the loop so
+   the operator can tell on the same dashboard whether a click
+   actually paid off.
+4. **Operator weekly digest gains a win-back queue line + recovered
+   tally.** Extend `AdminWeeklyDigestService` so the Monday morning
+   email reads "Win-back queue: N un-emailed paid cancels this week"
+   plus "Recovered after win-back: M (+$X MRR)" — pushes the action
+   into the operator's inbox and pairs it with the proof it worked.
 
 ## Done means
 
-A Team-plan cancellation shows up in the "Churn & MRR retention" card
-within minutes of the Stripe webhook landing, the lost MRR matches the
-cents that walked out, the prior-30-day delta reads "▼ X% vs. prior 30
-days" when retention is improving, the per-plan breakdown row for Team
-moves independently of Personal, and the Monday operator digest
-includes per-plan churn dollars. The operator can decide whether to
-build a retention feature or a pricing change from the dashboard
-alone.
+An operator opens `/admin/revenue`, sees the at-risk retention row for a
+just-canceled customer with a "Send win-back" button, clicks it, the
+customer receives a reason-aware win-back email within seconds, the row
+flips to "Sent X ago", and — when that customer re-subscribes — the
+same page renders the row as "Recovered" while the win-back conversion
+card increments its "Reactivated" + "MRR recovered" tallies. The Monday
+operator digest carries both the un-emailed-queue size and the recovered
+tally for the week. The operator decides whether to keep firing
+win-backs, change the copy, or rebuild the pricing tier from the
+dashboard alone.

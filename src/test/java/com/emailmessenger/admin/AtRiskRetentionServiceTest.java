@@ -203,6 +203,42 @@ class AtRiskRetentionServiceTest {
         return s;
     }
 
+    @Test
+    void entryCarriesSubscriptionIdAndWinBackTimestampForTheActionColumn() {
+        Subscription notSent = canceled("fresh@example.com", Plan.PERSONAL,
+                BillingPeriod.MONTHLY, "ads", CancellationReason.OTHER,
+                now.minusHours(1));
+        setId(notSent, 42L);
+        Subscription alreadySent = canceled("alreadyemailed@example.com", Plan.TEAM,
+                BillingPeriod.MONTHLY, "twitter", CancellationReason.OTHER,
+                now.minusHours(2));
+        setId(alreadySent, 99L);
+        alreadySent.setLastWinBackEmailSentAt(now.minusMinutes(30));
+        when(subscriptions.findCanceledBetween(any(), any()))
+                .thenReturn(List.of(notSent, alreadySent));
+
+        AtRiskRetentionMetrics m = service.snapshot();
+
+        AtRiskRetentionMetrics.Entry e0 = m.entries().get(0);
+        assertThat(e0.subscriptionId()).isEqualTo(42L);
+        assertThat(e0.winBackSentAt()).isNull();
+        assertThat(e0.winBackAlreadySent()).isFalse();
+        AtRiskRetentionMetrics.Entry e1 = m.entries().get(1);
+        assertThat(e1.subscriptionId()).isEqualTo(99L);
+        assertThat(e1.winBackSentAt()).isEqualTo(now.minusMinutes(30));
+        assertThat(e1.winBackAlreadySent()).isTrue();
+    }
+
+    private static void setId(Subscription sub, Long id) {
+        try {
+            Field f = Subscription.class.getDeclaredField("id");
+            f.setAccessible(true);
+            f.set(sub, id);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
+    }
+
     private static void setUpdatedAt(Subscription sub, LocalDateTime ts) {
         try {
             Field f = Subscription.class.getDeclaredField("updatedAt");

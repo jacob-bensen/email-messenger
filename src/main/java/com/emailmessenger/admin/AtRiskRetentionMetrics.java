@@ -14,6 +14,10 @@ import java.util.List;
  * cancellation reason they picked at the point of cancel (if EPIC-17 M2's
  * reason picker captured one — direct Stripe-Portal cancels stay
  * {@code "not recorded"} rather than being guessed).
+ *
+ * <p>EPIC-18 M1 adds {@code subscriptionId} so the per-row "Send win-back"
+ * form has a target, and {@code winBackSentAt} so a row that already had
+ * an outreach fired renders the timestamp instead of the action button.
  */
 public record AtRiskRetentionMetrics(int windowDays,
                                      long totalCanceledInWindow,
@@ -24,14 +28,21 @@ public record AtRiskRetentionMetrics(int windowDays,
         return totalCanceledInWindow > entries.size();
     }
 
-    public record Entry(String customerEmail,
+    public record Entry(Long subscriptionId,
+                        String customerEmail,
                         String planLabel,
                         String cadenceLabel,
                         long monthlyEquivalentCents,
                         String monthlyEquivalentFormatted,
                         String sourceLabel,
                         String reasonLabel,
-                        LocalDateTime canceledAt) {}
+                        LocalDateTime canceledAt,
+                        LocalDateTime winBackSentAt) {
+
+        public boolean winBackAlreadySent() {
+            return winBackSentAt != null;
+        }
+    }
 
     public static AtRiskRetentionMetrics empty(int windowDays, int displayLimit) {
         return new AtRiskRetentionMetrics(windowDays, 0, displayLimit, List.of());

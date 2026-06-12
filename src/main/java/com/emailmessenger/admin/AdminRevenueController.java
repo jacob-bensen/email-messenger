@@ -4,6 +4,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
@@ -20,6 +21,7 @@ class AdminRevenueController {
     private final ChurnMetricsService churnMetricsService;
     private final AtRiskRetentionService atRiskRetentionService;
     private final BillingPeriodBackfillService backfillService;
+    private final WinBackOutreachService winBackService;
 
     AdminRevenueController(AdminAuthorizer authorizer,
                            RevenueMetricsService metricsService,
@@ -29,7 +31,8 @@ class AdminRevenueController {
                            TeamAdoptionMetricsService teamAdoptionService,
                            ChurnMetricsService churnMetricsService,
                            AtRiskRetentionService atRiskRetentionService,
-                           BillingPeriodBackfillService backfillService) {
+                           BillingPeriodBackfillService backfillService,
+                           WinBackOutreachService winBackService) {
         this.authorizer = authorizer;
         this.metricsService = metricsService;
         this.funnelService = funnelService;
@@ -39,6 +42,7 @@ class AdminRevenueController {
         this.churnMetricsService = churnMetricsService;
         this.atRiskRetentionService = atRiskRetentionService;
         this.backfillService = backfillService;
+        this.winBackService = winBackService;
     }
 
     @GetMapping("/admin/revenue")
@@ -66,6 +70,16 @@ class AdminRevenueController {
         authorizer.requireAdmin(principal.getName());
         BillingPeriodBackfillResult result = backfillService.reconcile();
         attrs.addFlashAttribute("reconcile", result);
+        return "redirect:/admin/revenue";
+    }
+
+    @PostMapping("/admin/retention/win-back")
+    String sendWinBack(Principal principal,
+                       @RequestParam("subscriptionId") Long subscriptionId,
+                       RedirectAttributes attrs) {
+        authorizer.requireAdmin(principal.getName());
+        WinBackOutreachService.Outcome outcome = winBackService.sendWinBackFor(subscriptionId);
+        attrs.addFlashAttribute("winBack", outcome.name());
         return "redirect:/admin/revenue";
     }
 }
