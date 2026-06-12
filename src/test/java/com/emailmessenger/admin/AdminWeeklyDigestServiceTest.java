@@ -128,6 +128,32 @@ class AdminWeeklyDigestServiceTest {
     }
 
     @Test
+    void bodyIncludesPerPlanChurnBreakdownForCancellationsInsideLookback() throws Exception {
+        adminProperties.setEmails(List.of("op@example.com"));
+
+        User personalChurn = userService.register("p-churn@example.com", "password1", null);
+        Subscription pSub = new Subscription(personalChurn, "cus_p_churn", "canceled");
+        pSub.setPlan(Plan.PERSONAL);
+        pSub.setBillingPeriod(BillingPeriod.MONTHLY);
+        subscriptions.save(pSub);
+
+        User teamChurn = userService.register("t-churn@example.com", "password1", null);
+        Subscription tSub = new Subscription(teamChurn, "cus_t_churn", "canceled");
+        tSub.setPlan(Plan.TEAM);
+        tSub.setBillingPeriod(BillingPeriod.ANNUAL);
+        subscriptions.save(tSub);
+
+        digestService.sendDigest();
+
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(captor.capture());
+        String body = (String) captor.getValue().getContent();
+        assertThat(body).contains("Personal:       1 canceled (-$9 MRR)");
+        assertThat(body).contains("Team:           1 canceled (-$24 MRR)");
+        assertThat(body).contains("Enterprise:     0 canceled (-$0 MRR)");
+    }
+
+    @Test
     void perRecipientMailExceptionIsLoggedAndDoesNotAbortTheSweep() {
         adminProperties.setEmails(List.of("flaky@example.com", "good@example.com"));
         doThrow(new MailSendException("smtp down"))

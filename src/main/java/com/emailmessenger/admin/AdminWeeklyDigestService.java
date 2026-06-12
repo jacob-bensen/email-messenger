@@ -1,5 +1,8 @@
 package com.emailmessenger.admin;
 
+import com.emailmessenger.billing.BillingPeriod;
+import com.emailmessenger.domain.Plan;
+import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.repository.SubscriptionRepository;
 import com.emailmessenger.web.SiteProperties;
 import jakarta.mail.MessagingException;
@@ -19,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.EnumMap;
 import java.util.List;
 
 /**
@@ -36,6 +40,7 @@ public class AdminWeeklyDigestService {
     private static final Logger log = LoggerFactory.getLogger(AdminWeeklyDigestService.class);
     private static final DateTimeFormatter WEEK_END_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE;
     static final Duration LOOKBACK = Duration.ofDays(7);
+    private static final List<Plan> PAID_PLANS = List.of(Plan.PERSONAL, Plan.TEAM, Plan.ENTERPRISE);
 
     private final AdminProperties adminProperties;
     private final RevenueMetricsService metricsService;
@@ -77,7 +82,8 @@ public class AdminWeeklyDigestService {
         RevenueMetrics metrics = metricsService.snapshot();
         long newPaying = subscriptions.countByStatusAndUpdatedAtAfter("active", weekAgo);
         long churn = subscriptions.countByStatusAndUpdatedAtAfter("canceled", weekAgo);
-        String body = renderBody(metrics, newPaying, churn, now);
+        EnumMap<Plan, long[]> perPlanChurn = perPlanChurn(weekAgo, now);
+        String body = renderBody(metrics, newPaying, churn, perPlanChurn, now);
         String subject = buildSubject(metrics, newPaying, churn);
 
         int sent = 0;
@@ -111,7 +117,11 @@ public class AdminWeeklyDigestService {
                 + newPaying + " new, " + churn + " churn";
     }
 
-    private String renderBody(RevenueMetrics metrics, long newPaying, long churn, LocalDateTime now) {
+    private String renderBody(RevenueMetrics metrics,
+                              long newPaying,
+                              long churn,
+                              EnumMap<Plan, long[]> perPlanChurn,
+                              LocalDateTime now) {
         LocalDate weekEnd = now.atZone(ZoneOffset.UTC).toLocalDate();
         String base = site.getBaseUrl();
         StringBuilder sb = new StringBuilder();
@@ -127,8 +137,40 @@ public class AdminWeeklyDigestService {
         sb.append("Last 7 days:\n");
         sb.append("  New paying customers: ").append(newPaying).append('\n');
         sb.append("  Churn (canceled):     ").append(churn).append('\n');
+        for (Plan plan : PAID_PLANS) {
+            long[] row = perPlanChurn.getOrDefault(plan, new long[2]);
+            String label = planLabel(plan) + ":";
+            sb.append(String.format("    %-16s%d canceled (-%s MRR)%n",
+                    label, row[0], RevenueMetricsService.formatCents(row[1])));
+        }
         sb.append('\n');
         sb.append("Full dashboard: ").append(base).append("/admin/revenue\n");
         return sb.toString();
+    }
+
+    private EnumMap<Plan, long[]> perPlanChurn(LocalDateTime from, LocalDateTime to) {
+        EnumMap<Plan, long[]> perPlan = new EnumMap<>(Plan.class);
+        for (Subscription sub : subscriptions.findCanceledBetween(from, to)) {
+            Plan plan = sub.getPlan();
+            if (plan == null || plan == Plan.FREE) {
+                continue;
+            }
+            BillingPeriod period = sub.getBillingPeriod() == null
+                    ? BillingPeriod.MONTHLY
+                    : sub.getBillingPeriod();
+            long[] row = perPlan.computeIfAbsent(plan, p -> new long[2]);
+            row[0]++;
+            row[1] += PlanPricing.monthlyCents(plan, period);
+        }
+        return perPlan;
+    }
+
+    private static String planLabel(Plan plan) {
+        return switch (plan) {
+            case PERSONAL -> "Personal";
+            case TEAM -> "Team";
+            case ENTERPRISE -> "Enterprise";
+            case FREE -> "Free";
+        };
     }
 }
