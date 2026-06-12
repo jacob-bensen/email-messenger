@@ -1,0 +1,37 @@
+# Test config. Shadows src/main/resources/application.yml on the test
+# classpath so tests run against in-memory H2 with no env vars or local
+# Postgres required. Testcontainers-based tests override the datasource
+# with a real Postgres via @DynamicPropertySource.
+spring:
+  application:
+    name: email-messenger
+  datasource:
+    url: jdbc:h2:mem:emailmessenger;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mail:
+    host: localhost
+    port: 1025
+    protocol: smtp
+
+app:
+  base-url: ${APP_BASE_URL:https://mailaim.app}
+  imap:
+    host: ""
+    port: 993
+    ssl: true
+    folder: INBOX
+    username: ""
+    password: ""
+    polling:
+      enabled: false
+      interval-ms: 60000

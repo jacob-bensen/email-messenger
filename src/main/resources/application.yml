@@ -1,98 +1,21 @@
 spring:
   application:
     name: email-messenger
-  profiles:
-    active: dev
-
-app:
-  base-url: ${APP_BASE_URL:https://mailaim.app}
-  imap:
-    host: ""
-    port: 993
-    ssl: true
-    folder: INBOX
-    username: ""
-    password: ""
-    polling:
-      enabled: false
-      interval-ms: 60000
-
----
-spring:
-  config:
-    activate:
-      on-profile: dev
-
   datasource:
-    url: jdbc:h2:mem:emailmessenger;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-
+    url: ${JDBC_DATABASE_URL}
+    username: ${JDBC_DATABASE_USERNAME}
+    password: ${JDBC_DATABASE_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: false
     open-in-view: false
-
   flyway:
     enabled: true
     locations: classpath:db/migration
-
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-
+    validateMigrationNaming: true
   mail:
-    host: localhost
-    port: 1025
-    protocol: smtp
-
-logging:
-  level:
-    com.emailmessenger: DEBUG
-    org.flywaydb: INFO
-
-server:
-  port: 8080
-  error:
-    whitelabel:
-      enabled: false
-  compression:
-    enabled: true
-    mime-types: text/html,text/css,application/javascript,application/json,text/plain
-    min-response-size: 1024
-
----
-spring:
-  config:
-    activate:
-      on-profile: prod
-
-  datasource:
-    url: ${DB_URL}
-    username: ${DB_USER}
-    password: ${DB_PASS}
-    hikari:
-      maximum-pool-size: 10
-      connection-timeout: 30000
-
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
-    open-in-view: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-
-  mail:
-    host: ${MAIL_HOST}
+    host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:587}
     username: ${MAIL_USER:}
     password: ${MAIL_PASS:}
@@ -103,7 +26,24 @@ spring:
           starttls:
             enable: true
 
+server:
+  port: ${PORT:8080}
+  error:
+    whitelabel:
+      enabled: false
+  compression:
+    enabled: true
+    mime-types: text/html,text/css,application/javascript,application/json,text/plain
+    min-response-size: 1024
+
+logging:
+  level:
+    com.emailmessenger: INFO
+    org.flywaydb: INFO
+    root: WARN
+
 app:
+  base-url: ${APP_BASE_URL:https://mailaim.app}
   imap:
     host: ${IMAP_HOST:}
     port: ${IMAP_PORT:993}
@@ -114,11 +54,3 @@ app:
     polling:
       enabled: ${IMAP_POLLING_ENABLED:false}
       interval-ms: ${IMAP_POLLING_INTERVAL_MS:60000}
-
-logging:
-  level:
-    com.emailmessenger: INFO
-    root: WARN
-
-server:
-  port: ${PORT:8080}
