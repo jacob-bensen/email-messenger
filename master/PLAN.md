@@ -33,6 +33,13 @@ being a pipeline. This Objective ends when the operator can open
 conversion rate against the prior 30-day baseline in the same five
 seconds the churn read takes today.
 
+## Standing constraints
+
+- Owner decision 2026-06-11: Docker (Dockerfile, docker-compose.yml,
+  .dockerignore) and GitHub Actions CI were removed from the repo. Do not
+  re-add them. Tests run locally via `./mvnw test`; deployment runs the
+  packaged jar directly with `SPRING_PROFILES_ACTIVE=prod`.
+
 ## Milestones
 
 1. **Per-row "Send win-back" CTA + templated send + one-shot stamp.**

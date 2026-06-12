@@ -19,16 +19,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
-class MarketingControllerTest {
+class PricingControllerTest {
 
-    MockMvc mockMvc;
+    private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         InternalResourceViewResolver viewResolver = new InternalResourceViewResolver();
         viewResolver.setPrefix("/WEB-INF/templates/");
         viewResolver.setSuffix(".html");
-        mockMvc = MockMvcBuilders.standaloneSetup(new MarketingController(new LandingProperties()))
+        mockMvc = MockMvcBuilders.standaloneSetup(new PricingController(new LandingProperties()))
                 .setViewResolvers(viewResolver)
                 .build();
     }
@@ -39,7 +39,7 @@ class MarketingControllerTest {
     }
 
     @Test
-    void pricingPageReturnsPricingView() throws Exception {
+    void pricingPageReturns200AndPricingView() throws Exception {
         mockMvc.perform(get("/pricing"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("pricing"));
@@ -109,7 +109,7 @@ class MarketingControllerTest {
         InternalResourceViewResolver vr = new InternalResourceViewResolver();
         vr.setPrefix("/WEB-INF/templates/");
         vr.setSuffix(".html");
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new MarketingController(props))
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new PricingController(props))
                 .setViewResolvers(vr)
                 .build();
 

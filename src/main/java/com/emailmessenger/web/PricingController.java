@@ -12,11 +12,11 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 @Controller
-class MarketingController {
+class PricingController {
 
     private final LandingProperties landingProperties;
 
-    MarketingController(LandingProperties landingProperties) {
+    PricingController(LandingProperties landingProperties) {
         this.landingProperties = landingProperties;
     }
 
