@@ -1,0 +1,16 @@
+-- EPIC-14 Milestone 3: day-7 last-chance "here's what you're missing".
+--
+-- Signups still cold a full week after registration are the cohort
+-- with the lowest activation intent: they cleared the 24h day-1 nudge
+-- and the 72h day-3 demo follow-up and still haven't connected a
+-- mailbox. This third and final activation email branches its body
+-- by plan intent captured at signup — a "trial-extension" framing
+-- for paid-trial signups (since their 14-day clock is running out),
+-- a "Free covers most personal use, no trial clock" framing for
+-- everyone else.
+--
+-- `last_activation_lastchance_sent_at` is the one-shot stamp the
+-- last-chance service writes after sending, gating re-sends. Tracked
+-- independently of the day-1 and day-3 stamps so each milestone in
+-- the activation drip fires at most once per signup.
+ALTER TABLE users ADD COLUMN last_activation_lastchance_sent_at TIMESTAMP;

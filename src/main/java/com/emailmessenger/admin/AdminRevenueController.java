@@ -1,0 +1,90 @@
+package com.emailmessenger.admin;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.security.Principal;
+
+@Controller
+class AdminRevenueController {
+
+    private final AdminAuthorizer authorizer;
+    private final RevenueMetricsService metricsService;
+    private final FunnelMetricsService funnelService;
+    private final TrialEndConversionMetricsService trialEndMetricsService;
+    private final OnboardingFunnelMetricsService onboardingFunnelService;
+    private final TeamAdoptionMetricsService teamAdoptionService;
+    private final ChurnMetricsService churnMetricsService;
+    private final AtRiskRetentionService atRiskRetentionService;
+    private final BillingPeriodBackfillService backfillService;
+    private final WinBackOutreachService winBackService;
+    private final WinBackConversionMetricsService winBackConversionService;
+
+    AdminRevenueController(AdminAuthorizer authorizer,
+                           RevenueMetricsService metricsService,
+                           FunnelMetricsService funnelService,
+                           TrialEndConversionMetricsService trialEndMetricsService,
+                           OnboardingFunnelMetricsService onboardingFunnelService,
+                           TeamAdoptionMetricsService teamAdoptionService,
+                           ChurnMetricsService churnMetricsService,
+                           AtRiskRetentionService atRiskRetentionService,
+                           BillingPeriodBackfillService backfillService,
+                           WinBackOutreachService winBackService,
+                           WinBackConversionMetricsService winBackConversionService) {
+        this.authorizer = authorizer;
+        this.metricsService = metricsService;
+        this.funnelService = funnelService;
+        this.trialEndMetricsService = trialEndMetricsService;
+        this.onboardingFunnelService = onboardingFunnelService;
+        this.teamAdoptionService = teamAdoptionService;
+        this.churnMetricsService = churnMetricsService;
+        this.atRiskRetentionService = atRiskRetentionService;
+        this.backfillService = backfillService;
+        this.winBackService = winBackService;
+        this.winBackConversionService = winBackConversionService;
+    }
+
+    @GetMapping("/admin/revenue")
+    String revenue(Principal principal, Model model) {
+        authorizer.requireAdmin(principal.getName());
+        RevenueMetrics metrics = metricsService.snapshot();
+        FunnelMetrics funnel = funnelService.snapshot();
+        TrialEndConversionMetrics trialEnd = trialEndMetricsService.snapshot();
+        OnboardingFunnelMetrics onboardingFunnel = onboardingFunnelService.snapshot();
+        TeamAdoptionMetrics teamAdoption = teamAdoptionService.snapshot();
+        ChurnMetrics churn = churnMetricsService.snapshot();
+        AtRiskRetentionMetrics atRiskRetention = atRiskRetentionService.snapshot();
+        WinBackConversionMetrics winBackConversion = winBackConversionService.snapshot();
+        model.addAttribute("metrics", metrics);
+        model.addAttribute("funnel", funnel);
+        model.addAttribute("trialEnd", trialEnd);
+        model.addAttribute("onboardingFunnel", onboardingFunnel);
+        model.addAttribute("teamAdoption", teamAdoption);
+        model.addAttribute("churn", churn);
+        model.addAttribute("atRiskRetention", atRiskRetention);
+        model.addAttribute("winBackConversion", winBackConversion);
+        return "admin/revenue";
+    }
+
+    @PostMapping("/admin/revenue/reconcile-billing-period")
+    String reconcileBillingPeriod(Principal principal, RedirectAttributes attrs) {
+        authorizer.requireAdmin(principal.getName());
+        BillingPeriodBackfillResult result = backfillService.reconcile();
+        attrs.addFlashAttribute("reconcile", result);
+        return "redirect:/admin/revenue";
+    }
+
+    @PostMapping("/admin/retention/win-back")
+    String sendWinBack(Principal principal,
+                       @RequestParam("subscriptionId") Long subscriptionId,
+                       RedirectAttributes attrs) {
+        authorizer.requireAdmin(principal.getName());
+        WinBackOutreachService.Outcome outcome = winBackService.sendWinBackFor(subscriptionId);
+        attrs.addFlashAttribute("winBack", outcome.name());
+        return "redirect:/admin/revenue";
+    }
+}

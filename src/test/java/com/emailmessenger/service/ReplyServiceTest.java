@@ -3,6 +3,7 @@ package com.emailmessenger.service;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.Participant;
+import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.MessageRepository;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
@@ -35,6 +36,8 @@ class ReplyServiceTest {
 
     ReplyService replyService;
 
+    private static final User OWNER = new User("owner@test.com", "h", null);
+
     @BeforeEach
     void setUp() {
         replyService = new ReplyService(messageRepository, mailSender);
@@ -52,7 +55,7 @@ class ReplyServiceTest {
 
     @Test
     void sendReplySendsMimeMessageToLastMessageSender() throws Exception {
-        EmailThread thread = new EmailThread("Test", "<root@test>");
+        EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
         Participant alice = new Participant("alice@example.com", "Alice");
         Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
 
@@ -71,7 +74,7 @@ class ReplyServiceTest {
 
     @Test
     void sendReplyUsesLastMessageSenderWhenMultipleMessages() throws Exception {
-        EmailThread thread = new EmailThread("Test", "<root@test>");
+        EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
         Participant alice = new Participant("alice@example.com", "Alice");
         Participant bob = new Participant("bob@example.com", "Bob");
         Message first = new Message(thread, alice, "Test", "first", null, LocalDateTime.now().minusHours(1));
@@ -89,7 +92,7 @@ class ReplyServiceTest {
 
     @Test
     void sendReplySetsInReplyToAndReferencesHeadersFromLastMessageId() throws Exception {
-        EmailThread thread = new EmailThread("Test", "<root@test>");
+        EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
         Participant alice = new Participant("alice@example.com", "Alice");
         Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
         msg.setMessageIdHeader("<original-msg-42@example.com>");
@@ -109,7 +112,7 @@ class ReplyServiceTest {
 
     @Test
     void sendReplyOmitsThreadingHeadersWhenLastMessageHasNoMessageId() throws Exception {
-        EmailThread thread = new EmailThread("Test", "<root@test>");
+        EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
         Participant alice = new Participant("alice@example.com", "Alice");
         Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
         // messageIdHeader stays null
@@ -127,7 +130,7 @@ class ReplyServiceTest {
 
     @Test
     void sendReplyPropagatesMailSendExceptionOnFailure() {
-        EmailThread thread = new EmailThread("Test", "<root@test>");
+        EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
         Participant alice = new Participant("alice@example.com", "Alice");
         Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
 

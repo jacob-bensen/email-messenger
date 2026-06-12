@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Account — MailIM</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <span class="brand">MailIM</span>
+  <nav class="header-nav">
+    <a href="/threads">Inbox</a>
+    <a href="/mailboxes">Mailboxes</a>
+    <form th:action="@{/logout}" method="post" class="header-logout">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button type="submit" class="link-button">Sign out</button>
+    </form>
+  </nav>
+</header>
+
+<main class="account-page">
+
+  <h1 class="account-title">Account</h1>
+
+  <section class="account-card">
+    <h2 class="account-card-title">Profile</h2>
+    <dl class="account-summary">
+      <dt>Email</dt>
+      <dd>
+        <span th:text="${currentEmail}">you@example.com</span>
+        <span th:if="${emailVerified}" class="account-verified-badge"
+              title="Address confirmed">verified</span>
+        <span th:if="${!emailVerified}" class="account-unverified-badge"
+              title="Address not confirmed yet">unverified</span>
+      </dd>
+      <dt th:if="${displayName != null and !displayName.isEmpty()}">Display name</dt>
+      <dd th:if="${displayName != null and !displayName.isEmpty()}"
+          th:text="${displayName}">Ada Lovelace</dd>
+    </dl>
+  </section>
+
+  <section class="account-card" th:if="${billing != null}">
+    <h2 class="account-card-title">Subscription</h2>
+    <dl class="account-summary">
+      <dt>Plan</dt>
+      <dd>
+        <span th:text="${billing.label()}">Personal · Monthly</span>
+      </dd>
+      <dt th:if="${billing.renewsOn() != null and !billing.canceled()}">
+        <span th:if="${billing.trialing()}">Trial ends</span>
+        <span th:if="${!billing.trialing()}">Renews</span>
+      </dt>
+      <dd th:if="${billing.renewsOn() != null and !billing.canceled()}"
+          th:text="${#temporals.format(billing.renewsOn(), 'yyyy-MM-dd')}">
+        2027-06-07
+      </dd>
+    </dl>
+    <p th:if="${!billing.canceled()}" class="account-billing-actions">
+      <a href="/billing/cancel-subscription" class="link-button danger-link">
+        Cancel subscription
+      </a>
+    </p>
+  </section>
+
+  <section class="account-card">
+    <h2 class="account-card-title">Change password</h2>
+
+    <div th:if="${passwordOutcome == 'OK'}" class="alert alert-success">
+      Password updated. Use the new password the next time you sign in.
+    </div>
+    <div th:if="${passwordOutcome == 'CURRENT_INCORRECT'}" class="alert alert-error">
+      That isn't your current password. Try again.
+    </div>
+    <div th:if="${passwordOutcome == 'NEW_TOO_SHORT'}" class="alert alert-error">
+      New password must be at least 8 characters.
+    </div>
+
+    <form method="post" th:action="@{/account/password}" class="auth-form"
+          autocomplete="off">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <label class="auth-label">
+        <span>Current password</span>
+        <input type="password" name="currentPassword" required
+               autocomplete="current-password">
+      </label>
+      <label class="auth-label">
+        <span>New password</span>
+        <input type="password" name="newPassword" required minlength="8"
+               autocomplete="new-password">
+        <small class="auth-hint">At least 8 characters.</small>
+      </label>
+      <button type="submit" class="btn btn-primary auth-submit">
+        Update password
+      </button>
+    </form>
+  </section>
+
+  <section class="account-card">
+    <h2 class="account-card-title">Change email address</h2>
+
+    <p class="auth-sub">
+      We'll send a confirmation link to the new address. You'll be signed
+      out so you can sign back in with the new email.
+    </p>
+
+    <div th:if="${emailOutcome == 'CURRENT_INCORRECT'}" class="alert alert-error">
+      That isn't your current password. Try again.
+    </div>
+    <div th:if="${emailOutcome == 'EMAIL_INVALID'}" class="alert alert-error">
+      That doesn't look like a valid email address.
+    </div>
+    <div th:if="${emailOutcome == 'EMAIL_TAKEN'}" class="alert alert-error">
+      An account with that email already exists.
+    </div>
+    <div th:if="${emailOutcome == 'NO_CHANGE'}" class="alert alert-error">
+      That's already your email address.
+    </div>
+
+    <form method="post" th:action="@{/account/email}" class="auth-form"
+          autocomplete="off">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <label class="auth-label">
+        <span>New email address</span>
+        <input type="email" name="newEmail" required
+               autocomplete="email">
+      </label>
+      <label class="auth-label">
+        <span>Current password</span>
+        <input type="password" name="currentPassword" required
+               autocomplete="current-password">
+      </label>
+      <button type="submit" class="btn btn-primary auth-submit">
+        Update email
+      </button>
+    </form>
+  </section>
+
+  <section class="account-card">
+    <h2 class="account-card-title">Recent account activity</h2>
+    <p class="auth-sub" th:if="${recentActivity == null or recentActivity.isEmpty()}">
+      No activity recorded yet. Sign-ins and account changes will show up here.
+    </p>
+    <ul class="account-activity" th:if="${recentActivity != null and !recentActivity.isEmpty()}">
+      <li th:each="event : ${recentActivity}" class="account-activity-row">
+        <span class="account-activity-type"
+              th:switch="${event.eventType.name()}">
+          <span th:case="'LOGIN_SUCCESS'">Signed in</span>
+          <span th:case="'LOGIN_FAILURE'">Failed sign-in</span>
+          <span th:case="'ACCOUNT_LOCKED'">Account temporarily locked</span>
+          <span th:case="'PASSWORD_CHANGED'">Password changed</span>
+          <span th:case="'EMAIL_CHANGED'">Email address changed</span>
+          <span th:case="'PASSWORD_RESET_COMPLETED'">Password reset completed</span>
+          <span th:case="*" th:text="${event.eventType.name()}">event</span>
+        </span>
+        <span class="account-activity-meta">
+          <time th:text="${#temporals.format(event.createdAt, 'yyyy-MM-dd HH:mm')}">2026-06-07 12:00</time>
+          <span th:if="${event.ipAddress != null and !event.ipAddress.isEmpty()}"
+                class="account-activity-ip"
+                th:text="${event.ipAddress}">127.0.0.1</span>
+        </span>
+      </li>
+    </ul>
+  </section>
+
+</main>
+
+</body>
+</html>

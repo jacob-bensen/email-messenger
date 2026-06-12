@@ -1,5 +1,9 @@
 package com.emailmessenger.web;
 
+import com.emailmessenger.billing.PlanLimitExceededException;
+import com.emailmessenger.billing.PlanLimitKind;
+import com.emailmessenger.billing.UpgradeModal;
+import com.emailmessenger.domain.Plan;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -11,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.NoSuchElementException;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -29,6 +34,11 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/test/server-error")
         void server() { throw new RuntimeException("unexpected error"); }
+
+        @GetMapping("/test/plan-limit")
+        void planLimit() {
+            throw new PlanLimitExceededException(Plan.FREE, PlanLimitKind.THREAD_COUNT, 500, 500);
+        }
     }
 
     MockMvc mockMvc;
@@ -75,5 +85,24 @@ class GlobalExceptionHandlerTest {
                 .andExpect(view().name("error"))
                 .andExpect(model().attribute("status", 500))
                 .andExpect(model().attributeExists("message"));
+    }
+
+    @Test
+    void planLimitExceededRedirectsToThreadsWithUpgradeModalFlash() throws Exception {
+        UpgradeModal modal = (UpgradeModal) mockMvc.perform(get("/test/plan-limit"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/threads"))
+                .andExpect(flash().attributeExists("upgradeModal"))
+                .andReturn()
+                .getFlashMap()
+                .get("upgradeModal");
+
+        assertThat(modal).isNotNull();
+        assertThat(modal.currentPlan()).isEqualTo(Plan.FREE);
+        assertThat(modal.kind()).isEqualTo(PlanLimitKind.THREAD_COUNT);
+        assertThat(modal.limit()).isEqualTo(500);
+        assertThat(modal.current()).isEqualTo(500);
+        assertThat(modal.upgradeTarget()).isEqualTo(Plan.PERSONAL);
+        assertThat(modal.upgradeTargetParam()).isEqualTo("personal");
     }
 }

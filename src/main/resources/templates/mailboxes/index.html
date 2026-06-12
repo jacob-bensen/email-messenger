@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Mailboxes — MailIM</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/" class="brand">MailIM</a>
+  <nav class="header-nav">
+    <a href="/threads">Inbox</a>
+    <a href="/pricing">Pricing</a>
+    <form th:action="@{/logout}" method="post" class="header-logout">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button type="submit" class="link-button">Sign out</button>
+    </form>
+  </nav>
+</header>
+
+<main class="thread-page">
+  <h1 class="section-title">Mailboxes</h1>
+
+  <div th:if="${syncMessage}" class="alert alert-success" th:text="${syncMessage}">Mailbox synced.</div>
+  <div th:if="${syncError}" class="alert alert-error" th:text="${syncError}">Sync failed.</div>
+
+  <div th:if="${mailboxes == null or mailboxes.isEmpty()}" class="empty-state">
+    <h2>No mailboxes connected</h2>
+    <p>Connect your first IMAP mailbox to start importing threads.</p>
+    <a href="/mailboxes/new" class="btn btn-primary">Connect a mailbox</a>
+  </div>
+
+  <div th:if="${mailboxes != null and !mailboxes.isEmpty()}">
+    <div class="thread-list">
+      <div th:each="mb : ${mailboxes}" class="mailbox-row">
+        <div class="mailbox-row-main">
+          <div class="thread-subject">
+            <span th:text="${mb.username() + ' @ ' + mb.host()}">user@host</span>
+            <span th:if="${mb.pollingSuspended()}"
+                  class="mailbox-suspended-badge"
+                  title="Automatic polling paused after consecutive failures">Polling paused</span>
+          </div>
+          <div class="thread-meta mailbox-meta">
+            <span th:if="${mb.synced()}"
+                  th:text="|Last synced ${mb.lastSyncedRelative()}|">Last synced 5 minutes ago</span>
+            <span th:if="${!mb.synced()}">Not yet synced</span>
+          </div>
+          <div th:if="${mb.lastSyncError() != null}" class="mailbox-error">
+            <div class="mailbox-error-msg" th:text="|Sync error: ${mb.lastSyncError()}|">Sync error</div>
+            <div class="mailbox-error-hint" th:text="${mb.errorHint()}">Try again.</div>
+            <div th:if="${mb.pollingSuspended()}" class="mailbox-error-hint"
+                 th:text="|Automatic polling paused after ${mb.consecutiveFailureCount()} consecutive failures. Use Sync now to retry once you've fixed the issue.|">
+              Automatic polling paused. Use Sync now to retry once fixed.
+            </div>
+          </div>
+        </div>
+        <form th:action="@{/mailboxes/{id}/sync(id=${mb.id()})}"
+              method="post"
+              class="mailbox-sync-form">
+          <input type="hidden" th:if="${_csrf != null}"
+                 th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+          <button type="submit" class="btn btn-secondary mailbox-sync-btn">Sync now</button>
+        </form>
+      </div>
+    </div>
+    <p class="mailbox-add-cta">
+      <a href="/mailboxes/new" class="btn btn-primary">+ Add another mailbox</a>
+    </p>
+  </div>
+</main>
+
+</body>
+</html>

@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Revenue — MailIM admin</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <span class="brand">MailIM</span>
+  <nav class="header-nav">
+    <a href="/threads">Inbox</a>
+    <a href="/account">Account</a>
+    <form th:action="@{/logout}" method="post" class="header-logout">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button type="submit" class="link-button">Sign out</button>
+    </form>
+  </nav>
+</header>
+
+<main class="admin-page">
+
+  <h1 class="admin-title">Revenue</h1>
+  <p class="admin-sub">Live MRR, plan mix, and acquisition attribution.</p>
+
+  <section class="admin-toolbar">
+    <form th:action="@{/admin/revenue/reconcile-billing-period}" method="post"
+          class="admin-toolbar-form">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button type="submit" class="admin-btn">Reconcile from Stripe</button>
+      <span class="admin-toolbar-hint">
+        Fills in missing billing-period values by asking Stripe for the live
+        price ID.
+      </span>
+    </form>
+    <p class="admin-toolbar-result" th:if="${reconcile != null and reconcile.isNoOp()}">
+      Reconcile: no rows needed backfill — every active subscription already
+      has a billing period.
+    </p>
+    <p class="admin-toolbar-result" th:if="${reconcile != null and !reconcile.isNoOp()}"
+       th:text="|Reconcile: scanned ${reconcile.scanned()}, updated ${reconcile.updated()}, missing Stripe id ${reconcile.missingStripeId()}, unmatched price ${reconcile.unmatchedPriceId()}, Stripe misses ${reconcile.stripeMisses()}.|">
+      Reconcile: scanned 0, updated 0, missing Stripe id 0, unmatched price 0, Stripe misses 0.
+    </p>
+  </section>
+
+  <section class="admin-kpis">
+    <div class="admin-kpi">
+      <span class="admin-kpi-label">MRR</span>
+      <span class="admin-kpi-value" th:text="${metrics.mrrFormatted()}">$0</span>
+    </div>
+    <div class="admin-kpi">
+      <span class="admin-kpi-label">ARR</span>
+      <span class="admin-kpi-value" th:text="${metrics.arrFormatted()}">$0</span>
+    </div>
+    <div class="admin-kpi">
+      <span class="admin-kpi-label">Active subscribers</span>
+      <span class="admin-kpi-value" th:text="${metrics.activeSubscribers()}">0</span>
+    </div>
+    <div class="admin-kpi">
+      <span class="admin-kpi-label">In trial</span>
+      <span class="admin-kpi-value" th:text="${metrics.trialingSubscribers()}">0</span>
+      <span class="admin-kpi-sub"
+            th:text="|${metrics.trialPipelineFormatted()} pipeline|">$0 pipeline</span>
+    </div>
+    <div class="admin-kpi">
+      <span class="admin-kpi-label">Annual mix</span>
+      <span class="admin-kpi-value"
+            th:text="|${metrics.annualSharePercent()}%|">0%</span>
+      <span class="admin-kpi-sub"
+            th:text="|${metrics.annualActive()} of ${metrics.activeSubscribers()} active|">
+        0 of 0 active
+      </span>
+    </div>
+    <div class="admin-kpi">
+      <span class="admin-kpi-label">Trials ending in 7d</span>
+      <span class="admin-kpi-value" th:text="${metrics.trialsEndingSoon()}">0</span>
+    </div>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title">Plan mix</h2>
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th class="admin-num">Monthly</th>
+          <th class="admin-num">Annual</th>
+          <th class="admin-num">MRR</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="row : ${metrics.planBreakdown()}">
+          <td th:text="${row.planLabel()}">Personal</td>
+          <td class="admin-num" th:text="${row.monthlyActive()}">0</td>
+          <td class="admin-num" th:text="${row.annualActive()}">0</td>
+          <td class="admin-num" th:text="${row.mrrFormatted()}">$0</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title"
+        th:text="|Funnel — last ${funnel.windowDays()} days|">Funnel — last 30 days</h2>
+    <div class="admin-funnel-row">
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Signups</span>
+        <span class="admin-funnel-count" th:text="${funnel.signupsLast30d()}">0</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Trial starts</span>
+        <span class="admin-funnel-count" th:text="${funnel.trialStartsLast30d()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${funnel.trialRatePercent()}% of signups|">0% of signups</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Paid conversions</span>
+        <span class="admin-funnel-count" th:text="${funnel.paidConversionsLast30d()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${funnel.paidRatePercent()}% of trials|">0% of trials</span>
+      </div>
+    </div>
+    <p class="admin-empty"
+       th:if="${funnel.bySource() == null or funnel.bySource().isEmpty()}">
+      No signups in the last 30 days yet — per-source breakdown will appear
+      once the first new account lands.
+    </p>
+    <table class="admin-table"
+           th:if="${funnel.bySource() != null and !funnel.bySource().isEmpty()}">
+      <thead>
+        <tr>
+          <th>Source</th>
+          <th class="admin-num">Signups</th>
+          <th class="admin-num">Trials</th>
+          <th class="admin-num">Trial %</th>
+          <th class="admin-num">Paid</th>
+          <th class="admin-num">Paid %</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="row : ${funnel.bySource()}">
+          <td th:text="${row.sourceLabel()}">organic</td>
+          <td class="admin-num" th:text="${row.signups()}">0</td>
+          <td class="admin-num" th:text="${row.trialStarts()}">0</td>
+          <td class="admin-num" th:text="|${row.trialRatePercent()}%|">0%</td>
+          <td class="admin-num" th:text="${row.paidConversions()}">0</td>
+          <td class="admin-num" th:text="|${row.paidRatePercent()}%|">0%</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title"
+        th:text="|Onboarding funnel — last ${onboardingFunnel.windowDays()} days|">
+      Onboarding funnel — last 30 days
+    </h2>
+    <p class="admin-card-sub">
+      How many of this window's signups crossed each activation step.
+      The biggest drop between two adjacent steps is the next monetization
+      leak to fix.
+    </p>
+    <div class="admin-funnel-row">
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Signups</span>
+        <span class="admin-funnel-count" th:text="${onboardingFunnel.signups()}">0</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Mailbox connected</span>
+        <span class="admin-funnel-count"
+              th:text="${onboardingFunnel.mailboxConnected()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${onboardingFunnel.mailboxRatePercent()}% of signups|">0% of signups</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">10 threads imported</span>
+        <span class="admin-funnel-count"
+              th:text="${onboardingFunnel.tenThreadsImported()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${onboardingFunnel.tenThreadsRatePercent()}% of signups|">0% of signups</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Saved a search</span>
+        <span class="admin-funnel-count"
+              th:text="${onboardingFunnel.savedSearchSaved()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${onboardingFunnel.savedSearchRatePercent()}% of signups|">0% of signups</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Invite sent</span>
+        <span class="admin-funnel-count"
+              th:text="${onboardingFunnel.inviteSent()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${onboardingFunnel.inviteRatePercent()}% of signups|">0% of signups</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Paid</span>
+        <span class="admin-funnel-count"
+              th:text="${onboardingFunnel.paid()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${onboardingFunnel.paidRatePercent()}% of signups|">0% of signups</span>
+      </div>
+    </div>
+    <p class="admin-empty" th:if="${onboardingFunnel.signups() == 0}">
+      No signups in the window yet — the onboarding funnel will populate
+      once the first new account lands.
+    </p>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title"
+        th:text="|Team-plan adoption — last ${teamAdoption.windowDays()} days|">
+      Team-plan adoption — last 30 days
+    </h2>
+    <p class="admin-card-sub">
+      Daily-use signal for the shared-inbox surface plus the Free→Team
+      versus Personal→Team conversion split — a rising Personal→Team share
+      means existing Personal subscribers are climbing tiers; a rising
+      Free→Team share means the new collaboration surface is closing
+      cold signups directly.
+    </p>
+    <div class="admin-kpis">
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Notes posted</span>
+        <span class="admin-kpi-value" th:text="${teamAdoption.notesPosted()}">0</span>
+        <span class="admin-kpi-sub"
+              th:text="${teamAdoption.notesPostedDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Active note authors</span>
+        <span class="admin-kpi-value" th:text="${teamAdoption.activeNoteAuthors()}">0</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Teams with notes</span>
+        <span class="admin-kpi-value" th:text="${teamAdoption.teamsWithNotes()}">0</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">@mentions written</span>
+        <span class="admin-kpi-value" th:text="${teamAdoption.mentionsWritten()}">0</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Entitled Team subs</span>
+        <span class="admin-kpi-value"
+              th:text="${teamAdoption.entitledTeamSubscribers()}">0</span>
+        <span class="admin-kpi-sub"
+              th:if="${teamAdoption.entitledEnterpriseSubscribers() > 0}"
+              th:text="|+ ${teamAdoption.entitledEnterpriseSubscribers()} Enterprise|">
+          + 0 Enterprise
+        </span>
+      </div>
+    </div>
+    <div class="admin-funnel-row">
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Free → Team</span>
+        <span class="admin-funnel-count"
+              th:text="${teamAdoption.freeToTeamConversions()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${teamAdoption.freeToTeamSharePercent()}% of Team conversions|">
+          0% of Team conversions
+        </span>
+        <span class="admin-funnel-delta"
+              th:text="${teamAdoption.freeToTeamDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">·</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Personal → Team</span>
+        <span class="admin-funnel-count"
+              th:text="${teamAdoption.personalToTeamConversions()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${teamAdoption.personalToTeamSharePercent()}% of Team conversions|">
+          0% of Team conversions
+        </span>
+        <span class="admin-funnel-delta"
+              th:text="${teamAdoption.personalToTeamDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">=</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Total Team conversions</span>
+        <span class="admin-funnel-count"
+              th:text="${teamAdoption.totalTeamConversions()}">0</span>
+        <span class="admin-funnel-delta"
+              th:text="${teamAdoption.totalTeamConversionsDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+    </div>
+    <p class="admin-empty"
+       th:if="${teamAdoption.notesPosted() == 0 and teamAdoption.totalTeamConversions() == 0}">
+      No notes posted and no Team-plan conversions in the window yet — the
+      adoption card will populate once the first teammate drops an internal
+      note or a Free/Personal subscriber upgrades to Team.
+    </p>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title"
+        th:text="|Churn &amp; MRR retention — last ${churn.windowDays()} days|">
+      Churn &amp; MRR retention — last 30 days
+    </h2>
+    <p class="admin-card-sub">
+      Lost MRR is the monthly-equivalent dollar value of subscriptions that
+      flipped to <code>canceled</code> in the window. Gross revenue churn
+      compares lost MRR against the MRR that was active at the start of the
+      window — a falling rate is the signal Team-plan retention work is
+      landing.
+    </p>
+    <div class="admin-kpis">
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Canceled subscribers</span>
+        <span class="admin-kpi-value" th:text="${churn.canceledSubscribers()}">0</span>
+        <span class="admin-kpi-sub"
+              th:text="${churn.canceledDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Lost MRR</span>
+        <span class="admin-kpi-value" th:text="${churn.lostMrrFormatted()}">$0</span>
+        <span class="admin-kpi-sub"
+              th:text="${churn.lostMrrDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Lost ARR</span>
+        <span class="admin-kpi-value" th:text="${churn.lostArrFormatted()}">$0</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Gross revenue churn</span>
+        <span class="admin-kpi-value"
+              th:text="|${churn.grossRevenueChurnRatePercent()}%|">0%</span>
+        <span class="admin-kpi-sub"
+              th:text="${churn.churnRateDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Starting MRR</span>
+        <span class="admin-kpi-value" th:text="${churn.startingMrrFormatted()}">$0</span>
+        <span class="admin-kpi-sub">current MRR + lost MRR</span>
+      </div>
+    </div>
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th class="admin-num">Canceled</th>
+          <th class="admin-num">Lost MRR</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="row : ${churn.byPlan()}">
+          <td th:text="${row.planLabel()}">Personal</td>
+          <td class="admin-num" th:text="${row.canceledSubscribers()}">0</td>
+          <td class="admin-num" th:text="${row.lostMrrFormatted()}">$0</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="admin-empty" th:if="${churn.canceledSubscribers() == 0}">
+      No cancellations recorded in the window — the per-plan table will
+      populate once the first paid subscription lapses.
+    </p>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title"
+        th:text="|At-risk retention queue — last ${atRiskRetention.windowDays()} days|">
+      At-risk retention queue — last 30 days
+    </h2>
+    <p class="admin-card-sub">
+      Most recent <code>active → canceled</code> rows in the window, newest
+      first. The win-back list: open one row to know the plan they paid for,
+      the cadence dollar weight, where they came in from, and the reason
+      they picked at the point of cancel. Rows that flipped back to
+      <code>active</code> after a win-back send stay here with a
+      <span class="admin-winback-recovered admin-winback-recovered-inline">Recovered</span>
+      badge so you can read the loop's close on the same page.
+    </p>
+    <p class="admin-empty"
+       th:if="${atRiskRetention.entries() == null or atRiskRetention.entries().isEmpty()}">
+      No paid cancellations in the window yet — the win-back queue will
+      populate once the first paid subscription lapses.
+    </p>
+    <p class="admin-toolbar-result" th:if="${winBack != null and winBack == 'SENT'}">
+      Win-back: email sent. The row now reads "Sent just now" — refresh to
+      double-check before composing the next one.
+    </p>
+    <p class="admin-toolbar-result" th:if="${winBack != null and winBack == 'ALREADY_SENT'}">
+      Win-back: this customer already had a win-back email fired in the
+      window — no second send.
+    </p>
+    <p class="admin-toolbar-result" th:if="${winBack != null and winBack == 'OPTED_OUT'}">
+      Win-back: customer has opted out of automated emails — nothing sent.
+    </p>
+    <p class="admin-toolbar-result" th:if="${winBack != null and winBack == 'NOT_CANCELED'}">
+      Win-back: subscription is no longer canceled (they re-subscribed!) —
+      nothing sent.
+    </p>
+    <p class="admin-toolbar-result" th:if="${winBack != null and winBack == 'UNSUPPORTED_PLAN'}">
+      Win-back: a Free / unknown plan row can't be a win-back target.
+    </p>
+    <p class="admin-toolbar-result" th:if="${winBack != null and winBack == 'NOT_FOUND'}">
+      Win-back: subscription id not found — likely a stale dashboard tab.
+    </p>
+    <p class="admin-toolbar-result" th:if="${winBack != null and winBack == 'MAIL_FAILED'}">
+      Win-back: mail send failed — the row stays in the queue so you can retry.
+    </p>
+    <table class="admin-table"
+           th:if="${atRiskRetention.entries() != null and !atRiskRetention.entries().isEmpty()}">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Customer</th>
+          <th>Plan</th>
+          <th>Cadence</th>
+          <th class="admin-num">MRR lost</th>
+          <th>Source</th>
+          <th>Reason</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="row : ${atRiskRetention.entries()}">
+          <td>
+            <time th:text="${#temporals.format(row.canceledAt(), 'yyyy-MM-dd HH:mm')}">
+              2026-06-11 09:32
+            </time>
+          </td>
+          <td th:text="${row.customerEmail()}">customer@example.com</td>
+          <td th:text="${row.planLabel()}">Personal</td>
+          <td th:text="${row.cadenceLabel()}">Monthly</td>
+          <td class="admin-num" th:text="${row.monthlyEquivalentFormatted()}">$9</td>
+          <td th:text="${row.sourceLabel()}">producthunt</td>
+          <td th:text="${row.reasonLabel()}">Too expensive</td>
+          <td>
+            <span th:if="${row.recovered()}" class="admin-winback-recovered"
+                  th:title="|Win-back sent ${#temporals.format(row.winBackSentAt(), 'yyyy-MM-dd HH:mm')}|">
+              Recovered
+            </span>
+            <span th:if="${!row.recovered() and row.winBackAlreadySent()}"
+                  class="admin-winback-sent"
+                  th:text="|Sent ${#temporals.format(row.winBackSentAt(), 'yyyy-MM-dd HH:mm')}|">
+              Sent 2026-06-12 09:32
+            </span>
+            <form th:if="${!row.recovered() and !row.winBackAlreadySent()}"
+                  th:action="@{/admin/retention/win-back}" method="post"
+                  class="admin-winback-form">
+              <input type="hidden" th:if="${_csrf != null}"
+                     th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+              <input type="hidden" name="subscriptionId" th:value="${row.subscriptionId()}">
+              <button type="submit" class="admin-btn admin-btn-sm">Send win-back</button>
+            </form>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="admin-card-sub" th:if="${atRiskRetention.isTruncated()}"
+       th:text="|Showing ${atRiskRetention.entries().size()} of ${atRiskRetention.totalInWindow()} rows (${atRiskRetention.totalCanceledInWindow()} canceled, ${atRiskRetention.totalRecoveredInWindow()} recovered) — older rows are still in the Churn card totals.|">
+      Showing 20 of 25 rows (24 canceled, 1 recovered) — older rows are still in the Churn card totals.
+    </p>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title"
+        th:text="|Win-back conversion — last ${winBackConversion.windowDays()} days|">
+      Win-back conversion — last 30 days
+    </h2>
+    <p class="admin-card-sub">
+      How many "Send win-back" emails went out, how many of those canceled
+      subscribers are currently <code>active</code> again, and the monthly-
+      equivalent MRR that came back through the door. A rising conversion
+      rate means the copy / offer is landing; a falling rate is the signal
+      to change the email or the discount.
+    </p>
+    <div class="admin-kpis">
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Emails sent</span>
+        <span class="admin-kpi-value" th:text="${winBackConversion.emailsSent()}">0</span>
+        <span class="admin-kpi-sub"
+              th:text="${winBackConversion.emailsSentDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Reactivated</span>
+        <span class="admin-kpi-value" th:text="${winBackConversion.reactivated()}">0</span>
+        <span class="admin-kpi-sub"
+              th:text="${winBackConversion.reactivatedDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">MRR recovered</span>
+        <span class="admin-kpi-value"
+              th:text="${winBackConversion.mrrRecoveredFormatted()}">$0</span>
+        <span class="admin-kpi-sub"
+              th:text="${winBackConversion.mrrRecoveredDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+      <div class="admin-kpi">
+        <span class="admin-kpi-label">Conversion rate</span>
+        <span class="admin-kpi-value"
+              th:text="|${winBackConversion.conversionRatePercent()}%|">0%</span>
+        <span class="admin-kpi-sub"
+              th:text="${winBackConversion.conversionRateDeltaLabel()}">vs. prior 30 days</span>
+      </div>
+    </div>
+    <p class="admin-empty" th:if="${winBackConversion.emailsSent() == 0}">
+      No win-back emails fired in the window yet — figures populate once you
+      send the first one from the at-risk queue above.
+    </p>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title"
+        th:text="|Trial-end conversion — last ${trialEnd.windowDays()} days|">
+      Trial-end conversion — last 30 days
+    </h2>
+    <p class="admin-card-sub">
+      Trial-end emails fire ~24h before the trial clock runs out. Conversion
+      counts trial-end recipients whose subscription is currently active.
+    </p>
+    <div class="admin-funnel-row">
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Emails sent</span>
+        <span class="admin-funnel-count" th:text="${trialEnd.emailsSent()}">0</span>
+      </div>
+      <div class="admin-funnel-arrow" aria-hidden="true">→</div>
+      <div class="admin-funnel-step">
+        <span class="admin-funnel-label">Converted to active</span>
+        <span class="admin-funnel-count" th:text="${trialEnd.converted()}">0</span>
+        <span class="admin-funnel-rate"
+              th:text="|${trialEnd.conversionRatePercent()}% of sent|">0% of sent</span>
+      </div>
+    </div>
+    <p class="admin-empty" th:if="${trialEnd.emailsSent() == 0}">
+      No trial-end nudges sent in the window yet — figures populate once the
+      first trialing subscription crosses T-1 day.
+    </p>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title">Acquisition source</h2>
+    <p class="admin-empty"
+       th:if="${metrics.sourceBreakdown() == null or metrics.sourceBreakdown().isEmpty()}">
+      No active paying subscribers yet — source attribution will appear once
+      the first checkout completes.
+    </p>
+    <table class="admin-table"
+           th:if="${metrics.sourceBreakdown() != null and !metrics.sourceBreakdown().isEmpty()}">
+      <thead>
+        <tr>
+          <th>Source</th>
+          <th class="admin-num">Active</th>
+          <th class="admin-num">MRR</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="row : ${metrics.sourceBreakdown()}">
+          <td th:text="${row.sourceLabel()}">organic</td>
+          <td class="admin-num" th:text="${row.activeSubscribers()}">0</td>
+          <td class="admin-num" th:text="${row.mrrFormatted()}">$0</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="admin-card">
+    <h2 class="admin-card-title">Recent subscription events</h2>
+    <p class="admin-empty"
+       th:if="${metrics.recentEvents() == null or metrics.recentEvents().isEmpty()}">
+      No subscription activity recorded yet.
+    </p>
+    <table class="admin-table"
+           th:if="${metrics.recentEvents() != null and !metrics.recentEvents().isEmpty()}">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Customer</th>
+          <th>Plan</th>
+          <th>Cadence</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="event : ${metrics.recentEvents()}">
+          <td>
+            <time th:text="${#temporals.format(event.at(), 'yyyy-MM-dd HH:mm')}">
+              2026-06-08 10:00
+            </time>
+          </td>
+          <td th:text="${event.userEmail()}">customer@example.com</td>
+          <td th:text="${event.planLabel()}">Personal</td>
+          <td th:text="${event.periodLabel()}">Monthly</td>
+          <td th:text="${event.status()}">active</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+</body>
+</html>

@@ -48,8 +48,8 @@ services are needed. For the `prod` profile, point the app at a
 PostgreSQL 16 instance via the environment variables below (see
 `.env.example` for the full list).
 
-The app starts on `http://localhost:8080`. On first launch you connect a
-mailbox (IMAP host, port, username, app password).
+The app starts on `http://localhost:8080`. On first launch you create an
+account, then connect a mailbox (IMAP host, port, username, app password).
 
 ### Tests
 

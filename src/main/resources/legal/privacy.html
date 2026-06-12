@@ -1,0 +1,93 @@
+<p class="legal-updated">Last updated: 5 June 2026</p>
+
+<p>
+  MailIM ("we", "us") is a service that imports email threads from a
+  mailbox you connect and renders them as an instant-message-style
+  conversation. This policy explains what we collect, why, and how you
+  can delete it.
+</p>
+
+<h2>What we collect</h2>
+
+<h3>1. Account data</h3>
+<p>
+  When you create an account we store your email address, a one-way
+  bcrypt hash of your password, an optional display name, and the
+  timestamp at which you signed up. We never store your password in
+  plain text.
+</p>
+
+<h3>2. Mailbox credentials</h3>
+<p>
+  When you connect an IMAP/SMTP mailbox we store the host, port,
+  username, and password (or app-specific password). Passwords are
+  encrypted at rest using AES-GCM with a key derived from a
+  deployment-level secret. They are decrypted only at poll time and
+  never logged.
+</p>
+
+<h3>3. Email content</h3>
+<p>
+  We import message headers (subject, sender, recipients, dates, the
+  <code>Message-ID</code> / <code>In-Reply-To</code> / <code>References</code>
+  threading chain), body text and HTML, and attachments. This data is
+  used only to render your conversation view inside the product. We
+  never read it for advertising and never sell it to third parties.
+</p>
+
+<h3>4. Billing data</h3>
+<p>
+  If you subscribe to a paid plan, payment is processed by Stripe. We
+  do not store your card number or CVV — only a Stripe customer ID,
+  subscription ID, and the plan, status, and trial-end timestamps
+  returned by Stripe webhooks. Stripe's own privacy practices are at
+  <a href="https://stripe.com/privacy" rel="noopener">stripe.com/privacy</a>.
+</p>
+
+<h3>5. Cookies</h3>
+<p>
+  We set a session cookie when you sign in (<code>JSESSIONID</code>)
+  and, if you tick "Stay signed in for 30 days", a long-lived
+  remember-me cookie. We do not use advertising cookies, third-party
+  trackers, or analytics that profile you across sites.
+</p>
+
+<h2>How we use it</h2>
+<p>
+  Account and mailbox data is used to authenticate you, fetch and
+  render your email, and process subscription payments. Billing data is
+  used to grant access to the plan you paid for. We do not use any of
+  it for marketing without your explicit consent.
+</p>
+
+<h2>How long we keep it</h2>
+<p>
+  Account, mailbox, and email data are retained until you delete the
+  mailbox or account. When you delete a mailbox we purge its messages,
+  attachments, and stored credentials. When you delete your account we
+  purge all of the above, including billing metadata after Stripe's
+  required retention window (typically 7 years for tax records on the
+  invoice side, held by Stripe — not us).
+</p>
+
+<h2>Your rights</h2>
+<p>
+  You can export or delete your data at any time by emailing
+  <a href="mailto:privacy@mailaim.app">privacy@mailaim.app</a> from the
+  address on your account. EU/UK residents have additional rights under
+  GDPR (access, rectification, erasure, portability, restriction,
+  objection); California residents have additional rights under CCPA.
+  We honor every applicable request within 30 days.
+</p>
+
+<h2>Contact</h2>
+<p>
+  Questions about this policy go to
+  <a href="mailto:privacy@mailaim.app">privacy@mailaim.app</a>.
+</p>
+
+<p class="legal-note">
+  This page is shipped as starting boilerplate. If you are reading this
+  in production, the operator has not yet replaced it with a
+  jurisdiction-reviewed policy.
+</p>
