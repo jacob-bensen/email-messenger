@@ -14,9 +14,11 @@ third-party accounts, marketing, or legal steps.
 
 ## Infrastructure / Credentials
 
-- [ ] [DEPLOY] DEPLOYMENT UNBLOCKED: Docker Compose + CI are now ready. The app is deployable. Priority action: follow the steps below to get MailIM live. Once running, the waitlist URL can be shared publicly and revenue conversations can begin.
-- [ ] [DEPLOY] Docker Compose is ready. Run `cp .env.example .env`, fill in real values (DB_PASS, MAIL_*, IMAP_*), then `docker compose up -d` to start the app + postgres. The app will be available on port 8080 (or PORT env var). First boot runs Flyway migrations automatically.
-- [ ] [DEPLOY] GitHub Actions CI is configured in `.github/workflows/ci.yml`. To activate: push the repo to GitHub, ensure Java 21 and Maven cache are available on the runner. CI runs on every push and PR — no additional setup needed.
+- [ ] [DEPLOY] Owner decision 2026-06-11: Docker (Dockerfile, docker-compose.yml,
+      .dockerignore) and GitHub Actions CI (`.github/workflows/ci.yml`) were REMOVED.
+      Do not re-add them. Tests run locally with `./mvnw test`. Deployment, when it
+      happens, will run the jar directly (`./mvnw clean package` →
+      `java -jar target/email-messenger-*.jar` with SPRING_PROFILES_ACTIVE=prod).
 - [ ] [DEPLOY] Enable IMAP polling in production: set these env vars once the app is deployed:
       IMAP_POLLING_ENABLED=true, IMAP_HOST=imap.gmail.com (or your IMAP host), IMAP_PORT=993,
       IMAP_SSL=true, IMAP_USER=your-email@domain.com, IMAP_PASS=your-app-password,
