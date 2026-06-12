@@ -88,6 +88,44 @@ class ReplyServiceTest {
     }
 
     @Test
+    void sendReplySetsInReplyToAndReferencesHeadersFromLastMessageId() throws Exception {
+        EmailThread thread = new EmailThread("Test", "<root@test>");
+        Participant alice = new Participant("alice@example.com", "Alice");
+        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
+        msg.setMessageIdHeader("<original-msg-42@example.com>");
+
+        MimeMessage mimeMsg = new MimeMessage((Session) null);
+        when(messageRepository.findByThreadIdOrderBySentAtAsc(1L)).thenReturn(List.of(msg));
+        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
+
+        replyService.sendReply(1L, "Subject", "Reply body");
+
+        verify(mailSender).send(any(MimeMessage.class));
+        assertThat(mimeMsg.getHeader("In-Reply-To"))
+                .containsExactly("<original-msg-42@example.com>");
+        assertThat(mimeMsg.getHeader("References"))
+                .containsExactly("<original-msg-42@example.com>");
+    }
+
+    @Test
+    void sendReplyOmitsThreadingHeadersWhenLastMessageHasNoMessageId() throws Exception {
+        EmailThread thread = new EmailThread("Test", "<root@test>");
+        Participant alice = new Participant("alice@example.com", "Alice");
+        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
+        // messageIdHeader stays null
+
+        MimeMessage mimeMsg = new MimeMessage((Session) null);
+        when(messageRepository.findByThreadIdOrderBySentAtAsc(1L)).thenReturn(List.of(msg));
+        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
+
+        replyService.sendReply(1L, "Subject", "Reply body");
+
+        verify(mailSender).send(any(MimeMessage.class));
+        assertThat(mimeMsg.getHeader("In-Reply-To")).isNull();
+        assertThat(mimeMsg.getHeader("References")).isNull();
+    }
+
+    @Test
     void sendReplyPropagatesMailSendExceptionOnFailure() {
         EmailThread thread = new EmailThread("Test", "<root@test>");
         Participant alice = new Participant("alice@example.com", "Alice");
