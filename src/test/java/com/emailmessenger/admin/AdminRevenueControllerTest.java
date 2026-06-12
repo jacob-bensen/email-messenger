@@ -392,4 +392,28 @@ class AdminRevenueControllerTest {
                         org.hamcrest.Matchers.not(containsString("name=\"subscriptionId\" value=\""
                                 + saved.getId() + "\""))));
     }
+
+    @Test
+    @WithMockUser(username = "operator@example.com")
+    void reactivatedSubscriberKeepsRowVisibleWithRecoveredBadgeAndNoSendButton() throws Exception {
+        userService.register("operator@example.com", "password1", null);
+        adminProperties.setEmails(List.of("operator@example.com"));
+
+        User comeback = userService.register("comeback@example.com", "password1", null);
+        Subscription reactivated = new Subscription(comeback, "cus_comeback", "active");
+        reactivated.setPlan(Plan.PERSONAL);
+        reactivated.setBillingPeriod(BillingPeriod.MONTHLY);
+        Subscription saved = subscriptions.save(reactivated);
+        subscriptions.touchWinBackEmailSent(saved.getId(),
+                java.time.LocalDateTime.now().minusHours(6));
+
+        mockMvc.perform(get("/admin/revenue"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("comeback@example.com")))
+                .andExpect(content().string(containsString("admin-winback-recovered")))
+                .andExpect(content().string(containsString(">Recovered<")))
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.not(containsString("name=\"subscriptionId\" value=\""
+                                + saved.getId() + "\""))));
+    }
 }

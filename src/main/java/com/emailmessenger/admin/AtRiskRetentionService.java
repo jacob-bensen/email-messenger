@@ -13,7 +13,9 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Builds the "at-risk retention queue" rendered on the operator dashboard —
@@ -21,6 +23,11 @@ import java.util.List;
  * sorted newest-first so a fresh cancellation is at the top of the page.
  * FREE rows are skipped — there is no paid relationship to win back, and
  * a Free-tier "cancel" is just a row from a deleted Stripe customer.
+ *
+ * <p>EPIC-18 M3 widens the queue to also include <em>recovered</em> rows
+ * (a paid sub that received a win-back email and has since flipped back
+ * to {@code active}), so the operator can read the loop's close on the
+ * same page they fire it from.
  */
 @Service
 public class AtRiskRetentionService {
@@ -43,20 +50,42 @@ public class AtRiskRetentionService {
 
         List<Subscription> canceled = new ArrayList<>(
                 subscriptions.findCanceledBetween(windowStart, now));
-        canceled.removeIf(s -> s.getPlan() == null || s.getPlan() == Plan.FREE);
-        canceled.sort(Comparator.comparing(Subscription::getUpdatedAt,
+        canceled.removeIf(AtRiskRetentionService::isUnpaid);
+
+        List<Subscription> recovered = new ArrayList<>(
+                subscriptions.findRecoveredByWinBackSince(windowStart));
+        recovered.removeIf(AtRiskRetentionService::isUnpaid);
+
+        Set<Long> canceledIds = new HashSet<>();
+        for (Subscription s : canceled) {
+            canceledIds.add(s.getId());
+        }
+        recovered.removeIf(s -> canceledIds.contains(s.getId()));
+
+        long totalCanceled = canceled.size();
+        long totalRecovered = recovered.size();
+
+        List<Entry> merged = new ArrayList<>(canceled.size() + recovered.size());
+        for (Subscription s : canceled) {
+            merged.add(toEntry(s, false));
+        }
+        for (Subscription s : recovered) {
+            merged.add(toEntry(s, true));
+        }
+        merged.sort(Comparator.comparing(Entry::canceledAt,
                 Comparator.nullsLast(Comparator.reverseOrder())));
 
-        long total = canceled.size();
-        int cap = Math.min(canceled.size(), DISPLAY_LIMIT);
-        List<Entry> entries = new ArrayList<>(cap);
-        for (int i = 0; i < cap; i++) {
-            entries.add(toEntry(canceled.get(i)));
-        }
-        return new AtRiskRetentionMetrics(WINDOW_DAYS, total, DISPLAY_LIMIT, entries);
+        int cap = Math.min(merged.size(), DISPLAY_LIMIT);
+        List<Entry> entries = new ArrayList<>(merged.subList(0, cap));
+        return new AtRiskRetentionMetrics(WINDOW_DAYS, totalCanceled, totalRecovered,
+                DISPLAY_LIMIT, entries);
     }
 
-    private static Entry toEntry(Subscription sub) {
+    private static boolean isUnpaid(Subscription s) {
+        return s.getPlan() == null || s.getPlan() == Plan.FREE;
+    }
+
+    private static Entry toEntry(Subscription sub, boolean recovered) {
         BillingPeriod period = sub.getBillingPeriod() == null
                 ? BillingPeriod.MONTHLY
                 : sub.getBillingPeriod();
@@ -71,7 +100,8 @@ public class AtRiskRetentionService {
                 sourceLabel(sub.getUser().getAcquisitionSource()),
                 reasonLabel(sub.getCancellationReason()),
                 sub.getUpdatedAt(),
-                sub.getLastWinBackEmailSentAt());
+                sub.getLastWinBackEmailSentAt(),
+                recovered);
     }
 
     private static String planLabel(Plan plan) {

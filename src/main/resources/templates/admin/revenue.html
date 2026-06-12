@@ -375,7 +375,10 @@
       Most recent <code>active → canceled</code> rows in the window, newest
       first. The win-back list: open one row to know the plan they paid for,
       the cadence dollar weight, where they came in from, and the reason
-      they picked at the point of cancel.
+      they picked at the point of cancel. Rows that flipped back to
+      <code>active</code> after a win-back send stay here with a
+      <span class="admin-winback-recovered admin-winback-recovered-inline">Recovered</span>
+      badge so you can read the loop's close on the same page.
     </p>
     <p class="admin-empty"
        th:if="${atRiskRetention.entries() == null or atRiskRetention.entries().isEmpty()}">
@@ -434,11 +437,16 @@
           <td th:text="${row.sourceLabel()}">producthunt</td>
           <td th:text="${row.reasonLabel()}">Too expensive</td>
           <td>
-            <span th:if="${row.winBackAlreadySent()}" class="admin-winback-sent"
+            <span th:if="${row.recovered()}" class="admin-winback-recovered"
+                  th:title="|Win-back sent ${#temporals.format(row.winBackSentAt(), 'yyyy-MM-dd HH:mm')}|">
+              Recovered
+            </span>
+            <span th:if="${!row.recovered() and row.winBackAlreadySent()}"
+                  class="admin-winback-sent"
                   th:text="|Sent ${#temporals.format(row.winBackSentAt(), 'yyyy-MM-dd HH:mm')}|">
               Sent 2026-06-12 09:32
             </span>
-            <form th:if="${!row.winBackAlreadySent()}"
+            <form th:if="${!row.recovered() and !row.winBackAlreadySent()}"
                   th:action="@{/admin/retention/win-back}" method="post"
                   class="admin-winback-form">
               <input type="hidden" th:if="${_csrf != null}"
@@ -451,8 +459,8 @@
       </tbody>
     </table>
     <p class="admin-card-sub" th:if="${atRiskRetention.isTruncated()}"
-       th:text="|Showing ${atRiskRetention.entries().size()} of ${atRiskRetention.totalCanceledInWindow()} cancellations — older rows are still in the Churn card totals.|">
-      Showing 20 of 25 cancellations — older rows are still in the Churn card totals.
+       th:text="|Showing ${atRiskRetention.entries().size()} of ${atRiskRetention.totalInWindow()} rows (${atRiskRetention.totalCanceledInWindow()} canceled, ${atRiskRetention.totalRecoveredInWindow()} recovered) — older rows are still in the Churn card totals.|">
+      Showing 20 of 25 rows (24 canceled, 1 recovered) — older rows are still in the Churn card totals.
     </p>
   </section>
 

@@ -122,6 +122,23 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     List<Subscription> findWinBackEmailedSince(@Param("cutoff") LocalDateTime cutoff);
 
     /**
+     * Recovered cohort for the EPIC-18 M3 at-risk retention queue: subs
+     * stamped with a win-back send inside the rolling window that are now
+     * back on {@code active}. Joined with the canceled cohort in
+     * {@link com.emailmessenger.admin.AtRiskRetentionService} so a click
+     * that paid off keeps its row visible — with a "Recovered" badge in
+     * place of the "Send win-back" CTA — instead of silently vanishing
+     * the moment the subscription flips back to active.
+     */
+    @Query("""
+            SELECT s FROM Subscription s JOIN FETCH s.user
+            WHERE LOWER(s.status) = 'active'
+              AND s.lastWinBackEmailSentAt IS NOT NULL
+              AND s.lastWinBackEmailSentAt >= :cutoff
+            """)
+    List<Subscription> findRecoveredByWinBackSince(@Param("cutoff") LocalDateTime cutoff);
+
+    /**
      * Onboarding-funnel terminal step: how many users in the supplied
      * cohort currently have an active paid subscription. Status is
      * compared lower-case to match {@link RevenueMetricsService}'s

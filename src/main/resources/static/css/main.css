@@ -3046,6 +3046,30 @@ body {
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
+.admin-winback-recovered {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+.admin-winback-recovered-inline {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+@media (prefers-color-scheme: dark) {
+  .admin-winback-recovered {
+    background: #064e3b;
+    color: #a7f3d0;
+    border-color: #10b981;
+  }
+}
 
 .admin-funnel-row {
   display: flex;

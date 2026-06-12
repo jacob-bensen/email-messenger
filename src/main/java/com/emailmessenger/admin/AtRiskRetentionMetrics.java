@@ -18,14 +18,25 @@ import java.util.List;
  * <p>EPIC-18 M1 adds {@code subscriptionId} so the per-row "Send win-back"
  * form has a target, and {@code winBackSentAt} so a row that already had
  * an outreach fired renders the timestamp instead of the action button.
+ *
+ * <p>EPIC-18 M3 widens the queue to also surface <em>recovered</em> rows —
+ * subs that received a win-back email and have since flipped back to
+ * {@code active}. The row keeps its spot for context (so the operator can
+ * tell on the same page whether a click paid off) but renders a
+ * "Recovered" badge in place of the action cell.
  */
 public record AtRiskRetentionMetrics(int windowDays,
                                      long totalCanceledInWindow,
+                                     long totalRecoveredInWindow,
                                      int displayLimit,
                                      List<Entry> entries) {
 
     public boolean isTruncated() {
-        return totalCanceledInWindow > entries.size();
+        return (totalCanceledInWindow + totalRecoveredInWindow) > entries.size();
+    }
+
+    public long totalInWindow() {
+        return totalCanceledInWindow + totalRecoveredInWindow;
     }
 
     public record Entry(Long subscriptionId,
@@ -37,7 +48,8 @@ public record AtRiskRetentionMetrics(int windowDays,
                         String sourceLabel,
                         String reasonLabel,
                         LocalDateTime canceledAt,
-                        LocalDateTime winBackSentAt) {
+                        LocalDateTime winBackSentAt,
+                        boolean recovered) {
 
         public boolean winBackAlreadySent() {
             return winBackSentAt != null;
@@ -45,6 +57,6 @@ public record AtRiskRetentionMetrics(int windowDays,
     }
 
     public static AtRiskRetentionMetrics empty(int windowDays, int displayLimit) {
-        return new AtRiskRetentionMetrics(windowDays, 0, displayLimit, List.of());
+        return new AtRiskRetentionMetrics(windowDays, 0, 0, displayLimit, List.of());
     }
 }
