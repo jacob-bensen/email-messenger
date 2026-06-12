@@ -24,6 +24,13 @@ and the only one that turns the existing UI into revenue. Everything else
 in the active epics (landing pages, IMAP polling, onboarding wizard)
 either funnels into this or is meaningless without it.
 
+## Standing constraints
+
+- Owner decision 2026-06-11: Docker (Dockerfile, docker-compose.yml,
+  .dockerignore) and GitHub Actions CI were removed from the repo. Do not
+  re-add them. Tests run locally via `./mvnw test`; deployment runs the
+  packaged jar directly with `SPRING_PROFILES_ACTIVE=prod`.
+
 ## Milestones
 
 1. **Auth foundation.** Spring Security email/password registration +
