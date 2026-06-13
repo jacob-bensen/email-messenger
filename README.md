@@ -36,17 +36,28 @@ the nested-quote mess most mail clients show you.
 ### Prerequisites
 
 - Java 21
+- PostgreSQL 16 running locally
 
 ### Run locally
 
+Bootstrap the database and app user once (statements in
+[`src/main/resources/db/init.sql`](src/main/resources/db/init.sql)):
+
 ```bash
-./mvnw spring-boot:run
+psql -U postgres -f src/main/resources/db/init.sql
 ```
 
-The default `dev` profile uses an in-memory H2 database, so no external
-services are needed. For the `prod` profile, point the app at a
-PostgreSQL 16 instance via the environment variables below (see
-`.env.example` for the full list).
+Then start the app with the `local` profile, supplying the database
+password you chose in `init.sql`:
+
+```bash
+JDBC_DATABASE_PASSWORD=password ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+The `local` profile points at `jdbc:postgresql://localhost:5432/email_messenger`
+as `email_messenger_app`; Flyway runs the migrations on startup. In
+production the base config reads the database connection entirely from
+environment variables (see the table below and `.env.example`).
 
 The app starts on `http://localhost:8080`. On first launch you create an
 account, then connect a mailbox (IMAP host, port, username, app password).
@@ -71,12 +82,12 @@ java -jar target/email-messenger-*.jar
 
 Override defaults in `application.yml` or via environment variables:
 
-| Setting             | Environment variable              | Default                                                |
+| Setting             | Environment variable              | Default / local-profile value                          |
 | ------------------- | --------------------------------- | ------------------------------------------------------ |
-| Database URL        | `SPRING_DATASOURCE_URL`           | `jdbc:postgresql://localhost:5432/email_messenger`     |
-| Database user       | `SPRING_DATASOURCE_USERNAME`      | `postgres`                                             |
-| Database password   | `SPRING_DATASOURCE_PASSWORD`      | `postgres`                                             |
-| IMAP poll interval  | `EMAIL_MESSENGER_POLL_INTERVAL`   | `5m`                                                   |
+| Database URL        | `JDBC_DATABASE_URL`               | `jdbc:postgresql://localhost:5432/email_messenger`     |
+| Database user       | `JDBC_DATABASE_USERNAME`          | `email_messenger_app`                                  |
+| Database password   | `JDBC_DATABASE_PASSWORD`          | (set in `db/init.sql`)                                 |
+| Mailbox poll interval | `MAILBOX_POLLING_INTERVAL_MS`   | `300000`                                               |
 
 ## Screenshots
 

@@ -14,7 +14,12 @@ session has to scaffold the project before anything else compiles or runs.
 - Java 21 (LTS)
 - Spring Boot 3.x — `spring-boot-starter-web`, `-thymeleaf`, `-data-jpa`,
   `-validation`, `-mail`
-- PostgreSQL 16 in production, H2 for tests
+- PostgreSQL 16 in production and local dev, H2 for tests. Same setup as
+  tax-tracker: base `application.yml` reads `JDBC_DATABASE_URL` /
+  `JDBC_DATABASE_USERNAME` / `JDBC_DATABASE_PASSWORD` env vars,
+  `application-local.yml` (`local` profile) points at
+  `localhost:5432/email_messenger`, and `db/init.sql` bootstraps the
+  database + app user. Tests use H2 via `src/test/resources/application.yml`.
 - Thymeleaf for server-rendered views
 - Maven (with wrapper) for build
 - JUnit 5 + Spring Boot Test, Testcontainers for integration tests
@@ -25,7 +30,8 @@ session has to scaffold the project before anything else compiles or runs.
 These will work once the Maven project is scaffolded; until then they fail.
 
 - Build: `./mvnw clean package`
-- Run: `./mvnw spring-boot:run`
+- Run locally (needs local Postgres, see `db/init.sql`):
+  `JDBC_DATABASE_PASSWORD=... ./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 - Test: `./mvnw test`
 - Single test: `./mvnw test -Dtest=ClassName#method`
 
@@ -112,5 +118,5 @@ commit. Add follow-ups as they emerge.
 
 A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
-boots locally via `./mvnw spring-boot:run` (H2 in dev; point the `prod`
-profile at a PostgreSQL 16 instance).
+boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
+against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).

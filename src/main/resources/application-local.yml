@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/email_messenger
+    username: email_messenger_app
+  # Local dev only: disable Thymeleaf's in-memory template cache so edits to
+  # templates show up on a plain browser refresh, with no app restart. Spring
+  # Boot defaults this to true (prod keeps it cached for performance).
+  thymeleaf:
+    cache: false
+  mail:
+    host: localhost
+    port: 1025
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+billing:
+  stripe:
+    success-url: http://localhost:8080/billing/success?session_id={CHECKOUT_SESSION_ID}
+    cancel-url: http://localhost:8080/billing/cancel
+    portal-return-url: http://localhost:8080/threads
+
+marketing:
+  base-url: http://localhost:8080
+
+logging:
+  level:
+    com.emailmessenger: DEBUG

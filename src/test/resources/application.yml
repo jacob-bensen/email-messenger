@@ -1,18 +1,21 @@
+# Test config. Shadows src/main/resources/application.yml on the test
+# classpath so tests run against in-memory H2 with no env vars or local
+# Postgres required. Testcontainers-based tests override the datasource
+# with a real Postgres via @DynamicPropertySource.
+#
+# Mirrors the property blocks of the main application.yml with the values
+# tests historically ran against (the old `dev` profile). Many tests still
+# declare @ActiveProfiles("dev"); that profile no longer carries config and
+# activating it is a no-op.
 spring:
   application:
     name: email-messenger
 
-  # Database connection comes entirely from environment variables. For local
-  # development use the `local` profile (application-local.yml), which points
-  # at localhost:5432/email_messenger — bootstrap it once with db/init.sql.
-  # Tests run against H2 via src/test/resources/application.yml.
   datasource:
-    url: ${JDBC_DATABASE_URL}
-    username: ${JDBC_DATABASE_USERNAME}
-    password: ${JDBC_DATABASE_PASSWORD}
-    hikari:
-      maximum-pool-size: 10
-      connection-timeout: 30000
+    url: jdbc:h2:mem:emailmessenger;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
 
   jpa:
     hibernate:
@@ -26,34 +29,16 @@ spring:
     validateMigrationNaming: true
 
   mail:
-    host: ${MAIL_HOST:localhost}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USER:}
-    password: ${MAIL_PASS:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
+    host: localhost
+    port: 1025
+    protocol: smtp
 
-# Google "Continue with Google" sign-in. Activated only when
-# AUTH_GOOGLE_CLIENT_ID is non-blank — see auth.google.client-id below.
-# Spring Boot's OAuth2 auto-config refuses to build a registration with
-# blank client-id, so we keep the wiring out of spring.security.oauth2
-# and supply our own ClientRegistrationRepository @Bean that the
-# ObjectProvider in SecurityConfig keys off.
 auth:
   google:
     client-id: ${AUTH_GOOGLE_CLIENT_ID:${GOOGLE_CLIENT_ID:}}
     client-secret: ${AUTH_GOOGLE_CLIENT_SECRET:${GOOGLE_CLIENT_SECRET:}}
     redirect-uri: ${AUTH_GOOGLE_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}
 
-# Actuator: only /actuator/health is exposed over HTTP. It aggregates the
-# DataSource probe (so a 200 confirms Flyway + Postgres are reachable) and
-# powers every hosting platform's deploy gate.
-# Mail health is disabled because the SMTP host is best-effort, not a
-# liveness signal — a flaky relay must not flap the whole app.
 management:
   endpoints:
     web:
@@ -81,13 +66,13 @@ billing:
     personal-annual-price-id: ${STRIPE_PERSONAL_ANNUAL_PRICE_ID:}
     team-annual-price-id: ${STRIPE_TEAM_ANNUAL_PRICE_ID:}
     enterprise-annual-price-id: ${STRIPE_ENTERPRISE_ANNUAL_PRICE_ID:}
-    success-url: ${BILLING_SUCCESS_URL:}
-    cancel-url: ${BILLING_CANCEL_URL:}
-    portal-return-url: ${BILLING_PORTAL_RETURN_URL:}
-    trial-days: ${BILLING_TRIAL_DAYS:14}
+    success-url: ${BILLING_SUCCESS_URL:http://localhost:8080/billing/success?session_id={CHECKOUT_SESSION_ID}}
+    cancel-url: ${BILLING_CANCEL_URL:http://localhost:8080/billing/cancel}
+    portal-return-url: ${BILLING_PORTAL_RETURN_URL:http://localhost:8080/threads}
+    trial-days: 14
 
 marketing:
-  base-url: ${MARKETING_BASE_URL:https://mailaim.app}
+  base-url: ${MARKETING_BASE_URL:http://localhost:8080}
   landing:
     video:
       provider: ${MARKETING_LANDING_VIDEO_PROVIDER:}
@@ -137,11 +122,11 @@ admin:
 
 logging:
   level:
-    com.emailmessenger: INFO
-    root: WARN
+    com.emailmessenger: DEBUG
+    org.flywaydb: INFO
 
 server:
-  port: ${PORT:8080}
+  port: 8080
   error:
     whitelabel:
       enabled: false
