@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,7 +35,7 @@ class AttachmentRepositoryTest {
         var sender = participantRepo.save(new Participant("attach-sender@example.com", "Sender"));
         var thread = threadRepo.save(new EmailThread(owner, "Attachment test thread", "<attach@example.com>"));
         savedMessage = messageRepo.save(
-                new Message(thread, sender, "Has attachments", "body", null, LocalDateTime.now()));
+                new Message(thread, sender, "Has attachments", "body", null, LocalDateTime.now(ZoneOffset.UTC)));
     }
 
     @Test

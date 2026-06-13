@@ -26,6 +26,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -63,7 +64,7 @@ class WinBackOutreachServiceTest {
         sub.setBillingPeriod(period);
         if (reason != null) {
             sub.setCancellationReason(reason);
-            sub.setCancellationReasonAt(LocalDateTime.now());
+            sub.setCancellationReasonAt(LocalDateTime.now(ZoneOffset.UTC));
         }
         return subscriptions.save(sub);
     }
@@ -109,7 +110,7 @@ class WinBackOutreachServiceTest {
     void alreadyStampedSubscriptionIsSkipped() {
         Subscription sub = seedCanceled("repeat@example.com", Plan.PERSONAL,
                 BillingPeriod.MONTHLY, CancellationReason.OTHER);
-        subscriptions.touchWinBackEmailSent(sub.getId(), LocalDateTime.now().minusHours(1));
+        subscriptions.touchWinBackEmailSent(sub.getId(), LocalDateTime.now(ZoneOffset.UTC).minusHours(1));
 
         WinBackOutreachService.Outcome outcome = winBack.sendWinBackFor(sub.getId());
 

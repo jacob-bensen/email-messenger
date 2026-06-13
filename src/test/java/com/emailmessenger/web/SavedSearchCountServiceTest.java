@@ -26,6 +26,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,6 +60,19 @@ class SavedSearchCountServiceTest {
         subscriptions.save(sub);
     }
 
+    /**
+     * Spin until the wall clock is at least 1ms past {@code t}. Entity
+     * timestamps are flush-assigned from the real clock; two consecutive
+     * stamps can land in the same tick (and DB column precision truncates
+     * further), so tests separating "before" from "after" a cutoff must
+     * force the clock forward between the two writes.
+     */
+    private void awaitClockPast(LocalDateTime t) {
+        while (!LocalDateTime.now(ZoneOffset.UTC).isAfter(t.plusNanos(1_000_000))) {
+            Thread.onSpinWait();
+        }
+    }
+
     private EmailThread newThread(User owner, String subject, LocalDateTime sentAt,
                                   String senderEmail, String body) {
         Participant sender = participantRepo.findByEmail(senderEmail)
@@ -76,13 +90,14 @@ class SavedSearchCountServiceTest {
     void matchCountReflectsCurrentFilterAndNewCountStartsAtMatchOnFreshSave() {
         User user = newUser("counts1@example.com");
         grantPersonal(user);
-        newThread(user, "Invoice March", LocalDateTime.now().minusDays(2),
+        newThread(user, "Invoice March", LocalDateTime.now(ZoneOffset.UTC).minusDays(2),
                 "ada@example.com", "monthly invoice attached");
-        newThread(user, "Invoice April", LocalDateTime.now().minusDays(1),
+        newThread(user, "Invoice April", LocalDateTime.now(ZoneOffset.UTC).minusDays(1),
                 "ada@example.com", "monthly invoice attached");
-        newThread(user, "Lunch tomorrow?", LocalDateTime.now(),
+        EmailThread last = newThread(user, "Lunch tomorrow?", LocalDateTime.now(ZoneOffset.UTC),
                 "grace@example.com", "see you at noon");
 
+        awaitClockPast(last.getUpdatedAt());
         SavedSearch saved = savedSearches.save(new SavedSearch(user, "From Ada",
                 null, "ada@example.com", null, false, false));
 
@@ -102,17 +117,20 @@ class SavedSearchCountServiceTest {
         User user = newUser("counts2@example.com");
         grantPersonal(user);
         // One pre-existing thread the user already knew about
-        newThread(user, "Old invoice", LocalDateTime.now().minusDays(10),
-                "ada@example.com", "old");
+        EmailThread old = newThread(user, "Old invoice",
+                LocalDateTime.now(ZoneOffset.UTC).minusDays(10), "ada@example.com", "old");
 
         SavedSearch saved = savedSearches.saveAndFlush(new SavedSearch(user, "From Ada",
                 null, "ada@example.com", null, false, false));
-        // User opened it once, clearing the badge for everything up to "now-ish"
-        saved.setLastViewedAt(LocalDateTime.now());
+        // User opened it once, clearing the badge for everything up to "now",
+        // strictly after the old thread's flush-assigned updatedAt.
+        awaitClockPast(old.getUpdatedAt());
+        saved.setLastViewedAt(LocalDateTime.now(ZoneOffset.UTC));
         savedSearches.saveAndFlush(saved);
 
-        // Now a new thread comes in
-        newThread(user, "New invoice", LocalDateTime.now().plusSeconds(1),
+        // Now a new thread comes in, strictly after the last-viewed cutoff
+        awaitClockPast(saved.getLastViewedAt());
+        newThread(user, "New invoice", LocalDateTime.now(ZoneOffset.UTC),
                 "ada@example.com", "fresh");
 
         List<SavedSearchView> views = countService.viewsFor(user, List.of(saved));
@@ -126,9 +144,9 @@ class SavedSearchCountServiceTest {
     void freeUserGetsSubjectAndParticipantSearchCountsOnly() {
         User user = newUser("countsfree@example.com");
         // Free plan — body-content matches are excluded.
-        newThread(user, "Subject hit", LocalDateTime.now().minusDays(2),
+        newThread(user, "Subject hit", LocalDateTime.now(ZoneOffset.UTC).minusDays(2),
                 "ada@example.com", "no keyword inside");
-        newThread(user, "Random subject", LocalDateTime.now().minusDays(1),
+        newThread(user, "Random subject", LocalDateTime.now(ZoneOffset.UTC).minusDays(1),
                 "grace@example.com", "this body has the keyword urgentpayment somewhere");
 
         SavedSearch saved = savedSearches.save(new SavedSearch(user, "urgentpayment",
@@ -143,7 +161,7 @@ class SavedSearchCountServiceTest {
     void personalPlanIncludesBodyContentSearchInCounts() {
         User user = newUser("countspaid@example.com");
         grantPersonal(user);
-        newThread(user, "Random subject", LocalDateTime.now().minusDays(1),
+        newThread(user, "Random subject", LocalDateTime.now(ZoneOffset.UTC).minusDays(1),
                 "grace@example.com", "this body has the keyword urgentpayment somewhere");
 
         SavedSearch saved = savedSearches.save(new SavedSearch(user, "urgentpayment",

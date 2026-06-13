@@ -22,6 +22,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -101,10 +102,10 @@ class AccountServiceTest {
         User user = register("revoke@example.com");
         PasswordResetToken pr = passwordResetTokens.save(new PasswordResetToken(
                 user, "hash-pr-" + user.getId(),
-                LocalDateTime.now().plusHours(1)));
+                LocalDateTime.now(ZoneOffset.UTC).plusHours(1)));
         EmailVerificationToken ev = emailVerificationTokens.save(new EmailVerificationToken(
                 user, "hash-ev-" + user.getId(),
-                LocalDateTime.now().plusHours(24)));
+                LocalDateTime.now(ZoneOffset.UTC).plusHours(24)));
 
         accountService.changePassword(user, "password1", "brand-new-12");
 
@@ -117,7 +118,7 @@ class AccountServiceTest {
     @Test
     void changeEmailWithCorrectCurrentSwapsAddressAndClearsVerification() {
         User user = register("old@example.com");
-        user.setEmailVerifiedAt(LocalDateTime.now().minusDays(1));
+        user.setEmailVerifiedAt(LocalDateTime.now(ZoneOffset.UTC).minusDays(1));
         users.save(user);
 
         AccountService.EmailChangeOutcome outcome =
@@ -196,10 +197,10 @@ class AccountServiceTest {
         User user = register("revoke-e@example.com");
         PasswordResetToken pr = passwordResetTokens.save(new PasswordResetToken(
                 user, "hash-e-pr-" + user.getId(),
-                LocalDateTime.now().plusHours(1)));
+                LocalDateTime.now(ZoneOffset.UTC).plusHours(1)));
         EmailVerificationToken ev = emailVerificationTokens.save(new EmailVerificationToken(
                 user, "hash-e-ev-" + user.getId(),
-                LocalDateTime.now().plusHours(24)));
+                LocalDateTime.now(ZoneOffset.UTC).plusHours(24)));
 
         accountService.changeEmail(user, "password1", "fresh@example.com");
 

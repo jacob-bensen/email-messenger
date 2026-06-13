@@ -21,6 +21,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -47,7 +48,7 @@ class MailboxController {
     @GetMapping
     String listMailboxes(Principal principal, Model model) {
         User owner = userService.requireByEmail(principal.getName());
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         List<MailboxView> mailboxes = mailAccountService.list(owner).stream()
                 .map(a -> MailboxView.from(a, now))
                 .toList();

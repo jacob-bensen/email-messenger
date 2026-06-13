@@ -1,5 +1,6 @@
 package com.emailmessenger.team;
 
+import java.time.ZoneOffset;
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.billing.StripeCheckoutGateway;
 import com.emailmessenger.billing.StripePortalGateway;
@@ -143,7 +144,7 @@ class TeamInviteServiceTest {
         User inviter = newUser("rev@example.com", "Rev");
         teamInviteService.invite(inviter, "x@example.com");
         TeamInvite invite = invites.findAll().get(0);
-        invite.setRevokedAt(java.time.LocalDateTime.now());
+        invite.setRevokedAt(java.time.LocalDateTime.now(ZoneOffset.UTC));
         invites.save(invite);
 
         assertThat(invites.countNonRevokedByInviter(inviter)).isZero();
@@ -207,7 +208,7 @@ class TeamInviteServiceTest {
         String plain = "expired-token-for-test";
         invites.save(new TeamInvite(team, inviter, "late@example.com",
                 TeamInviteService.sha256Hex(plain),
-                java.time.LocalDateTime.now().minusDays(1)));
+                java.time.LocalDateTime.now(ZoneOffset.UTC).minusDays(1)));
 
         assertThat(teamInviteService.findInviteForValidToken(plain)).isEmpty();
         assertThat(teamInviteService.acceptInvite(plain, accepter))

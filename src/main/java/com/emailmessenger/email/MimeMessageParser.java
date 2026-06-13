@@ -10,7 +10,7 @@ import jakarta.mail.internet.MimeMessage;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -101,7 +101,7 @@ class MimeMessageParser {
     }
 
     private LocalDateTime toLocalDateTime(Date date) {
-        if (date == null) return LocalDateTime.now();
-        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+        if (date == null) return LocalDateTime.now(ZoneOffset.UTC);
+        return date.toInstant().atZone(ZoneOffset.UTC).toLocalDateTime();
     }
 }

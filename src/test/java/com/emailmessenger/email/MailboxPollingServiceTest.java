@@ -1,5 +1,6 @@
 package com.emailmessenger.email;
 
+import java.time.ZoneOffset;
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.User;
@@ -180,7 +181,7 @@ class MailboxPollingServiceTest {
     void notYetDueMailboxIsSkippedByPollAll() {
         // Stamp next_poll_at well into the future; both Clock-zone variants
         // (UTC vs default) treat +1d as "not due now".
-        account.setNextPollAt(java.time.LocalDateTime.now().plusDays(1));
+        account.setNextPollAt(java.time.LocalDateTime.now(ZoneOffset.UTC).plusDays(1));
         accountRepository.save(account);
 
         polling.pollAll();
@@ -200,9 +201,9 @@ class MailboxPollingServiceTest {
         MailAccount reloaded = accountRepository.findById(account.getId()).orElseThrow();
         assertThat(reloaded.getNextPollAt()).isNotNull();
         // Free tier (no subscription row) → next poll between 14:30 and 15:30 from now.
-        java.time.LocalDateTime earliest = java.time.LocalDateTime.now()
+        java.time.LocalDateTime earliest = java.time.LocalDateTime.now(ZoneOffset.UTC)
                 .plusMinutes(14).plusSeconds(20);
-        java.time.LocalDateTime latest = java.time.LocalDateTime.now()
+        java.time.LocalDateTime latest = java.time.LocalDateTime.now(ZoneOffset.UTC)
                 .plusMinutes(15).plusSeconds(40);
         assertThat(reloaded.getNextPollAt()).isAfter(earliest).isBefore(latest);
     }

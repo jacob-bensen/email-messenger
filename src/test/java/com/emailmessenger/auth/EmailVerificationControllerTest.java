@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -125,7 +126,7 @@ class EmailVerificationControllerTest {
         tokens.save(new EmailVerificationToken(
                 user,
                 EmailVerificationService.sha256Hex(plain),
-                LocalDateTime.now().plusHours(1)));
+                LocalDateTime.now(ZoneOffset.UTC).plusHours(1)));
         return plain;
     }
 }

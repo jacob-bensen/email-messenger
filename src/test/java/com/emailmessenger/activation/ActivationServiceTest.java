@@ -26,6 +26,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -69,7 +70,7 @@ class ActivationServiceTest {
         assertThat(rows).isEqualTo(1);
 
         boolean sent = activationService.sendActivationFor(
-                users.findById(user.getId()).orElseThrow(), LocalDateTime.now());
+                users.findById(user.getId()).orElseThrow(), LocalDateTime.now(ZoneOffset.UTC));
 
         assertThat(sent).isTrue();
         verify(mailSender).send(any(MimeMessage.class));
@@ -108,7 +109,7 @@ class ActivationServiceTest {
     void alreadyNudgedUserIsSkippedEvenIfStillUnconnected() {
         User user = newUser("repeat@example.com");
         backdateCreatedAt(user.getId(), 3);
-        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(1));
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(1));
 
         int sent = activationService.runActivationCycle();
 
@@ -126,7 +127,7 @@ class ActivationServiceTest {
         preferences.save(prefs);
 
         boolean sent = activationService.sendActivationFor(
-                users.findById(user.getId()).orElseThrow(), LocalDateTime.now());
+                users.findById(user.getId()).orElseThrow(), LocalDateTime.now(ZoneOffset.UTC));
 
         assertThat(sent).isFalse();
         verify(mailSender, never()).send(any(MimeMessage.class));
@@ -160,7 +161,7 @@ class ActivationServiceTest {
         backdateCreatedAt(user.getId(), 2);
 
         boolean sent = activationService.sendActivationFor(
-                users.findById(user.getId()).orElseThrow(), LocalDateTime.now());
+                users.findById(user.getId()).orElseThrow(), LocalDateTime.now(ZoneOffset.UTC));
         assertThat(sent).isTrue();
 
         ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
@@ -180,7 +181,7 @@ class ActivationServiceTest {
     void followupCandidateWhoAlreadyGotDay1GetsDemoLedEmailAndStamp() throws Exception {
         User user = newUser("followup@example.com");
         backdateCreatedAt(user.getId(), 4);
-        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(3));
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(3));
 
         int sent = activationService.runActivationFollowupCycle();
 
@@ -220,7 +221,7 @@ class ActivationServiceTest {
     void followupSkippedWhenUserConnectedMailboxAfterDay1() {
         User user = newUser("connectedlate@example.com");
         backdateCreatedAt(user.getId(), 4);
-        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(3));
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(3));
         mailAccounts.save(new MailAccount(user, "imap.example.com", 993, true,
                 "connectedlate@example.com", "ct"));
 
@@ -236,7 +237,7 @@ class ActivationServiceTest {
         // still inside the 72h cool-off for the follow-up.
         User user = newUser("toonew@example.com");
         backdateCreatedAt(user.getId(), 2);
-        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(1));
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(1));
 
         int sent = activationService.runActivationFollowupCycle();
 
@@ -248,7 +249,7 @@ class ActivationServiceTest {
     void followupIsIdempotentOncePerUser() {
         User user = newUser("dupe@example.com");
         backdateCreatedAt(user.getId(), 4);
-        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(3));
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(3));
 
         int first = activationService.runActivationFollowupCycle();
         int second = activationService.runActivationFollowupCycle();
@@ -262,14 +263,14 @@ class ActivationServiceTest {
     void followupSkippedForOptedOutUser() {
         User user = newUser("followup-optout@example.com");
         backdateCreatedAt(user.getId(), 4);
-        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(3));
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(3));
         DigestEmailPreference prefs = preferences.save(
                 new DigestEmailPreference(user, "preset-followup-optout-token"));
         prefs.setOptedOut(true);
         preferences.save(prefs);
 
         boolean sent = activationService.sendActivationFollowupFor(
-                users.findById(user.getId()).orElseThrow(), LocalDateTime.now());
+                users.findById(user.getId()).orElseThrow(), LocalDateTime.now(ZoneOffset.UTC));
 
         assertThat(sent).isFalse();
         verify(mailSender, never()).send(any(MimeMessage.class));
@@ -282,11 +283,11 @@ class ActivationServiceTest {
         // Eligible: 4d old, day-1 stamped, no mailbox.
         User eligible = newUser("fu-a@example.com");
         backdateCreatedAt(eligible.getId(), 4);
-        users.touchActivationNudgeSent(eligible.getId(), LocalDateTime.now().minusDays(3));
+        users.touchActivationNudgeSent(eligible.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(3));
         // Ineligible: 4d old, day-1 stamped, but mailbox now connected.
         User connected = newUser("fu-b@example.com");
         backdateCreatedAt(connected.getId(), 4);
-        users.touchActivationNudgeSent(connected.getId(), LocalDateTime.now().minusDays(3));
+        users.touchActivationNudgeSent(connected.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(3));
         mailAccounts.save(new MailAccount(connected, "imap.example.com", 993, true,
                 "fu-b@example.com", "ct"));
         // Ineligible: 4d old, no day-1 stamp.
@@ -305,8 +306,8 @@ class ActivationServiceTest {
     void lastChanceForFreeIntentUserGetsFreeFramedBodyAndStamp() throws Exception {
         User user = newUser("lastchance-free@example.com");
         backdateCreatedAt(user.getId(), 8);
-        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(7));
-        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now().minusDays(5));
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(7));
+        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(5));
 
         int sent = activationService.runActivationLastChanceCycle();
 
@@ -330,8 +331,8 @@ class ActivationServiceTest {
     void lastChanceForPaidIntentUserGetsTrialFramedBodyWithBillingFallback() throws Exception {
         User user = newUser("lastchance-paid@example.com");
         backdateCreatedAt(user.getId(), 8);
-        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(7));
-        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now().minusDays(5));
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(7));
+        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(5));
         Subscription sub = new Subscription(user, "cus_test_paid_intent", "trialing");
         sub.setPlan(Plan.PERSONAL);
         subscriptions.save(sub);
@@ -357,7 +358,7 @@ class ActivationServiceTest {
         // 8 days old, day-1 stamped but day-3 not — sequencing must hold.
         User user = newUser("lastchance-nofollowup@example.com");
         backdateCreatedAt(user.getId(), 8);
-        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(7));
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(7));
 
         int sent = activationService.runActivationLastChanceCycle();
 
@@ -371,8 +372,8 @@ class ActivationServiceTest {
     void lastChanceSkippedWhenUserConnectedMailboxAfterFollowup() {
         User user = newUser("lastchance-connected@example.com");
         backdateCreatedAt(user.getId(), 8);
-        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(7));
-        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now().minusDays(5));
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(7));
+        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(5));
         mailAccounts.save(new MailAccount(user, "imap.example.com", 993, true,
                 "lastchance-connected@example.com", "ct"));
 
@@ -388,8 +389,8 @@ class ActivationServiceTest {
         // inside the 168h cool-off for the last-chance.
         User user = newUser("lastchance-toonew@example.com");
         backdateCreatedAt(user.getId(), 5);
-        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(4));
-        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now().minusDays(2));
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(4));
+        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(2));
 
         int sent = activationService.runActivationLastChanceCycle();
 
@@ -401,8 +402,8 @@ class ActivationServiceTest {
     void lastChanceIsIdempotentOncePerUser() {
         User user = newUser("lastchance-dupe@example.com");
         backdateCreatedAt(user.getId(), 8);
-        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(7));
-        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now().minusDays(5));
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(7));
+        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(5));
 
         int first = activationService.runActivationLastChanceCycle();
         int second = activationService.runActivationLastChanceCycle();
@@ -416,15 +417,15 @@ class ActivationServiceTest {
     void lastChanceSkippedForOptedOutUser() {
         User user = newUser("lastchance-optout@example.com");
         backdateCreatedAt(user.getId(), 8);
-        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(7));
-        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now().minusDays(5));
+        users.touchActivationNudgeSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(7));
+        users.touchActivationFollowupSent(user.getId(), LocalDateTime.now(ZoneOffset.UTC).minusDays(5));
         DigestEmailPreference prefs = preferences.save(
                 new DigestEmailPreference(user, "preset-lastchance-optout-token"));
         prefs.setOptedOut(true);
         preferences.save(prefs);
 
         boolean sent = activationService.sendActivationLastChanceFor(
-                users.findById(user.getId()).orElseThrow(), LocalDateTime.now());
+                users.findById(user.getId()).orElseThrow(), LocalDateTime.now(ZoneOffset.UTC));
 
         assertThat(sent).isFalse();
         verify(mailSender, never()).send(any(MimeMessage.class));
@@ -435,6 +436,6 @@ class ActivationServiceTest {
     @Autowired ActivationTestSupport testSupport;
 
     private int backdateCreatedAt(Long userId, int daysAgo) {
-        return testSupport.backdateCreatedAt(userId, LocalDateTime.now().minusDays(daysAgo));
+        return testSupport.backdateCreatedAt(userId, LocalDateTime.now(ZoneOffset.UTC).minusDays(daysAgo));
     }
 }

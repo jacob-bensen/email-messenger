@@ -29,6 +29,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -67,9 +68,9 @@ class ThreadInboxRenderingIntegrationTest {
         EmailThread t1 = threadRepository.save(new EmailThread(user, "Project Athena", "<a-r@x>"));
         EmailThread t2 = threadRepository.save(new EmailThread(user, "Project Olympus", "<o-r@x>"));
         messageRepository.save(new Message(t1, ada, "Project Athena",
-                "Ada's first message", null, LocalDateTime.now()));
+                "Ada's first message", null, LocalDateTime.now(ZoneOffset.UTC)));
         messageRepository.save(new Message(t2, grace, "Project Olympus",
-                "Grace's first message", null, LocalDateTime.now()));
+                "Grace's first message", null, LocalDateTime.now(ZoneOffset.UTC)));
     }
 
     @Test

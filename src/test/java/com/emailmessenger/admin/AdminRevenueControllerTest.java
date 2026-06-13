@@ -1,5 +1,6 @@
 package com.emailmessenger.admin;
 
+import java.time.ZoneOffset;
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.billing.BillingPeriod;
 import com.emailmessenger.billing.BillingProperties;
@@ -283,7 +284,7 @@ class AdminRevenueControllerTest {
         canceled.setPlan(Plan.TEAM);
         canceled.setBillingPeriod(BillingPeriod.MONTHLY);
         canceled.setCancellationReason(com.emailmessenger.domain.CancellationReason.TOO_EXPENSIVE);
-        canceled.setCancellationReasonAt(java.time.LocalDateTime.now().minusHours(1));
+        canceled.setCancellationReasonAt(java.time.LocalDateTime.now(ZoneOffset.UTC).minusHours(1));
         subscriptions.save(canceled);
 
         mockMvc.perform(get("/admin/revenue"))
@@ -306,14 +307,14 @@ class AdminRevenueControllerTest {
         Subscription paid = new Subscription(payer, "cus_paid", "active");
         paid.setPlan(Plan.PERSONAL);
         paid.setBillingPeriod(BillingPeriod.MONTHLY);
-        paid.setLastTrialEndEmailSentAt(java.time.LocalDateTime.now().minusHours(6));
+        paid.setLastTrialEndEmailSentAt(java.time.LocalDateTime.now(ZoneOffset.UTC).minusHours(6));
         subscriptions.save(paid);
 
         User lapsed = userService.register("lapsed-after-nudge@example.com", "password1", null);
         Subscription gone = new Subscription(lapsed, "cus_lapsed", "canceled");
         gone.setPlan(Plan.PERSONAL);
         gone.setBillingPeriod(BillingPeriod.MONTHLY);
-        gone.setLastTrialEndEmailSentAt(java.time.LocalDateTime.now().minusHours(6));
+        gone.setLastTrialEndEmailSentAt(java.time.LocalDateTime.now(ZoneOffset.UTC).minusHours(6));
         subscriptions.save(gone);
 
         mockMvc.perform(get("/admin/revenue"))
@@ -335,7 +336,7 @@ class AdminRevenueControllerTest {
         canceled.setPlan(Plan.PERSONAL);
         canceled.setBillingPeriod(BillingPeriod.MONTHLY);
         canceled.setCancellationReason(com.emailmessenger.domain.CancellationReason.TOO_EXPENSIVE);
-        canceled.setCancellationReasonAt(java.time.LocalDateTime.now().minusHours(1));
+        canceled.setCancellationReasonAt(java.time.LocalDateTime.now(ZoneOffset.UTC).minusHours(1));
         Subscription saved = subscriptions.save(canceled);
 
         mockMvc.perform(post("/admin/retention/win-back")
@@ -383,7 +384,7 @@ class AdminRevenueControllerTest {
                         "value=\"" + saved.getId() + "\"")));
 
         subscriptions.touchWinBackEmailSent(saved.getId(),
-                java.time.LocalDateTime.now().minusMinutes(2));
+                java.time.LocalDateTime.now(ZoneOffset.UTC).minusMinutes(2));
 
         mockMvc.perform(get("/admin/revenue"))
                 .andExpect(status().isOk())
@@ -405,7 +406,7 @@ class AdminRevenueControllerTest {
         reactivated.setBillingPeriod(BillingPeriod.MONTHLY);
         Subscription saved = subscriptions.save(reactivated);
         subscriptions.touchWinBackEmailSent(saved.getId(),
-                java.time.LocalDateTime.now().minusHours(6));
+                java.time.LocalDateTime.now(ZoneOffset.UTC).minusHours(6));
 
         mockMvc.perform(get("/admin/revenue"))
                 .andExpect(status().isOk())

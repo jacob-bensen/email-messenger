@@ -13,6 +13,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "mail_accounts")
@@ -79,14 +80,14 @@ public class MailAccount {
 
     @PrePersist
     void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         createdAt = now;
         updatedAt = now;
     }
 
     @PreUpdate
     void preUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     public Long getId() { return id; }
@@ -108,7 +109,7 @@ public class MailAccount {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
     public void markSynced() {
-        this.lastSyncedAt = LocalDateTime.now();
+        this.lastSyncedAt = LocalDateTime.now(ZoneOffset.UTC);
         this.lastSyncError = null;
         this.consecutiveFailureCount = 0;
         this.pollingSuspended = false;

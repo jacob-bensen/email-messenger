@@ -18,6 +18,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -54,7 +55,7 @@ class LoginThrottleServiceTest {
 
     @Test
     void fiveFailuresInWindowForEmailLocks() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         for (int i = 0; i < throttle.getMaxFailures(); i++) {
             recordFailure("victim@example.com", "10.0.0." + i, now.minusMinutes(i));
         }
@@ -64,7 +65,7 @@ class LoginThrottleServiceTest {
 
     @Test
     void fourFailuresInWindowDoesNotLock() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         for (int i = 0; i < throttle.getMaxFailures() - 1; i++) {
             recordFailure("survivor@example.com", "10.0.0." + i, now.minusMinutes(i));
         }
@@ -74,7 +75,7 @@ class LoginThrottleServiceTest {
 
     @Test
     void oldFailuresOutsideWindowDoNotLock() {
-        LocalDateTime ancient = LocalDateTime.now()
+        LocalDateTime ancient = LocalDateTime.now(ZoneOffset.UTC)
                 .minus(throttle.getWindow().plusMinutes(5));
         for (int i = 0; i < throttle.getMaxFailures() + 3; i++) {
             recordFailure("old@example.com", "10.0.0." + i, ancient.minusMinutes(i));
@@ -85,7 +86,7 @@ class LoginThrottleServiceTest {
 
     @Test
     void ipThresholdLocksRegardlessOfEmail() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         for (int i = 0; i < throttle.getMaxFailures(); i++) {
             recordFailure("rotating-" + i + "@example.com", "198.51.100.7", now.minusSeconds(i));
         }
@@ -95,7 +96,7 @@ class LoginThrottleServiceTest {
 
     @Test
     void emailNormalizationMatchesAcrossCase() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         for (int i = 0; i < throttle.getMaxFailures(); i++) {
             recordFailure("mixed@example.com", "10.0.0." + i, now.minusSeconds(i));
         }

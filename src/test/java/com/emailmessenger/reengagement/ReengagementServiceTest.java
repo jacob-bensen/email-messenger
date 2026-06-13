@@ -28,6 +28,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -70,7 +71,7 @@ class ReengagementServiceTest {
      */
     private User dormantUser(String email, int daysAgo) {
         User u = newUser(email);
-        LocalDateTime when = LocalDateTime.now().minusDays(daysAgo);
+        LocalDateTime when = LocalDateTime.now(ZoneOffset.UTC).minusDays(daysAgo);
         u.setLastLoginAt(when);
         u.setLastInboxVisitAt(when);
         return users.saveAndFlush(u);
@@ -80,7 +81,7 @@ class ReengagementServiceTest {
         Participant sender = participantRepo.findByEmail("ada@example.com")
                 .orElseGet(() -> participantRepo.save(new Participant("ada@example.com", "Ada")));
         EmailThread t = threadRepo.save(new EmailThread(owner, subject, "<" + subject + "@test>"));
-        Message m = new Message(t, sender, subject, "body", "<p>body</p>", LocalDateTime.now());
+        Message m = new Message(t, sender, subject, "body", "<p>body</p>", LocalDateTime.now(ZoneOffset.UTC));
         m.setMessageIdHeader("<" + subject + "@test>");
         m.addRecipient(sender, RecipientType.TO);
         messageRepo.save(m);
@@ -94,7 +95,7 @@ class ReengagementServiceTest {
         newUnreadThread(user, "Subject A");
         newUnreadThread(user, "Subject B");
 
-        boolean sent = reengagementService.sendReengagementFor(user, LocalDateTime.now());
+        boolean sent = reengagementService.sendReengagementFor(user, LocalDateTime.now(ZoneOffset.UTC));
 
         assertThat(sent).isTrue();
         ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
@@ -109,7 +110,7 @@ class ReengagementServiceTest {
         User user = dormantUser("nounread@example.com", 14);
         // No threads at all → unread count is zero → no nudge.
 
-        boolean sent = reengagementService.sendReengagementFor(user, LocalDateTime.now());
+        boolean sent = reengagementService.sendReengagementFor(user, LocalDateTime.now(ZoneOffset.UTC));
 
         assertThat(sent).isFalse();
         verify(mailSender, never()).send(any(MimeMessage.class));
@@ -124,7 +125,7 @@ class ReengagementServiceTest {
         prefs.setOptedOut(true);
         preferences.save(prefs);
 
-        boolean sent = reengagementService.sendReengagementFor(user, LocalDateTime.now());
+        boolean sent = reengagementService.sendReengagementFor(user, LocalDateTime.now(ZoneOffset.UTC));
 
         assertThat(sent).isFalse();
         verify(mailSender, never()).send(any(MimeMessage.class));
@@ -135,7 +136,7 @@ class ReengagementServiceTest {
         User user = dormantUser("repeat@example.com", 14);
         newUnreadThread(user, "Subject A");
 
-        LocalDateTime firstRun = LocalDateTime.now();
+        LocalDateTime firstRun = LocalDateTime.now(ZoneOffset.UTC);
         assertThat(reengagementService.sendReengagementFor(user, firstRun)).isTrue();
 
         // Reload the user to pick up the touchReengagementSent stamp and try again.
@@ -151,7 +152,7 @@ class ReengagementServiceTest {
         User user = dormantUser("re-dormant@example.com", 14);
         newUnreadThread(user, "Subject A");
 
-        LocalDateTime firstRun = LocalDateTime.now().minusDays(14);
+        LocalDateTime firstRun = LocalDateTime.now(ZoneOffset.UTC).minusDays(14);
         assertThat(reengagementService.sendReengagementFor(user, firstRun)).isTrue();
 
         // User comes back briefly (login OR inbox visit), then disappears again.
@@ -161,7 +162,7 @@ class ReengagementServiceTest {
         after.setLastLoginAt(visit);
         users.saveAndFlush(after);
 
-        boolean second = reengagementService.sendReengagementFor(after, LocalDateTime.now());
+        boolean second = reengagementService.sendReengagementFor(after, LocalDateTime.now(ZoneOffset.UTC));
 
         assertThat(second).isTrue();
     }
@@ -202,7 +203,7 @@ class ReengagementServiceTest {
         newUnreadThread(user, "Subject A");
         newUnreadThread(user, "Subject B");
 
-        boolean sent = reengagementService.sendReengagementFor(user, LocalDateTime.now());
+        boolean sent = reengagementService.sendReengagementFor(user, LocalDateTime.now(ZoneOffset.UTC));
         assertThat(sent).isTrue();
 
         ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);

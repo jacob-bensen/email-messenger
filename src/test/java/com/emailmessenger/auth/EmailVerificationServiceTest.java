@@ -20,6 +20,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -85,13 +86,13 @@ class EmailVerificationServiceTest {
         assertThat(row.getUser().getId()).isEqualTo(user.getId());
         assertThat(row.getUsedAt()).isNull();
         // 24h TTL — assert at least 23h to leave slack for slow CI.
-        assertThat(row.getExpiresAt()).isAfter(LocalDateTime.now().plusHours(23));
+        assertThat(row.getExpiresAt()).isAfter(LocalDateTime.now(ZoneOffset.UTC).plusHours(23));
     }
 
     @Test
     void sendVerificationForAlreadyVerifiedUserIsNoOp() {
         User user = newUnverifiedUser("already@example.com");
-        user.setEmailVerifiedAt(LocalDateTime.now().minusDays(2));
+        user.setEmailVerifiedAt(LocalDateTime.now(ZoneOffset.UTC).minusDays(2));
         users.save(user);
 
         boolean sent = emailVerificationService.sendVerification(user);
@@ -138,7 +139,7 @@ class EmailVerificationServiceTest {
         String plain = "verify-expired-fixture";
         EmailVerificationToken expired = tokens.save(new EmailVerificationToken(
                 user, EmailVerificationService.sha256Hex(plain),
-                LocalDateTime.now().minusMinutes(1)));
+                LocalDateTime.now(ZoneOffset.UTC).minusMinutes(1)));
 
         assertThat(emailVerificationService.verify(plain)).isEmpty();
         assertThat(users.findById(user.getId()).orElseThrow().getEmailVerifiedAt()).isNull();

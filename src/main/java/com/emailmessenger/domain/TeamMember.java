@@ -15,6 +15,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "team_members",
@@ -52,7 +53,7 @@ public class TeamMember {
 
     @PrePersist
     void prePersist() {
-        joinedAt = LocalDateTime.now();
+        joinedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     public Long getId() { return id; }

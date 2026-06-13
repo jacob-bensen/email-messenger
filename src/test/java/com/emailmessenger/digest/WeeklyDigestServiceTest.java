@@ -33,6 +33,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -94,9 +95,9 @@ class WeeklyDigestServiceTest {
     void paidUserWithNewMatchesGetsDigestAndLastSentAtUpdates() {
         User user = newUser("paid@example.com");
         grantPersonal(user);
-        newThread(user, "Invoice March", LocalDateTime.now().minusDays(2),
+        newThread(user, "Invoice March", LocalDateTime.now(ZoneOffset.UTC).minusDays(2),
                 "ada@example.com", "monthly invoice");
-        newThread(user, "Re Q1 review", LocalDateTime.now().minusDays(4),
+        newThread(user, "Re Q1 review", LocalDateTime.now(ZoneOffset.UTC).minusDays(4),
                 "ada@example.com", "review notes");
         savedSearches.save(new SavedSearch(user, "From Ada",
                 null, "ada@example.com", null, false, false));
@@ -117,7 +118,7 @@ class WeeklyDigestServiceTest {
     @Test
     void freeUserIsSkipped() {
         User user = newUser("free@example.com");
-        newThread(user, "Hello", LocalDateTime.now().minusDays(1),
+        newThread(user, "Hello", LocalDateTime.now(ZoneOffset.UTC).minusDays(1),
                 "ada@example.com", "hi");
         savedSearches.save(new SavedSearch(user, "From Ada",
                 null, "ada@example.com", null, false, false));
@@ -133,7 +134,7 @@ class WeeklyDigestServiceTest {
     void optedOutUserIsSkippedButTokenRowIsPreserved() {
         User user = newUser("optout@example.com");
         grantPersonal(user);
-        newThread(user, "Should not appear", LocalDateTime.now().minusDays(1),
+        newThread(user, "Should not appear", LocalDateTime.now(ZoneOffset.UTC).minusDays(1),
                 "ada@example.com", "hi");
         savedSearches.save(new SavedSearch(user, "From Ada",
                 null, "ada@example.com", null, false, false));
@@ -173,7 +174,7 @@ class WeeklyDigestServiceTest {
     void runDigestCycleSweepsOnlyUsersWithSavedSearchesAndCountsSends() {
         User paidWithMatches = newUser("sweep1@example.com");
         grantPersonal(paidWithMatches);
-        newThread(paidWithMatches, "Match thread", LocalDateTime.now().minusDays(2),
+        newThread(paidWithMatches, "Match thread", LocalDateTime.now(ZoneOffset.UTC).minusDays(2),
                 "ada@example.com", "body");
         savedSearches.save(new SavedSearch(paidWithMatches, "From Ada",
                 null, "ada@example.com", null, false, false));
@@ -195,7 +196,7 @@ class WeeklyDigestServiceTest {
     void everyMimeMessageHasFromToAndUnsubscribeFooter() throws Exception {
         User user = newUser("footer@example.com");
         grantPersonal(user);
-        newThread(user, "Subject A", LocalDateTime.now().minusDays(1),
+        newThread(user, "Subject A", LocalDateTime.now(ZoneOffset.UTC).minusDays(1),
                 "ada@example.com", "body");
         savedSearches.save(new SavedSearch(user, "From Ada",
                 null, "ada@example.com", null, false, false));

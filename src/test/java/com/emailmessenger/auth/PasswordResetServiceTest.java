@@ -21,6 +21,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -83,7 +84,7 @@ class PasswordResetServiceTest {
         assertThat(row.getTokenHash()).isNotEqualTo(plain);
         assertThat(row.getUser().getId()).isEqualTo(user.getId());
         assertThat(row.getUsedAt()).isNull();
-        assertThat(row.getExpiresAt()).isAfter(LocalDateTime.now().plusMinutes(55));
+        assertThat(row.getExpiresAt()).isAfter(LocalDateTime.now(ZoneOffset.UTC).plusMinutes(55));
     }
 
     @Test
@@ -202,7 +203,7 @@ class PasswordResetServiceTest {
         String plain = "manual-test-token-for-expiry";
         PasswordResetToken expired = tokens.save(new PasswordResetToken(
                 user, PasswordResetService.sha256Hex(plain),
-                LocalDateTime.now().minusMinutes(1)));
+                LocalDateTime.now(ZoneOffset.UTC).minusMinutes(1)));
 
         assertThat(passwordResetService.findUserForValidToken(plain)).isEmpty();
         assertThat(passwordResetService.consumeToken(plain, "doesnt-matter")).isEmpty();

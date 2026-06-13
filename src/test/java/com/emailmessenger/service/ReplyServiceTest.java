@@ -18,6 +18,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -57,7 +58,7 @@ class ReplyServiceTest {
     void sendReplySendsMimeMessageToLastMessageSender() throws Exception {
         EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
         Participant alice = new Participant("alice@example.com", "Alice");
-        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
+        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now(ZoneOffset.UTC));
 
         MimeMessage mimeMsg = new MimeMessage((Session) null);
         when(messageRepository.findByThreadIdOrderBySentAtAsc(1L)).thenReturn(List.of(msg));
@@ -77,8 +78,8 @@ class ReplyServiceTest {
         EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
         Participant alice = new Participant("alice@example.com", "Alice");
         Participant bob = new Participant("bob@example.com", "Bob");
-        Message first = new Message(thread, alice, "Test", "first", null, LocalDateTime.now().minusHours(1));
-        Message last = new Message(thread, bob, "Test", "last", null, LocalDateTime.now());
+        Message first = new Message(thread, alice, "Test", "first", null, LocalDateTime.now(ZoneOffset.UTC).minusHours(1));
+        Message last = new Message(thread, bob, "Test", "last", null, LocalDateTime.now(ZoneOffset.UTC));
 
         MimeMessage mimeMsg = new MimeMessage((Session) null);
         when(messageRepository.findByThreadIdOrderBySentAtAsc(1L)).thenReturn(List.of(first, last));
@@ -94,7 +95,7 @@ class ReplyServiceTest {
     void sendReplySetsInReplyToAndReferencesHeadersFromLastMessageId() throws Exception {
         EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
         Participant alice = new Participant("alice@example.com", "Alice");
-        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
+        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now(ZoneOffset.UTC));
         msg.setMessageIdHeader("<original-msg-42@example.com>");
 
         MimeMessage mimeMsg = new MimeMessage((Session) null);
@@ -114,7 +115,7 @@ class ReplyServiceTest {
     void sendReplyOmitsThreadingHeadersWhenLastMessageHasNoMessageId() throws Exception {
         EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
         Participant alice = new Participant("alice@example.com", "Alice");
-        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
+        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now(ZoneOffset.UTC));
         // messageIdHeader stays null
 
         MimeMessage mimeMsg = new MimeMessage((Session) null);
@@ -132,7 +133,7 @@ class ReplyServiceTest {
     void sendReplyPropagatesMailSendExceptionOnFailure() {
         EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
         Participant alice = new Participant("alice@example.com", "Alice");
-        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
+        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now(ZoneOffset.UTC));
 
         MimeMessage mimeMsg = new MimeMessage((Session) null);
         when(messageRepository.findByThreadIdOrderBySentAtAsc(1L)).thenReturn(List.of(msg));

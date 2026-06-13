@@ -22,6 +22,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -63,7 +64,7 @@ class TrialEndConversionServiceTest {
     @Test
     void trialingPaidPlanWithinT1WindowGetsEmailAndStampIsPersisted() throws Exception {
         Subscription sub = seedTrialing("expiring@example.com", Plan.PERSONAL,
-                LocalDateTime.now().plusHours(12));
+                LocalDateTime.now(ZoneOffset.UTC).plusHours(12));
 
         int sent = trialEndService.runTrialEndCycle();
 
@@ -87,7 +88,7 @@ class TrialEndConversionServiceTest {
     @Test
     void trialEndingBeyondTheWindowIsNotInCohort() {
         seedTrialing("future@example.com", Plan.PERSONAL,
-                LocalDateTime.now().plusDays(7));
+                LocalDateTime.now(ZoneOffset.UTC).plusDays(7));
 
         int sent = trialEndService.runTrialEndCycle();
 
@@ -98,8 +99,8 @@ class TrialEndConversionServiceTest {
     @Test
     void alreadyEmailedSubscriptionIsSkippedEvenIfStillTrialing() {
         Subscription sub = seedTrialing("repeat@example.com", Plan.PERSONAL,
-                LocalDateTime.now().plusHours(6));
-        subscriptions.touchTrialEndEmailSent(sub.getId(), LocalDateTime.now().minusHours(2));
+                LocalDateTime.now(ZoneOffset.UTC).plusHours(6));
+        subscriptions.touchTrialEndEmailSent(sub.getId(), LocalDateTime.now(ZoneOffset.UTC).minusHours(2));
 
         int sent = trialEndService.runTrialEndCycle();
 
@@ -110,13 +111,13 @@ class TrialEndConversionServiceTest {
     @Test
     void optedOutUserIsSkippedEvenIfOtherwiseEligible() {
         Subscription sub = seedTrialing("optout@example.com", Plan.PERSONAL,
-                LocalDateTime.now().plusHours(6));
+                LocalDateTime.now(ZoneOffset.UTC).plusHours(6));
         DigestEmailPreference prefs = preferences.save(
                 new DigestEmailPreference(sub.getUser(), "preset-trial-end-optout"));
         prefs.setOptedOut(true);
         preferences.save(prefs);
 
-        boolean sent = trialEndService.sendTrialEndFor(sub, LocalDateTime.now());
+        boolean sent = trialEndService.sendTrialEndFor(sub, LocalDateTime.now(ZoneOffset.UTC));
 
         assertThat(sent).isFalse();
         verify(mailSender, never()).send(any(MimeMessage.class));
@@ -130,7 +131,7 @@ class TrialEndConversionServiceTest {
         Subscription sub = new Subscription(user, "cus_paid@example.com", "active");
         sub.setPlan(Plan.PERSONAL);
         sub.setBillingPeriod(BillingPeriod.MONTHLY);
-        sub.setTrialEndsAt(LocalDateTime.now().plusHours(6));
+        sub.setTrialEndsAt(LocalDateTime.now(ZoneOffset.UTC).plusHours(6));
         subscriptions.save(sub);
 
         int sent = trialEndService.runTrialEndCycle();
@@ -142,7 +143,7 @@ class TrialEndConversionServiceTest {
     @Test
     void enterprisePlanIsExcludedFromCohort() {
         seedTrialing("enterprise@example.com", Plan.ENTERPRISE,
-                LocalDateTime.now().plusHours(6));
+                LocalDateTime.now(ZoneOffset.UTC).plusHours(6));
 
         int sent = trialEndService.runTrialEndCycle();
 
@@ -153,7 +154,7 @@ class TrialEndConversionServiceTest {
     @Test
     void trialEndCycleIsIdempotentOncePerSubscription() {
         seedTrialing("dupe@example.com", Plan.TEAM,
-                LocalDateTime.now().plusHours(12));
+                LocalDateTime.now(ZoneOffset.UTC).plusHours(12));
 
         int first = trialEndService.runTrialEndCycle();
         int second = trialEndService.runTrialEndCycle();
@@ -166,11 +167,11 @@ class TrialEndConversionServiceTest {
     @Test
     void cohortReturnsOnlySubsInsideTheWindow() {
         seedTrialing("eligible@example.com", Plan.PERSONAL,
-                LocalDateTime.now().plusHours(20));
+                LocalDateTime.now(ZoneOffset.UTC).plusHours(20));
         seedTrialing("too-far@example.com", Plan.PERSONAL,
-                LocalDateTime.now().plusDays(5));
+                LocalDateTime.now(ZoneOffset.UTC).plusDays(5));
         seedTrialing("enterprise@example.com", Plan.ENTERPRISE,
-                LocalDateTime.now().plusHours(12));
+                LocalDateTime.now(ZoneOffset.UTC).plusHours(12));
 
         int sent = trialEndService.runTrialEndCycle();
 
@@ -181,7 +182,7 @@ class TrialEndConversionServiceTest {
     @Test
     void teamPlanBodyMentionsTeamLabelInSubject() throws Exception {
         seedTrialing("team@example.com", Plan.TEAM,
-                LocalDateTime.now().plusHours(18));
+                LocalDateTime.now(ZoneOffset.UTC).plusHours(18));
 
         int sent = trialEndService.runTrialEndCycle();
         assertThat(sent).isEqualTo(1);

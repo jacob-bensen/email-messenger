@@ -135,13 +135,16 @@ class AdminWeeklyDigestServiceTest {
         Subscription pSub = new Subscription(personalChurn, "cus_p_churn", "canceled");
         pSub.setPlan(Plan.PERSONAL);
         pSub.setBillingPeriod(BillingPeriod.MONTHLY);
-        subscriptions.save(pSub);
+        subscriptions.saveAndFlush(pSub);
 
         User teamChurn = userService.register("t-churn@example.com", "password1", null);
         Subscription tSub = new Subscription(teamChurn, "cus_t_churn", "canceled");
         tSub.setPlan(Plan.TEAM);
         tSub.setBillingPeriod(BillingPeriod.ANNUAL);
-        subscriptions.save(tSub);
+        // Flush now so @PrePersist stamps updatedAt before sendDigest() computes its
+        // window's upper bound; a lazy flush inside sendDigest would stamp the row
+        // after `now` and drop it from the per-plan BETWEEN query.
+        subscriptions.saveAndFlush(tSub);
 
         digestService.sendDigest();
 

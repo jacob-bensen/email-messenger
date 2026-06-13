@@ -14,6 +14,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "plan_change_events")
@@ -53,7 +54,7 @@ public class PlanChangeEvent {
 
     @PrePersist
     void prePersist() {
-        occurredAt = LocalDateTime.now();
+        occurredAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     public Long getId() { return id; }

@@ -1,5 +1,6 @@
 package com.emailmessenger.service;
 
+import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -95,7 +96,7 @@ class DemoConversationServiceTest {
                 .toList();
 
         // No demo message is dated in the future.
-        assertThat(dates).allSatisfy(d -> assertThat(d).isBeforeOrEqualTo(LocalDate.now()));
-        assertThat(dates).contains(LocalDate.now());
+        assertThat(dates).allSatisfy(d -> assertThat(d).isBeforeOrEqualTo(LocalDate.now(ZoneOffset.UTC)));
+        assertThat(dates).contains(LocalDate.now(ZoneOffset.UTC));
     }
 }
