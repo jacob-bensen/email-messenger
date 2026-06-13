@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <th:block th:replace="~{fragments/seo :: meta(
+      pageTitle='Sign in — MailIM',
+      pageDescription='Sign in to MailIM to read your email threads as an IM-style chat — bubbles, avatars, dark mode.',
+      pagePath='/login')}"></th:block>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/" class="brand">MailIM</a>
+  <nav class="header-nav">
+    <a href="/pricing">Pricing</a>
+    <a href="/register">Create account</a>
+  </nav>
+</header>
+
+<main class="auth-page">
+  <section class="auth-card">
+    <h1>Sign in</h1>
+
+    <div th:if="${param.error != null and param.error[0] == 'locked'}"
+         class="alert alert-error">
+      Too many failed sign-in attempts. Please wait a few minutes before
+      trying again, or reset your password.
+    </div>
+    <div th:if="${param.error != null and param.error[0] == 'google'}"
+         class="alert alert-info">
+      That account is linked to Google. Try
+      <strong>Continue with Google</strong> above instead of typing a
+      password.
+    </div>
+    <div th:if="${param.error != null and param.error[0] != 'locked' and param.error[0] != 'google'}"
+         class="alert alert-error">
+      Incorrect email or password.
+    </div>
+    <div th:if="${param.logout}" class="alert alert-success">
+      You have been signed out.
+    </div>
+    <div th:if="${param.reset}" class="alert alert-success">
+      Password updated. Sign in with your new password.
+    </div>
+    <div th:if="${param['email-changed']}" class="alert alert-success">
+      Email updated. Sign in with your new address — we've sent a
+      confirmation link there.
+    </div>
+
+    <th:block th:if="${oauthGoogleEnabled}">
+      <a th:href="@{/auth/google/start(plan=${plan},billing=${billing},utm_source=${utmSource})}"
+         class="btn-oauth btn-oauth-google" rel="nofollow">
+        <svg class="btn-oauth-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+          <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34 5.1 29.3 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.2-.1-2.3-.4-3.5z"/>
+          <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 18.9 13 24 13c3.1 0 5.9 1.2 8 3l5.7-5.7C34 5.1 29.3 3 24 3 16.3 3 9.7 7.5 6.3 14.7z"/>
+          <path fill="#4CAF50" d="M24 45c5.2 0 10-2 13.6-5.3l-6.3-5.2C29.2 36 26.7 37 24 37c-5.1 0-9.5-3.2-11.2-7.9l-6.5 5C9.6 40.5 16.2 45 24 45z"/>
+          <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.4-2.3 4.4-4.3 5.8l6.3 5.2c-.4.4 6.7-4.9 6.7-15 0-1.2-.1-2.3-.4-3.5z"/>
+        </svg>
+        <span>Continue with Google</span>
+      </a>
+      <div class="auth-divider" role="separator"><span>or</span></div>
+    </th:block>
+
+    <form method="post" th:action="@{/login}" class="auth-form" autocomplete="on">
+      <input type="hidden" name="plan" th:if="${plan != null}" th:value="${plan}">
+      <input type="hidden" name="billing" th:if="${billing != null}" th:value="${billing}">
+
+      <label class="auth-label">
+        <span>Email</span>
+        <input type="email" name="email" required autofocus autocomplete="username">
+      </label>
+
+      <label class="auth-label">
+        <span>Password</span>
+        <input type="password" name="password" required autocomplete="current-password">
+      </label>
+
+      <label class="auth-checkbox">
+        <input type="checkbox" name="remember-me" value="true">
+        <span>Stay signed in for 30 days</span>
+      </label>
+
+      <button type="submit" class="btn btn-primary auth-submit">Sign in</button>
+    </form>
+
+    <p class="auth-alt">
+      <a href="/password/forgot">Forgot your password?</a>
+    </p>
+    <p class="auth-alt">
+      No account yet?
+      <a th:if="${plan == null}" href="/register">Create one</a>
+      <a th:if="${plan != null}"
+         th:href="@{/register(plan=${plan},billing=${billing})}">Create one</a>.
+    </p>
+  </section>
+</main>
+
+<footer class="marketing-footer">
+  <span>&copy; MailIM</span>
+  <nav>
+    <a href="/pricing">Pricing</a>
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+    <a href="/refund">Refund</a>
+  </nav>
+</footer>
+
+<th:block th:replace="~{fragments/cookie-banner :: banner}"></th:block>
+
+</body>
+</html>

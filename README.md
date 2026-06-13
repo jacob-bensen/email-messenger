@@ -59,8 +59,8 @@ as `email_messenger_app`; Flyway runs the migrations on startup. In
 production the base config reads the database connection entirely from
 environment variables (see the table below and `.env.example`).
 
-The app starts on `http://localhost:8080`. On first launch you connect a
-mailbox (IMAP host, port, username, app password).
+The app starts on `http://localhost:8080`. On first launch you create an
+account, then connect a mailbox (IMAP host, port, username, app password).
 
 ### Tests
 
@@ -87,7 +87,7 @@ Override defaults in `application.yml` or via environment variables:
 | Database URL        | `JDBC_DATABASE_URL`               | `jdbc:postgresql://localhost:5432/email_messenger`     |
 | Database user       | `JDBC_DATABASE_USERNAME`          | `email_messenger_app`                                  |
 | Database password   | `JDBC_DATABASE_PASSWORD`          | (set in `db/init.sql`)                                 |
-| IMAP poll interval  | `IMAP_POLLING_INTERVAL_MS`        | `60000`                                                |
+| Mailbox poll interval | `MAILBOX_POLLING_INTERVAL_MS`   | `300000`                                               |
 
 ## Screenshots
 

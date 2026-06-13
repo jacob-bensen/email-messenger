@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <th:block th:replace="~{fragments/seo :: meta(
+      pageTitle=${pageTitle},
+      pageDescription=${pageDescription},
+      pagePath=${pagePath})}"></th:block>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/" class="brand">MailIM</a>
+  <nav class="header-nav">
+    <a href="/pricing">Pricing</a>
+    <a href="/login">Sign in</a>
+    <a href="/register" class="btn btn-primary btn-compact">Start free</a>
+  </nav>
+</header>
+
+<main class="legal-page">
+  <article class="legal-card">
+    <h1 th:text="${pageTitle.replace(' — MailIM', '')}">Legal</h1>
+    <div class="legal-body" th:utext="${content}">Legal content.</div>
+  </article>
+</main>
+
+<footer class="marketing-footer">
+  <span>&copy; MailIM</span>
+  <nav>
+    <a href="/pricing">Pricing</a>
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+    <a href="/refund">Refund</a>
+  </nav>
+</footer>
+
+<th:block th:replace="~{fragments/cookie-banner :: banner}"></th:block>
+
+</body>
+</html>

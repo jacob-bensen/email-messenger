@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subscription started — MailIM</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/" class="brand">MailIM</a>
+  <nav class="header-nav">
+    <a href="/threads">Inbox</a>
+    <a href="/pricing">Pricing</a>
+  </nav>
+</header>
+
+<main class="marketing">
+  <section class="hero-narrow">
+    <h1>You're in.</h1>
+    <p class="hero-sub">
+      Stripe confirmed your subscription. We're activating your account now —
+      it usually takes a few seconds. Your 14-day trial has begun; you won't
+      be charged until it ends.
+    </p>
+    <p>
+      <a href="/threads" class="btn btn-primary">Go to your inbox</a>
+    </p>
+    <p th:if="${sessionId}" class="muted" style="font-size: 12px;">
+      Reference: <span th:text="${sessionId}"></span>
+    </p>
+  </section>
+</main>
+
+<footer class="marketing-footer">
+  <span>&copy; MailIM</span>
+  <nav>
+    <a href="/pricing">Pricing</a>
+    <a href="/threads">Inbox</a>
+  </nav>
+</footer>
+
+</body>
+</html>

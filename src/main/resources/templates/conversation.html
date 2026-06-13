@@ -2,33 +2,70 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="noindex, nofollow">
-  <title th:text="|(${conversation.thread().subject.length() > 57 ? conversation.thread().subject.substring(0, 57) + '…' : conversation.thread().subject}) — MailIM|">Conversation — MailIM</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+  <th:block th:if="${demoMode}"
+            th:replace="~{fragments/seo :: meta(
+      pageTitle='Live demo — MailIM',
+      pageDescription='See an email thread rendered as an IM-style chat: bubbles, avatars, day separators, markdown, quoted-reply stripping. No signup.',
+      pagePath='/demo')}"></th:block>
+
+  <th:block th:unless="${demoMode}">
+    <meta name="robots" content="noindex, nofollow">
+    <title th:text="|(${conversation.thread().subject.length() > 57 ? conversation.thread().subject.substring(0, 57) + '…' : conversation.thread().subject}) — MailIM|">Conversation — MailIM</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#4f80ff">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="MailIM">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
+        });
+      }
+    </script>
+  </th:block>
+
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>
 
 <header class="conv-header">
-  <a th:href="${isDemo != null and isDemo} ? '/demo' : '/threads'" class="back-link">← All threads</a>
+  <a th:if="${demoMode}" href="/" class="back-link">← MailIM home</a>
+  <a th:unless="${demoMode}" href="/threads" class="back-link">← All threads</a>
   <h1 th:text="${conversation.thread().subject}">Thread subject</h1>
-  <span class="kbd-hint" th:if="${isDemo != null and isDemo}">
-    Demo — <a href="/waitlist" class="demo-header-cta">Join waitlist →</a>
-  </span>
-  <span class="kbd-hint" th:unless="${isDemo != null and isDemo}"><kbd>r</kbd> reply · <kbd>Esc</kbd> cancel</span>
+  <span th:unless="${demoMode}" class="kbd-hint"><kbd>r</kbd> reply · <kbd>Esc</kbd> cancel</span>
   <span class="msg-count"
         th:text="${conversation.thread().messageCount + ' message' + (conversation.thread().messageCount != 1 ? 's' : '')}">
     1 message
   </span>
 </header>
 
-<div class="demo-banner" th:if="${isDemo != null and isDemo}">
-  <strong>You're in demo mode.</strong>
-  This is a sample conversation showing how MailIM transforms emails into a chat view.
-  <a href="/demo">← More demo threads</a> · <a href="/waitlist">Join the waitlist →</a>
+<div th:if="${demoMode}" class="demo-banner" role="note">
+  <span class="demo-banner-text">
+    <strong>Live demo.</strong>
+    This is a curated thread rendered by MailIM — bubble grouping, markdown, and quoted-reply stripping all running for real.
+  </span>
+  <a th:if="${demoSignedIn}" href="/threads" class="btn btn-primary btn-compact">Back to inbox</a>
+  <a th:unless="${demoSignedIn}" href="/register?utm_source=demo" class="btn btn-primary btn-compact">Start free</a>
 </div>
 
 <div class="conv-body">
+
+  <div th:if="${!demoMode and billingBanner != null and billingBanner.trialEnding}"
+       class="trial-banner trial-banner-compact"
+       th:classappend="${billingBanner.daysLeft <= 3} ? ' trial-banner-urgent' : ''">
+    <span class="trial-banner-text">
+      <strong th:if="${billingBanner.daysLeft == 0}">Trial ends today.</strong>
+      <strong th:if="${billingBanner.daysLeft == 1}">Trial ends tomorrow.</strong>
+      <strong th:if="${billingBanner.daysLeft > 1}"
+              th:text="|Trial ends in ${billingBanner.daysLeft} days.|">Trial ends in 14 days.</strong>
+    </span>
+    <a href="/pricing" class="trial-banner-link">Add card →</a>
+  </div>
 
   <!-- Messages area -->
   <div class="messages" id="messages">
@@ -65,18 +102,100 @@
 
   </div>
 
-  <!-- Reply area (hidden in demo mode) -->
-  <div class="reply-area" th:unless="${isDemo != null and isDemo}">
+  <!--
+    Internal team notes — Team-plan only. Free/Personal users see the
+    upgrade CTA in the same spot so the value of the Team plan is
+    legible at the moment they'd reach for it.
+  -->
+  <section th:unless="${demoMode}" class="team-notes" aria-labelledby="team-notes-heading">
+    <header class="team-notes-header">
+      <h2 id="team-notes-heading">Internal notes</h2>
+      <span class="team-notes-sub">Visible to your team only — never sent in the email reply.</span>
+    </header>
+
+    <div th:if="${noteFlash == 'posted'}" class="alert alert-success">Note added.</div>
+    <div th:if="${noteFlash == 'blank'}" class="alert alert-error">Write something before saving.</div>
+    <div th:if="${noteFlash == 'tooLong'}" class="alert alert-error">Note is too long (max 4,000 characters).</div>
+    <div th:if="${noteFlash == 'gated'}" class="alert alert-error">Internal notes are a Team-plan feature.</div>
+
+    <ul class="note-list" th:if="${teamNotes != null and !teamNotes.isEmpty()}">
+      <li class="note-bubble" th:each="note : ${teamNotes}"
+          th:id="${'note-' + note.id}">
+        <div class="note-meta">
+          <span class="note-author"
+                th:text="${note.authorUser.displayName != null and !#strings.isEmpty(note.authorUser.displayName) ? note.authorUser.displayName : note.authorUser.email}">Author</span>
+          <span class="note-time"
+                th:text="${#temporals.format(note.createdAt, 'MMM d, h:mm a')}">Jan 1, 12:00 PM</span>
+        </div>
+        <div class="note-body" th:text="${note.body}">Note body</div>
+      </li>
+    </ul>
+
+    <p class="note-empty"
+       th:if="${canPostTeamNote and (teamNotes == null or teamNotes.isEmpty())}">
+      No notes yet — pin one to capture context for the rest of the team.
+    </p>
+
+    <form th:if="${canPostTeamNote}"
+          th:action="@{/threads/{id}/note(id=${conversation.thread().id})}"
+          method="post"
+          class="note-form">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <div class="note-input-wrap" data-mention-wrap>
+        <textarea name="body"
+                  placeholder="Add an internal note… use @ to mention a teammate"
+                  rows="2"
+                  maxlength="4000"
+                  data-mention-input></textarea>
+        <ul class="mention-picker" data-mention-picker hidden></ul>
+      </div>
+      <ul class="mention-candidates" hidden data-mention-candidates>
+        <li th:each="cand : ${teamMentionCandidates}"
+            th:attr="data-handle=${cand.handle},data-label=${cand.label},data-email=${cand.email}"
+            th:text="${cand.label + ' · @' + cand.handle}">Teammate · @handle</li>
+      </ul>
+      <div class="note-actions">
+        <span th:if="${!teamMentionCandidates.isEmpty()}" class="note-hint">
+          Type <code>@</code> to mention a teammate.
+        </span>
+        <button type="submit" class="btn btn-secondary">Add note</button>
+      </div>
+    </form>
+
+    <div th:if="${teamNotesUpgradeNudge}" class="note-upgrade">
+      <p class="note-upgrade-copy">
+        <strong>Pin context where your team can see it.</strong>
+        Internal notes are part of the <strong>Team plan</strong> —
+        attach private comments to a thread so the next teammate on it
+        already has the backstory.
+      </p>
+      <form action="/billing/checkout" method="post" class="note-upgrade-form">
+        <input type="hidden" th:if="${_csrf != null}"
+               th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <input type="hidden" name="plan" value="TEAM">
+        <input type="hidden" name="billing" value="monthly">
+        <button type="submit" class="btn btn-primary">Upgrade to Team — $29/mo</button>
+      </form>
+    </div>
+  </section>
+
+  <!--
+    Reply area: real threads only, and only the mailbox owner can send replies
+    (SMTP credentials are owner-scoped). A teammate following a shared link
+    sees the messages + notes panel but no reply form.
+  -->
+  <div th:if="${!demoMode and isThreadOwner}" class="reply-area">
     <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Reply sent.</div>
 
     <form th:action="@{/threads/{id}/reply(id=${conversation.thread().id})}"
           th:object="${replyForm}"
           method="post"
           class="reply-form">
-      <label for="body" class="sr-only">Your reply</label>
-      <textarea id="body"
-                th:field="*{body}"
-                placeholder="Write your reply here…"
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <textarea th:field="*{body}"
+                placeholder="Write a reply…"
                 rows="3"
                 th:classappend="${#fields.hasErrors('body')} ? ' error' : ''"></textarea>
       <div class="field-error"
@@ -88,9 +207,25 @@
     </form>
   </div>
 
+  <div th:if="${!demoMode and !isThreadOwner}" class="reply-area reply-area-readonly" role="note">
+    <p class="reply-readonly-text">
+      Viewing a teammate's thread. Replies go through the mailbox owner — drop an
+      internal note above to share context with the team.
+    </p>
+  </div>
+
+  <div th:if="${demoMode}" class="demo-footer">
+    <p class="demo-footer-text">Like what you see? MailIM connects to your real inbox over IMAP.</p>
+    <div class="demo-footer-ctas">
+      <a th:if="${demoSignedIn}" href="/mailboxes/new" class="btn btn-primary btn-lg">Connect a mailbox</a>
+      <a th:unless="${demoSignedIn}" href="/register?utm_source=demo" class="btn btn-primary btn-lg">Start free</a>
+      <a href="/pricing?utm_source=demo" class="btn btn-secondary btn-lg">See pricing</a>
+    </div>
+  </div>
+
 </div>
 
-<script>
+<script th:inline="javascript">
 (function () {
   const msgs = document.getElementById('messages');
   if (!msgs) return;
@@ -112,7 +247,8 @@
   msgs.scrollTop = msgs.scrollHeight;
 }());
 
-// r to focus reply, Esc to blur
+// r to focus reply, Esc to blur — disabled in demo mode (no reply form)
+/*[# th:if="${!demoMode}"]*/
 document.addEventListener('keydown', function (e) {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   var ta = document.querySelector('.reply-form textarea');
@@ -126,6 +262,7 @@ document.addEventListener('keydown', function (e) {
     ta.blur();
   }
 });
+/*[/]*/
 
 function formatDateLabel(iso) {
   var parts = iso.split('-');
@@ -136,9 +273,105 @@ function formatDateLabel(iso) {
   if (d.getTime() === yesterday.getTime()) return 'Yesterday';
   return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 }
+
+(function () {
+  var wrap   = document.querySelector('[data-mention-wrap]');
+  var input  = document.querySelector('[data-mention-input]');
+  var picker = document.querySelector('[data-mention-picker]');
+  var source = document.querySelector('[data-mention-candidates]');
+  if (!wrap || !input || !picker || !source) return;
+  var candidates = Array.from(source.querySelectorAll('li')).map(function (li) {
+    return { handle: li.dataset.handle || '', label: li.dataset.label || '' };
+  });
+  if (candidates.length === 0) return;
+  var activeIndex = -1;
+  var triggerStart = -1;
+
+  function close() {
+    picker.hidden = true;
+    picker.innerHTML = '';
+    activeIndex = -1;
+    triggerStart = -1;
+  }
+  function tokenBeforeCursor() {
+    var pos = input.selectionStart;
+    var text = input.value.substring(0, pos);
+    var at = text.lastIndexOf('@');
+    if (at < 0) return null;
+    var prev = at === 0 ? ' ' : text.charAt(at - 1);
+    if (!/\s/.test(prev)) return null;
+    var token = text.substring(at + 1);
+    if (/\s/.test(token)) return null;
+    return { start: at, query: token.toLowerCase() };
+  }
+  function render(matches) {
+    picker.innerHTML = '';
+    matches.slice(0, 6).forEach(function (c, i) {
+      var li = document.createElement('li');
+      li.dataset.handle = c.handle;
+      li.textContent = c.label + ' · @' + c.handle;
+      if (i === 0) li.classList.add('active');
+      li.addEventListener('mousedown', function (e) { e.preventDefault(); pick(c.handle); });
+      picker.appendChild(li);
+    });
+    activeIndex = matches.length > 0 ? 0 : -1;
+    picker.hidden = matches.length === 0;
+  }
+  function pick(handle) {
+    if (triggerStart < 0) { close(); return; }
+    var pos = input.selectionStart;
+    var before = input.value.substring(0, triggerStart);
+    var after = input.value.substring(pos);
+    var insertion = '@' + handle + ' ';
+    input.value = before + insertion + after;
+    var newPos = before.length + insertion.length;
+    input.selectionStart = input.selectionEnd = newPos;
+    close();
+    input.focus();
+  }
+  function refresh() {
+    var ctx = tokenBeforeCursor();
+    if (!ctx) { close(); return; }
+    triggerStart = ctx.start;
+    var matches = candidates.filter(function (c) {
+      if (ctx.query === '') return true;
+      return c.handle.toLowerCase().indexOf(ctx.query) === 0
+          || c.label.toLowerCase().indexOf(ctx.query) >= 0;
+    });
+    render(matches);
+  }
+  function moveActive(delta) {
+    var items = picker.querySelectorAll('li');
+    if (items.length === 0) return;
+    items[activeIndex] && items[activeIndex].classList.remove('active');
+    activeIndex = (activeIndex + delta + items.length) % items.length;
+    items[activeIndex].classList.add('active');
+  }
+  input.addEventListener('input', refresh);
+  input.addEventListener('click', refresh);
+  input.addEventListener('keyup', function (e) {
+    if (e.key === 'Escape') close();
+  });
+  input.addEventListener('keydown', function (e) {
+    if (picker.hidden) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); moveActive(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); moveActive(-1); }
+    else if (e.key === 'Enter' || e.key === 'Tab') {
+      var items = picker.querySelectorAll('li');
+      if (activeIndex >= 0 && items[activeIndex]) {
+        e.preventDefault();
+        pick(items[activeIndex].dataset.handle);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
+    }
+  });
+  input.addEventListener('blur', function () { setTimeout(close, 100); });
+}());
 </script>
 
-<div th:replace="~{fragments/cookie-banner :: banner}"></div>
+<th:block th:if="${demoMode}" th:replace="~{fragments/cookie-banner :: banner}"></th:block>
 
 </body>
 </html>

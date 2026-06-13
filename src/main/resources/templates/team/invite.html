@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Invite a teammate — MailIM</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/threads" class="brand">MailIM</a>
+  <nav class="header-nav">
+    <a href="/threads">Inbox</a>
+    <a href="/mailboxes">Mailboxes</a>
+    <a href="/account">Account</a>
+    <form th:action="@{/logout}" method="post" class="header-logout">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button type="submit" class="link-button">Sign out</button>
+    </form>
+  </nav>
+</header>
+
+<main class="thread-page">
+  <a href="/threads" class="back-link">← Inbox</a>
+  <h1 class="section-title">Invite a teammate</h1>
+  <p class="auth-sub">
+    Send an invite to add someone to <strong th:text="${team.name}">Your team</strong>.
+    They'll get an email with a link to accept; the link expires in 7 days.
+  </p>
+
+  <div th:if="${inviteFlash == 'sent'}" class="alert alert-success">
+    Invite sent. We'll let them in as soon as they accept.
+  </div>
+  <div th:if="${inviteFlash == 'invalidEmail'}" class="alert alert-error">
+    That doesn't look like a valid email address.
+  </div>
+  <div th:if="${inviteFlash == 'selfInvite'}" class="alert alert-error">
+    You're already on this team — try a different address.
+  </div>
+  <div th:if="${inviteFlash == 'alreadyPending'}" class="alert alert-info">
+    There's already a pending invite for that address. Ask them to check their inbox.
+  </div>
+  <div th:if="${inviteFlash == 'mailFailed'}" class="alert alert-error">
+    We couldn't send the invite email. Try again in a moment.
+  </div>
+
+  <form method="post" th:action="@{/team/invite}" class="auth-form" autocomplete="off">
+    <label class="auth-label">
+      <span>Teammate's email</span>
+      <input type="email" name="email" required autofocus
+             placeholder="teammate@example.com">
+    </label>
+    <input type="hidden" th:if="${_csrf != null}"
+           th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+    <button type="submit" class="btn btn-primary auth-submit">Send invite</button>
+  </form>
+
+  <section th:if="${invites != null and !invites.isEmpty()}" class="team-invite-list">
+    <h2 class="section-title">Sent invites</h2>
+    <ul class="thread-list">
+      <li th:each="inv : ${invites}" class="thread-item">
+        <div class="thread-subject" th:text="${inv.inviteeEmail}">teammate@example.com</div>
+        <div class="thread-meta">
+          <span th:if="${inv.acceptedAt != null}"
+                th:text="|Joined ${#temporals.format(inv.acceptedAt, 'MMM d, yyyy')}|">Joined</span>
+          <span th:if="${inv.revokedAt != null}">Cancelled</span>
+          <span th:if="${inv.acceptedAt == null and inv.revokedAt == null}"
+                th:text="|Pending — expires ${#temporals.format(inv.expiresAt, 'MMM d, yyyy')}|">Pending</span>
+        </div>
+      </li>
+    </ul>
+  </section>
+</main>
+
+</body>
+</html>

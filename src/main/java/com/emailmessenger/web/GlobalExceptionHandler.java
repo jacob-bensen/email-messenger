@@ -1,5 +1,8 @@
 package com.emailmessenger.web;
 
+import com.emailmessenger.billing.BillingException;
+import com.emailmessenger.billing.PlanLimitExceededException;
+import com.emailmessenger.billing.UpgradeModal;
 import com.emailmessenger.email.EmailImportException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -11,7 +14,9 @@ import org.springframework.mail.MailException;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.FlashMap;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.servlet.support.RequestContextUtils;
 
 import java.util.NoSuchElementException;
 
@@ -43,6 +48,36 @@ class GlobalExceptionHandler {
         model.addAttribute("status", 502);
         model.addAttribute("message",
                 "Could not connect to the mail server. Please check your mailbox settings and try again.");
+        return "error";
+    }
+
+    @ExceptionHandler(BillingException.class)
+    String billingError(BillingException ex, HttpServletRequest request,
+                        Model model, HttpServletResponse response) {
+        log.warn("Billing operation failed for {}: {}", request.getRequestURI(), ex.getMessage());
+        response.setStatus(HttpStatus.BAD_GATEWAY.value());
+        model.addAttribute("status", 502);
+        model.addAttribute("message",
+                "We couldn't reach our payment provider. Please try again in a moment.");
+        return "error";
+    }
+
+    @ExceptionHandler(PlanLimitExceededException.class)
+    String planLimit(PlanLimitExceededException ex, HttpServletRequest request) {
+        log.info("Plan limit hit for {} ({} {}/{})", request.getRequestURI(),
+                ex.getKind(), ex.getCurrent(), ex.getLimit());
+        FlashMap flash = RequestContextUtils.getOutputFlashMap(request);
+        flash.put("upgradeModal", UpgradeModal.fromException(ex));
+        return "redirect:/threads";
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    String badArgument(IllegalArgumentException ex, HttpServletRequest request,
+                       Model model, HttpServletResponse response) {
+        log.warn("Bad request for {}: {}", request.getRequestURI(), ex.getMessage());
+        response.setStatus(HttpStatus.BAD_REQUEST.value());
+        model.addAttribute("status", 400);
+        model.addAttribute("message", "That request looked malformed. Please try again.");
         return "error";
     }
 

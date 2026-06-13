@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Cancel subscription — MailIM</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="/threads" class="brand">MailIM</a>
+  <nav class="header-nav">
+    <a href="/threads">Inbox</a>
+    <a href="/account">Account</a>
+  </nav>
+</header>
+
+<main class="account-page">
+
+  <h1 class="account-title">Cancel subscription</h1>
+
+  <section class="account-card">
+    <p class="auth-sub">
+      Before you go — one quick question so we can do better. After you
+      pick a reason we'll hand you off to Stripe to finalize the cancel;
+      your account stays active until the end of your billing period.
+    </p>
+
+    <form method="post" th:action="@{/billing/cancel-subscription}"
+          class="auth-form cancel-reason-form">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+      <label class="cancel-reason-option">
+        <input type="radio" name="reason" value="too_expensive" required>
+        <span>It's too expensive for what I use.</span>
+      </label>
+      <label class="cancel-reason-option">
+        <input type="radio" name="reason" value="missing_feature" required>
+        <span>It's missing a feature I need.</span>
+      </label>
+      <label class="cancel-reason-option">
+        <input type="radio" name="reason" value="switching" required>
+        <span>I'm switching to a different tool.</span>
+      </label>
+      <label class="cancel-reason-option">
+        <input type="radio" name="reason" value="temporary" required>
+        <span>I just need a break — may come back later.</span>
+      </label>
+      <label class="cancel-reason-option">
+        <input type="radio" name="reason" value="other" required>
+        <span>Something else.</span>
+      </label>
+
+      <div class="cancel-reason-actions">
+        <button type="submit" class="btn btn-primary">
+          Continue to Stripe
+        </button>
+        <a href="/account" class="link-button">Never mind, keep my plan</a>
+      </div>
+    </form>
+  </section>
+
+</main>
+
+</body>
+</html>

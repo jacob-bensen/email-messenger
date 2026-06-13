@@ -1,19 +1,30 @@
 spring:
   application:
     name: email-messenger
+
+  # Database connection comes entirely from environment variables. For local
+  # development use the `local` profile (application-local.yml), which points
+  # at localhost:5432/email_messenger — bootstrap it once with db/init.sql.
+  # Tests run against H2 via src/test/resources/application.yml.
   datasource:
     url: ${JDBC_DATABASE_URL}
     username: ${JDBC_DATABASE_USERNAME}
     password: ${JDBC_DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 30000
+
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: false
     open-in-view: false
+
   flyway:
     enabled: true
     locations: classpath:db/migration
     validateMigrationNaming: true
+
   mail:
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:587}
@@ -26,6 +37,109 @@ spring:
           starttls:
             enable: true
 
+# Google "Continue with Google" sign-in. Activated only when
+# AUTH_GOOGLE_CLIENT_ID is non-blank — see auth.google.client-id below.
+# Spring Boot's OAuth2 auto-config refuses to build a registration with
+# blank client-id, so we keep the wiring out of spring.security.oauth2
+# and supply our own ClientRegistrationRepository @Bean that the
+# ObjectProvider in SecurityConfig keys off.
+auth:
+  google:
+    client-id: ${AUTH_GOOGLE_CLIENT_ID:${GOOGLE_CLIENT_ID:}}
+    client-secret: ${AUTH_GOOGLE_CLIENT_SECRET:${GOOGLE_CLIENT_SECRET:}}
+    redirect-uri: ${AUTH_GOOGLE_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}
+
+# Actuator: only /actuator/health is exposed over HTTP. It aggregates the
+# DataSource probe (so a 200 confirms Flyway + Postgres are reachable) and
+# powers every hosting platform's deploy gate.
+# Mail health is disabled because the SMTP host is best-effort, not a
+# liveness signal — a flaky relay must not flap the whole app.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  health:
+    mail:
+      enabled: false
+    defaults:
+      enabled: true
+
+billing:
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    personal-price-id: ${STRIPE_PERSONAL_PRICE_ID:}
+    team-price-id: ${STRIPE_TEAM_PRICE_ID:}
+    enterprise-price-id: ${STRIPE_ENTERPRISE_PRICE_ID:}
+    personal-annual-price-id: ${STRIPE_PERSONAL_ANNUAL_PRICE_ID:}
+    team-annual-price-id: ${STRIPE_TEAM_ANNUAL_PRICE_ID:}
+    enterprise-annual-price-id: ${STRIPE_ENTERPRISE_ANNUAL_PRICE_ID:}
+    success-url: ${BILLING_SUCCESS_URL:}
+    cancel-url: ${BILLING_CANCEL_URL:}
+    portal-return-url: ${BILLING_PORTAL_RETURN_URL:}
+    trial-days: ${BILLING_TRIAL_DAYS:14}
+
+marketing:
+  base-url: ${MARKETING_BASE_URL:https://mailaim.app}
+  landing:
+    video:
+      provider: ${MARKETING_LANDING_VIDEO_PROVIDER:}
+      id: ${MARKETING_LANDING_VIDEO_ID:}
+      poster-url: ${MARKETING_LANDING_VIDEO_POSTER_URL:}
+      title: ${MARKETING_LANDING_VIDEO_TITLE:MailIM demo}
+
+mailbox:
+  encryption:
+    password: ${MAILBOX_ENCRYPTION_PASSWORD:}
+    salt: ${MAILBOX_ENCRYPTION_SALT:}
+  polling:
+    enabled: ${MAILBOX_POLLING_ENABLED:false}
+    interval-ms: ${MAILBOX_POLLING_INTERVAL_MS:300000}
+    initial-delay-ms: ${MAILBOX_POLLING_INITIAL_DELAY_MS:30000}
+
+digest:
+  enabled: ${DIGEST_ENABLED:false}
+  cron: ${DIGEST_CRON:0 0 14 ? * MON}
+  zone: ${DIGEST_ZONE:UTC}
+
+reengagement:
+  enabled: ${REENGAGEMENT_ENABLED:false}
+  cron: ${REENGAGEMENT_CRON:0 0 13 * * ?}
+  zone: ${REENGAGEMENT_ZONE:UTC}
+
+activation:
+  enabled: ${ACTIVATION_ENABLED:false}
+  cron: ${ACTIVATION_CRON:0 30 13 * * ?}
+  zone: ${ACTIVATION_ZONE:UTC}
+  followup:
+    cron: ${ACTIVATION_FOLLOWUP_CRON:0 45 13 * * ?}
+  lastchance:
+    cron: ${ACTIVATION_LASTCHANCE_CRON:0 0 14 * * ?}
+
+trial-end:
+  enabled: ${TRIAL_END_ENABLED:false}
+  cron: ${TRIAL_END_CRON:0 30 14 * * ?}
+  zone: ${TRIAL_END_ZONE:UTC}
+
+admin:
+  emails: ${ADMIN_EMAILS:}
+  weekly-digest:
+    enabled: ${ADMIN_WEEKLY_DIGEST_ENABLED:false}
+    cron: ${ADMIN_WEEKLY_DIGEST_CRON:0 0 9 ? * MON}
+    zone: ${ADMIN_WEEKLY_DIGEST_ZONE:UTC}
+
+logging:
+  level:
+    com.emailmessenger: INFO
+    root: WARN
+
 server:
   port: ${PORT:8080}
   error:
@@ -35,22 +149,3 @@ server:
     enabled: true
     mime-types: text/html,text/css,application/javascript,application/json,text/plain
     min-response-size: 1024
-
-logging:
-  level:
-    com.emailmessenger: INFO
-    org.flywaydb: INFO
-    root: WARN
-
-app:
-  base-url: ${APP_BASE_URL:https://mailaim.app}
-  imap:
-    host: ${IMAP_HOST:}
-    port: ${IMAP_PORT:993}
-    ssl: ${IMAP_SSL:true}
-    folder: ${IMAP_FOLDER:INBOX}
-    username: ${IMAP_USER:}
-    password: ${IMAP_PASS:}
-    polling:
-      enabled: ${IMAP_POLLING_ENABLED:false}
-      interval-ms: ${IMAP_POLLING_INTERVAL_MS:60000}

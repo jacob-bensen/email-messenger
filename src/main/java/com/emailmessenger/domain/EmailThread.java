@@ -3,9 +3,12 @@ package com.emailmessenger.domain;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
@@ -24,14 +27,21 @@ public class EmailThread {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "owner_id", nullable = false)
+    private User owner;
+
     @Column(nullable = false, length = 998)
     private String subject;
 
-    @Column(name = "root_message_id", unique = true, length = 998)
+    @Column(name = "root_message_id", length = 998)
     private String rootMessageId;
 
     @Column(name = "message_count", nullable = false)
     private int messageCount = 0;
+
+    @Column(nullable = false)
+    private boolean unread = true;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -45,7 +55,8 @@ public class EmailThread {
 
     protected EmailThread() {}
 
-    public EmailThread(String subject, String rootMessageId) {
+    public EmailThread(User owner, String subject, String rootMessageId) {
+        this.owner = owner;
         this.subject = subject;
         this.rootMessageId = rootMessageId;
     }
@@ -66,15 +77,20 @@ public class EmailThread {
         messages.add(message);
         messageCount = messages.size();
         updatedAt = LocalDateTime.now();
+        unread = true;
+    }
+
+    public void markRead() {
+        this.unread = false;
     }
 
     public Long getId() { return id; }
+    public User getOwner() { return owner; }
     public String getSubject() { return subject; }
     public String getRootMessageId() { return rootMessageId; }
     public int getMessageCount() { return messageCount; }
+    public boolean isUnread() { return unread; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public List<Message> getMessages() { return Collections.unmodifiableList(messages); }
-
-    public void setMessageCount(int messageCount) { this.messageCount = messageCount; }
 }

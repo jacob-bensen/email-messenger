@@ -1,0 +1,14 @@
+-- EPIC-13 Milestone 4: hide /password/forgot for Google-only users.
+--
+-- `password_set` distinguishes "user chose a password they remember" from "we
+-- minted a random unguessable bcrypt hash during Google provisioning". A
+-- Google-only user (google_subject IS NOT NULL AND password_set = FALSE) sees
+-- a "Sign in with Google" hint on /password/forgot instead of being allowed
+-- to reset to a password that would let them bypass Google sign-in entirely.
+--
+-- Default TRUE for the column so every existing row (all email-password
+-- registrations through V18) is treated as having a known password and stays
+-- reset-eligible. Fresh Google provisioning writes FALSE explicitly;
+-- completing a password reset toggles back to TRUE so the same user is no
+-- longer Google-only.
+ALTER TABLE users ADD COLUMN password_set BOOLEAN NOT NULL DEFAULT TRUE;

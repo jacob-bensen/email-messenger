@@ -1,0 +1,14 @@
+-- EPIC-14 Milestone 2: day-3 follow-up linking to the demo conversation.
+--
+-- Signups who got the day-1 "connect your mailbox" nudge but still haven't
+-- crossed the IMAP-credentials chasm 72h after registration are the cohort
+-- with the lowest activation intent. This second-tier nudge leads with
+-- the public `/demo` link rather than the IMAP form: a visitor who didn't
+-- act on a "connect your mailbox" CTA may still click through to see the
+-- product working with no signup friction.
+--
+-- `last_activation_followup_sent_at` is the one-shot stamp the follow-up
+-- service writes after sending, gating re-sends. It is tracked separately
+-- from `last_activation_nudge_sent_at` so each milestone in the activation
+-- drip fires at most once per signup, independent of the others.
+ALTER TABLE users ADD COLUMN last_activation_followup_sent_at TIMESTAMP;

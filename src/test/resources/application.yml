@@ -2,36 +2,135 @@
 # classpath so tests run against in-memory H2 with no env vars or local
 # Postgres required. Testcontainers-based tests override the datasource
 # with a real Postgres via @DynamicPropertySource.
+#
+# Mirrors the property blocks of the main application.yml with the values
+# tests historically ran against (the old `dev` profile). Many tests still
+# declare @ActiveProfiles("dev"); that profile no longer carries config and
+# activating it is a no-op.
 spring:
   application:
     name: email-messenger
+
   datasource:
     url: jdbc:h2:mem:emailmessenger;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
     username: sa
     password:
+
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: false
     open-in-view: false
+
   flyway:
     enabled: true
     locations: classpath:db/migration
+    validateMigrationNaming: true
+
   mail:
     host: localhost
     port: 1025
     protocol: smtp
 
-app:
-  base-url: ${APP_BASE_URL:https://mailaim.app}
-  imap:
-    host: ""
-    port: 993
-    ssl: true
-    folder: INBOX
-    username: ""
-    password: ""
-    polling:
+auth:
+  google:
+    client-id: ${AUTH_GOOGLE_CLIENT_ID:${GOOGLE_CLIENT_ID:}}
+    client-secret: ${AUTH_GOOGLE_CLIENT_SECRET:${GOOGLE_CLIENT_SECRET:}}
+    redirect-uri: ${AUTH_GOOGLE_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  health:
+    mail:
       enabled: false
-      interval-ms: 60000
+    defaults:
+      enabled: true
+
+billing:
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    personal-price-id: ${STRIPE_PERSONAL_PRICE_ID:}
+    team-price-id: ${STRIPE_TEAM_PRICE_ID:}
+    enterprise-price-id: ${STRIPE_ENTERPRISE_PRICE_ID:}
+    personal-annual-price-id: ${STRIPE_PERSONAL_ANNUAL_PRICE_ID:}
+    team-annual-price-id: ${STRIPE_TEAM_ANNUAL_PRICE_ID:}
+    enterprise-annual-price-id: ${STRIPE_ENTERPRISE_ANNUAL_PRICE_ID:}
+    success-url: ${BILLING_SUCCESS_URL:http://localhost:8080/billing/success?session_id={CHECKOUT_SESSION_ID}}
+    cancel-url: ${BILLING_CANCEL_URL:http://localhost:8080/billing/cancel}
+    portal-return-url: ${BILLING_PORTAL_RETURN_URL:http://localhost:8080/threads}
+    trial-days: 14
+
+marketing:
+  base-url: ${MARKETING_BASE_URL:http://localhost:8080}
+  landing:
+    video:
+      provider: ${MARKETING_LANDING_VIDEO_PROVIDER:}
+      id: ${MARKETING_LANDING_VIDEO_ID:}
+      poster-url: ${MARKETING_LANDING_VIDEO_POSTER_URL:}
+      title: ${MARKETING_LANDING_VIDEO_TITLE:MailIM demo}
+
+mailbox:
+  encryption:
+    password: ${MAILBOX_ENCRYPTION_PASSWORD:}
+    salt: ${MAILBOX_ENCRYPTION_SALT:}
+  polling:
+    enabled: ${MAILBOX_POLLING_ENABLED:false}
+    interval-ms: ${MAILBOX_POLLING_INTERVAL_MS:300000}
+    initial-delay-ms: ${MAILBOX_POLLING_INITIAL_DELAY_MS:30000}
+
+digest:
+  enabled: ${DIGEST_ENABLED:false}
+  cron: ${DIGEST_CRON:0 0 14 ? * MON}
+  zone: ${DIGEST_ZONE:UTC}
+
+reengagement:
+  enabled: ${REENGAGEMENT_ENABLED:false}
+  cron: ${REENGAGEMENT_CRON:0 0 13 * * ?}
+  zone: ${REENGAGEMENT_ZONE:UTC}
+
+activation:
+  enabled: ${ACTIVATION_ENABLED:false}
+  cron: ${ACTIVATION_CRON:0 30 13 * * ?}
+  zone: ${ACTIVATION_ZONE:UTC}
+  followup:
+    cron: ${ACTIVATION_FOLLOWUP_CRON:0 45 13 * * ?}
+  lastchance:
+    cron: ${ACTIVATION_LASTCHANCE_CRON:0 0 14 * * ?}
+
+trial-end:
+  enabled: ${TRIAL_END_ENABLED:false}
+  cron: ${TRIAL_END_CRON:0 30 14 * * ?}
+  zone: ${TRIAL_END_ZONE:UTC}
+
+admin:
+  emails: ${ADMIN_EMAILS:}
+  weekly-digest:
+    enabled: ${ADMIN_WEEKLY_DIGEST_ENABLED:false}
+    cron: ${ADMIN_WEEKLY_DIGEST_CRON:0 0 9 ? * MON}
+    zone: ${ADMIN_WEEKLY_DIGEST_ZONE:UTC}
+
+logging:
+  level:
+    com.emailmessenger: DEBUG
+    org.flywaydb: INFO
+
+server:
+  port: 8080
+  error:
+    whitelabel:
+      enabled: false
+  compression:
+    enabled: true
+    mime-types: text/html,text/css,application/javascript,application/json,text/plain
+    min-response-size: 1024
