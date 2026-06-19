@@ -6,6 +6,7 @@ import com.emailmessenger.domain.Participant;
 import com.emailmessenger.domain.User;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -41,7 +42,7 @@ class ConversationServiceTest {
         Conversation conv = svc.buildConversation(t);
 
         assertThat(conv.runs()).hasSize(1);
-        assertThat(conv.runs().get(0).sender()).isEqualTo(alice);
+        assertThat(conv.runs().get(0).sender().email()).isEqualTo("alice@test.com");
         assertThat(conv.runs().get(0).messages()).hasSize(1);
     }
 
@@ -71,9 +72,9 @@ class ConversationServiceTest {
         Conversation conv = svc.buildConversation(t);
 
         assertThat(conv.runs()).hasSize(3);
-        assertThat(conv.runs().get(0).sender().getEmail()).isEqualTo("alice@test.com");
-        assertThat(conv.runs().get(1).sender().getEmail()).isEqualTo("bob@test.com");
-        assertThat(conv.runs().get(2).sender().getEmail()).isEqualTo("alice@test.com");
+        assertThat(conv.runs().get(0).sender().email()).isEqualTo("alice@test.com");
+        assertThat(conv.runs().get(1).sender().email()).isEqualTo("bob@test.com");
+        assertThat(conv.runs().get(2).sender().email()).isEqualTo("alice@test.com");
     }
 
     @Test
@@ -223,6 +224,103 @@ class ConversationServiceTest {
         Conversation conv = svc.buildConversation(t);
 
         assertThat(conv.runs().get(0).date()).isNotEqualTo(conv.runs().get(1).date());
+    }
+
+    @Test
+    void outboundMessageProducesOutboundRunSeparateFromInbound() {
+        EmailThread t = thread("Test");
+        Participant them = new Participant("them@test.com", "Them");
+        Participant me = new Participant("me@test.com", "Me");
+        t.addMessage(message(t, them, "Hi", 0));
+        Message reply = message(t, me, "Hello back", 1);
+        reply.markOutbound();
+        t.addMessage(reply);
+
+        Conversation conv = svc.buildConversation(t);
+
+        assertThat(conv.runs()).hasSize(2);
+        assertThat(conv.runs().get(0).outbound()).isFalse();
+        assertThat(conv.runs().get(1).outbound()).isTrue();
+    }
+
+    // --- sender conversation (cross-thread chat) ---
+
+    @Test
+    void senderConversationGroupsByThreadAndBadgesEachRun() {
+        Participant ada = new Participant("ada@acme.com", "Ada Lovelace");
+        EmailThread t1 = thread("Invoice question");
+        EmailThread t2 = thread("Project kickoff");
+        Message m1 = message(t1, ada, "About the invoice", 0);
+        Message m2 = message(t1, ada, "Following up", 1);
+        Message m3 = message(t2, ada, "Kickoff is Monday", 2);
+
+        SenderConversation conv = svc.buildSenderConversation(List.of(m1, m2, m3), "ada@acme.com");
+
+        assertThat(conv.sender().email()).isEqualTo("ada@acme.com");
+        assertThat(conv.runs()).hasSize(2);
+        assertThat(conv.runs().get(0).messages()).hasSize(2);
+        assertThat(conv.runs().get(0).thread().subject()).isEqualTo("Invoice question");
+        assertThat(conv.runs().get(1).messages()).hasSize(1);
+        assertThat(conv.runs().get(1).thread().subject()).isEqualTo("Project kickoff");
+        assertThat(conv.threadCount()).isEqualTo(2);
+        assertThat(conv.messageCount()).isEqualTo(3);
+    }
+
+    @Test
+    void senderConversationCountsRecurringThreadOnce() {
+        Participant ada = new Participant("ada@acme.com", "Ada");
+        EmailThread t1 = thread("Thread A");
+        EmailThread t2 = thread("Thread B");
+        // A, then B, then back to A → 3 runs but only 2 distinct threads
+        SenderConversation conv = svc.buildSenderConversation(List.of(
+            message(t1, ada, "A1", 0),
+            message(t2, ada, "B1", 1),
+            message(t1, ada, "A2", 2)), "ada@acme.com");
+
+        assertThat(conv.runs()).hasSize(3);
+        assertThat(conv.threadCount()).isEqualTo(2);
+    }
+
+    @Test
+    void senderConversationInterleavesOwnOutboundRepliesAsYou() {
+        Participant ada = new Participant("ada@acme.com", "Ada");
+        Participant me = new Participant("me@acme.com", "Me");
+        EmailThread t = thread("Invoice");
+        Message inbound = message(t, ada, "Can you send the invoice?", 0);
+        Message reply = message(t, me, "Sure, attached.", 1);
+        reply.markOutbound();
+
+        SenderConversation conv = svc.buildSenderConversation(List.of(inbound, reply), "ada@acme.com");
+
+        // Header is the correspondent, not the outbound side.
+        assertThat(conv.sender().email()).isEqualTo("ada@acme.com");
+        assertThat(conv.runs()).hasSize(2);
+        assertThat(conv.runs().get(0).outbound()).isFalse();
+        assertThat(conv.runs().get(1).outbound()).isTrue();
+        assertThat(conv.messageCount()).isEqualTo(2);
+    }
+
+    @Test
+    void htmlQuotedReplyBlockIsStrippedFromBubble() {
+        EmailThread t = thread("Re: Hello");
+        Participant ada = new Participant("ada@acme.com", "Ada");
+        Message msg = new Message(t, ada, "Re: Hello", "plain",
+            "<p>Thanks!</p><blockquote>On Mon you wrote: the original message</blockquote>", BASE_TIME);
+        t.addMessage(msg);
+
+        String bodyHtml = svc.buildConversation(t).runs().get(0).messages().get(0).bodyHtml();
+        assertThat(bodyHtml).contains("Thanks!");
+        assertThat(bodyHtml).doesNotContain("the original message");
+    }
+
+    @Test
+    void senderConversationOfEmptyListHasNoRuns() {
+        SenderConversation conv = svc.buildSenderConversation(List.of(), "ada@acme.com");
+
+        assertThat(conv.runs()).isEmpty();
+        assertThat(conv.threadCount()).isEqualTo(0);
+        assertThat(conv.messageCount()).isEqualTo(0);
+        assertThat(conv.sender()).isNull();
     }
 
     @Test

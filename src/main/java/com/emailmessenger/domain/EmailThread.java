@@ -74,10 +74,20 @@ public class EmailThread {
     }
 
     public void addMessage(Message message) {
+        addMessage(message, true);
+    }
+
+    /**
+     * Adds a message, optionally flagging the thread unread. Received mail flags
+     * it unread; the owner's own imported sent mail does not.
+     */
+    public void addMessage(Message message, boolean flagUnread) {
         messages.add(message);
         messageCount = messages.size();
         updatedAt = LocalDateTime.now();
-        unread = true;
+        if (flagUnread) {
+            unread = true;
+        }
     }
 
     public void markRead() {

@@ -4,15 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <th:block th:replace="~{fragments/seo :: meta(
-      pageTitle='Reset your password — MailIM',
-      pageDescription='Forgot your MailIM password? Enter your email and we will send a link to set a new one.',
+      pageTitle='Reset your password — ConexusMail',
+      pageDescription='Forgot your ConexusMail password? Enter your email and we will send a link to set a new one.',
       pagePath='/password/forgot')}"></th:block>
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>
 
 <header class="app-header">
-  <a href="/" class="brand">MailIM</a>
+  <a href="/" class="brand">ConexusMail</a>
   <nav class="header-nav">
     <a href="/pricing">Pricing</a>
     <a href="/login">Sign in</a>
@@ -31,7 +31,7 @@
     <th:block th:if="${status == 'google'}">
       <div class="alert alert-info">
         That account uses <strong>Continue with Google</strong> to sign in —
-        there's no MailIM password to reset. Use the button below to sign in.
+        there's no ConexusMail password to reset. Use the button below to sign in.
       </div>
       <a th:if="${oauthGoogleEnabled}"
          th:href="@{/auth/google/start}"
@@ -69,7 +69,7 @@
 </main>
 
 <footer class="marketing-footer">
-  <span>&copy; MailIM</span>
+  <span>&copy; ConexusMail · Bensen LLC</span>
   <nav>
     <a href="/pricing">Pricing</a>
     <a href="/privacy">Privacy</a>

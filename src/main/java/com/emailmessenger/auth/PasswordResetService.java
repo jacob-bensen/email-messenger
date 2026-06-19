@@ -70,8 +70,8 @@ public class PasswordResetService {
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
-    @Value("${spring.mail.username:noreply@mailaim.app}")
-    private String fromAddress = "noreply@mailaim.app";
+    @Value("${spring.mail.username:noreply@conexusmail.com}")
+    private String fromAddress = "noreply@conexusmail.com";
 
     PasswordResetService(UserRepository users,
                          PasswordResetTokenRepository tokens,
@@ -204,7 +204,7 @@ public class PasswordResetService {
             MimeMessageHelper helper = new MimeMessageHelper(mime, false, "UTF-8");
             helper.setFrom(fromAddress);
             helper.setTo(user.getEmail());
-            helper.setSubject("Reset your MailIM password");
+            helper.setSubject("Reset your ConexusMail password");
             helper.setText(renderBody(user, plainToken), false);
         } catch (MessagingException e) {
             throw new MailPreparationException("Could not compose password-reset email", e);
@@ -218,7 +218,7 @@ public class PasswordResetService {
         String url = site.getBaseUrl() + "/password/reset?token=" + plainToken;
         return "Hi " + greeting + ",\n\n"
                 + "Someone (hopefully you) asked to reset the password on your "
-                + "MailIM account.\n\n"
+                + "ConexusMail account.\n\n"
                 + "Click the link below within the next hour to set a new "
                 + "password:\n\n"
                 + url + "\n\n"

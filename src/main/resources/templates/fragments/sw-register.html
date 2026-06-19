@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+
+<!--
+  Service-worker registration. Deliberately skipped on localhost: that origin
+  (e.g. localhost:8080) is shared by every app you run on the port, and a worker
+  scoped to "/" would intercept and cache their requests too. On localhost we
+  instead unregister any worker and drop our caches so a previous run can't keep
+  hijacking other apps. The PWA still installs on the real production domain.
+-->
+<th:block th:fragment="register">
+<script>
+  (function () {
+    if (!('serviceWorker' in navigator)) return;
+    var h = location.hostname;
+    var isLocal = h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '0.0.0.0';
+    if (isLocal) {
+      navigator.serviceWorker.getRegistrations()
+        .then(function (regs) { regs.forEach(function (r) { r.unregister(); }); })
+        .catch(function () {});
+      if (window.caches && caches.keys) {
+        caches.keys()
+          .then(function (keys) {
+            keys.forEach(function (k) { if (k.indexOf('conexusmail-') === 0) caches.delete(k); });
+          })
+          .catch(function () {});
+      }
+      return;
+    }
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
+    });
+  }());
+</script>
+</th:block>
+
+</body>
+</html>

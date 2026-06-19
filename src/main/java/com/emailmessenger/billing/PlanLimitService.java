@@ -1,7 +1,6 @@
 package com.emailmessenger.billing;
 
 import com.emailmessenger.domain.Plan;
-import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.repository.MailAccountRepository;
@@ -10,22 +9,15 @@ import com.emailmessenger.repository.SubscriptionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Set;
-
 /**
- * Enforces per-plan caps so a Free user gets steered into Checkout when
- * they try to push past their tier. The check method throws
- * {@link PlanLimitExceededException}; controllers/services upstream catch
- * it and render the upgrade modal.
+ * Resolves entitlements. ConexusMail unlocks every feature for every account,
+ * so {@link #currentPlan} is the top tier and the {@code enforceCan*} caps are
+ * effectively no-ops. The class is kept (rather than ripped out) so callers and
+ * the upgrade-modal plumbing still compile and can be re-enabled if pricing
+ * ever returns.
  */
 @Service
 public class PlanLimitService {
-
-    // Statuses that grant the user the entitlements of their paid plan.
-    // "incomplete" and "canceled" fall back to FREE so a half-finished
-    // checkout doesn't unlock paid limits, and a lapsed user can't keep
-    // creating threads after their subscription ends.
-    private static final Set<String> ENTITLING_STATUSES = Set.of("trialing", "active", "past_due");
 
     private final SubscriptionRepository subscriptions;
     private final EmailThreadRepository threads;
@@ -43,17 +35,15 @@ public class PlanLimitService {
     }
 
     /**
-     * The user's effective plan for entitlement purposes. Returns FREE when
-     * there's no subscription, when the row is still {@code incomplete} (mid-
-     * checkout), or when it's {@code canceled} / {@code unpaid}.
+     * The user's effective plan for entitlement purposes. ConexusMail (Bensen
+     * LLC) ships every feature to every account, so this is unconditionally the
+     * top tier — paid features are unlocked for all accounts regardless of any
+     * Stripe subscription state. Billing/checkout and admin analytics read the
+     * raw {@link Subscription} directly and are unaffected by this.
      */
     @Transactional(readOnly = true)
     public Plan currentPlan(User user) {
-        Subscription sub = subscriptions.findByUser(user).orElse(null);
-        if (sub == null || sub.getPlan() == null || !ENTITLING_STATUSES.contains(sub.getStatus())) {
-            return Plan.FREE;
-        }
-        return sub.getPlan();
+        return Plan.ENTERPRISE;
     }
 
     @Transactional(readOnly = true)

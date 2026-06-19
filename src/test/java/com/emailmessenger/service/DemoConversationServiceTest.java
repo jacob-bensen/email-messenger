@@ -20,7 +20,7 @@ class DemoConversationServiceTest {
 
         assertThat(conv.thread().getSubject()).isEqualTo("Launch checklist — Tuesday demo");
         Set<String> senders = conv.runs().stream()
-                .map(r -> r.sender().getDisplayName())
+                .map(r -> r.sender().displayName())
                 .collect(Collectors.toSet());
         assertThat(senders).containsExactlyInAnyOrder("Alex Lee", "Sam Patel", "Maya Chen");
     }
@@ -31,7 +31,7 @@ class DemoConversationServiceTest {
 
         // Alex sends two messages back-to-back at the start — must collapse into one run.
         BubbleRun first = conv.runs().get(0);
-        assertThat(first.sender().getDisplayName()).isEqualTo("Alex Lee");
+        assertThat(first.sender().displayName()).isEqualTo("Alex Lee");
         assertThat(first.messages()).hasSizeGreaterThanOrEqualTo(2);
     }
 
@@ -58,7 +58,7 @@ class DemoConversationServiceTest {
                 .collect(Collectors.joining("\n"));
 
         // "> Two things blocking launch:" appears verbatim only inside a quoted-reply block —
-        // if MailIM's quote stripper works, that text should not survive into the rendered HTML.
+        // if ConexusMail's quote stripper works, that text should not survive into the rendered HTML.
         assertThat(allBodies).doesNotContain("&gt; Two things blocking launch");
         assertThat(allBodies).doesNotContain("On Mon, Jun 3, Alex Lee wrote:");
     }

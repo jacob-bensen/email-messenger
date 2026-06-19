@@ -115,7 +115,7 @@ class WeeklyDigestServiceTest {
     }
 
     @Test
-    void freeUserIsSkipped() {
+    void accountWithoutSubscriptionStillGetsDigest() {
         User user = newUser("free@example.com");
         newThread(user, "Hello", LocalDateTime.now().minusDays(1),
                 "ada@example.com", "hi");
@@ -124,9 +124,10 @@ class WeeklyDigestServiceTest {
 
         boolean sent = digestService.sendDigestFor(user);
 
-        assertThat(sent).isFalse();
-        verify(mailSender, never()).send(any(MimeMessage.class));
-        assertThat(preferences.findByUser(user)).isEmpty();
+        // Digests are unlocked for everyone, so a subscription-less account with
+        // new matches still receives one.
+        assertThat(sent).isTrue();
+        verify(mailSender).send(any(MimeMessage.class));
     }
 
     @Test
@@ -208,7 +209,7 @@ class WeeklyDigestServiceTest {
         MimeMessage mime = captor.getValue();
         assertThat(mime.getAllRecipients()).hasSize(1);
         assertThat(mime.getAllRecipients()[0].toString()).isEqualTo("footer@example.com");
-        assertThat(mime.getSubject()).contains("MailIM weekly digest");
+        assertThat(mime.getSubject()).contains("ConexusMail weekly digest");
         DigestEmailPreference prefs = preferences.findByUser(user).orElseThrow();
         String body = (String) mime.getContent();
         assertThat(body).contains("From Ada");

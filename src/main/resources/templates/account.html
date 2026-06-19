@@ -4,24 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Account — MailIM</title>
+  <title>Account — ConexusMail</title>
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>
 
-<header class="app-header">
-  <span class="brand">MailIM</span>
-  <nav class="header-nav">
-    <a href="/threads">Inbox</a>
-    <a href="/mailboxes">Mailboxes</a>
-    <form th:action="@{/logout}" method="post" class="header-logout">
-      <input type="hidden" th:if="${_csrf != null}"
-             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-      <button type="submit" class="link-button">Sign out</button>
-    </form>
-  </nav>
-</header>
+<div class="app-shell">
 
+<th:block th:replace="~{fragments/app-nav :: nav}"></th:block>
+
+<div class="app-main">
 <main class="account-page">
 
   <h1 class="account-title">Account</h1>
@@ -169,6 +161,8 @@
   </section>
 
 </main>
+</div>
+</div>
 
 </body>
 </html>

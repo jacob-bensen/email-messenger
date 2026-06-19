@@ -4,45 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
-  <title>Inbox — MailIM</title>
+  <title>Inbox — ConexusMail</title>
   <link rel="manifest" href="/manifest.webmanifest">
-  <meta name="theme-color" content="#4f80ff">
+  <meta name="theme-color" content="#2f855a">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="MailIM">
+  <meta name="apple-mobile-web-app-title" content="ConexusMail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
-      });
-    }
-  </script>
+  <th:block th:replace="~{fragments/sw-register :: register}"></th:block>
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>
 
-<header class="app-header">
-  <span class="brand">MailIM</span>
-  <nav class="header-nav">
-    <span class="kbd-hint"><kbd>j</kbd><kbd>k</kbd> navigate · <kbd>Enter</kbd> open</span>
-    <a href="/pricing">Pricing</a>
-    <a href="/mailboxes">Mailboxes</a>
-    <a href="/account">Account</a>
-    <form th:if="${hasBilling}" th:action="@{/billing/portal}" method="post" class="header-logout">
-      <input type="hidden" th:if="${_csrf != null}"
-             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-      <button type="submit" class="link-button">Billing</button>
-    </form>
-    <form th:action="@{/logout}" method="post" class="header-logout">
-      <input type="hidden" th:if="${_csrf != null}"
-             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-      <button type="submit" class="link-button">Sign out</button>
-    </form>
-  </nav>
-</header>
+<div class="app-shell">
 
+<th:block th:replace="~{fragments/app-nav :: nav}"></th:block>
+
+<div class="app-main">
 <main class="thread-page">
 
   <div th:if="${upgradeModal != null}"
@@ -55,11 +34,7 @@
       <button type="button" class="modal-close" aria-label="Dismiss"
               onclick="document.getElementById('upgrade-modal-overlay').remove();">×</button>
       <h2 id="upgrade-modal-title" class="modal-title"
-          th:text="${upgradeModal.kind.name() == 'MAILBOX_COUNT'
-                     ? 'You''ve hit your Free plan mailbox limit'
-                     : (upgradeModal.kind.name() == 'SAVED_SEARCH_COUNT'
-                        ? 'Save more searches on Personal'
-                        : 'You''ve hit your Free plan limit')}">
+          th:text="${upgradeModal.kind.name() == 'MAILBOX_COUNT' ? 'You''ve hit your Free plan mailbox limit' : (upgradeModal.kind.name() == 'SAVED_SEARCH_COUNT' ? 'Save more searches on Personal' : 'You''ve hit your Free plan limit')}">
         You've hit your Free plan limit
       </h2>
       <p class="modal-sub" th:if="${upgradeModal.kind.name() == 'THREAD_COUNT'}"
@@ -68,7 +43,7 @@
       </p>
       <p class="modal-sub" th:if="${upgradeModal.kind.name() == 'MAILBOX_COUNT'}"
          th:text="|You've connected ${upgradeModal.current} of ${upgradeModal.limit} mailboxes on the Free plan. Upgrade to connect more accounts.|">
-        You've connected 1 of 1 mailboxes on the Free plan. Upgrade to connect more accounts.
+        You've connected 3 of 3 mailboxes on the Free plan. Upgrade to connect more accounts.
       </p>
       <p class="modal-sub" th:if="${upgradeModal.kind.name() == 'SAVED_SEARCH_COUNT'}"
          th:text="|Free includes ${upgradeModal.limit} saved search. Upgrade to Personal to pin every "everything from X" view you care about.|">
@@ -79,7 +54,7 @@
           <div class="plan-compare-tag">Current</div>
           <div class="plan-compare-name">Free</div>
           <ul class="plan-compare-features">
-            <li>1 mailbox</li>
+            <li>3 mailboxes</li>
             <li>500 threads</li>
             <li>30-day history</li>
           </ul>
@@ -205,7 +180,7 @@
     <span class="verify-email-text">
       <strong th:if="${verifyFlash == 'resent'}">We just sent a fresh verification link.</strong>
       <strong th:if="${verifyFlash == 'resendFailed'}">We couldn't send the verification email — try again in a moment.</strong>
-      <strong th:if="${verifyFlash == null or (verifyFlash != 'resent' and verifyFlash != 'resendFailed')}">Confirm your email to keep your MailIM account.</strong>
+      <strong th:if="${verifyFlash == null or (verifyFlash != 'resent' and verifyFlash != 'resendFailed')}">Confirm your email to keep your ConexusMail account.</strong>
       Check your inbox for the link we sent on signup, or resend it below.
     </span>
     <form th:action="@{/verify-email/resend}" method="post" class="verify-email-form">
@@ -225,7 +200,7 @@
               th:text="${billingBanner.planLabel != null} ? |Your ${billingBanner.planLabel} trial ends tomorrow.| : 'Your trial ends tomorrow.'">Your trial ends tomorrow.</strong>
       <strong th:if="${billingBanner.daysLeft > 1}"
               th:text="${billingBanner.planLabel != null} ? |${billingBanner.planLabel} trial ends in ${billingBanner.daysLeft} days.| : |Trial ends in ${billingBanner.daysLeft} days.|">Trial ends in 14 days.</strong>
-      Add a card to keep MailIM after the trial.
+      Add a card to keep ConexusMail after the trial.
     </span>
     <a href="/pricing" class="btn btn-primary trial-banner-cta">Add card</a>
   </div>
@@ -243,86 +218,7 @@
   <div class="thread-layout"
        th:classappend="${(senderGroups != null and !senderGroups.isEmpty()) or (savedSearches != null and !savedSearches.isEmpty())} ? ' thread-layout-with-rail' : ''">
 
-  <aside class="sender-rail"
-         th:if="${(senderGroups != null and !senderGroups.isEmpty()) or (savedSearches != null and !savedSearches.isEmpty())}"
-         aria-label="Inbox filters">
-    <details class="sender-rail-details saved-search-rail"
-             th:if="${savedSearches != null and !savedSearches.isEmpty()}" open>
-      <summary class="sender-rail-summary">
-        <span>Saved searches</span>
-        <span class="sender-rail-toggle-hint" aria-hidden="true">▾</span>
-      </summary>
-      <div th:each="saved : ${savedSearches}"
-           class="saved-search-row"
-           th:classappend="${saved.matches(searchQuery, activeSender,
-                              activeFilters != null ? activeFilters.sincePreset() : null,
-                              activeFilters != null ? activeFilters.requireUnread() : false,
-                              activeFilters != null ? activeFilters.requireAttachments() : false)} ? ' saved-search-active' : ''">
-        <a th:href="@{/threads(s=${saved.id()},
-                                q=${saved.hasQuery()} ? ${saved.query()} : null,
-                                from=${saved.hasSender()} ? ${saved.senderEmail()} : null,
-                                since=${saved.hasSincePreset()} ? ${saved.sincePreset()} : null,
-                                unread=${saved.requireUnread()} ? 'true' : null,
-                                attachments=${saved.requireAttachments()} ? 'true' : null)}"
-           class="saved-search-link">
-          <span class="saved-search-icon" aria-hidden="true">★</span>
-          <span class="saved-search-name" th:text="${saved.name()}">My saved search</span>
-          <span class="saved-search-new"
-                th:if="${saved.hasNew()}"
-                th:text="${saved.newCount()}"
-                th:attr="aria-label=|${saved.newCount()} new since last visit|">3</span>
-          <span class="saved-search-count"
-                th:text="${saved.matchCount()}"
-                th:attr="aria-label=|${saved.matchCount()} matching threads|">12</span>
-        </a>
-        <form th:action="@{/searches/{id}/delete(id=${saved.id()})}" method="post"
-              class="saved-search-delete-form"
-              onsubmit="return confirm('Delete this saved search?');">
-          <input type="hidden" name="q" th:if="${searchQuery != null and !#strings.isEmpty(searchQuery)}" th:value="${searchQuery}">
-          <input type="hidden" name="from" th:if="${activeSender != null}" th:value="${activeSender}">
-          <input type="hidden" name="since" th:if="${activeFilters != null and activeFilters.sincePreset() != null}" th:value="${activeFilters.sincePreset()}">
-          <input type="hidden" name="unread" value="true" th:if="${activeFilters != null and activeFilters.requireUnread()}">
-          <input type="hidden" name="attachments" value="true" th:if="${activeFilters != null and activeFilters.requireAttachments()}">
-          <input type="hidden" th:if="${_csrf != null}"
-                 th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-          <button type="submit" class="saved-search-delete" aria-label="Delete saved search">&times;</button>
-        </form>
-      </div>
-    </details>
-    <details class="sender-rail-details" th:if="${senderGroups != null and !senderGroups.isEmpty()}" open>
-      <summary class="sender-rail-summary">
-        <span>Senders</span>
-        <span class="sender-rail-toggle-hint" aria-hidden="true">▾</span>
-      </summary>
-      <a class="sender-rail-row sender-rail-everyone"
-         th:classappend="${activeSender == null} ? ' sender-rail-active' : ''"
-         th:href="@{/threads(q=${searchQuery != null and !#strings.isEmpty(searchQuery)} ? ${searchQuery} : null,
-                            since=${activeFilters != null} ? ${activeFilters.sincePreset()} : null,
-                            unread=${activeFilters != null and activeFilters.requireUnread()} ? 'true' : null,
-                            attachments=${activeFilters != null and activeFilters.requireAttachments()} ? 'true' : null)}">
-        <span class="sender-rail-avatar sender-rail-avatar-everyone" aria-hidden="true">∗</span>
-        <span class="sender-rail-text">
-          <span class="sender-rail-name">Everyone</span>
-        </span>
-      </a>
-      <a th:each="sender : ${senderGroups}"
-         th:href="@{/threads(q=${searchQuery}, from=${sender.email()},
-                             since=${activeFilters != null} ? ${activeFilters.sincePreset()} : null,
-                             unread=${activeFilters != null and activeFilters.requireUnread()} ? 'true' : null,
-                             attachments=${activeFilters != null and activeFilters.requireAttachments()} ? 'true' : null)}"
-         class="sender-rail-row"
-         th:classappend="${activeSender != null and #strings.equalsIgnoreCase(activeSender, sender.email())} ? ' sender-rail-active' : ''">
-        <span class="sender-rail-avatar" aria-hidden="true" th:text="${sender.initials()}">AB</span>
-        <span class="sender-rail-text">
-          <span class="sender-rail-name" th:text="${sender.label()}">Ada Lovelace</span>
-          <span class="sender-rail-email"
-                th:if="${sender.displayName() != null and !#strings.isEmpty(sender.displayName())}"
-                th:text="${sender.email()}">ada@acme.com</span>
-        </span>
-        <span class="sender-rail-count" th:text="${sender.threadCount()}">12</span>
-      </a>
-    </details>
-  </aside>
+  <th:block th:replace="~{fragments/sender-rail :: rail}"></th:block>
 
   <div class="thread-main">
 
@@ -331,7 +227,7 @@
            aria-label="Getting started progress">
     <th:block th:if="${onboarding != null}">
       <div class="onboarding-progress-header">
-        <span class="onboarding-progress-title">Get the most out of MailIM</span>
+        <span class="onboarding-progress-title">Get the most out of ConexusMail</span>
         <span class="onboarding-progress-count"
               th:text="|${onboarding.completedSteps()} of ${onboarding.totalSteps()} done|">1 of 3 done</span>
       </div>
@@ -344,32 +240,26 @@
       <div class="onboarding-progress-row">
         <ol class="onboarding-progress-steps">
           <li class="onboarding-progress-step"
-              th:classappend="${onboarding.mailboxConnected} ? ' onboarding-progress-step-done'
-                              : ' onboarding-progress-step-current'">
+              th:classappend="${onboarding.mailboxConnected} ? ' onboarding-progress-step-done' : ' onboarding-progress-step-current'">
             <span class="onboarding-progress-step-mark" aria-hidden="true"
                   th:text="${onboarding.mailboxConnected} ? '&#10003;' : '1'">1</span>
             <span class="onboarding-progress-step-text">Connect a mailbox</span>
           </li>
           <li class="onboarding-progress-step"
-              th:classappend="${onboarding.threadsImported} ? ' onboarding-progress-step-done'
-                              : (onboarding.mailboxConnected ? ' onboarding-progress-step-current' : '')">
+              th:classappend="${onboarding.threadsImported} ? ' onboarding-progress-step-done' : (onboarding.mailboxConnected ? ' onboarding-progress-step-current' : '')">
             <span class="onboarding-progress-step-mark" aria-hidden="true"
                   th:text="${onboarding.threadsImported} ? '&#10003;' : '2'">2</span>
             <span class="onboarding-progress-step-text"
-                  th:text="${onboarding.threadsImported}
-                           ? 'Imported 10 threads'
-                           : |Import 10 threads (${onboarding.threadsRemaining()} to go)|">Import 10 threads</span>
+                  th:text="${onboarding.threadsImported} ? 'Imported 10 threads' : |Import 10 threads (${onboarding.threadsRemaining()} to go)|">Import 10 threads</span>
           </li>
           <li class="onboarding-progress-step"
-              th:classappend="${onboarding.savedSearchSaved} ? ' onboarding-progress-step-done'
-                              : (onboarding.threadsImported ? ' onboarding-progress-step-current' : '')">
+              th:classappend="${onboarding.savedSearchSaved} ? ' onboarding-progress-step-done' : (onboarding.threadsImported ? ' onboarding-progress-step-current' : '')">
             <span class="onboarding-progress-step-mark" aria-hidden="true"
                   th:text="${onboarding.savedSearchSaved} ? '&#10003;' : '3'">3</span>
             <span class="onboarding-progress-step-text">Save a search</span>
           </li>
           <li class="onboarding-progress-step"
-              th:classappend="${onboarding.teammateInvited} ? ' onboarding-progress-step-done'
-                              : (onboarding.savedSearchSaved ? ' onboarding-progress-step-current' : '')">
+              th:classappend="${onboarding.teammateInvited} ? ' onboarding-progress-step-done' : (onboarding.savedSearchSaved ? ' onboarding-progress-step-current' : '')">
             <span class="onboarding-progress-step-mark" aria-hidden="true"
                   th:text="${onboarding.teammateInvited} ? '&#10003;' : '4'">4</span>
             <span class="onboarding-progress-step-text">Invite a teammate</span>
@@ -499,6 +389,8 @@
     <span class="sender-pill-label">Showing only threads from
       <strong th:text="${activeSender}">sender@example.com</strong>
     </span>
+    <a class="sender-pill-chat"
+       th:href="@{/senders(email=${activeSender})}">View as one chat →</a>
     <a class="sender-pill-clear"
        th:href="@{/threads(q=${searchQuery},
                            since=${activeFilters != null} ? ${activeFilters.sincePreset()} : null,
@@ -532,18 +424,27 @@
         th:if="${(searchQuery == null or #strings.isEmpty(searchQuery)) and activeSender != null}"
         th:text="|${threads.totalElements} thread${threads.totalElements == 1 ? '' : 's'} from ${activeSender}|">
       Threads from sender</h2>
-    <h2 class="section-title"
-        th:if="${(searchQuery == null or #strings.isEmpty(searchQuery)) and activeSender == null}">
-      Conversations</h2>
+    <div class="thread-list-head"
+         th:if="${(searchQuery == null or #strings.isEmpty(searchQuery)) and activeSender == null}">
+      <h2 class="section-title">Conversations</h2>
+      <span class="kbd-hint"><kbd>j</kbd><kbd>k</kbd> navigate · <kbd>Enter</kbd> open</span>
+    </div>
     <div class="thread-list">
       <a th:each="thread : ${threads}"
          th:href="@{/threads/{id}(id=${thread.id})}"
          class="thread-item"
          th:classappend="${thread.unread} ? ' thread-item-unread' : ''">
-        <div class="thread-subject" th:text="${thread.subject}">Thread subject</div>
+        <div class="thread-item-head">
+          <div class="thread-subject" th:text="${thread.subject}">Thread subject</div>
+          <span class="thread-date"
+                th:text="${#temporals.format(thread.updatedAt, 'MMM d, yyyy')}">Jan 1, 2025</span>
+        </div>
         <div class="thread-meta">
-          <span th:text="${thread.messageCount + ' message' + (thread.messageCount != 1 ? 's' : '')}">1 message</span>
-          <span th:text="${#temporals.format(thread.updatedAt, 'MMM d, yyyy')}">Jan 1, 2025</span>
+          <span class="thread-from"
+                th:if="${activeSender == null and threadSenders != null and threadSenders.containsKey(thread.id)}"
+                th:text="${threadSenders.get(thread.id)}">Sender Name</span>
+          <span class="thread-count"
+                th:text="${thread.messageCount + ' message' + (thread.messageCount != 1 ? 's' : '')}">1 message</span>
         </div>
       </a>
     </div>
@@ -586,13 +487,11 @@
 
   <div class="onboarding-card" th:if="${threads != null and threads.totalElements == 0 and onboarding != null}">
     <h2 class="onboarding-title"
-        th:text="${!onboarding.mailboxConnected} ? 'Welcome to MailIM' : 'Your inbox is connected'">
-      Welcome to MailIM
+        th:text="${!onboarding.mailboxConnected} ? 'Welcome to ConexusMail' : 'Your inbox is connected'">
+      Welcome to ConexusMail
     </h2>
     <p class="onboarding-sub"
-       th:text="${!onboarding.mailboxConnected}
-                ? 'A few quick steps and your email becomes a chat.'
-                : 'We''re importing your conversations. Sync now or check back in a minute.'">
+       th:text="${!onboarding.mailboxConnected} ? 'A few quick steps and your email becomes a chat.' : 'We''re importing your conversations. Sync now or check back in a minute.'">
       A few quick steps and your email becomes a chat.
     </p>
 
@@ -602,33 +501,25 @@
         <span class="onboarding-step-text">Create your account</span>
       </li>
       <li class="onboarding-step"
-          th:classappend="${onboarding.mailboxConnected}
-                          ? ' onboarding-step-done'
-                          : ' onboarding-step-current'">
+          th:classappend="${onboarding.mailboxConnected} ? ' onboarding-step-done' : ' onboarding-step-current'">
         <span class="onboarding-step-mark" aria-hidden="true"
               th:text="${onboarding.mailboxConnected} ? '&#10003;' : '2'">2</span>
         <span class="onboarding-step-text">Connect your inbox</span>
       </li>
       <li class="onboarding-step"
-          th:classappend="${onboarding.threadsImported}
-                          ? ' onboarding-step-done'
-                          : (onboarding.mailboxConnected ? ' onboarding-step-current' : '')">
+          th:classappend="${onboarding.threadsImported} ? ' onboarding-step-done' : (onboarding.mailboxConnected ? ' onboarding-step-current' : '')">
         <span class="onboarding-step-mark" aria-hidden="true"
               th:text="${onboarding.threadsImported} ? '&#10003;' : '3'">3</span>
         <span class="onboarding-step-text">Import your first 10 threads</span>
       </li>
       <li class="onboarding-step"
-          th:classappend="${onboarding.savedSearchSaved}
-                          ? ' onboarding-step-done'
-                          : (onboarding.threadsImported ? ' onboarding-step-current' : '')">
+          th:classappend="${onboarding.savedSearchSaved} ? ' onboarding-step-done' : (onboarding.threadsImported ? ' onboarding-step-current' : '')">
         <span class="onboarding-step-mark" aria-hidden="true"
               th:text="${onboarding.savedSearchSaved} ? '&#10003;' : '4'">4</span>
         <span class="onboarding-step-text">Save a search</span>
       </li>
       <li class="onboarding-step"
-          th:classappend="${onboarding.teammateInvited}
-                          ? ' onboarding-step-done'
-                          : (onboarding.savedSearchSaved ? ' onboarding-step-current' : '')">
+          th:classappend="${onboarding.teammateInvited} ? ' onboarding-step-done' : (onboarding.savedSearchSaved ? ' onboarding-step-current' : '')">
         <span class="onboarding-step-mark" aria-hidden="true"
               th:text="${onboarding.teammateInvited} ? '&#10003;' : '5'">5</span>
         <span class="onboarding-step-text">Invite a teammate</span>
@@ -644,6 +535,8 @@
   </div>
 
 </main>
+</div>
+</div>
 <th:block th:replace="~{fragments/install-banner :: banner}"></th:block>
 <script>
 (function () {

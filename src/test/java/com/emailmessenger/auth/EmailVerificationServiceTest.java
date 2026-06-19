@@ -71,7 +71,7 @@ class EmailVerificationServiceTest {
         verify(mailSender).send(captor.capture());
         MimeMessage mime = captor.getValue();
         assertThat(mime.getAllRecipients()[0].toString()).isEqualTo("verify@example.com");
-        assertThat(mime.getSubject()).isEqualTo("Confirm your MailIM email address");
+        assertThat(mime.getSubject()).isEqualTo("Confirm your ConexusMail email address");
         String body = (String) mime.getContent();
         assertThat(body).contains("/verify-email?token=");
 

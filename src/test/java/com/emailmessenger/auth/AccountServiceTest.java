@@ -221,6 +221,6 @@ class AccountServiceTest {
         verify(mailSender).send(captor.capture());
         MimeMessage mime = captor.getValue();
         assertThat(mime.getAllRecipients()[0].toString()).isEqualTo("shiny@example.com");
-        assertThat(mime.getSubject()).isEqualTo("Confirm your MailIM email address");
+        assertThat(mime.getSubject()).isEqualTo("Confirm your ConexusMail email address");
     }
 }

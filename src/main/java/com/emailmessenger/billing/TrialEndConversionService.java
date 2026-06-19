@@ -53,8 +53,8 @@ public class TrialEndConversionService {
     private final SiteProperties site;
     private final Clock clock;
 
-    @Value("${spring.mail.username:noreply@mailaim.app}")
-    private String fromAddress = "noreply@mailaim.app";
+    @Value("${spring.mail.username:noreply@conexusmail.com}")
+    private String fromAddress = "noreply@conexusmail.com";
 
     TrialEndConversionService(SubscriptionRepository subscriptions,
                               DigestEmailPreferenceRepository preferences,
@@ -124,12 +124,12 @@ public class TrialEndConversionService {
         long hours = hoursUntilTrialEnd(sub, now);
         String plan = planLabel(sub.getPlan());
         if (hours <= 0) {
-            return "Your MailIM " + plan + " trial ends today — keep your setup";
+            return "Your ConexusMail " + plan + " trial ends today — keep your setup";
         }
         if (hours <= 24) {
-            return "Your MailIM " + plan + " trial ends in 24 hours";
+            return "Your ConexusMail " + plan + " trial ends in 24 hours";
         }
-        return "Your MailIM " + plan + " trial is wrapping up soon";
+        return "Your ConexusMail " + plan + " trial is wrapping up soon";
     }
 
     private String renderBody(Subscription sub, DigestEmailPreference prefs, LocalDateTime now) {
@@ -143,7 +143,7 @@ public class TrialEndConversionService {
 
         StringBuilder sb = new StringBuilder();
         sb.append("Hi ").append(greeting).append(",\n\n");
-        sb.append("Your MailIM ").append(plan).append(" trial ends ").append(windowPhrase)
+        sb.append("Your ConexusMail ").append(plan).append(" trial ends ").append(windowPhrase)
           .append(". Pick a plan to keep using your chat-view inbox without\n")
           .append("interruption — your mailbox, threads, and saved searches stay\n")
           .append("exactly as they are.\n\n");
@@ -153,7 +153,7 @@ public class TrialEndConversionService {
         sb.append("Not ready for paid? Downgrade to Free from the same page — 1\n")
           .append("mailbox, 500 threads, no card on file. No trial clock, no auto-\n")
           .append("renewal. You won't lose your threads.\n\n");
-        sb.append("Want to revisit what MailIM looks like first? Live demo: ")
+        sb.append("Want to revisit what ConexusMail looks like first? Live demo: ")
           .append(base).append("/demo\n\n");
         sb.append("Don't want these emails? Unsubscribe: ")
           .append(base).append("/digest/opt-out?token=").append(prefs.getOptOutToken()).append('\n');

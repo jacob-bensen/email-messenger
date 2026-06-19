@@ -14,6 +14,7 @@ import org.springframework.mail.MailException;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.FlashMap;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.servlet.support.RequestContextUtils;
@@ -69,6 +70,16 @@ class GlobalExceptionHandler {
         FlashMap flash = RequestContextUtils.getOutputFlashMap(request);
         flash.put("upgradeModal", UpgradeModal.fromException(ex));
         return "redirect:/threads";
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    String attachmentTooLarge(HttpServletRequest request, Model model, HttpServletResponse response) {
+        log.info("Attachment upload too large for {}", request.getRequestURI());
+        response.setStatus(HttpStatus.PAYLOAD_TOO_LARGE.value());
+        model.addAttribute("status", 413);
+        model.addAttribute("message",
+                "Those attachments are too large to send. Keep the total under 25 MB and try again.");
+        return "error";
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -13,9 +13,11 @@ import com.emailmessenger.billing.UpgradeModal;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
+import com.emailmessenger.email.MailboxPollingService;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.domain.ThreadNote;
 import com.emailmessenger.service.Conversation;
+import com.emailmessenger.service.OutgoingAttachment;
 import com.emailmessenger.service.ReplyService;
 import com.emailmessenger.team.NoteMentionService;
 import com.emailmessenger.team.ThreadAccessService;
@@ -23,11 +25,13 @@ import com.emailmessenger.team.ThreadNoteService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
@@ -40,11 +44,13 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -54,6 +60,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
@@ -79,6 +86,8 @@ class ThreadControllerTest {
     @Mock ThreadNoteService threadNoteService;
     @Mock ThreadAccessService threadAccessService;
     @Mock NoteMentionService noteMentionService;
+    @Mock MailboxPollingService mailboxPollingService;
+    @Mock OutboundMessageService outboundMessageService;
 
     MockMvc mockMvc;
 
@@ -95,7 +104,8 @@ class ThreadControllerTest {
                 billingBannerService, billingService, onboardingService,
                 planLimitService, trialConversionNudgeService, threadSearchService,
                 senderGroupService, savedSearchService, userActivityService,
-                threadNoteService, threadAccessService, noteMentionService, CLOCK);
+                threadNoteService, threadAccessService, noteMentionService,
+                mailboxPollingService, outboundMessageService, CLOCK);
         lenient().when(userService.requireByEmail("owner@example.com")).thenReturn(owner);
         lenient().when(billingBannerService.bannerFor(owner)).thenReturn(Optional.empty());
         lenient().when(onboardingService.checklistFor(owner))
@@ -192,19 +202,55 @@ class ThreadControllerTest {
                 .andExpect(view().name("conversation"))
                 .andExpect(model().attributeHasFieldErrors("replyForm", "body"));
 
-        verify(replyService, never()).sendReply(anyLong(), anyString(), anyString());
+        verify(replyService, never()).sendReply(anyLong(), anyString(), anyString(), anyList());
     }
 
     @Test
     void replyWithValidBodyRedirectsWithSuccessFlash() throws Exception {
         EmailThread thread = new EmailThread(owner, "Test Subject", "<root@test>");
         when(threadRepository.findByIdAndOwner(1L, owner)).thenReturn(Optional.of(thread));
-        doNothing().when(replyService).sendReply(anyLong(), anyString(), anyString());
+        doNothing().when(replyService).sendReply(anyLong(), anyString(), anyString(), anyList());
 
         mockMvc.perform(post("/threads/1/reply").principal(principal)
                         .param("body", "Thanks for your message!"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/threads/1"));
+    }
+
+    @Test
+    void replyWithAttachmentPassesItToReplyService() throws Exception {
+        EmailThread thread = new EmailThread(owner, "Test Subject", "<root@test>");
+        when(threadRepository.findByIdAndOwner(1L, owner)).thenReturn(Optional.of(thread));
+
+        MockMultipartFile file = new MockMultipartFile(
+                "attachments", "doc.txt", "text/plain", "hi".getBytes());
+
+        mockMvc.perform(multipart("/threads/1/reply").file(file).principal(principal)
+                        .param("body", "See attached"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/threads/1"));
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<OutgoingAttachment>> captor = ArgumentCaptor.forClass(List.class);
+        verify(replyService).sendReply(eq(1L), eq("Test Subject"), eq("See attached"), captor.capture());
+        assertThat(captor.getValue()).hasSize(1);
+        assertThat(captor.getValue().get(0).filename()).isEqualTo("doc.txt");
+    }
+
+    @Test
+    void replyWithAttachmentAndNoBodyStillSends() throws Exception {
+        EmailThread thread = new EmailThread(owner, "Test Subject", "<root@test>");
+        when(threadRepository.findByIdAndOwner(1L, owner)).thenReturn(Optional.of(thread));
+
+        MockMultipartFile file = new MockMultipartFile(
+                "attachments", "note.txt", "text/plain", "hi".getBytes());
+
+        mockMvc.perform(multipart("/threads/1/reply").file(file).principal(principal)
+                        .param("body", ""))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/threads/1"));
+
+        verify(replyService).sendReply(eq(1L), eq("Test Subject"), eq(""), anyList());
     }
 
     @Test
@@ -215,7 +261,7 @@ class ThreadControllerTest {
                         .param("body", "Trying to reply to someone else's thread"))
                 .andExpect(status().isNotFound());
 
-        verify(replyService, never()).sendReply(anyLong(), anyString(), anyString());
+        verify(replyService, never()).sendReply(anyLong(), anyString(), anyString(), anyList());
     }
 
     @Test
@@ -317,10 +363,12 @@ class ThreadControllerTest {
         when(onboardingService.checklistFor(owner)).thenReturn(checklist);
         when(planLimitService.currentPlan(owner)).thenReturn(Plan.FREE);
 
+        // Core steps are done (mailbox + 12 threads), so the onboarding panel
+        // collapses — but the Personal upgrade nudge still surfaces.
         mockMvc.perform(get("/threads").principal(principal))
                 .andExpect(status().isOk())
                 .andExpect(view().name("threads"))
-                .andExpect(model().attribute("onboarding", checklist))
+                .andExpect(model().attribute("onboarding", nullValue()))
                 .andExpect(model().attribute("onboardingNudge", notNullValue()));
     }
 
@@ -390,7 +438,7 @@ class ThreadControllerTest {
                 .thenReturn(empty);
         TrialConversionNudge nudge = new TrialConversionNudge(
                 "Personal", "personal", 2L, "$9", "$7", "$84",
-                "mailim-trial-nudge-2026-06-07-d2");
+                "conexusmail-trial-nudge-2026-06-07-d2");
         when(trialConversionNudgeService.nudgeFor(owner)).thenReturn(Optional.of(nudge));
 
         mockMvc.perform(get("/threads").principal(principal))
@@ -536,7 +584,9 @@ class ThreadControllerTest {
         Page<EmailThread> empty = new PageImpl<>(List.of());
         when(threadSearchService.search(eq(owner), eq(""), eq("ada@acme.com"), any(ThreadFilters.class), any(Pageable.class)))
                 .thenReturn(new ThreadSearchService.Result(empty, false));
-        OnboardingChecklist incomplete = new OnboardingChecklist(true, 12L, false, false);
+        // Core steps incomplete (threads not yet imported) so the panel shows;
+        // the point of this test is that an active filter doesn't suppress it.
+        OnboardingChecklist incomplete = new OnboardingChecklist(true, 3L, false, false);
         when(onboardingService.checklistFor(owner)).thenReturn(incomplete);
 
         mockMvc.perform(get("/threads").principal(principal).param("from", "ada@acme.com"))
@@ -616,7 +666,9 @@ class ThreadControllerTest {
         Page<EmailThread> empty = new PageImpl<>(List.of());
         when(threadSearchService.search(eq(owner), eq(""), eq(null), any(ThreadFilters.class), any(Pageable.class)))
                 .thenReturn(new ThreadSearchService.Result(empty, false));
-        OnboardingChecklist incomplete = new OnboardingChecklist(true, 12L, false, false);
+        // Core steps incomplete (threads not yet imported) so the panel shows;
+        // the point of this test is that an active filter doesn't suppress it.
+        OnboardingChecklist incomplete = new OnboardingChecklist(true, 3L, false, false);
         when(onboardingService.checklistFor(owner)).thenReturn(incomplete);
 
         mockMvc.perform(get("/threads").principal(principal).param("unread", "true"))

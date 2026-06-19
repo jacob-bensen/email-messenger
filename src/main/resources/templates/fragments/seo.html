@@ -9,11 +9,11 @@
     siteBaseUrl is supplied by SiteModelAdvice for every request.
   -->
   <th:block th:fragment="meta(pageTitle, pageDescription, pagePath)">
-    <title th:text="${pageTitle}">MailIM</title>
+    <title th:text="${pageTitle}">ConexusMail</title>
     <meta name="description" th:content="${pageDescription}">
     <link rel="canonical" th:href="${siteBaseUrl + pagePath}">
 
-    <meta property="og:site_name" content="MailIM">
+    <meta property="og:site_name" content="ConexusMail">
     <meta property="og:type" content="website">
     <meta property="og:title" th:content="${pageTitle}">
     <meta property="og:description" th:content="${pageDescription}">
@@ -28,19 +28,13 @@
     <meta name="twitter:image" th:content="${siteBaseUrl + '/images/og-card.png'}">
 
     <link rel="manifest" href="/manifest.webmanifest">
-    <meta name="theme-color" content="#4f80ff">
+    <meta name="theme-color" content="#2f855a">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="MailIM">
+    <meta name="apple-mobile-web-app-title" content="ConexusMail">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
-        });
-      }
-    </script>
+    <th:block th:replace="~{fragments/sw-register :: register}"></th:block>
   </th:block>
 </head>
 </html>

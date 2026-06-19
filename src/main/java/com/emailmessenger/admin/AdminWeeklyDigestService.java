@@ -49,8 +49,8 @@ public class AdminWeeklyDigestService {
     private final SiteProperties site;
     private final Clock clock;
 
-    @Value("${spring.mail.username:noreply@mailaim.app}")
-    private String fromAddress = "noreply@mailaim.app";
+    @Value("${spring.mail.username:noreply@conexusmail.com}")
+    private String fromAddress = "noreply@conexusmail.com";
 
     AdminWeeklyDigestService(AdminProperties adminProperties,
                              RevenueMetricsService metricsService,
@@ -113,7 +113,7 @@ public class AdminWeeklyDigestService {
     }
 
     private String buildSubject(RevenueMetrics metrics, long newPaying, long churn) {
-        return "MailIM weekly: " + metrics.mrrFormatted() + " MRR, "
+        return "ConexusMail weekly: " + metrics.mrrFormatted() + " MRR, "
                 + newPaying + " new, " + churn + " churn";
     }
 
@@ -125,7 +125,7 @@ public class AdminWeeklyDigestService {
         LocalDate weekEnd = now.atZone(ZoneOffset.UTC).toLocalDate();
         String base = site.getBaseUrl();
         StringBuilder sb = new StringBuilder();
-        sb.append("MailIM operator digest — week ending ")
+        sb.append("ConexusMail operator digest — week ending ")
           .append(WEEK_END_FORMAT.format(weekEnd)).append(" UTC\n\n");
         sb.append("MRR:                 ").append(metrics.mrrFormatted()).append('\n');
         sb.append("ARR:                 ").append(metrics.arrFormatted()).append('\n');

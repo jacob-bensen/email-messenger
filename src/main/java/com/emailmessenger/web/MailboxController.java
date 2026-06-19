@@ -1,5 +1,6 @@
 package com.emailmessenger.web;
 
+import com.emailmessenger.auth.GoogleOAuthProperties;
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.User;
@@ -33,15 +34,18 @@ class MailboxController {
     private final MailAccountRepository mailAccountRepository;
     private final MailboxPollingService pollingService;
     private final UserService userService;
+    private final GoogleOAuthProperties googleOAuthProperties;
 
     MailboxController(MailAccountService mailAccountService,
                       MailAccountRepository mailAccountRepository,
                       MailboxPollingService pollingService,
-                      UserService userService) {
+                      UserService userService,
+                      GoogleOAuthProperties googleOAuthProperties) {
         this.mailAccountService = mailAccountService;
         this.mailAccountRepository = mailAccountRepository;
         this.pollingService = pollingService;
         this.userService = userService;
+        this.googleOAuthProperties = googleOAuthProperties;
     }
 
     @GetMapping
@@ -60,6 +64,7 @@ class MailboxController {
                       Model model) {
         Optional<MailboxProvider> selected = MailboxProvider.fromSlug(providerSlug);
         model.addAttribute("providers", MailboxProvider.values());
+        model.addAttribute("googleOAuthEnabled", googleOAuthProperties.isEnabled());
         if (selected.isEmpty()) {
             return "mailboxes/new";
         }
@@ -84,6 +89,7 @@ class MailboxController {
         Optional<MailboxProvider> selected = MailboxProvider.fromSlug(form.getProvider());
         selected.ifPresent(p -> model.addAttribute("provider", p));
         model.addAttribute("providers", MailboxProvider.values());
+        model.addAttribute("googleOAuthEnabled", googleOAuthProperties.isEnabled());
         if (binding.hasErrors()) {
             return "mailboxes/new";
         }
@@ -128,6 +134,19 @@ class MailboxController {
             redirectAttributes.addFlashAttribute("syncMessage",
                     "Mailbox synced.");
         }
+        return "redirect:/mailboxes";
+    }
+
+    @PostMapping("/{id}/delete")
+    String deleteMailbox(@PathVariable Long id,
+                         Principal principal,
+                         RedirectAttributes redirectAttributes) {
+        User owner = userService.requireByEmail(principal.getName());
+        // A foreign or unknown id 404s, same posture as the sync endpoint.
+        if (!mailAccountService.delete(owner, id)) {
+            throw new NoSuchElementException();
+        }
+        redirectAttributes.addFlashAttribute("syncMessage", "Mailbox removed.");
         return "redirect:/mailboxes";
     }
 }

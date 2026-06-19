@@ -65,8 +65,8 @@ public class WeeklyDigestService {
     private final SiteProperties site;
     private final Clock clock;
 
-    @Value("${spring.mail.username:noreply@mailaim.app}")
-    private String fromAddress = "noreply@mailaim.app";
+    @Value("${spring.mail.username:noreply@conexusmail.com}")
+    private String fromAddress = "noreply@conexusmail.com";
 
     WeeklyDigestService(SavedSearchRepository savedSearches,
                         EmailThreadRepository threads,
@@ -160,7 +160,7 @@ public class WeeklyDigestService {
 
     private String buildSubject(List<DigestSection> sections) {
         int total = sections.stream().mapToInt(s -> s.threads().size()).sum();
-        return "MailIM weekly digest — " + total + " new " + (total == 1 ? "thread" : "threads");
+        return "ConexusMail weekly digest — " + total + " new " + (total == 1 ? "thread" : "threads");
     }
 
     private String renderBody(User user, DigestEmailPreference prefs, List<DigestSection> sections) {

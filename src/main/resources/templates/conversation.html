@@ -6,27 +6,21 @@
 
   <th:block th:if="${demoMode}"
             th:replace="~{fragments/seo :: meta(
-      pageTitle='Live demo — MailIM',
+      pageTitle='Live demo — ConexusMail',
       pageDescription='See an email thread rendered as an IM-style chat: bubbles, avatars, day separators, markdown, quoted-reply stripping. No signup.',
       pagePath='/demo')}"></th:block>
 
   <th:block th:unless="${demoMode}">
     <meta name="robots" content="noindex, nofollow">
-    <title th:text="|(${conversation.thread().subject.length() > 57 ? conversation.thread().subject.substring(0, 57) + '…' : conversation.thread().subject}) — MailIM|">Conversation — MailIM</title>
+    <title th:text="|(${conversation.thread().subject.length() > 57 ? conversation.thread().subject.substring(0, 57) + '…' : conversation.thread().subject}) — ConexusMail|">Conversation — ConexusMail</title>
     <link rel="manifest" href="/manifest.webmanifest">
-    <meta name="theme-color" content="#4f80ff">
+    <meta name="theme-color" content="#2f855a">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="MailIM">
+    <meta name="apple-mobile-web-app-title" content="ConexusMail">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
-        });
-      }
-    </script>
+    <th:block th:replace="~{fragments/sw-register :: register}"></th:block>
   </th:block>
 
   <link rel="stylesheet" th:href="@{/css/main.css}">
@@ -34,7 +28,7 @@
 <body>
 
 <header class="conv-header">
-  <a th:if="${demoMode}" href="/" class="back-link">← MailIM home</a>
+  <a th:if="${demoMode}" href="/" class="back-link">← ConexusMail home</a>
   <a th:unless="${demoMode}" href="/threads" class="back-link">← All threads</a>
   <h1 th:text="${conversation.thread().subject}">Thread subject</h1>
   <span th:unless="${demoMode}" class="kbd-hint"><kbd>r</kbd> reply · <kbd>Esc</kbd> cancel</span>
@@ -47,7 +41,7 @@
 <div th:if="${demoMode}" class="demo-banner" role="note">
   <span class="demo-banner-text">
     <strong>Live demo.</strong>
-    This is a curated thread rendered by MailIM — bubble grouping, markdown, and quoted-reply stripping all running for real.
+    This is a curated thread rendered by ConexusMail — bubble grouping, markdown, and quoted-reply stripping all running for real.
   </span>
   <a th:if="${demoSignedIn}" href="/threads" class="btn btn-primary btn-compact">Back to inbox</a>
   <a th:unless="${demoSignedIn}" href="/register?utm_source=demo" class="btn btn-primary btn-compact">Start free</a>
@@ -80,6 +74,7 @@
       do not change to th:text or it will render raw HTML tags to the user.
     -->
     <div class="bubble-run" th:each="run : ${conversation.runs()}"
+         th:classappend="${run.outbound()} ? ' bubble-run-me' : ''"
          th:attr="data-date=${run.date() != null ? #temporals.format(run.date(), 'yyyy-MM-dd') : ''}"
     >
       <div class="avatar"
@@ -88,12 +83,26 @@
         AB
       </div>
       <div class="bubble-group">
-        <div class="bubble-sender"
+        <div class="bubble-sender" th:if="${run.outbound()}">You</div>
+        <div class="bubble-sender" th:unless="${run.outbound()}"
              th:text="${run.sender().displayName != null ? run.sender().displayName : run.sender().email}">
           Sender Name
         </div>
         <div th:each="bubble : ${run.messages()}">
-          <div class="bubble" th:utext="${bubble.bodyHtml()}">Message body</div>
+          <div class="bubble" th:id="|msg-${bubble.messageId()}|"
+               th:classappend="${run.outbound()} ? ' bubble-me' : ''">
+            <a class="reply-ref" th:if="${bubble.replyToMessageId() != null}"
+               th:href="|#msg-${bubble.replyToMessageId()}|">↩ In reply to</a>
+            <div class="bubble-text"
+                 th:if="${bubble.bodyHtml() != null and !bubble.bodyHtml().isBlank()}"
+                 th:utext="${bubble.bodyHtml()}">Message body</div>
+            <ul class="bubble-attachments" th:if="${!#lists.isEmpty(bubble.attachments())}">
+              <li class="bubble-attachment" th:each="att : ${bubble.attachments()}">
+                <span aria-hidden="true">📎</span>
+                <span class="bubble-attachment-name" th:text="${att.filename}">file.txt</span>
+              </li>
+            </ul>
+          </div>
           <div class="bubble-time"
                th:text="${#temporals.format(bubble.sentAt(), 'MMM d, h:mm a')}">Jan 1, 12:00 PM</div>
         </div>
@@ -107,10 +116,14 @@
     upgrade CTA in the same spot so the value of the Team plan is
     legible at the moment they'd reach for it.
   -->
-  <section th:unless="${demoMode}" class="team-notes" aria-labelledby="team-notes-heading">
+  <section th:unless="${demoMode}" id="team-notes" class="team-notes" aria-labelledby="team-notes-heading">
     <header class="team-notes-header">
-      <h2 id="team-notes-heading">Internal notes</h2>
-      <span class="team-notes-sub">Visible to your team only — never sent in the email reply.</span>
+      <div class="team-notes-titles">
+        <h2 id="team-notes-heading">Internal notes</h2>
+        <span class="team-notes-sub">Visible to your team only — never sent in the email reply.</span>
+      </div>
+      <button type="button" class="team-notes-close" id="team-notes-close"
+              aria-label="Hide internal notes" title="Hide internal notes">&times;</button>
     </header>
 
     <div th:if="${noteFlash == 'posted'}" class="alert alert-success">Note added.</div>
@@ -191,19 +204,27 @@
     <form th:action="@{/threads/{id}/reply(id=${conversation.thread().id})}"
           th:object="${replyForm}"
           method="post"
+          enctype="multipart/form-data"
           class="reply-form">
       <input type="hidden" th:if="${_csrf != null}"
              th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-      <textarea th:field="*{body}"
-                placeholder="Write a reply…"
-                rows="3"
-                th:classappend="${#fields.hasErrors('body')} ? ' error' : ''"></textarea>
+      <div class="reply-row">
+        <textarea th:field="*{body}"
+                  placeholder="Write a reply…"
+                  rows="3"
+                  th:classappend="${#fields.hasErrors('body')} ? ' error' : ''"></textarea>
+        <button type="submit" class="btn btn-primary reply-send">Send Reply</button>
+      </div>
+      <div class="reply-attach">
+        <label class="reply-attach-btn">
+          <input type="file" name="attachments" multiple hidden data-attach-input>
+          <span aria-hidden="true">📎</span> Attach files
+        </label>
+        <ul class="reply-attach-list" data-attach-list></ul>
+      </div>
       <div class="field-error"
            th:if="${#fields.hasErrors('body')}"
            th:errors="*{body}">Validation error</div>
-      <div class="reply-actions">
-        <button type="submit" class="btn btn-primary">Send Reply</button>
-      </div>
     </form>
   </div>
 
@@ -215,7 +236,7 @@
   </div>
 
   <div th:if="${demoMode}" class="demo-footer">
-    <p class="demo-footer-text">Like what you see? MailIM connects to your real inbox over IMAP.</p>
+    <p class="demo-footer-text">Like what you see? ConexusMail connects to your real inbox over IMAP.</p>
     <div class="demo-footer-ctas">
       <a th:if="${demoSignedIn}" href="/mailboxes/new" class="btn btn-primary btn-lg">Connect a mailbox</a>
       <a th:unless="${demoSignedIn}" href="/register?utm_source=demo" class="btn btn-primary btn-lg">Start free</a>
@@ -247,6 +268,32 @@
   msgs.scrollTop = msgs.scrollHeight;
 }());
 
+// "In reply to" links scroll to (and briefly highlight) the referenced bubble.
+(function () {
+  document.addEventListener('click', function (e) {
+    var ref = e.target.closest ? e.target.closest('.reply-ref') : null;
+    if (!ref) return;
+    var href = ref.getAttribute('href') || '';
+    if (href.charAt(0) !== '#') return;
+    var target = document.getElementById(href.slice(1));
+    if (!target) return;
+    e.preventDefault();
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.add('bubble-flash');
+    setTimeout(function () { target.classList.remove('bubble-flash'); }, 1200);
+  });
+}());
+
+// Internal-notes popup: shows in the top-right on every conversation open and
+// is dismissed (for this view only) by the X — no persistence, so it pops up
+// again the next time a chat is opened.
+(function () {
+  var popup = document.getElementById('team-notes');
+  var closeBtn = document.getElementById('team-notes-close');
+  if (!popup || !closeBtn) return;
+  closeBtn.addEventListener('click', function () { popup.remove(); });
+}());
+
 // r to focus reply, Esc to blur — disabled in demo mode (no reply form)
 /*[# th:if="${!demoMode}"]*/
 document.addEventListener('keydown', function (e) {
@@ -273,6 +320,22 @@ function formatDateLabel(iso) {
   if (d.getTime() === yesterday.getTime()) return 'Yesterday';
   return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 }
+
+// Show the names of attachments the user picked for their reply.
+(function () {
+  var input = document.querySelector('[data-attach-input]');
+  var list = document.querySelector('[data-attach-list]');
+  if (!input || !list) return;
+  input.addEventListener('change', function () {
+    list.innerHTML = '';
+    Array.prototype.forEach.call(input.files, function (file) {
+      var li = document.createElement('li');
+      li.className = 'reply-attach-item';
+      li.textContent = file.name;
+      list.appendChild(li);
+    });
+  });
+}());
 
 (function () {
   var wrap   = document.querySelector('[data-mention-wrap]');

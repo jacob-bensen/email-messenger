@@ -7,6 +7,7 @@ import com.emailmessenger.repository.MailAccountRepository;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,9 +40,12 @@ public class MailboxPollingService {
 
     private static final Logger log = LoggerFactory.getLogger(MailboxPollingService.class);
 
+    /** Recent Sent-folder window backfilled on a mailbox's first sent sync. */
+    static final int SENT_BACKFILL_LIMIT = 30;
+
     private final MailAccountRepository accounts;
     private final ImapClient imapClient;
-    private final CredentialEncryptor encryptor;
+    private final ImapCredentialsResolver credentialsResolver;
     private final EmailImportService importService;
     private final PlanLimitService planLimitService;
     private final PollingPolicy pollingPolicy;
@@ -49,14 +53,14 @@ public class MailboxPollingService {
 
     MailboxPollingService(MailAccountRepository accounts,
                           ImapClient imapClient,
-                          CredentialEncryptor encryptor,
+                          ImapCredentialsResolver credentialsResolver,
                           EmailImportService importService,
                           PlanLimitService planLimitService,
                           PollingPolicy pollingPolicy,
                           Clock clock) {
         this.accounts = accounts;
         this.imapClient = imapClient;
-        this.encryptor = encryptor;
+        this.credentialsResolver = credentialsResolver;
         this.importService = importService;
         this.planLimitService = planLimitService;
         this.pollingPolicy = pollingPolicy;
@@ -77,28 +81,37 @@ public class MailboxPollingService {
         }
     }
 
+    /**
+     * Fire-and-forget refresh of one user's due mailboxes, triggered when they
+     * open their inbox so sign-in feels fresh without blocking the page render.
+     * Only accounts whose next-poll time has passed are touched, so repeated
+     * page loads don't re-poll an account the scheduler just serviced.
+     */
+    @Async
+    public void refreshDueForUserAsync(Long userId) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        for (MailAccount account : accounts.findDueForPollingByUserId(userId, now)) {
+            try {
+                pollOne(account.getId());
+            } catch (Exception e) {
+                log.warn("On-open refresh failed for mailbox id={} ({}): {}",
+                        account.getId(), account.getUsername(), e.getMessage());
+            }
+        }
+    }
+
     @Transactional
     public void pollOne(Long accountId) {
         MailAccount account = accounts.findById(accountId).orElse(null);
         if (account == null) return;
 
-        String password;
         try {
-            password = encryptor.decrypt(account.getPasswordCiphertext());
-        } catch (Exception e) {
-            log.warn("Could not decrypt stored credentials for mailbox id={}: {}",
-                    account.getId(), e.getMessage());
-            account.markSyncError("Could not decrypt stored credentials");
-            account.recordPollFailure(pollingPolicy.suspendAtFailures());
-            scheduleNextPoll(account);
-            accounts.save(account);
-            return;
-        }
-
-        try {
+            // Resolving creds can fail (undecryptable secret, expired OAuth
+            // refresh) — that throws ImapConnectionException, handled below on
+            // the same path as a login failure.
+            ImapCredentials credentials = credentialsResolver.resolve(account);
             ImapClient.IncrementalFetch fetch = imapClient.fetchSinceUid(
-                    account.getHost(), account.getPort(), account.isSsl(),
-                    account.getUsername(), password, account.getLastSeenUid());
+                    credentials, account.getLastSeenUid());
 
             int imported = 0;
             for (MimeMessage mime : fetch.messages()) {
@@ -114,10 +127,33 @@ public class MailboxPollingService {
             if (fetch.newLastUid() != null) {
                 account.setLastSeenUid(fetch.newLastUid());
             }
+
+            // Pull sent mail too, imported as outbound, so both sides of each
+            // conversation stay in sync. The first time (cursor null) we backfill
+            // a recent window — this surfaces sent history even for mailboxes
+            // connected before sent sync existed — then track only newer sent mail.
+            int sentImported = 0;
+            if (account.getLastSeenSentUid() == null) {
+                for (MimeMessage mime : imapClient.fetchRecentSent(credentials, SENT_BACKFILL_LIMIT)) {
+                    sentImported += importSent(mime, account);
+                }
+                account.setLastSeenSentUid(
+                        imapClient.fetchSentSinceUid(credentials, null).newLastUid());
+            } else {
+                ImapClient.IncrementalFetch sentFetch = imapClient.fetchSentSinceUid(
+                        credentials, account.getLastSeenSentUid());
+                for (MimeMessage mime : sentFetch.messages()) {
+                    sentImported += importSent(mime, account);
+                }
+                if (sentFetch.newLastUid() != null) {
+                    account.setLastSeenSentUid(sentFetch.newLastUid());
+                }
+            }
+
             account.markSynced();
-            if (imported > 0) {
-                log.info("Poll imported {} new message(s) for {}@{} (cursor now uid={})",
-                        imported, account.getUsername(), account.getHost(), account.getLastSeenUid());
+            if (imported > 0 || sentImported > 0) {
+                log.info("Poll imported {} received + {} sent message(s) for {}@{}",
+                        imported, sentImported, account.getUsername(), account.getHost());
             }
         } catch (ImapConnectionException e) {
             log.warn("Poll IMAP error for {}@{}: {}", account.getUsername(),
@@ -132,6 +168,16 @@ public class MailboxPollingService {
         }
         scheduleNextPoll(account);
         accounts.save(account);
+    }
+
+    private int importSent(MimeMessage mime, MailAccount account) {
+        try {
+            return importService.importMessage(mime, account.getUser(), true).isPresent() ? 1 : 0;
+        } catch (EmailImportException e) {
+            log.warn("Skipping unparseable sent message for {}@{}: {}",
+                    account.getUsername(), account.getHost(), e.getMessage());
+            return 0;
+        }
     }
 
     private void scheduleNextPoll(MailAccount account) {

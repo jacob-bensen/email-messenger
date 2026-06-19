@@ -57,8 +57,8 @@ public class NoteMentionService {
     private final JavaMailSender mailSender;
     private final SiteProperties site;
 
-    @Value("${spring.mail.username:noreply@mailaim.app}")
-    private String fromAddress = "noreply@mailaim.app";
+    @Value("${spring.mail.username:noreply@conexusmail.com}")
+    private String fromAddress = "noreply@conexusmail.com";
 
     NoteMentionService(TeamMemberRepository teamMembers,
                        TeamRepository teams,
@@ -252,7 +252,7 @@ public class NoteMentionService {
         String url = site.getBaseUrl() + "/threads/" + threadId + "#note-" + note.getId();
         return "Hi " + greeting + ",\n\n"
                 + authorLabel(note.getAuthorUser())
-                + " mentioned you in an internal note on a MailIM thread:\n\n"
+                + " mentioned you in an internal note on a ConexusMail thread:\n\n"
                 + "  " + snippet(note.getBody()) + "\n\n"
                 + "Open the thread to reply or add context:\n\n"
                 + url + "\n\n"

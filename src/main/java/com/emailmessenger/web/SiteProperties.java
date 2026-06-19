@@ -11,7 +11,7 @@ public class SiteProperties {
      * prod; defaulted to the production domain so dev renders something
      * sensible even without env-var overrides.
      */
-    private String baseUrl = "https://mailaim.app";
+    private String baseUrl = "https://conexusmail.com";
 
     public String getBaseUrl() {
         return baseUrl;

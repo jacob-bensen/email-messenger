@@ -92,7 +92,7 @@ class AdminWeeklyDigestServiceTest {
         verify(mailSender).send(captor.capture());
         MimeMessage mime = captor.getValue();
         String body = (String) mime.getContent();
-        assertThat(mime.getSubject()).contains("MailIM weekly:");
+        assertThat(mime.getSubject()).contains("ConexusMail weekly:");
         assertThat(mime.getSubject()).contains("$9 MRR");
         assertThat(body).contains("MRR:");
         assertThat(body).contains("$9");

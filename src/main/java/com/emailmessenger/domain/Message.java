@@ -51,6 +51,11 @@ public class Message {
     @Column(name = "sent_at", nullable = false)
     private LocalDateTime sentAt;
 
+    // True for replies the user sent from ConexusMail (rendered as "you" in the
+    // chat); false for messages imported over IMAP.
+    @Column(nullable = false)
+    private boolean outbound = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -94,6 +99,8 @@ public class Message {
     public String getBodyPlain() { return bodyPlain; }
     public String getBodyHtml() { return bodyHtml; }
     public LocalDateTime getSentAt() { return sentAt; }
+    public boolean isOutbound() { return outbound; }
+    public void markOutbound() { this.outbound = true; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public List<MessageRecipient> getRecipients() { return Collections.unmodifiableList(recipients); }
     public List<Attachment> getAttachments() { return Collections.unmodifiableList(attachments); }

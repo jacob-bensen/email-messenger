@@ -59,6 +59,15 @@ public record MailboxView(
     static String errorHint(String error) {
         if (error == null) return null;
         String lower = error.toLowerCase(Locale.ROOT);
+        if (lower.contains("google") || lower.contains("reconnect")) {
+            return "Your Google authorization expired. Reconnect the mailbox with Google.";
+        }
+        // Decryption failures are NOT a rejected sign-in — the stored secret
+        // couldn't be unlocked (e.g. the encryption key changed). Re-saving it
+        // by reconnecting fixes it; a new app password is not required.
+        if (lower.contains("decrypt")) {
+            return "We couldn't unlock this mailbox's saved password. Reconnect the mailbox to re-save it.";
+        }
         if (lower.contains("auth") || lower.contains("login")
                 || lower.contains("password") || lower.contains("credential")) {
             return "Sign-in was rejected. Generate a new app password and reconnect the mailbox.";

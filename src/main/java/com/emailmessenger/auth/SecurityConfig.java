@@ -64,6 +64,10 @@ class SecurityConfig {
                                 "/billing/cancel", "/billing/webhook",
                                 "/digest/opt-out",
                                 "/robots.txt", "/sitemap.xml",
+                                // Browsers (e.g. Chrome DevTools) probe /.well-known/* in the
+                                // background. Permit it so an unauthenticated probe 404s directly
+                                // instead of being saved as the post-login redirect target.
+                                "/.well-known/**",
                                 "/manifest.webmanifest", "/icons/**", "/apple-touch-icon.png",
                                 "/sw.js", "/offline",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
@@ -91,7 +95,7 @@ class SecurityConfig {
                         .tokenRepository(tokenRepository)
                         .rememberMeParameter("remember-me")
                         .tokenValiditySeconds(60 * 60 * 24 * 30)
-                        .key("mailim-remember-me")
+                        .key("conexusmail-remember-me")
                 )
                 // H2 console serves frames; allow same-origin in dev.
                 .headers(h -> h.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))

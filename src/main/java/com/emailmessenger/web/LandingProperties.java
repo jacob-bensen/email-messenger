@@ -36,7 +36,7 @@ public class LandingProperties {
         private String posterUrl = "";
 
         /** Accessible title for the iframe + the visible play-button label. */
-        private String title = "MailIM demo";
+        private String title = "ConexusMail demo";
 
         public String getProvider() {
             return provider;
@@ -67,7 +67,7 @@ public class LandingProperties {
         }
 
         public void setTitle(String title) {
-            this.title = title == null || title.isBlank() ? "MailIM demo" : title.trim();
+            this.title = title == null || title.isBlank() ? "ConexusMail demo" : title.trim();
         }
     }
 }

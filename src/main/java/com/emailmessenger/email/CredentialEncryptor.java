@@ -20,6 +20,12 @@ public class CredentialEncryptor {
     private static final Logger log = LoggerFactory.getLogger(CredentialEncryptor.class);
 
     // Hex-encoded 8-byte salt. Fixed-value dev fallback; override in prod.
+    //
+    // IMPORTANT: these two constants derive the AES key that encrypts stored
+    // mailbox secrets. Their VALUES are frozen — they must never be renamed or
+    // rebranded, because changing them orphans every credential already on disk
+    // (decrypt then fails with "Could not decrypt stored credentials"). The
+    // legacy "mailim-" string is kept deliberately for that reason.
     static final String DEV_FALLBACK_SALT = "5c0744940b5c369b";
     static final String DEV_FALLBACK_PASSWORD = "mailim-dev-credential-key";
 

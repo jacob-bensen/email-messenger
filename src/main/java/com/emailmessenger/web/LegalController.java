@@ -36,24 +36,24 @@ class LegalController {
     String privacy(Model model) {
         return render(model, legalProperties.getPrivacy(),
                 "/privacy",
-                "Privacy Policy — MailIM",
-                "How MailIM collects, stores, and protects the email and account data you entrust to us.");
+                "Privacy Policy — ConexusMail",
+                "How ConexusMail collects, stores, and protects the email and account data you entrust to us.");
     }
 
     @GetMapping("/terms")
     String terms(Model model) {
         return render(model, legalProperties.getTerms(),
                 "/terms",
-                "Terms of Service — MailIM",
-                "The terms that govern your use of MailIM — accounts, subscriptions, acceptable use, and termination.");
+                "Terms of Service — ConexusMail",
+                "The terms that govern your use of ConexusMail — accounts, subscriptions, acceptable use, and termination.");
     }
 
     @GetMapping("/refund")
     String refund(Model model) {
         return render(model, legalProperties.getRefund(),
                 "/refund",
-                "Refund Policy — MailIM",
-                "How MailIM handles refunds for monthly and annual subscriptions.");
+                "Refund Policy — ConexusMail",
+                "How ConexusMail handles refunds for monthly and annual subscriptions.");
     }
 
     private String render(Model model, String location,

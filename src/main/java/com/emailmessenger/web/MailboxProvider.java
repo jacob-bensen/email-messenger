@@ -13,7 +13,7 @@ public enum MailboxProvider {
     GMAIL("gmail", "Gmail",
             "imap.gmail.com", 993, true,
             "https://myaccount.google.com/apppasswords",
-            "Gmail requires an App Password (16 characters). Generate one with 2-Step Verification turned on."),
+            "Gmail accepts a 16-character App Password (turn on 2-Step Verification first)."),
 
     ICLOUD("icloud", "iCloud Mail",
             "imap.mail.me.com", 993, true,

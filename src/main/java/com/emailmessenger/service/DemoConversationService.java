@@ -20,11 +20,11 @@ import java.time.LocalTime;
 @Service
 public class DemoConversationService {
 
-    private static final User DEMO_OWNER = new User("you@mailaim.app", "n/a", "You");
+    private static final User DEMO_OWNER = new User("you@conexusmail.com", "n/a", "You");
 
-    private static final Participant ALEX = new Participant("alex.lee@mailaim.app", "Alex Lee");
-    private static final Participant SAM  = new Participant("sam.patel@mailaim.app", "Sam Patel");
-    private static final Participant MAYA = new Participant("maya.chen@mailaim.app", "Maya Chen");
+    private static final Participant ALEX = new Participant("alex.lee@conexusmail.com", "Alex Lee");
+    private static final Participant SAM  = new Participant("sam.patel@conexusmail.com", "Sam Patel");
+    private static final Participant MAYA = new Participant("maya.chen@conexusmail.com", "Maya Chen");
 
     private final ConversationService conversationService;
 
@@ -38,7 +38,7 @@ public class DemoConversationService {
 
     public Conversation buildDemo(LocalDate today) {
         LocalDate yesterday = today.minusDays(1);
-        EmailThread thread = new EmailThread(DEMO_OWNER, "Launch checklist — Tuesday demo", "<demo-root@mailaim.app>");
+        EmailThread thread = new EmailThread(DEMO_OWNER, "Launch checklist — Tuesday demo", "<demo-root@conexusmail.com>");
 
         addPlain(thread, ALEX, yesterday, LocalTime.of(9, 41),
                 "Quick one — can you ship the pricing page today?");
@@ -51,7 +51,7 @@ public class DemoConversationService {
                         + "\n"
                         + "The rest can wait.");
 
-        // Quoted-reply block at the bottom is the exact thing MailIM strips —
+        // Quoted-reply block at the bottom is the exact thing ConexusMail strips —
         // visitors see only the new content, not the wall of >'s.
         addPlain(thread, SAM, yesterday, LocalTime.of(9, 55),
                 "Already in review. Pricing page should be live within the hour.\n"
@@ -63,7 +63,7 @@ public class DemoConversationService {
                         + "> The rest can wait.");
 
         addPlain(thread, SAM, yesterday, LocalTime.of(10, 34),
-                "Live now: **mailaim.app/pricing**. Webhook handler ships after lunch.");
+                "Live now: **conexusmail.com/pricing**. Webhook handler ships after lunch.");
 
         addPlain(thread, ALEX, today, LocalTime.of(9, 3),
                 "Approved. Let's ship.");

@@ -4,15 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <th:block th:replace="~{fragments/seo :: meta(
-      pageTitle='MailIM — Your inbox, as a chat',
-      pageDescription='MailIM turns email threads into a modern instant-message conversation — bubbles, avatars, day separators, dark mode. Free to start.',
+      pageTitle='ConexusMail — Your inbox, as a chat',
+      pageDescription='ConexusMail turns email threads into a modern instant-message conversation — bubbles, avatars, day separators, dark mode. Free to start.',
       pagePath='/')}"></th:block>
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>
 
 <header class="app-header">
-  <a href="/" class="brand">MailIM</a>
+  <a href="/" class="brand">ConexusMail</a>
   <nav class="header-nav">
     <a th:href="${utmSource != null} ? @{/pricing(utm_source=${utmSource})} : @{/pricing}">Pricing</a>
     <a href="/login">Sign in</a>
@@ -26,7 +26,7 @@
   <section class="landing-hero">
     <h1>Your inbox, as a chat.</h1>
     <p class="landing-hero-sub">
-      MailIM imports your email threads over IMAP and renders them as a
+      ConexusMail imports your email threads over IMAP and renders them as a
       modern instant-message conversation — bubbles, avatars, day
       separators, dark mode. Skip the nested-quote wall.
     </p>
@@ -36,10 +36,10 @@
       <a th:href="${utmSource != null} ? @{/demo(utm_source=${utmSource})} : @{/demo}"
          class="btn btn-secondary btn-lg">See live demo</a>
     </div>
-    <p class="landing-hero-fineprint">No credit card. 1 mailbox free, forever.</p>
+    <p class="landing-hero-fineprint">No credit card. 3 mailboxes free, forever.</p>
   </section>
 
-  <section th:if="${demoVideo != null}" class="landing-video" aria-label="MailIM demo video">
+  <section th:if="${demoVideo != null}" class="landing-video" aria-label="ConexusMail demo video">
     <div class="landing-video-wrap"
          th:attr="data-embed-url=${demoVideo.embedUrl()},data-video-title=${demoVideo.title()}">
       <button type="button" class="landing-video-poster"
@@ -159,7 +159,7 @@
         <span class="how-step-num">3</span>
         <div>
           <h3>Read your threads as chats</h3>
-          <p>MailIM imports your recent threads and renders them
+          <p>ConexusMail imports your recent threads and renders them
              instantly. Reply inline, send, done.</p>
         </div>
       </li>
@@ -172,7 +172,7 @@
       <div class="pricing-recap-card">
         <p class="pricing-recap-name">Free</p>
         <p class="pricing-recap-price">$0</p>
-        <p class="pricing-recap-blurb">1 mailbox · 30-day history</p>
+        <p class="pricing-recap-blurb">3 mailboxes · 30-day history</p>
       </div>
       <div class="pricing-recap-card pricing-recap-card-featured">
         <p class="pricing-recap-name">Personal</p>
@@ -191,7 +191,7 @@
   </section>
 
   <section class="landing-final-cta">
-    <h2>Try MailIM with your real inbox.</h2>
+    <h2>Try ConexusMail with your real inbox.</h2>
     <p>Free for one mailbox. Takes a minute to connect.</p>
     <a th:href="${utmSource != null} ? @{/register(utm_source=${utmSource})} : @{/register}"
        class="btn btn-primary btn-lg">Start free</a>
@@ -200,7 +200,7 @@
 </main>
 
 <footer class="marketing-footer">
-  <span>&copy; MailIM</span>
+  <span>&copy; ConexusMail · Bensen LLC</span>
   <nav>
     <a href="/pricing">Pricing</a>
     <a href="/login">Sign in</a>

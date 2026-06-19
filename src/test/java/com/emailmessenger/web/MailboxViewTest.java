@@ -55,6 +55,13 @@ class MailboxViewTest {
     }
 
     @Test
+    void errorHintForDecryptFailureSaysReconnectNotNewPassword() {
+        String hint = MailboxView.errorHint("Could not decrypt stored credentials");
+        assertThat(hint).contains("Reconnect the mailbox");
+        assertThat(hint).doesNotContain("app password");
+    }
+
+    @Test
     void errorHintCallsOutConnectivityFailures() {
         assertThat(MailboxView.errorHint("Connection refused: imap.example.com"))
                 .contains("mail server");

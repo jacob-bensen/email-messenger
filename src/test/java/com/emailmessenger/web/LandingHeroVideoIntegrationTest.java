@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "marketing.landing.video.provider=youtube",
         "marketing.landing.video.id=dQw4w9WgXcQ",
         "marketing.landing.video.poster-url=https://cdn.example/poster.png",
-        "marketing.landing.video.title=MailIM in 60 seconds"
+        "marketing.landing.video.title=ConexusMail in 60 seconds"
 })
 class LandingHeroVideoIntegrationTest {
 
@@ -53,7 +53,7 @@ class LandingHeroVideoIntegrationTest {
         assertThat(body).contains("rel=0");
         assertThat(body).contains("autoplay=1");
         // The visible label + aria label use the configured human title.
-        assertThat(body).contains("MailIM in 60 seconds");
+        assertThat(body).contains("ConexusMail in 60 seconds");
         // Poster image is set as background so the iframe is only loaded on click.
         assertThat(body).contains("background-image:url(https://cdn.example/poster.png)");
         // The static fallback mock must NOT render simultaneously — otherwise the

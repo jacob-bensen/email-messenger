@@ -279,8 +279,8 @@ class AuthFlowIntegrationTest {
                 .thenReturn("https://checkout.stripe.com/c/pay/cs_test_oauth_carry");
 
         org.springframework.mock.web.MockHttpSession session = new org.springframework.mock.web.MockHttpSession();
-        session.setAttribute("mailim.oauth.plan", "personal");
-        session.setAttribute("mailim.oauth.billing", "annual");
+        session.setAttribute("conexusmail.oauth.plan", "personal");
+        session.setAttribute("conexusmail.oauth.billing", "annual");
 
         mockMvc.perform(post("/login")
                         .session(session)
@@ -292,8 +292,8 @@ class AuthFlowIntegrationTest {
 
         verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.ANNUAL));
         // Intent must not stick around for the next login on the same session.
-        assertThat(session.getAttribute("mailim.oauth.plan")).isNull();
-        assertThat(session.getAttribute("mailim.oauth.billing")).isNull();
+        assertThat(session.getAttribute("conexusmail.oauth.plan")).isNull();
+        assertThat(session.getAttribute("conexusmail.oauth.billing")).isNull();
     }
 
     @Test

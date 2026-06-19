@@ -69,7 +69,7 @@ class PasswordResetServiceTest {
         MimeMessage mime = captor.getValue();
         assertThat(mime.getAllRecipients()).hasSize(1);
         assertThat(mime.getAllRecipients()[0].toString()).isEqualTo("known@example.com");
-        assertThat(mime.getSubject()).isEqualTo("Reset your MailIM password");
+        assertThat(mime.getSubject()).isEqualTo("Reset your ConexusMail password");
         String body = (String) mime.getContent();
         assertThat(body).contains("/password/reset?token=");
 

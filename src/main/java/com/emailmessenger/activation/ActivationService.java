@@ -59,8 +59,8 @@ public class ActivationService {
     private final SiteProperties site;
     private final Clock clock;
 
-    @Value("${spring.mail.username:noreply@mailaim.app}")
-    private String fromAddress = "noreply@mailaim.app";
+    @Value("${spring.mail.username:noreply@conexusmail.com}")
+    private String fromAddress = "noreply@conexusmail.com";
 
     ActivationService(UserRepository users,
                       SubscriptionRepository subscriptions,
@@ -223,7 +223,7 @@ public class ActivationService {
             MimeMessageHelper helper = new MimeMessageHelper(mime, false, "UTF-8");
             helper.setFrom(fromAddress);
             helper.setTo(user.getEmail());
-            helper.setSubject("See MailIM in action — no mailbox needed");
+            helper.setSubject("See ConexusMail in action — no mailbox needed");
             helper.setText(renderFollowupBody(user, prefs), false);
         } catch (MessagingException e) {
             throw new MailPreparationException("Could not compose activation follow-up email", e);
@@ -238,8 +238,8 @@ public class ActivationService {
             helper.setFrom(fromAddress);
             helper.setTo(user.getEmail());
             helper.setSubject(paidIntent
-                    ? "Your MailIM trial is winding down — connect to use it"
-                    : "Still curious about MailIM? Free is here whenever you're ready");
+                    ? "Your ConexusMail trial is winding down — connect to use it"
+                    : "Still curious about ConexusMail? Free is here whenever you're ready");
             helper.setText(renderLastChanceBody(user, prefs, paidIntent), false);
         } catch (MessagingException e) {
             throw new MailPreparationException("Could not compose activation last-chance email", e);
@@ -253,7 +253,7 @@ public class ActivationService {
         String base = site.getBaseUrl();
         StringBuilder sb = new StringBuilder();
         sb.append("Hi ").append(greeting).append(",\n\n");
-        sb.append("Welcome to MailIM! You signed up yesterday but haven't connected\n")
+        sb.append("Welcome to ConexusMail! You signed up yesterday but haven't connected\n")
           .append("a mailbox yet — without one, there's nothing to render as a chat.\n\n");
         sb.append("Connect in about 60 seconds: ").append(base).append("/mailboxes/new\n\n");
         sb.append("Curious what it looks like first? Here's a live demo conversation: ")
@@ -290,7 +290,7 @@ public class ActivationService {
         StringBuilder sb = new StringBuilder();
         sb.append("Hi ").append(greeting).append(",\n\n");
         if (paidIntent) {
-            sb.append("It's been a week since you signed up for a MailIM trial, and the\n")
+            sb.append("It's been a week since you signed up for a ConexusMail trial, and the\n")
               .append("14-day clock is still running even though there's no mailbox\n")
               .append("connected yet. Here's what you're missing: your real inbox\n")
               .append("rendered as a chat — bubbles, avatars, day separators, dark mode\n")

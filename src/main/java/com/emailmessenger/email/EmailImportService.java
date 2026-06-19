@@ -44,8 +44,18 @@ public class EmailImportService {
      * Thread assignment follows RFC 5322: References newest-first, then In-Reply-To, then
      * rootMessageId lookup — all scoped to the owner so threads never cross tenants.
      */
-    @Transactional
     public Optional<Message> importMessage(MimeMessage mimeMessage, User owner) {
+        return importMessage(mimeMessage, owner, false);
+    }
+
+    /**
+     * As {@link #importMessage(MimeMessage, User)}, but {@code outbound=true}
+     * marks the message as one the owner sent (used when importing the Sent
+     * folder). Outbound messages don't flag the thread unread, and a thread
+     * created solely by a sent message starts read.
+     */
+    @Transactional
+    public Optional<Message> importMessage(MimeMessage mimeMessage, User owner, boolean outbound) {
         ParsedEmail parsed;
         try {
             parsed = parser.parse(mimeMessage);
@@ -60,11 +70,15 @@ public class EmailImportService {
 
         Participant sender = resolveParticipant(parsed.fromEmail(), parsed.fromName());
         EmailThread thread = resolveThread(parsed, owner);
+        boolean freshThread = thread.getMessageCount() == 0;
 
         Message message = new Message(thread, sender, parsed.subject(),
                 parsed.bodyPlain(), parsed.bodyHtml(), parsed.sentAt());
         message.setMessageIdHeader(parsed.messageId());
         message.setInReplyTo(parsed.inReplyTo());
+        if (outbound) {
+            message.markOutbound();
+        }
 
         for (ParsedEmail.AddressEntry a : parsed.toRecipients()) {
             message.addRecipient(resolveParticipant(a.email(), a.name()), RecipientType.TO);
@@ -83,7 +97,12 @@ public class EmailImportService {
 
         // Persist message first so cascade merge on threadRepo.save is a no-op, not a second INSERT.
         Message saved = messageRepo.save(message);
-        thread.addMessage(saved);
+        // Received mail flags the thread unread; the owner's own sent mail does
+        // not, and a thread created solely by a sent message starts read.
+        thread.addMessage(saved, !outbound);
+        if (outbound && freshThread) {
+            thread.markRead();
+        }
         threadRepo.save(thread);
         return Optional.of(saved);
     }

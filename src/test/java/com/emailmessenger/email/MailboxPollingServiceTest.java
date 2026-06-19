@@ -25,9 +25,6 @@ import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -68,12 +65,15 @@ class MailboxPollingServiceTest {
         account = accountRepository.save(new MailAccount(
                 owner, "imap.example.com", 993, true,
                 "polling-owner@example.com", encryptor.encrypt("app-pw")));
+        // Default: no Sent folder activity. Individual tests exercising the
+        // INBOX path don't care about the sent leg; lenient so it's optional.
+        Mockito.lenient().when(imapClient.fetchSentSinceUid(any(ImapCredentials.class), any()))
+                .thenReturn(new ImapClient.IncrementalFetch(List.of(), null));
     }
 
     @Test
     void firstPollEstablishesBaselineAndImportsNothing() {
-        when(imapClient.fetchSinceUid(anyString(), anyInt(), anyBoolean(),
-                anyString(), anyString(), eq(null)))
+        when(imapClient.fetchSinceUid(any(ImapCredentials.class), eq(null)))
                 .thenReturn(new ImapClient.IncrementalFetch(List.of(), 1042L));
 
         polling.pollOne(account.getId());
@@ -86,14 +86,35 @@ class MailboxPollingServiceTest {
     }
 
     @Test
+    void firstSentSyncBackfillsRecentSentAsOutbound() throws Exception {
+        when(imapClient.fetchSinceUid(any(ImapCredentials.class), any()))
+                .thenReturn(new ImapClient.IncrementalFetch(List.of(), 10L));
+        MimeMessage sent = plainMessage("<sent-1@test>", "Re: Hello",
+                "polling-owner@example.com", "My reply");
+        when(imapClient.fetchRecentSent(any(ImapCredentials.class),
+                eq(MailboxPollingService.SENT_BACKFILL_LIMIT)))
+                .thenReturn(List.of(sent));
+        when(imapClient.fetchSentSinceUid(any(ImapCredentials.class), any()))
+                .thenReturn(new ImapClient.IncrementalFetch(List.of(), 500L));
+
+        polling.pollOne(account.getId());
+
+        // The sent message is imported as outbound, and the Sent cursor is baselined.
+        verify(importService).importMessage(eq(sent), any(User.class), eq(true));
+        assertThat(accountRepository.findById(account.getId()).orElseThrow()
+                .getLastSeenSentUid()).isEqualTo(500L);
+    }
+
+    @Test
     void incrementalPollImportsNewMessagesAndAdvancesCursor() throws Exception {
         account.setLastSeenUid(100L);
         accountRepository.save(account);
 
         MimeMessage m1 = plainMessage("<poll-1@test>", "Hello", "a@example.com", "Body 1");
         MimeMessage m2 = plainMessage("<poll-2@test>", "Hi there", "b@example.com", "Body 2");
-        when(imapClient.fetchSinceUid(eq("imap.example.com"), eq(993), eq(true),
-                eq("polling-owner@example.com"), eq("app-pw"), eq(100L)))
+        ImapCredentials creds = ImapCredentials.password("imap.example.com", 993, true,
+                "polling-owner@example.com", "app-pw");
+        when(imapClient.fetchSinceUid(eq(creds), eq(100L)))
                 .thenReturn(new ImapClient.IncrementalFetch(List.of(m1, m2), 102L));
         when(importService.importMessage(any(MimeMessage.class), any(User.class)))
                 .thenReturn(Optional.empty());
@@ -112,8 +133,7 @@ class MailboxPollingServiceTest {
         account.setLastSeenUid(50L);
         accountRepository.save(account);
 
-        when(imapClient.fetchSinceUid(anyString(), anyInt(), anyBoolean(),
-                anyString(), anyString(), any()))
+        when(imapClient.fetchSinceUid(any(ImapCredentials.class), any()))
                 .thenThrow(new ImapConnectionException("Login failed", null));
 
         polling.pollOne(account.getId());
@@ -131,8 +151,7 @@ class MailboxPollingServiceTest {
         account.setLastSeenUid(50L);
         accountRepository.save(account);
         // Drive the breaker open via repeated failures, then a success closes it.
-        when(imapClient.fetchSinceUid(anyString(), anyInt(), anyBoolean(),
-                anyString(), anyString(), any()))
+        when(imapClient.fetchSinceUid(any(ImapCredentials.class), any()))
                 .thenThrow(new ImapConnectionException("Login failed", null));
         for (int i = 0; i < PollingPolicy.SUSPEND_AT_FAILURES; i++) {
             polling.pollOne(account.getId());
@@ -143,9 +162,10 @@ class MailboxPollingServiceTest {
                 .isEqualTo(PollingPolicy.SUSPEND_AT_FAILURES);
 
         Mockito.reset(imapClient, importService);
-        when(imapClient.fetchSinceUid(anyString(), anyInt(), anyBoolean(),
-                anyString(), anyString(), any()))
+        when(imapClient.fetchSinceUid(any(ImapCredentials.class), any()))
                 .thenReturn(new ImapClient.IncrementalFetch(List.of(), 60L));
+        when(imapClient.fetchSentSinceUid(any(ImapCredentials.class), any()))
+                .thenReturn(new ImapClient.IncrementalFetch(List.of(), null));
 
         polling.pollOne(account.getId());
 
@@ -157,8 +177,7 @@ class MailboxPollingServiceTest {
 
     @Test
     void suspendedMailboxIsSkippedByPollAll() {
-        when(imapClient.fetchSinceUid(anyString(), anyInt(), anyBoolean(),
-                anyString(), anyString(), any()))
+        when(imapClient.fetchSinceUid(any(ImapCredentials.class), any()))
                 .thenThrow(new ImapConnectionException("Login failed", null));
         // Trip the circuit breaker.
         for (int i = 0; i < PollingPolicy.SUSPEND_AT_FAILURES; i++) {
@@ -191,8 +210,7 @@ class MailboxPollingServiceTest {
     @Test
     void successfulPollSchedulesNextPollAt() {
         // Fresh account has next_poll_at = null → due immediately.
-        when(imapClient.fetchSinceUid(anyString(), anyInt(), anyBoolean(),
-                anyString(), anyString(), any()))
+        when(imapClient.fetchSinceUid(any(ImapCredentials.class), any()))
                 .thenReturn(new ImapClient.IncrementalFetch(List.of(), 1L));
 
         polling.pollOne(account.getId());
@@ -213,11 +231,13 @@ class MailboxPollingServiceTest {
                 account.getUser(), "imap.other.com", 993, true,
                 "polling-owner@example.com", encryptor.encrypt("app-pw")));
 
-        when(imapClient.fetchSinceUid(eq("imap.example.com"), anyInt(), anyBoolean(),
-                anyString(), anyString(), any()))
+        ImapCredentials firstCreds = ImapCredentials.password("imap.example.com", 993, true,
+                "polling-owner@example.com", "app-pw");
+        ImapCredentials secondCreds = ImapCredentials.password("imap.other.com", 993, true,
+                "polling-owner@example.com", "app-pw");
+        when(imapClient.fetchSinceUid(eq(firstCreds), any()))
                 .thenThrow(new RuntimeException("boom"));
-        when(imapClient.fetchSinceUid(eq("imap.other.com"), anyInt(), anyBoolean(),
-                anyString(), anyString(), any()))
+        when(imapClient.fetchSinceUid(eq(secondCreds), any()))
                 .thenReturn(new ImapClient.IncrementalFetch(List.of(), 7L));
 
         polling.pollAll();

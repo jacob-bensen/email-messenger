@@ -1,6 +1,7 @@
 package com.emailmessenger.repository;
 
 import com.emailmessenger.domain.EmailThread;
+import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -45,7 +46,7 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
     @Query("""
             SELECT DISTINCT t FROM EmailThread t
             WHERE t.owner = :owner
-              AND (:since IS NULL OR t.updatedAt >= :since)
+              AND (CAST(:since AS timestamp) IS NULL OR t.updatedAt >= :since)
               AND (:requireUnread = false OR t.unread = true)
               AND (:requireAttachments = false OR EXISTS (
                 SELECT 1 FROM Message m JOIN m.attachments a WHERE m.thread = t
@@ -61,11 +62,11 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
     @Query("""
             SELECT DISTINCT t FROM EmailThread t
             WHERE t.owner = :owner
-              AND (:senderEmail IS NULL OR EXISTS (
+              AND (CAST(:senderEmail AS string) IS NULL OR EXISTS (
                 SELECT 1 FROM Message ss
-                WHERE ss.thread = t AND LOWER(ss.sender.email) = LOWER(:senderEmail)
+                WHERE ss.thread = t AND LOWER(ss.sender.email) = LOWER(CAST(:senderEmail AS string))
               ))
-              AND (:since IS NULL OR t.updatedAt >= :since)
+              AND (CAST(:since AS timestamp) IS NULL OR t.updatedAt >= :since)
               AND (:requireUnread = false OR t.unread = true)
               AND (:requireAttachments = false OR EXISTS (
                 SELECT 1 FROM Message ma JOIN ma.attachments att WHERE ma.thread = t
@@ -94,11 +95,11 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
     @Query("""
             SELECT DISTINCT t FROM EmailThread t
             WHERE t.owner = :owner
-              AND (:senderEmail IS NULL OR EXISTS (
+              AND (CAST(:senderEmail AS string) IS NULL OR EXISTS (
                 SELECT 1 FROM Message ss
-                WHERE ss.thread = t AND LOWER(ss.sender.email) = LOWER(:senderEmail)
+                WHERE ss.thread = t AND LOWER(ss.sender.email) = LOWER(CAST(:senderEmail AS string))
               ))
-              AND (:since IS NULL OR t.updatedAt >= :since)
+              AND (CAST(:since AS timestamp) IS NULL OR t.updatedAt >= :since)
               AND (:requireUnread = false OR t.unread = true)
               AND (:requireAttachments = false OR EXISTS (
                 SELECT 1 FROM Message ma JOIN ma.attachments att WHERE ma.thread = t
@@ -130,11 +131,11 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
     @Query("""
             SELECT (COUNT(t) > 0) FROM EmailThread t
             WHERE t.owner = :owner
-              AND (:senderEmail IS NULL OR EXISTS (
+              AND (CAST(:senderEmail AS string) IS NULL OR EXISTS (
                 SELECT 1 FROM Message ss
-                WHERE ss.thread = t AND LOWER(ss.sender.email) = LOWER(:senderEmail)
+                WHERE ss.thread = t AND LOWER(ss.sender.email) = LOWER(CAST(:senderEmail AS string))
               ))
-              AND (:since IS NULL OR t.updatedAt >= :since)
+              AND (CAST(:since AS timestamp) IS NULL OR t.updatedAt >= :since)
               AND (:requireUnread = false OR t.unread = true)
               AND (:requireAttachments = false OR EXISTS (
                 SELECT 1 FROM Message ma JOIN ma.attachments att WHERE ma.thread = t
@@ -166,9 +167,9 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
             WHERE t.owner = :owner
               AND EXISTS (
                 SELECT 1 FROM Message m
-                WHERE m.thread = t AND LOWER(m.sender.email) = LOWER(:senderEmail)
+                WHERE m.thread = t AND LOWER(m.sender.email) = LOWER(CAST(:senderEmail AS string))
               )
-              AND (:since IS NULL OR t.updatedAt >= :since)
+              AND (CAST(:since AS timestamp) IS NULL OR t.updatedAt >= :since)
               AND (:requireUnread = false OR t.unread = true)
               AND (:requireAttachments = false OR EXISTS (
                 SELECT 1 FROM Message ma JOIN ma.attachments att WHERE ma.thread = t
@@ -181,6 +182,23 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
                                            @Param("requireUnread") boolean requireUnread,
                                            @Param("requireAttachments") boolean requireAttachments,
                                            Pageable pageable);
+
+    // The full back-and-forth with one address, oldest first: every message in a
+    // thread that the address took part in, where the message is either from that
+    // address (received) or one of the owner's own outbound replies. Powers the
+    // per-sender chat so both sides show in chronological order.
+    @Query("""
+            SELECT m FROM Message m
+            WHERE m.thread.owner = :owner
+              AND EXISTS (
+                SELECT 1 FROM Message x
+                WHERE x.thread = m.thread AND LOWER(x.sender.email) = LOWER(:senderEmail)
+              )
+              AND (LOWER(m.sender.email) = LOWER(:senderEmail) OR m.outbound = true)
+            ORDER BY m.sentAt ASC
+            """)
+    List<Message> findConversationWithSender(@Param("owner") User owner,
+                                             @Param("senderEmail") String senderEmail);
 
     @Query("""
             SELECT m.sender.email AS email,
@@ -197,5 +215,29 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
         String getEmail();
         String getDisplayName();
         long getThreadCount();
+    }
+
+    // The most recent inbound (received) sender for each thread in the page, so
+    // the inbox list can show who each conversation is with when no single
+    // sender is filtered. Outbound replies are excluded so we show the
+    // correspondent, not "you".
+    @Query("""
+            SELECT m.thread.id AS threadId,
+                   m.sender.displayName AS displayName,
+                   m.sender.email AS email
+            FROM Message m
+            WHERE m.thread.id IN :threadIds
+              AND m.outbound = false
+              AND m.sentAt = (
+                SELECT MAX(m2.sentAt) FROM Message m2
+                WHERE m2.thread = m.thread AND m2.outbound = false
+              )
+            """)
+    List<ThreadSenderRow> latestInboundSenders(@Param("threadIds") Collection<Long> threadIds);
+
+    interface ThreadSenderRow {
+        Long getThreadId();
+        String getDisplayName();
+        String getEmail();
     }
 }

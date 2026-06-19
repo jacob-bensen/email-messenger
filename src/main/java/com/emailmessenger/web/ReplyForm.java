@@ -1,11 +1,12 @@
 package com.emailmessenger.web;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 class ReplyForm {
 
-    @NotBlank(message = "Reply body cannot be empty")
+    // Not @NotBlank: an attachment-only reply (empty body) is allowed. The
+    // controller rejects only the case where both the body and attachments
+    // are empty.
     @Size(max = 100_000, message = "Reply body is too long")
     private String body = "";
 

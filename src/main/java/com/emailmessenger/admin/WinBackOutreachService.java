@@ -51,8 +51,8 @@ public class WinBackOutreachService {
     private final SiteProperties site;
     private final Clock clock;
 
-    @Value("${spring.mail.username:noreply@mailaim.app}")
-    private String fromAddress = "noreply@mailaim.app";
+    @Value("${spring.mail.username:noreply@conexusmail.com}")
+    private String fromAddress = "noreply@conexusmail.com";
 
     WinBackOutreachService(SubscriptionRepository subscriptions,
                            DigestEmailPreferenceRepository preferences,
@@ -126,11 +126,11 @@ public class WinBackOutreachService {
     private String subjectFor(Subscription sub) {
         String plan = planLabel(sub.getPlan());
         return switch (reasonOf(sub)) {
-            case TOO_EXPENSIVE -> "Come back to MailIM " + plan + " — let's find a fit";
-            case MISSING_FEATURE -> "MailIM " + plan + " — what were we missing?";
-            case SWITCHING -> "Hand-off help if you ever come back to MailIM " + plan;
-            case TEMPORARY -> "Your MailIM " + plan + " setup is still here when you're ready";
-            case OTHER -> "Anything we can do to bring you back to MailIM " + plan + "?";
+            case TOO_EXPENSIVE -> "Come back to ConexusMail " + plan + " — let's find a fit";
+            case MISSING_FEATURE -> "ConexusMail " + plan + " — what were we missing?";
+            case SWITCHING -> "Hand-off help if you ever come back to ConexusMail " + plan;
+            case TEMPORARY -> "Your ConexusMail " + plan + " setup is still here when you're ready";
+            case OTHER -> "Anything we can do to bring you back to ConexusMail " + plan + "?";
         };
     }
 
@@ -144,7 +144,7 @@ public class WinBackOutreachService {
 
         StringBuilder sb = new StringBuilder();
         sb.append("Hi ").append(greeting).append(",\n\n");
-        sb.append("We noticed you canceled your MailIM ").append(plan).append(' ')
+        sb.append("We noticed you canceled your ConexusMail ").append(plan).append(' ')
           .append(cadence).append(" plan recently. Your threads, saved searches,\n")
           .append("and mailbox connections are still on your account exactly as you\n")
           .append("left them — nothing's been deleted.\n\n");

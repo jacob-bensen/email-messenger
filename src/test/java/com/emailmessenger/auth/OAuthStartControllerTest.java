@@ -45,9 +45,9 @@ class OAuthStartControllerTest {
                 .andReturn().getRequest().getSession(false);
 
         assertThat(session).isNotNull();
-        assertThat(session.getAttribute("mailim.oauth.plan")).isEqualTo("personal");
-        assertThat(session.getAttribute("mailim.oauth.billing")).isEqualTo("annual");
-        assertThat(session.getAttribute("mailim.oauth.utm_source")).isEqualTo("producthunt");
+        assertThat(session.getAttribute("conexusmail.oauth.plan")).isEqualTo("personal");
+        assertThat(session.getAttribute("conexusmail.oauth.billing")).isEqualTo("annual");
+        assertThat(session.getAttribute("conexusmail.oauth.utm_source")).isEqualTo("producthunt");
     }
 
     @Test
@@ -58,9 +58,9 @@ class OAuthStartControllerTest {
                 .andReturn().getRequest().getSession(false);
 
         assertThat(session).isNotNull();
-        assertThat(session.getAttribute("mailim.oauth.plan")).isNull();
-        assertThat(session.getAttribute("mailim.oauth.billing")).isNull();
-        assertThat(session.getAttribute("mailim.oauth.utm_source")).isNull();
+        assertThat(session.getAttribute("conexusmail.oauth.plan")).isNull();
+        assertThat(session.getAttribute("conexusmail.oauth.billing")).isNull();
+        assertThat(session.getAttribute("conexusmail.oauth.utm_source")).isNull();
     }
 
     @Test
@@ -71,7 +71,7 @@ class OAuthStartControllerTest {
                 .andReturn().getRequest().getSession(false);
 
         assertThat(session).isNotNull();
-        assertThat(session.getAttribute("mailim.oauth.plan")).isNull();
+        assertThat(session.getAttribute("conexusmail.oauth.plan")).isNull();
     }
 
     @Test
@@ -83,8 +83,8 @@ class OAuthStartControllerTest {
                 .andReturn().getRequest().getSession(false);
 
         assertThat(session).isNotNull();
-        assertThat(session.getAttribute("mailim.oauth.plan")).isEqualTo("personal");
-        assertThat(session.getAttribute("mailim.oauth.billing")).isEqualTo("monthly");
+        assertThat(session.getAttribute("conexusmail.oauth.plan")).isEqualTo("personal");
+        assertThat(session.getAttribute("conexusmail.oauth.billing")).isEqualTo("monthly");
     }
 
     @Test
@@ -97,22 +97,22 @@ class OAuthStartControllerTest {
                 .andReturn().getRequest().getSession(false);
 
         assertThat(session).isNotNull();
-        String stored = (String) session.getAttribute("mailim.oauth.utm_source");
+        String stored = (String) session.getAttribute("conexusmail.oauth.utm_source");
         assertThat(stored).hasSize(64);
     }
 
     @Test
     void freshPlanClearsAnyStaleIntentFromEarlierStart() throws Exception {
         MockHttpSession session = new MockHttpSession();
-        session.setAttribute("mailim.oauth.plan", "team");
-        session.setAttribute("mailim.oauth.billing", "annual");
-        session.setAttribute("mailim.oauth.utm_source", "twitter");
+        session.setAttribute("conexusmail.oauth.plan", "team");
+        session.setAttribute("conexusmail.oauth.billing", "annual");
+        session.setAttribute("conexusmail.oauth.utm_source", "twitter");
 
         mockMvc.perform(get("/auth/google/start").session(session))
                 .andExpect(status().is3xxRedirection());
 
-        assertThat(session.getAttribute("mailim.oauth.plan")).isNull();
-        assertThat(session.getAttribute("mailim.oauth.billing")).isNull();
-        assertThat(session.getAttribute("mailim.oauth.utm_source")).isNull();
+        assertThat(session.getAttribute("conexusmail.oauth.plan")).isNull();
+        assertThat(session.getAttribute("conexusmail.oauth.billing")).isNull();
+        assertThat(session.getAttribute("conexusmail.oauth.utm_source")).isNull();
     }
 }

@@ -53,8 +53,8 @@ public class ReengagementService {
     private final SiteProperties site;
     private final Clock clock;
 
-    @Value("${spring.mail.username:noreply@mailaim.app}")
-    private String fromAddress = "noreply@mailaim.app";
+    @Value("${spring.mail.username:noreply@conexusmail.com}")
+    private String fromAddress = "noreply@conexusmail.com";
 
     ReengagementService(UserRepository users,
                         EmailThreadRepository threads,
@@ -129,8 +129,8 @@ public class ReengagementService {
 
     private String buildSubject(long unread) {
         return unread == 1
-                ? "1 unread thread waiting in your MailIM inbox"
-                : unread + " unread threads waiting in your MailIM inbox";
+                ? "1 unread thread waiting in your ConexusMail inbox"
+                : unread + " unread threads waiting in your ConexusMail inbox";
     }
 
     private String renderBody(User user, DigestEmailPreference prefs, long unread,
@@ -142,7 +142,7 @@ public class ReengagementService {
         StringBuilder sb = new StringBuilder();
         sb.append("Hi ").append(greeting).append(",\n\n");
         sb.append("It's been ").append(daysAway).append(daysAway == 1 ? " day" : " days")
-          .append(" since you last opened MailIM, and you have ")
+          .append(" since you last opened ConexusMail, and you have ")
           .append(unread).append(unread == 1 ? " unread thread" : " unread threads")
           .append(" waiting.\n\n");
         sb.append("Open your inbox: ").append(base).append("/threads\n\n");

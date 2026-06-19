@@ -35,7 +35,7 @@ class PwaControllerTest {
                 .contains("\"start_url\": \"/threads\"")
                 .contains("\"scope\": \"/\"")
                 .contains("\"display\": \"standalone\"")
-                .contains("\"theme_color\": \"#4f80ff\"")
+                .contains("\"theme_color\": \"#2f855a\"")
                 .contains("\"background_color\":");
     }
 
@@ -118,22 +118,22 @@ class PwaControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(first).isEqualTo(second);
-        assertThat(first).containsPattern("CACHE_VERSION = 'mailim-shell-[0-9a-f]{12}'");
+        assertThat(first).containsPattern("CACHE_VERSION = 'conexusmail-shell-[0-9a-f]{12}'");
     }
 
     @Test
-    void offlinePageRendersMailimBrandedShell() throws Exception {
+    void offlinePageRendersConexusMailBrandedShell() throws Exception {
         MvcResult result = mockMvc.perform(get("/offline"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("text/html"))
                 .andReturn();
 
         String body = result.getResponse().getContentAsString();
-        // Branded copy, not a generic browser error. Must include MailIM,
+        // Branded copy, not a generic browser error. Must include ConexusMail,
         // a refresh affordance, and the manifest link so the offline screen
         // itself stays installable when shown.
         assertThat(body)
-                .contains("MailIM")
+                .contains("ConexusMail")
                 .contains("offline")
                 .contains("Try again")
                 .contains("/manifest.webmanifest")

@@ -17,6 +17,8 @@ import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import jakarta.mail.Multipart;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -41,7 +43,7 @@ class ReplyServiceTest {
     @BeforeEach
     void setUp() {
         replyService = new ReplyService(messageRepository, mailSender);
-        ReflectionTestUtils.setField(replyService, "fromAddress", "noreply@mailaim.app");
+        ReflectionTestUtils.setField(replyService, "fromAddress", "noreply@conexusmail.com");
     }
 
     @Test
@@ -70,6 +72,34 @@ class ReplyServiceTest {
         assertThat(captor.getValue().getSubject()).isEqualTo("Re: Test Subject");
         assertThat(captor.getValue().getAllRecipients()[0].toString())
                 .isEqualTo("alice@example.com");
+    }
+
+    @Test
+    void sendReplyAttachesProvidedFilesAsMultipart() throws Exception {
+        EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
+        Participant alice = new Participant("alice@example.com", "Alice");
+        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
+
+        MimeMessage mimeMsg = new MimeMessage((Session) null);
+        when(messageRepository.findByThreadIdOrderBySentAtAsc(1L)).thenReturn(List.of(msg));
+        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
+
+        OutgoingAttachment att = new OutgoingAttachment(
+                "report.txt", "text/plain", "hello".getBytes(StandardCharsets.UTF_8));
+        replyService.sendReply(1L, "Subject", "See attached", List.of(att));
+
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(captor.capture());
+        Object content = captor.getValue().getContent();
+        assertThat(content).isInstanceOf(Multipart.class);
+        Multipart mp = (Multipart) content;
+        boolean attached = false;
+        for (int i = 0; i < mp.getCount(); i++) {
+            if ("report.txt".equals(mp.getBodyPart(i).getFileName())) {
+                attached = true;
+            }
+        }
+        assertThat(attached).isTrue();
     }
 
     @Test

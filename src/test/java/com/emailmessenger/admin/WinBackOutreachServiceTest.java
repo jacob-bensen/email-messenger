@@ -81,7 +81,7 @@ class WinBackOutreachServiceTest {
         MimeMessage mime = captor.getValue();
         assertThat(mime.getAllRecipients()).hasSize(1);
         assertThat(mime.getAllRecipients()[0].toString()).isEqualTo("walked@example.com");
-        assertThat(mime.getSubject()).contains("MailIM").contains("Personal");
+        assertThat(mime.getSubject()).contains("ConexusMail").contains("Personal");
         String body = (String) mime.getContent();
         DigestEmailPreference prefs = preferences.findByUser(sub.getUser()).orElseThrow();
         assertThat(body).contains("/pricing");

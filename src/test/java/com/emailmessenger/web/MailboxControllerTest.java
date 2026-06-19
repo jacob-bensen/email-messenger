@@ -228,6 +228,32 @@ class MailboxControllerTest {
     }
 
     @Test
+    void deleteRemovesMailboxAndRedirectsWithFlash() throws Exception {
+        when(mailAccountService.delete(any(User.class), eq(7L))).thenReturn(true);
+
+        mockMvc.perform(post("/mailboxes/7/delete")
+                        .with(user("mailbox@example.com")).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/mailboxes"))
+                .andExpect(flash().attribute("syncMessage", "Mailbox removed."));
+    }
+
+    @Test
+    void deleteOfForeignOrUnknownMailboxReturns404() throws Exception {
+        when(mailAccountService.delete(any(User.class), eq(42L))).thenReturn(false);
+
+        mockMvc.perform(post("/mailboxes/42/delete")
+                        .with(user("mailbox@example.com")).with(csrf()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteWithoutCsrfIsForbidden() throws Exception {
+        mockMvc.perform(post("/mailboxes/7/delete").with(user("mailbox@example.com")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void anonymousSyncIsRedirectedToLogin() throws Exception {
         mockMvc.perform(post("/mailboxes/1/sync").with(csrf()))
                 .andExpect(status().is3xxRedirection())

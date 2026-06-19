@@ -1,8 +1,6 @@
 package com.emailmessenger.web;
 
 import com.emailmessenger.auth.UserService;
-import com.emailmessenger.billing.PlanLimitExceededException;
-import com.emailmessenger.billing.PlanLimitKind;
 import com.emailmessenger.billing.PlanLimitService;
 import com.emailmessenger.billing.StripeCheckoutGateway;
 import com.emailmessenger.billing.StripePortalGateway;
@@ -24,8 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 @SpringBootTest
 @ActiveProfiles("dev")
@@ -100,19 +98,15 @@ class SavedSearchServiceTest {
     }
 
     @Test
-    void createSecondSavedSearchOnFreeThrowsPlanLimit() {
+    void secondSavedSearchIsAllowedSincePaidFeaturesAreUnlocked() {
         User user = newUser("freecap@example.com");
         savedSearchService.create(user, "First", null, "ada@example.com", null, false, false);
 
-        PlanLimitExceededException ex = catchThrowableOfType(() ->
-                savedSearchService.create(user, "Second", null, "grace@example.com", null, false, false),
-                PlanLimitExceededException.class);
+        assertThatCode(() ->
+                savedSearchService.create(user, "Second", null, "grace@example.com", null, false, false))
+                .doesNotThrowAnyException();
 
-        assertThat(ex).isNotNull();
-        assertThat(ex.getCurrentPlan()).isEqualTo(Plan.FREE);
-        assertThat(ex.getKind()).isEqualTo(PlanLimitKind.SAVED_SEARCH_COUNT);
-        assertThat(ex.getLimit()).isEqualTo(1);
-        assertThat(ex.getCurrent()).isEqualTo(1);
+        assertThat(savedSearchService.list(user)).hasSize(2);
     }
 
     @Test

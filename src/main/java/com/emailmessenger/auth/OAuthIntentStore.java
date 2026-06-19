@@ -22,9 +22,9 @@ import java.util.Locale;
 @Component
 class OAuthIntentStore {
 
-    private static final String ATTR_PLAN = "mailim.oauth.plan";
-    private static final String ATTR_BILLING = "mailim.oauth.billing";
-    private static final String ATTR_UTM = "mailim.oauth.utm_source";
+    private static final String ATTR_PLAN = "conexusmail.oauth.plan";
+    private static final String ATTR_BILLING = "conexusmail.oauth.billing";
+    private static final String ATTR_UTM = "conexusmail.oauth.utm_source";
     private static final int UTM_MAX = 64;
 
     void store(HttpServletRequest request, String plan, String billing, String utmSource) {

@@ -89,6 +89,9 @@ commit. Add follow-ups as they emerge.
       2026-06-11 — not deploying via Docker; run locally instead.
 - [x] ~~GitHub Actions CI: build, test, cache Maven deps.~~ Removed
       2026-06-11 — tests run locally with `./mvnw test`; do not re-add CI.
+- [ ] Set up the support email (a real mailbox/address users can write to, and
+      wire it into the app — e.g. footer/contact links and any "need help?"
+      copy). Decide the address and where outbound support mail is sent from.
 
 ## Conventions
 

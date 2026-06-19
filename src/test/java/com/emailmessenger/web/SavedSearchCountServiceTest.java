@@ -123,9 +123,9 @@ class SavedSearchCountServiceTest {
     }
 
     @Test
-    void freeUserGetsSubjectAndParticipantSearchCountsOnly() {
+    void bodyContentMatchesAreCountedForEveryAccount() {
         User user = newUser("countsfree@example.com");
-        // Free plan — body-content matches are excluded.
+        // Body-content search is unlocked for everyone now.
         newThread(user, "Subject hit", LocalDateTime.now().minusDays(2),
                 "ada@example.com", "no keyword inside");
         newThread(user, "Random subject", LocalDateTime.now().minusDays(1),
@@ -135,8 +135,8 @@ class SavedSearchCountServiceTest {
                 "urgentpayment", null, null, false, false));
 
         List<SavedSearchView> views = countService.viewsFor(user, List.of(saved));
-        // Free should NOT pick up the body-only match → 0 matches.
-        assertThat(views.get(0).matchCount()).isEqualTo(0);
+        // The body-only match is now included → 1 match.
+        assertThat(views.get(0).matchCount()).isEqualTo(1);
     }
 
     @Test

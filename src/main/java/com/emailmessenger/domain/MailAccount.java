@@ -2,6 +2,8 @@ package com.emailmessenger.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -38,8 +40,14 @@ public class MailAccount {
     @Column(nullable = false, length = 254)
     private String username;
 
+    // For PASSWORD accounts this is the encrypted app password; for XOAUTH2
+    // it is the encrypted OAuth refresh token (see authType).
     @Column(name = "password_ciphertext", nullable = false, columnDefinition = "TEXT")
     private String passwordCiphertext;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_type", nullable = false, length = 20)
+    private AuthType authType = AuthType.PASSWORD;
 
     @Column(name = "last_synced_at")
     private LocalDateTime lastSyncedAt;
@@ -49,6 +57,9 @@ public class MailAccount {
 
     @Column(name = "last_seen_uid")
     private Long lastSeenUid;
+
+    @Column(name = "last_seen_sent_uid")
+    private Long lastSeenSentUid;
 
     @Column(name = "consecutive_failure_count", nullable = false)
     private int consecutiveFailureCount;
@@ -69,12 +80,18 @@ public class MailAccount {
 
     public MailAccount(User user, String host, int port, boolean ssl,
                        String username, String passwordCiphertext) {
+        this(user, host, port, ssl, username, passwordCiphertext, AuthType.PASSWORD);
+    }
+
+    public MailAccount(User user, String host, int port, boolean ssl,
+                       String username, String passwordCiphertext, AuthType authType) {
         this.user = user;
         this.host = host;
         this.port = port;
         this.ssl = ssl;
         this.username = username;
         this.passwordCiphertext = passwordCiphertext;
+        this.authType = authType;
     }
 
     @PrePersist
@@ -96,10 +113,13 @@ public class MailAccount {
     public boolean isSsl() { return ssl; }
     public String getUsername() { return username; }
     public String getPasswordCiphertext() { return passwordCiphertext; }
+    public AuthType getAuthType() { return authType; }
     public LocalDateTime getLastSyncedAt() { return lastSyncedAt; }
     public String getLastSyncError() { return lastSyncError; }
     public Long getLastSeenUid() { return lastSeenUid; }
     public void setLastSeenUid(Long lastSeenUid) { this.lastSeenUid = lastSeenUid; }
+    public Long getLastSeenSentUid() { return lastSeenSentUid; }
+    public void setLastSeenSentUid(Long lastSeenSentUid) { this.lastSeenSentUid = lastSeenSentUid; }
     public int getConsecutiveFailureCount() { return consecutiveFailureCount; }
     public boolean isPollingSuspended() { return pollingSuspended; }
     public LocalDateTime getNextPollAt() { return nextPollAt; }

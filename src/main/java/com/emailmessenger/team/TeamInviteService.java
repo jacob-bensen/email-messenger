@@ -63,8 +63,8 @@ public class TeamInviteService {
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
-    @Value("${spring.mail.username:noreply@mailaim.app}")
-    private String fromAddress = "noreply@mailaim.app";
+    @Value("${spring.mail.username:noreply@conexusmail.com}")
+    private String fromAddress = "noreply@conexusmail.com";
 
     TeamInviteService(TeamService teamService,
                       TeamInviteRepository invites,
@@ -152,7 +152,7 @@ public class TeamInviteService {
      * Consume the token: add the accepting user to the team and mark
      * the invite as accepted. The accepting user's email must match
      * the invitee email — otherwise a stolen link could be redeemed by
-     * anyone with a MailIM account.
+     * anyone with a ConexusMail account.
      */
     @Transactional
     public AcceptOutcome acceptInvite(String plainToken, User accepter) {
@@ -197,13 +197,13 @@ public class TeamInviteService {
     }
 
     private String renderSubject(User inviter) {
-        return inviterLabel(inviter) + " invited you to their MailIM team";
+        return inviterLabel(inviter) + " invited you to their ConexusMail team";
     }
 
     private String renderBody(User inviter, String plainToken) {
         String url = site.getBaseUrl() + "/team/invite/accept?token=" + plainToken;
         return "Hi,\n\n"
-                + inviterLabel(inviter) + " is using MailIM — an inbox that reads like a "
+                + inviterLabel(inviter) + " is using ConexusMail — an inbox that reads like a "
                 + "chat — and wants you on the team.\n\n"
                 + "Accept the invite within the next 7 days:\n\n"
                 + url + "\n\n"

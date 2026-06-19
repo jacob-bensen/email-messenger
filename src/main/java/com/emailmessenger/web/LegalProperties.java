@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Pointers to the HTML body content rendered inside the legal-page
  * templates. Defaults to classpath boilerplate that ships with the app;
  * Master can override any of the three at deploy time via env (e.g.
- * {@code MARKETING_LEGAL_PRIVACY=file:/etc/mailim/privacy.html}) to drop
+ * {@code MARKETING_LEGAL_PRIVACY=file:/etc/conexusmail/privacy.html}) to drop
  * in Termly/Iubenda output without a redeploy or template change.
  */
 @ConfigurationProperties("marketing.legal")

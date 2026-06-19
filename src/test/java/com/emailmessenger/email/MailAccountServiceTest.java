@@ -1,10 +1,7 @@
 package com.emailmessenger.email;
 
 import com.emailmessenger.auth.UserService;
-import com.emailmessenger.billing.PlanLimitExceededException;
-import com.emailmessenger.billing.PlanLimitKind;
 import com.emailmessenger.domain.MailAccount;
-import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.repository.MailAccountRepository;
@@ -27,14 +24,12 @@ import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
-import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest
@@ -61,17 +56,36 @@ class MailAccountServiceTest {
     }
 
     @Test
+    void deleteRemovesOwnedMailbox() {
+        when(imapClient.fetchRecentInbox(any(ImapCredentials.class), anyInt())).thenReturn(List.of());
+        MailAccount saved = mailAccountService.connect(owner, "imap.example.com", 993, true,
+                "first@example.com", "pw1");
+
+        boolean removed = mailAccountService.delete(owner, saved.getId());
+
+        assertThat(removed).isTrue();
+        assertThat(mailAccountRepository.findById(saved.getId())).isEmpty();
+        assertThat(mailAccountRepository.countByUser(owner)).isZero();
+    }
+
+    @Test
+    void deleteForeignOrUnknownMailboxReturnsFalse() {
+        assertThat(mailAccountService.delete(owner, 999_999L)).isFalse();
+    }
+
+    @Test
     void connectPersistsAccountAndImportsRecentMessages() throws Exception {
         MimeMessage m1 = plainMessage("<m1@test>", "Welcome", "alice@example.com", "First message.");
         MimeMessage m2 = plainMessage("<m2@test>", "Project kickoff", "bob@example.com", "Let's start.");
-        when(imapClient.fetchRecentInbox(eq("imap.example.com"), eq(993), eq(true),
-                eq("user@example.com"), eq("app-pw"), eq(MailAccountService.INITIAL_SYNC_LIMIT)))
+        ImapCredentials creds = ImapCredentials.password("imap.example.com", 993, true,
+                "user@example.com", "app-pw");
+        when(imapClient.fetchRecentInbox(eq(creds), eq(MailAccountService.INITIAL_SYNC_LIMIT)))
                 .thenReturn(List.of(m1, m2));
 
         MailAccount saved = mailAccountService.connect(owner, "imap.example.com", 993, true,
                 "user@example.com", "app-pw");
 
-        verify(imapClient).verifyConnection("imap.example.com", 993, true, "user@example.com", "app-pw");
+        verify(imapClient).verifyConnection(creds);
         assertThat(saved.getId()).isNotNull();
         assertThat(saved.getLastSyncedAt()).isNotNull();
         assertThat(saved.getLastSyncError()).isNull();
@@ -83,8 +97,7 @@ class MailAccountServiceTest {
 
     @Test
     void connectStoresEncryptedPasswordNotPlaintext() {
-        when(imapClient.fetchRecentInbox(anyString(), anyInt(), anyBoolean(),
-                anyString(), anyString(), anyInt())).thenReturn(List.of());
+        when(imapClient.fetchRecentInbox(any(ImapCredentials.class), anyInt())).thenReturn(List.of());
 
         MailAccount saved = mailAccountService.connect(owner, "imap.example.com", 993, true,
                 "user@example.com", "secret-app-password");
@@ -97,8 +110,7 @@ class MailAccountServiceTest {
     @Test
     void invalidCredentialsThrowAndPersistNothing() {
         doThrow(new ImapConnectionException("AUTHENTICATE failed", null))
-                .when(imapClient).verifyConnection(anyString(), anyInt(), anyBoolean(),
-                        anyString(), anyString());
+                .when(imapClient).verifyConnection(any(ImapCredentials.class));
 
         ImapConnectionException ex = catchThrowableOfType(
                 () -> mailAccountService.connect(owner, "imap.example.com", 993, true,
@@ -108,38 +120,24 @@ class MailAccountServiceTest {
         assertThat(ex).isNotNull();
         assertThat(ex.getMessage()).contains("AUTHENTICATE failed");
         assertThat(mailAccountRepository.findByUserOrderByCreatedAtAsc(owner)).isEmpty();
-        verify(imapClient, never()).fetchRecentInbox(anyString(), anyInt(), anyBoolean(),
-                anyString(), anyString(), anyInt());
+        verify(imapClient, never()).fetchRecentInbox(any(ImapCredentials.class), anyInt());
     }
 
     @Test
-    void freePlanCapBlocksSecondMailboxBeforeImapCall() {
-        // First mailbox lands within the Free cap of 1.
-        when(imapClient.fetchRecentInbox(anyString(), anyInt(), anyBoolean(),
-                anyString(), anyString(), anyInt())).thenReturn(List.of());
+    void secondMailboxConnectsSincePaidFeaturesAreUnlocked() {
+        // Mailbox caps are lifted for everyone, so a second mailbox connects fine.
+        when(imapClient.fetchRecentInbox(any(ImapCredentials.class), anyInt())).thenReturn(List.of());
         mailAccountService.connect(owner, "imap.example.com", 993, true,
                 "first@example.com", "pw1");
+        mailAccountService.connect(owner, "imap.other.com", 993, true,
+                "second@example.com", "pw2");
 
-        org.mockito.Mockito.reset(imapClient);
-
-        PlanLimitExceededException ex = catchThrowableOfType(
-                () -> mailAccountService.connect(owner, "imap.other.com", 993, true,
-                        "second@example.com", "pw2"),
-                PlanLimitExceededException.class);
-
-        assertThat(ex).isNotNull();
-        assertThat(ex.getCurrentPlan()).isEqualTo(Plan.FREE);
-        assertThat(ex.getKind()).isEqualTo(PlanLimitKind.MAILBOX_COUNT);
-        assertThat(ex.getLimit()).isEqualTo(1);
-        // Plan check runs before the IMAP probe — we don't leak credentials to a server we'll reject anyway.
-        verifyNoInteractions(imapClient);
-        assertThat(mailAccountRepository.countByUser(owner)).isEqualTo(1L);
+        assertThat(mailAccountRepository.countByUser(owner)).isEqualTo(2L);
     }
 
     @Test
     void fetchFailureAfterSuccessfulVerifyStillPersistsAccountWithError() {
-        when(imapClient.fetchRecentInbox(anyString(), anyInt(), anyBoolean(),
-                anyString(), anyString(), anyInt()))
+        when(imapClient.fetchRecentInbox(any(ImapCredentials.class), anyInt()))
                 .thenThrow(new ImapConnectionException("INBOX unavailable", null));
 
         MailAccount saved = mailAccountService.connect(owner, "imap.example.com", 993, true,
@@ -150,6 +148,27 @@ class MailAccountServiceTest {
         assertThat(saved.getId()).isNotNull();
         assertThat(saved.getLastSyncedAt()).isNull();
         assertThat(saved.getLastSyncError()).isEqualTo("INBOX unavailable");
+    }
+
+    @Test
+    void connectGmailOAuthPersistsXoauth2AccountWithEncryptedRefreshToken() throws Exception {
+        MimeMessage m1 = plainMessage("<g1@test>", "Hi", "alice@example.com", "Hello there.");
+        ImapCredentials creds = ImapCredentials.xoauth2("imap.gmail.com", 993, true,
+                "mailbox-owner@example.com", "access-token-123");
+        when(imapClient.fetchRecentInbox(eq(creds), eq(MailAccountService.INITIAL_SYNC_LIMIT)))
+                .thenReturn(List.of(m1));
+
+        MailAccount saved = mailAccountService.connectGmailOAuth(owner,
+                "mailbox-owner@example.com", "refresh-token-xyz", "access-token-123");
+
+        verify(imapClient).verifyConnection(creds);
+        assertThat(saved.getId()).isNotNull();
+        assertThat(saved.getAuthType()).isEqualTo(com.emailmessenger.domain.AuthType.XOAUTH2);
+        assertThat(saved.getHost()).isEqualTo("imap.gmail.com");
+        // The encrypted secret is the refresh token, not the access token.
+        assertThat(encryptor.decrypt(saved.getPasswordCiphertext())).isEqualTo("refresh-token-xyz");
+        assertThat(saved.getLastSyncError()).isNull();
+        assertThat(messageRepository.findByMessageIdHeaderAndOwner("<g1@test>", owner)).isPresent();
     }
 
     private MimeMessage plainMessage(String messageId, String subject, String from, String body)

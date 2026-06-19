@@ -61,8 +61,8 @@ public class EmailVerificationService {
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
-    @Value("${spring.mail.username:noreply@mailaim.app}")
-    private String fromAddress = "noreply@mailaim.app";
+    @Value("${spring.mail.username:noreply@conexusmail.com}")
+    private String fromAddress = "noreply@conexusmail.com";
 
     EmailVerificationService(UserRepository users,
                              EmailVerificationTokenRepository tokens,
@@ -138,7 +138,7 @@ public class EmailVerificationService {
             MimeMessageHelper helper = new MimeMessageHelper(mime, false, "UTF-8");
             helper.setFrom(fromAddress);
             helper.setTo(user.getEmail());
-            helper.setSubject("Confirm your MailIM email address");
+            helper.setSubject("Confirm your ConexusMail email address");
             helper.setText(renderBody(user, plainToken), false);
         } catch (MessagingException e) {
             throw new MailPreparationException("Could not compose verification email", e);
@@ -151,10 +151,10 @@ public class EmailVerificationService {
                 ? user.getDisplayName().trim() : "there";
         String url = site.getBaseUrl() + "/verify-email?token=" + plainToken;
         return "Hi " + greeting + ",\n\n"
-                + "Welcome to MailIM. Click the link below within the next 24 "
+                + "Welcome to ConexusMail. Click the link below within the next 24 "
                 + "hours to confirm your email address:\n\n"
                 + url + "\n\n"
-                + "If you didn't sign up for MailIM, you can ignore this "
+                + "If you didn't sign up for ConexusMail, you can ignore this "
                 + "email — we won't bother you again.\n";
     }
 

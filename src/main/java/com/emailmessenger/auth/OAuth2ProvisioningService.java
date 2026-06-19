@@ -72,7 +72,7 @@ public class OAuth2ProvisioningService {
      * @param googleSubject the OIDC {@code sub} claim — Google's stable
      *        per-account id. Preferred over email match on lookup so a
      *        rename of the Google address still resolves to the same
-     *        MailIM row. Written onto an email-matched row on first
+     *        ConexusMail row. Written onto an email-matched row on first
      *        OAuth login (account-linking).
      */
     @Transactional

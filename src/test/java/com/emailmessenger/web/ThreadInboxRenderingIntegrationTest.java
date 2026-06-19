@@ -117,7 +117,7 @@ class ThreadInboxRenderingIntegrationTest {
 
         assertThat(body).contains("id=\"install-banner\"");
         assertThat(body).contains("beforeinstallprompt");
-        assertThat(body).contains("mailim-install-dismiss-v1");
+        assertThat(body).contains("conexusmail-install-dismiss-v1");
     }
 
     @Test
@@ -184,7 +184,7 @@ class ThreadInboxRenderingIntegrationTest {
         when(trialConversionNudgeService.nudgeFor(org.mockito.ArgumentMatchers.any(User.class)))
                 .thenReturn(Optional.of(new TrialConversionNudge(
                         "Personal", "personal", 2L, "$9", "$7", "$84",
-                        "mailim-trial-nudge-2026-06-10-d2")));
+                        "conexusmail-trial-nudge-2026-06-10-d2")));
 
         String body = mockMvc.perform(get("/threads"))
                 .andExpect(status().isOk())
@@ -211,7 +211,7 @@ class ThreadInboxRenderingIntegrationTest {
         when(trialConversionNudgeService.nudgeFor(org.mockito.ArgumentMatchers.any(User.class)))
                 .thenReturn(Optional.of(new TrialConversionNudge(
                         "Personal", "personal", 5L, "$9", "$7", "$84",
-                        "mailim-trial-nudge-2026-06-13-d5")));
+                        "conexusmail-trial-nudge-2026-06-13-d5")));
 
         String body = mockMvc.perform(get("/threads"))
                 .andExpect(status().isOk())

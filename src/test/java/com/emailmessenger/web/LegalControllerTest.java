@@ -35,7 +35,7 @@ class LegalControllerTest {
         mockMvc.perform(get("/privacy"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("legal"))
-                .andExpect(model().attribute("pageTitle", "Privacy Policy — MailIM"))
+                .andExpect(model().attribute("pageTitle", "Privacy Policy — ConexusMail"))
                 .andExpect(model().attribute("pagePath", "/privacy"))
                 .andExpect(model().attribute("content", "<p>Privacy boilerplate body.</p>"));
     }
@@ -48,7 +48,7 @@ class LegalControllerTest {
         mockMvc.perform(get("/terms"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("legal"))
-                .andExpect(model().attribute("pageTitle", "Terms of Service — MailIM"))
+                .andExpect(model().attribute("pageTitle", "Terms of Service — ConexusMail"))
                 .andExpect(model().attribute("pagePath", "/terms"))
                 .andExpect(model().attribute("content", "<p>Terms boilerplate body.</p>"));
     }
@@ -61,7 +61,7 @@ class LegalControllerTest {
         mockMvc.perform(get("/refund"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("legal"))
-                .andExpect(model().attribute("pageTitle", "Refund Policy — MailIM"))
+                .andExpect(model().attribute("pageTitle", "Refund Policy — ConexusMail"))
                 .andExpect(model().attribute("pagePath", "/refund"))
                 .andExpect(model().attribute("content", "<p>Refund boilerplate body.</p>"));
     }
@@ -70,8 +70,8 @@ class LegalControllerTest {
     void privacyHonorsOverridenResourceLocation() throws Exception {
         // Master sets MARKETING_LEGAL_PRIVACY to a deploy-time file/URL —
         // the controller must read THAT, not the classpath default.
-        properties.setPrivacy("file:/etc/mailim/custom-privacy.html");
-        resourceLoader.put("file:/etc/mailim/custom-privacy.html",
+        properties.setPrivacy("file:/etc/conexusmail/custom-privacy.html");
+        resourceLoader.put("file:/etc/conexusmail/custom-privacy.html",
                 "<p>Custom privacy from Termly export.</p>");
 
         mockMvc.perform(get("/privacy"))
@@ -95,7 +95,7 @@ class LegalControllerTest {
                 .andReturn().getModelAndView().getModel().get("pageTitle"));
 
         assertThat(titles.values()).doesNotHaveDuplicates();
-        assertThat(titles.values()).allMatch(t -> t.endsWith(" — MailIM"));
+        assertThat(titles.values()).allMatch(t -> t.endsWith(" — ConexusMail"));
     }
 
     private static LegalProperties configuredProperties() {

@@ -64,17 +64,18 @@ class ThreadNoteServiceTest {
         return threads.save(thread);
     }
 
+    // Notes are unlocked for everyone now, so access no longer depends on plan.
     @Test
-    void freeUserCannotAccessNotes() {
+    void accountWithoutSubscriptionCanAccessNotes() {
         User free = newUser("free@example.com", "Free");
-        assertThat(threadNoteService.canAccessNotes(free)).isFalse();
+        assertThat(threadNoteService.canAccessNotes(free)).isTrue();
     }
 
     @Test
-    void personalUserCannotAccessNotes() {
+    void personalUserCanAccessNotes() {
         User personal = newUser("personal@example.com", "Personal");
         activatePlan(personal, Plan.PERSONAL);
-        assertThat(threadNoteService.canAccessNotes(personal)).isFalse();
+        assertThat(threadNoteService.canAccessNotes(personal)).isTrue();
     }
 
     @Test
@@ -85,15 +86,15 @@ class ThreadNoteServiceTest {
     }
 
     @Test
-    void postOnFreePlanReturnsGatedAndPersistsNothing() {
+    void postWithoutSubscriptionPersists() {
         User free = newUser("freepost@example.com", "Free");
         EmailThread thread = newThreadOwnedBy(free);
 
         ThreadNoteService.PostResult result =
                 threadNoteService.post(thread, free, "Hello team");
 
-        assertThat(result.outcome()).isEqualTo(ThreadNoteService.PostOutcome.GATED);
-        assertThat(notes.countByThread(thread)).isZero();
+        assertThat(result.outcome()).isEqualTo(ThreadNoteService.PostOutcome.POSTED);
+        assertThat(notes.countByThread(thread)).isEqualTo(1L);
     }
 
     @Test
@@ -186,25 +187,21 @@ class ThreadNoteServiceTest {
     }
 
     @Test
-    void teammateLosesNotesAccessWhenOwnerDowngradesFromTeamPlan() {
+    void teammateKeepsNotesAccessRegardlessOfOwnerPlan() {
         User owner = newUser("downgrade@example.com", "Owner");
-        activatePlan(owner, Plan.TEAM);
+        activatePlan(owner, Plan.PERSONAL);
         User teammate = newUser("downgradeteammate@example.com", "Teammate");
         EmailThread thread = newThreadOwnedBy(owner);
         joinTeam(owner, teammate);
-        threadNoteService.post(thread, teammate, "Visible while Team");
+        threadNoteService.post(thread, teammate, "Visible to the team");
 
+        // Features are unlocked for everyone, so a non-Team owner plan no longer
+        // gates teammate access.
         assertThat(threadNoteService.notesFor(thread, teammate)).hasSize(1);
-
-        Subscription sub = subscriptions.findByUser(owner).orElseThrow();
-        sub.setPlan(Plan.PERSONAL);
-        subscriptions.save(sub);
-
-        assertThat(threadNoteService.notesFor(thread, teammate)).isEmpty();
-        assertThat(threadNoteService.canAccessNotesOn(thread, teammate)).isFalse();
+        assertThat(threadNoteService.canAccessNotesOn(thread, teammate)).isTrue();
         ThreadNoteService.PostResult result =
-                threadNoteService.post(thread, teammate, "Should be gated");
-        assertThat(result.outcome()).isEqualTo(ThreadNoteService.PostOutcome.GATED);
+                threadNoteService.post(thread, teammate, "Still allowed");
+        assertThat(result.outcome()).isEqualTo(ThreadNoteService.PostOutcome.POSTED);
     }
 
     private void joinTeam(User owner, User teammate) {
@@ -217,7 +214,7 @@ class ThreadNoteServiceTest {
     }
 
     @Test
-    void cancelledSubscriptionDropsBackToFreeAndLosesAccess() {
+    void cancelledSubscriptionKeepsNotesAccess() {
         User user = newUser("cancelled@example.com", "Cancelled");
         activatePlan(user, Plan.TEAM);
         assertThat(threadNoteService.canAccessNotes(user)).isTrue();
@@ -226,6 +223,7 @@ class ThreadNoteServiceTest {
         sub.setStatus("canceled");
         subscriptions.save(sub);
 
-        assertThat(threadNoteService.canAccessNotes(user)).isFalse();
+        // Access no longer depends on subscription status.
+        assertThat(threadNoteService.canAccessNotes(user)).isTrue();
     }
 }

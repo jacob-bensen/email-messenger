@@ -17,7 +17,11 @@ public final class PlanLimits {
 
     private static final Map<Plan, PlanLimits> CAPS = new EnumMap<>(Plan.class);
     static {
-        CAPS.put(Plan.FREE,       new PlanLimits(1,  500,       1));
+        // Free is capped at 3 mailboxes. NOTE: not currently enforced —
+        // PlanLimitService.currentPlan() returns the top tier for everyone, so
+        // every account gets unlimited today. These caps define the intended
+        // free tier for when/if the paywall is switched back on.
+        CAPS.put(Plan.FREE,       new PlanLimits(3,  500,       1));
         CAPS.put(Plan.PERSONAL,   new PlanLimits(3,  UNLIMITED, UNLIMITED));
         CAPS.put(Plan.TEAM,       new PlanLimits(10, UNLIMITED, UNLIMITED));
         CAPS.put(Plan.ENTERPRISE, new PlanLimits(UNLIMITED, UNLIMITED, UNLIMITED));

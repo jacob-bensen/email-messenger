@@ -20,7 +20,7 @@ class SeoControllerTest {
 
     @Test
     void robotsAdvertisesSitemapAndDisallowsPrivateRoutes() throws Exception {
-        MvcResult result = mockMvc("https://mailaim.app/")
+        MvcResult result = mockMvc("https://conexusmail.com/")
                 .perform(get("/robots.txt"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("text/plain"))
@@ -34,12 +34,12 @@ class SeoControllerTest {
                 .contains("Disallow: /mailboxes")
                 .contains("Disallow: /billing/")
                 .contains("Disallow: /actuator/")
-                .contains("Sitemap: https://mailaim.app/sitemap.xml");
+                .contains("Sitemap: https://conexusmail.com/sitemap.xml");
     }
 
     @Test
     void sitemapListsEveryPublicMarketingUrl() throws Exception {
-        MvcResult result = mockMvc("https://mailaim.app")
+        MvcResult result = mockMvc("https://conexusmail.com")
                 .perform(get("/sitemap.xml"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("application/xml"))
@@ -49,20 +49,20 @@ class SeoControllerTest {
         assertThat(body)
                 .startsWith("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
                 .contains("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">")
-                .contains("<loc>https://mailaim.app/</loc>")
-                .contains("<loc>https://mailaim.app/pricing</loc>")
-                .contains("<loc>https://mailaim.app/demo</loc>")
-                .contains("<loc>https://mailaim.app/register</loc>")
-                .contains("<loc>https://mailaim.app/login</loc>")
-                .contains("<loc>https://mailaim.app/privacy</loc>")
-                .contains("<loc>https://mailaim.app/terms</loc>")
-                .contains("<loc>https://mailaim.app/refund</loc>")
+                .contains("<loc>https://conexusmail.com/</loc>")
+                .contains("<loc>https://conexusmail.com/pricing</loc>")
+                .contains("<loc>https://conexusmail.com/demo</loc>")
+                .contains("<loc>https://conexusmail.com/register</loc>")
+                .contains("<loc>https://conexusmail.com/login</loc>")
+                .contains("<loc>https://conexusmail.com/privacy</loc>")
+                .contains("<loc>https://conexusmail.com/terms</loc>")
+                .contains("<loc>https://conexusmail.com/refund</loc>")
                 .contains("</urlset>");
     }
 
     @Test
     void ogCardServesValidPngWithCorrectDimensions() throws Exception {
-        MvcResult result = mockMvc("https://mailaim.app")
+        MvcResult result = mockMvc("https://conexusmail.com")
                 .perform(get("/images/og-card.png"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("image/png"))
@@ -86,19 +86,19 @@ class SeoControllerTest {
     @Test
     void baseUrlTrailingSlashIsStrippedBeforeUseInRobotsAndSitemap() throws Exception {
         // SiteProperties#setBaseUrl strips trailing slashes so callers don't have to.
-        MvcResult robots = mockMvc("https://mailaim.app///")
+        MvcResult robots = mockMvc("https://conexusmail.com///")
                 .perform(get("/robots.txt"))
                 .andReturn();
         assertThat(robots.getResponse().getContentAsString())
-                .contains("Sitemap: https://mailaim.app/sitemap.xml")
-                .doesNotContain("https://mailaim.app///");
+                .contains("Sitemap: https://conexusmail.com/sitemap.xml")
+                .doesNotContain("https://conexusmail.com///");
 
-        MvcResult sitemap = mockMvc("https://mailaim.app///")
+        MvcResult sitemap = mockMvc("https://conexusmail.com///")
                 .perform(get("/sitemap.xml"))
                 .andReturn();
         assertThat(sitemap.getResponse().getContentAsString())
-                .contains("<loc>https://mailaim.app/</loc>")
-                .contains("<loc>https://mailaim.app/pricing</loc>")
-                .doesNotContain("https://mailaim.app///");
+                .contains("<loc>https://conexusmail.com/</loc>")
+                .contains("<loc>https://conexusmail.com/pricing</loc>")
+                .doesNotContain("https://conexusmail.com///");
     }
 }

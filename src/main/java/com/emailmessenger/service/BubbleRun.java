@@ -1,12 +1,12 @@
 package com.emailmessenger.service;
 
-import com.emailmessenger.domain.Participant;
 import java.time.LocalDate;
 import java.util.List;
 
 public record BubbleRun(
-    Participant sender,
-    List<BubbleMessage> messages
+    SenderView sender,
+    List<BubbleMessage> messages,
+    boolean outbound
 ) {
     public LocalDate date() {
         if (messages.isEmpty()) return null;

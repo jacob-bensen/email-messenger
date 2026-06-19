@@ -188,7 +188,7 @@ class ActivationServiceTest {
         ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
         verify(mailSender).send(captor.capture());
         MimeMessage mime = captor.getValue();
-        assertThat(mime.getSubject()).contains("MailIM in action");
+        assertThat(mime.getSubject()).contains("ConexusMail in action");
         String body = (String) mime.getContent();
         DigestEmailPreference prefs = preferences.findByUser(user).orElseThrow();
         int demoIndex = body.indexOf("/demo");

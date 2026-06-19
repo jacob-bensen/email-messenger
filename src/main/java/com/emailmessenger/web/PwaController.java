@@ -33,12 +33,12 @@ import java.util.List;
 @Controller
 class PwaController {
 
-    static final String APP_NAME = "MailIM";
-    static final String APP_SHORT_NAME = "MailIM";
+    static final String APP_NAME = "ConexusMail";
+    static final String APP_SHORT_NAME = "ConexusMail";
     static final String START_URL = "/threads";
     static final String SCOPE = "/";
-    static final String THEME_COLOR = "#4f80ff";
-    static final String BACKGROUND_COLOR = "#0f172a";
+    static final String THEME_COLOR = "#2f855a";
+    static final String BACKGROUND_COLOR = "#0f1512";
 
     /**
      * Static-shell assets pre-cached by the service worker on install.
@@ -184,8 +184,8 @@ class PwaController {
                   <meta charset="UTF-8">
                   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
                   <meta name="robots" content="noindex">
-                  <title>You're offline — MailIM</title>
-                  <meta name="theme-color" content="#4f80ff">
+                  <title>You're offline — ConexusMail</title>
+                  <meta name="theme-color" content="#2f855a">
                   <link rel="manifest" href="/manifest.webmanifest">
                   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
                   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
@@ -193,27 +193,27 @@ class PwaController {
                   <style>
                     body.offline-shell { display: flex; min-height: 100vh; margin: 0;
                       align-items: center; justify-content: center;
-                      background: #0f172a; color: #f8fafc;
+                      background: #0f1512; color: #f8fafc;
                       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                       padding: env(safe-area-inset-top) env(safe-area-inset-right)
                               env(safe-area-inset-bottom) env(safe-area-inset-left); }
                     .offline-card { max-width: 28rem; text-align: center; padding: 2rem; }
-                    .offline-mark { font-size: 2rem; font-weight: 700; color: #4f80ff;
+                    .offline-mark { font-size: 2rem; font-weight: 700; color: #5fb98a;
                       letter-spacing: -0.02em; margin: 0 0 1rem; }
                     .offline-title { font-size: 1.5rem; margin: 0 0 0.75rem; }
                     .offline-sub { color: #cbd5e1; line-height: 1.5; margin: 0 0 1.5rem; }
                     .offline-btn { display: inline-block; padding: 0.75rem 1.5rem;
-                      background: #4f80ff; color: #fff; border: none; border-radius: 0.5rem;
+                      background: #2f855a; color: #fff; border: none; border-radius: 0.5rem;
                       font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
-                    .offline-btn:hover { background: #3b6fe0; }
+                    .offline-btn:hover { background: #276749; }
                   </style>
                 </head>
                 <body class="offline-shell">
                   <main class="offline-card">
-                    <p class="offline-mark">MailIM</p>
+                    <p class="offline-mark">ConexusMail</p>
                     <h1 class="offline-title">You're offline</h1>
                     <p class="offline-sub">
-                      Your inbox is waiting. We'll reconnect to MailIM as soon
+                      Your inbox is waiting. We'll reconnect to ConexusMail as soon
                       as your network is back.
                     </p>
                     <button class="offline-btn" onclick="location.reload()" type="button">
@@ -240,14 +240,29 @@ class PwaController {
                 .map(s -> "[" + s + "]")
                 .orElse("[]");
         String withAssets = SW_TEMPLATE.replace("__SHELL_ASSETS__", assetsJsArray);
-        String version = hash12(withAssets);
-        return withAssets.replace("__CACHE_VERSION__", "mailim-shell-" + version);
+        // Fold the cached stylesheet's content into the version hash so editing
+        // main.css ships a new cache key — otherwise the cache-first fetch handler
+        // serves the stale stylesheet forever (template changes still show because
+        // navigations always hit the network; static shell assets do not).
+        String version = hash12(withAssets + cssFingerprint());
+        return withAssets.replace("__CACHE_VERSION__", "conexusmail-shell-" + version);
+    }
+
+    private static String cssFingerprint() {
+        try (var in = new org.springframework.core.io.ClassPathResource("static/css/main.css")
+                .getInputStream()) {
+            return hash12(new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            // Missing stylesheet on the classpath shouldn't break SW generation;
+            // the worst case is the pre-fix behaviour (version ignores CSS).
+            return "";
+        }
     }
 
     private static String extractCacheVersion(String body) {
-        int start = body.indexOf("'mailim-shell-");
+        int start = body.indexOf("'conexusmail-shell-");
         if (start < 0) {
-            return "mailim-shell";
+            return "conexusmail-shell";
         }
         int end = body.indexOf('\'', start + 1);
         return body.substring(start + 1, end);

@@ -41,4 +41,18 @@ public interface MailAccountRepository extends JpaRepository<MailAccount, Long> 
               and (a.nextPollAt is null or a.nextPollAt <= :now)
             """)
     List<MailAccount> findDueForPolling(@Param("now") LocalDateTime now);
+
+    /**
+     * The current user's accounts that are due for a poll right now — used by
+     * the on-inbox-open refresh so opening /threads pulls fresh mail
+     * immediately, without re-polling accounts the scheduler already serviced.
+     */
+    @Query("""
+            select a from MailAccount a
+            where a.user.id = :userId
+              and a.pollingSuspended = false
+              and (a.nextPollAt is null or a.nextPollAt <= :now)
+            """)
+    List<MailAccount> findDueForPollingByUserId(@Param("userId") Long userId,
+                                                @Param("now") LocalDateTime now);
 }

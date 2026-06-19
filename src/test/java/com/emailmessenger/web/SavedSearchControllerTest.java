@@ -99,21 +99,21 @@ class SavedSearchControllerTest {
     }
 
     @Test
-    void freeUserSavingSecondSearchSeesUpgradeModalFlash() throws Exception {
+    void secondSavedSearchSucceedsWithNoUpgradeModal() throws Exception {
         savedSearchRepository.save(new SavedSearch(owner, "First", null,
                 "first@example.com", null, false, false));
 
-        // PlanLimitExceededException propagates to GlobalExceptionHandler which
-        // redirects to /threads with the upgradeModal flash attribute set.
+        // Paid features are unlocked for everyone, so a second saved search just
+        // saves — no PlanLimitExceededException, no upgrade modal.
         mockMvc.perform(post("/searches")
                         .with(user("saver@example.com")).with(csrf())
                         .param("name", "Second")
                         .param("from", "second@example.com"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/threads"))
-                .andExpect(flash().attributeExists("upgradeModal"));
+                .andExpect(flash().attributeExists("savedSearchMessage"))
+                .andExpect(flash().attribute("upgradeModal", org.hamcrest.Matchers.nullValue()));
 
-        assertThat(savedSearchRepository.countByOwner(owner)).isEqualTo(1);
+        assertThat(savedSearchRepository.countByOwner(owner)).isEqualTo(2);
     }
 
     @Test

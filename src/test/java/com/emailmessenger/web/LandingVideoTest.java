@@ -33,7 +33,7 @@ class LandingVideoTest {
         LandingProperties.Video v = new LandingProperties.Video();
         v.setProvider("YouTube"); // case- and whitespace-insensitive setter
         v.setId("dQw4w9WgXcQ");
-        v.setTitle("MailIM in 60s");
+        v.setTitle("ConexusMail in 60s");
 
         LandingVideo built = LandingVideo.from(v);
 
@@ -42,7 +42,7 @@ class LandingVideoTest {
         assertThat(built.embedUrl())
                 .startsWith("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ")
                 .contains("rel=0").contains("modestbranding=1").contains("autoplay=1");
-        assertThat(built.title()).isEqualTo("MailIM in 60s");
+        assertThat(built.title()).isEqualTo("ConexusMail in 60s");
     }
 
     @Test
@@ -58,7 +58,7 @@ class LandingVideoTest {
         assertThat(built.embedUrl()).isEqualTo("https://www.loom.com/embed/abc123def456?autoplay=1");
         assertThat(built.posterUrl()).isEqualTo("https://cdn.example/poster.png");
         // The empty/blank title setter falls back to a sensible default.
-        assertThat(built.title()).isEqualTo("MailIM demo");
+        assertThat(built.title()).isEqualTo("ConexusMail demo");
     }
 
     @Test
@@ -82,7 +82,7 @@ class LandingVideoTest {
     void titleSetterTrimsAndDefaultsBlank() {
         LandingProperties.Video v = new LandingProperties.Video();
         v.setTitle("   ");
-        assertThat(v.getTitle()).isEqualTo("MailIM demo");
+        assertThat(v.getTitle()).isEqualTo("ConexusMail demo");
         v.setTitle("  Custom Demo  ");
         assertThat(v.getTitle()).isEqualTo("Custom Demo");
     }

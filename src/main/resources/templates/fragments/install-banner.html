@@ -4,7 +4,7 @@
   <!--
     PWA install prompt fragment. Two branches share one banner element:
       • Android / Chromium: stash the deferred `beforeinstallprompt` event
-        and surface a one-click "Install MailIM" CTA that triggers the
+        and surface a one-click "Install ConexusMail" CTA that triggers the
         native prompt.
       • iOS Safari (no `beforeinstallprompt` support): detect the UA and
         render an "Add to Home Screen" walkthrough pointing at Safari's
@@ -16,11 +16,11 @@
   -->
   <th:block th:fragment="banner">
     <div id="install-banner" class="install-banner" hidden role="dialog"
-         aria-label="Install MailIM" aria-live="polite">
+         aria-label="Install ConexusMail" aria-live="polite">
       <div id="install-banner-default" class="install-banner-body" hidden>
         <span class="install-banner-mark" aria-hidden="true">MI</span>
         <div class="install-banner-text">
-          <strong class="install-banner-title">Install MailIM</strong>
+          <strong class="install-banner-title">Install ConexusMail</strong>
           <span class="install-banner-sub">Open your inbox from the home screen — no browser tab to find.</span>
         </div>
         <button type="button" id="install-banner-cta" class="btn btn-primary btn-compact install-banner-cta">
@@ -32,7 +32,7 @@
       <div id="install-banner-ios" class="install-banner-body" hidden>
         <span class="install-banner-mark" aria-hidden="true">MI</span>
         <div class="install-banner-text">
-          <strong class="install-banner-title">Add MailIM to your home screen</strong>
+          <strong class="install-banner-title">Add ConexusMail to your home screen</strong>
           <span class="install-banner-sub">
             Tap the <span class="install-banner-share" aria-hidden="true">&#x2B06;</span>
             share icon, then choose <em>Add to Home Screen</em>.
@@ -45,7 +45,7 @@
     <script th:inline="javascript">
       /*<![CDATA[*/
       (function () {
-        var DISMISS_KEY = 'mailim-install-dismiss-v1';
+        var DISMISS_KEY = 'conexusmail-install-dismiss-v1';
         var banner = document.getElementById('install-banner');
         if (!banner) return;
 

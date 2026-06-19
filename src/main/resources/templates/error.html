@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex,nofollow">
-  <title th:text="|${status} — MailIM|">Error — MailIM</title>
+  <title th:text="|${status} — ConexusMail|">Error — ConexusMail</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -44,16 +44,16 @@
       font-size: 15px;
     }
     .home-link {
-      background: #4f80ff;
+      background: #2f855a;
       color: #fff;
     }
-    .home-link:hover { background: #3a6be0; }
+    .home-link:hover { background: #276749; }
     .demo-link {
       background: transparent;
-      border: 1.5px solid #4f80ff;
-      color: #4f80ff;
+      border: 1.5px solid #2f855a;
+      color: #2f855a;
     }
-    .demo-link:hover { background: rgba(79, 128, 255, 0.08); }
+    .demo-link:hover { background: rgba(47, 133, 90, 0.08); }
     @media (max-width: 520px) {
       .card { padding: 32px 20px; margin: 16px; }
       .status { font-size: 48px; }
@@ -73,11 +73,11 @@
   </h1>
   <p th:text="${message}">An unexpected error occurred. Please try again in a moment.</p>
   <div class="err-ctas">
-    <a href="/" class="home-link">← Back to MailIM</a>
+    <a href="/" class="home-link">← Back to ConexusMail</a>
     <a href="/demo" class="demo-link">Try the demo →</a>
   </div>
   <p style="margin-top:16px;font-size:13px;color:#888;">
-    Still stuck? <a href="mailto:support@mailaim.app" style="color:#4f80ff;">Contact support</a>
+    Still stuck? <a href="mailto:support@conexusmail.com" style="color:#2f855a;">Contact support</a>
   </p>
 </div>
 </body>

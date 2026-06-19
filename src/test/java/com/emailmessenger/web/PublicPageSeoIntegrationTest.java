@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("dev")
-@TestPropertySource(properties = "marketing.base-url=https://test.mailaim.app")
+@TestPropertySource(properties = "marketing.base-url=https://test.conexusmail.com")
 class PublicPageSeoIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -39,14 +39,14 @@ class PublicPageSeoIntegrationTest {
     @Test
     void landingPageRendersUniqueSeoTags() throws Exception {
         String body = render("/");
-        assertThat(body).contains("<title>MailIM — Your inbox, as a chat</title>");
-        assertThat(body).contains("<meta name=\"description\" content=\"MailIM turns email threads into a modern instant-message conversation");
-        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.mailaim.app/\"");
-        assertThat(body).contains("<meta property=\"og:url\" content=\"https://test.mailaim.app/\"");
-        assertThat(body).contains("<meta property=\"og:title\" content=\"MailIM — Your inbox, as a chat\"");
-        assertThat(body).contains("<meta property=\"og:image\" content=\"https://test.mailaim.app/images/og-card.png\"");
+        assertThat(body).contains("<title>ConexusMail — Your inbox, as a chat</title>");
+        assertThat(body).contains("<meta name=\"description\" content=\"ConexusMail turns email threads into a modern instant-message conversation");
+        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.conexusmail.com/\"");
+        assertThat(body).contains("<meta property=\"og:url\" content=\"https://test.conexusmail.com/\"");
+        assertThat(body).contains("<meta property=\"og:title\" content=\"ConexusMail — Your inbox, as a chat\"");
+        assertThat(body).contains("<meta property=\"og:image\" content=\"https://test.conexusmail.com/images/og-card.png\"");
         assertThat(body).contains("<meta name=\"twitter:card\" content=\"summary_large_image\"");
-        assertThat(body).contains("<meta name=\"twitter:title\" content=\"MailIM — Your inbox, as a chat\"");
+        assertThat(body).contains("<meta name=\"twitter:title\" content=\"ConexusMail — Your inbox, as a chat\"");
     }
 
     @Test
@@ -66,32 +66,32 @@ class PublicPageSeoIntegrationTest {
     @Test
     void pricingPageRendersUniqueSeoTags() throws Exception {
         String body = render("/pricing");
-        assertThat(body).contains("<title>Pricing — MailIM</title>");
-        assertThat(body).contains("<meta name=\"description\" content=\"Simple, transparent pricing for MailIM");
-        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.mailaim.app/pricing\"");
-        assertThat(body).contains("<meta property=\"og:url\" content=\"https://test.mailaim.app/pricing\"");
-        assertThat(body).contains("<meta property=\"og:title\" content=\"Pricing — MailIM\"");
+        assertThat(body).contains("<title>Pricing — ConexusMail</title>");
+        assertThat(body).contains("<meta name=\"description\" content=\"ConexusMail is free");
+        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.conexusmail.com/pricing\"");
+        assertThat(body).contains("<meta property=\"og:url\" content=\"https://test.conexusmail.com/pricing\"");
+        assertThat(body).contains("<meta property=\"og:title\" content=\"Pricing — ConexusMail\"");
         assertThat(body).contains("<meta name=\"twitter:card\" content=\"summary_large_image\"");
     }
 
     @Test
     void loginPageRendersUniqueSeoTags() throws Exception {
         String body = render("/login");
-        assertThat(body).contains("<title>Sign in — MailIM</title>");
-        assertThat(body).contains("<meta name=\"description\" content=\"Sign in to MailIM");
-        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.mailaim.app/login\"");
-        assertThat(body).contains("<meta property=\"og:url\" content=\"https://test.mailaim.app/login\"");
-        assertThat(body).contains("<meta property=\"og:title\" content=\"Sign in — MailIM\"");
+        assertThat(body).contains("<title>Sign in — ConexusMail</title>");
+        assertThat(body).contains("<meta name=\"description\" content=\"Sign in to ConexusMail");
+        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.conexusmail.com/login\"");
+        assertThat(body).contains("<meta property=\"og:url\" content=\"https://test.conexusmail.com/login\"");
+        assertThat(body).contains("<meta property=\"og:title\" content=\"Sign in — ConexusMail\"");
     }
 
     @Test
     void registerPageRendersUniqueSeoTags() throws Exception {
         String body = render("/register");
-        assertThat(body).contains("<title>Create your account — MailIM</title>");
-        assertThat(body).contains("<meta name=\"description\" content=\"Create a free MailIM account");
-        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.mailaim.app/register\"");
-        assertThat(body).contains("<meta property=\"og:url\" content=\"https://test.mailaim.app/register\"");
-        assertThat(body).contains("<meta property=\"og:title\" content=\"Create your account — MailIM\"");
+        assertThat(body).contains("<title>Create your account — ConexusMail</title>");
+        assertThat(body).contains("<meta name=\"description\" content=\"Create a free ConexusMail account");
+        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.conexusmail.com/register\"");
+        assertThat(body).contains("<meta property=\"og:url\" content=\"https://test.conexusmail.com/register\"");
+        assertThat(body).contains("<meta property=\"og:title\" content=\"Create your account — ConexusMail\"");
     }
 
     @Test
@@ -116,10 +116,10 @@ class PublicPageSeoIntegrationTest {
     @Test
     void demoPageRendersConversationWithSeoTagsAndStartFreeCta() throws Exception {
         String body = render("/demo");
-        assertThat(body).contains("<title>Live demo — MailIM</title>");
+        assertThat(body).contains("<title>Live demo — ConexusMail</title>");
         assertThat(body).contains("<meta name=\"description\" content=\"See an email thread rendered as an IM-style chat");
-        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.mailaim.app/demo\"");
-        assertThat(body).contains("<meta property=\"og:url\" content=\"https://test.mailaim.app/demo\"");
+        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.conexusmail.com/demo\"");
+        assertThat(body).contains("<meta property=\"og:url\" content=\"https://test.conexusmail.com/demo\"");
         // Curated demo content must actually render.
         assertThat(body).contains("Launch checklist");
         assertThat(body).contains("Alex Lee");
@@ -138,47 +138,47 @@ class PublicPageSeoIntegrationTest {
         String robots = mockMvc.perform(get("/robots.txt"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(robots).contains("Sitemap: https://test.mailaim.app/sitemap.xml");
+        assertThat(robots).contains("Sitemap: https://test.conexusmail.com/sitemap.xml");
 
         String sitemap = mockMvc.perform(get("/sitemap.xml"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(sitemap).contains("<loc>https://test.mailaim.app/</loc>");
-        assertThat(sitemap).contains("<loc>https://test.mailaim.app/pricing</loc>");
-        assertThat(sitemap).contains("<loc>https://test.mailaim.app/demo</loc>");
+        assertThat(sitemap).contains("<loc>https://test.conexusmail.com/</loc>");
+        assertThat(sitemap).contains("<loc>https://test.conexusmail.com/pricing</loc>");
+        assertThat(sitemap).contains("<loc>https://test.conexusmail.com/demo</loc>");
         // Legal pages must show up in the sitemap so Stripe / search crawlers
         // can verify the published-policy URLs exist.
-        assertThat(sitemap).contains("<loc>https://test.mailaim.app/privacy</loc>");
-        assertThat(sitemap).contains("<loc>https://test.mailaim.app/terms</loc>");
-        assertThat(sitemap).contains("<loc>https://test.mailaim.app/refund</loc>");
+        assertThat(sitemap).contains("<loc>https://test.conexusmail.com/privacy</loc>");
+        assertThat(sitemap).contains("<loc>https://test.conexusmail.com/terms</loc>");
+        assertThat(sitemap).contains("<loc>https://test.conexusmail.com/refund</loc>");
     }
 
     @Test
     void privacyPageRendersDefaultBoilerplateContentAndSeoTags() throws Exception {
         String body = render("/privacy");
-        assertThat(body).contains("<title>Privacy Policy — MailIM</title>");
-        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.mailaim.app/privacy\"");
+        assertThat(body).contains("<title>Privacy Policy — ConexusMail</title>");
+        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.conexusmail.com/privacy\"");
         // Shipped boilerplate must render through the legal-page Thymeleaf wrapper.
         assertThat(body).contains("What we collect");
-        assertThat(body).contains("privacy@mailaim.app");
+        assertThat(body).contains("privacy@conexusmail.com");
     }
 
     @Test
     void termsPageRendersDefaultBoilerplateContentAndSeoTags() throws Exception {
         String body = render("/terms");
-        assertThat(body).contains("<title>Terms of Service — MailIM</title>");
-        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.mailaim.app/terms\"");
+        assertThat(body).contains("<title>Terms of Service — ConexusMail</title>");
+        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.conexusmail.com/terms\"");
         assertThat(body).contains("Acceptable use");
-        assertThat(body).contains("legal@mailaim.app");
+        assertThat(body).contains("legal@conexusmail.com");
     }
 
     @Test
     void refundPageRendersDefaultBoilerplateContentAndSeoTags() throws Exception {
         String body = render("/refund");
-        assertThat(body).contains("<title>Refund Policy — MailIM</title>");
-        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.mailaim.app/refund\"");
+        assertThat(body).contains("<title>Refund Policy — ConexusMail</title>");
+        assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.conexusmail.com/refund\"");
         assertThat(body).contains("Annual subscriptions");
-        assertThat(body).contains("billing@mailaim.app");
+        assertThat(body).contains("billing@conexusmail.com");
     }
 
     @Test
@@ -191,7 +191,7 @@ class PublicPageSeoIntegrationTest {
         // Cookie banner fragment is injected and the dismiss button is wired.
         assertThat(body).contains("id=\"cookie-banner\"");
         assertThat(body).contains("id=\"cookie-banner-dismiss\"");
-        assertThat(body).contains("mailim-cookie-consent-v1");
+        assertThat(body).contains("conexusmail-cookie-consent-v1");
     }
 
     @Test
@@ -202,7 +202,7 @@ class PublicPageSeoIntegrationTest {
         // Chrome / iOS Safari sees an installable site.
         String body = render("/");
         assertThat(body).contains("<link rel=\"manifest\" href=\"/manifest.webmanifest\"");
-        assertThat(body).contains("<meta name=\"theme-color\" content=\"#4f80ff\"");
+        assertThat(body).contains("<meta name=\"theme-color\" content=\"#2f855a\"");
         assertThat(body).contains("<link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\"");
         assertThat(body).contains("apple-mobile-web-app-capable");
     }
@@ -243,14 +243,14 @@ class PublicPageSeoIntegrationTest {
         String offline = mockMvc.perform(get("/offline"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(offline).contains("You're offline").contains("MailIM");
+        assertThat(offline).contains("You're offline").contains("ConexusMail");
     }
 
     @Test
     void landingPageRegistersServiceWorkerOnLoad() throws Exception {
         // Without the registration <script>, the install prompt fires but
         // the offline cache never seeds — and an installed PWA opened in
-        // airplane mode shows a browser error instead of MailIM's screen.
+        // airplane mode shows a browser error instead of ConexusMail's screen.
         String body = render("/");
         assertThat(body).contains("serviceWorker.register('/sw.js'");
     }
@@ -268,8 +268,8 @@ class PublicPageSeoIntegrationTest {
         assertThat(body).contains("id=\"install-banner-ios\"");
         assertThat(body).contains("id=\"install-banner-cta\"");
         assertThat(body).contains("id=\"install-banner-dismiss\"");
-        assertThat(body).contains("Install MailIM");
-        assertThat(body).contains("Add MailIM to your home screen");
+        assertThat(body).contains("Install ConexusMail");
+        assertThat(body).contains("Add ConexusMail to your home screen");
         // JS wiring: beforeinstallprompt is the Chromium signal; the iOS
         // UA test is what triggers the share-sheet walkthrough.
         assertThat(body).contains("beforeinstallprompt");
@@ -281,12 +281,12 @@ class PublicPageSeoIntegrationTest {
         assertThat(body).contains("navigator.standalone");
         // Dismiss persistence: a versioned localStorage key so we can
         // future-version the banner copy without re-pestering everyone.
-        assertThat(body).contains("mailim-install-dismiss-v1");
+        assertThat(body).contains("conexusmail-install-dismiss-v1");
     }
 
     @Test
     void mainStylesheetCarriesMobileTuningForInstalledPwa() throws Exception {
-        // EPIC-10 milestone 4: an installed MailIM on a 375px iPhone needs
+        // EPIC-10 milestone 4: an installed ConexusMail on a 375px iPhone needs
         // ≥44px tap targets, safe-area insets so chrome doesn't slide under
         // the notch / home bar, a sticky reply form via 100dvh, and sticky
         // day-separator headers as the user scrolls a long thread. These

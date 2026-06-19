@@ -4,24 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Mailboxes — MailIM</title>
+  <title>Mailboxes — ConexusMail</title>
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>
 
-<header class="app-header">
-  <a href="/" class="brand">MailIM</a>
-  <nav class="header-nav">
-    <a href="/threads">Inbox</a>
-    <a href="/pricing">Pricing</a>
-    <form th:action="@{/logout}" method="post" class="header-logout">
-      <input type="hidden" th:if="${_csrf != null}"
-             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-      <button type="submit" class="link-button">Sign out</button>
-    </form>
-  </nav>
-</header>
+<div class="app-shell">
 
+<th:block th:replace="~{fragments/app-nav :: nav}"></th:block>
+
+<div class="app-main">
 <main class="thread-page">
   <h1 class="section-title">Mailboxes</h1>
 
@@ -58,13 +50,23 @@
             </div>
           </div>
         </div>
-        <form th:action="@{/mailboxes/{id}/sync(id=${mb.id()})}"
-              method="post"
-              class="mailbox-sync-form">
-          <input type="hidden" th:if="${_csrf != null}"
-                 th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-          <button type="submit" class="btn btn-secondary mailbox-sync-btn">Sync now</button>
-        </form>
+        <div class="mailbox-actions">
+          <form th:action="@{/mailboxes/{id}/sync(id=${mb.id()})}"
+                method="post"
+                class="mailbox-sync-form">
+            <input type="hidden" th:if="${_csrf != null}"
+                   th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <button type="submit" class="btn btn-secondary mailbox-sync-btn">Sync now</button>
+          </form>
+          <form th:action="@{/mailboxes/{id}/delete(id=${mb.id()})}"
+                method="post"
+                class="mailbox-delete-form"
+                onsubmit="return confirm('Remove this mailbox? Syncing stops and its stored password is deleted. Conversations already imported stay in your inbox.');">
+            <input type="hidden" th:if="${_csrf != null}"
+                   th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <button type="submit" class="btn mailbox-remove-btn">Remove</button>
+          </form>
+        </div>
       </div>
     </div>
     <p class="mailbox-add-cta">
@@ -72,6 +74,8 @@
     </p>
   </div>
 </main>
+</div>
+</div>
 
 </body>
 </html>

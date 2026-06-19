@@ -104,7 +104,7 @@ class PricingControllerTest {
         props.getVideo().setProvider("youtube");
         props.getVideo().setId("dQw4w9WgXcQ");
         props.getVideo().setPosterUrl("https://cdn.example/poster.png");
-        props.getVideo().setTitle("MailIM in 60s");
+        props.getVideo().setTitle("ConexusMail in 60s");
 
         InternalResourceViewResolver vr = new InternalResourceViewResolver();
         vr.setPrefix("/WEB-INF/templates/");

@@ -1,6 +1,7 @@
 package com.emailmessenger.email;
 
 import com.emailmessenger.billing.PlanLimitService;
+import com.emailmessenger.domain.AuthType;
 import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.MailAccountRepository;
@@ -26,6 +27,10 @@ public class MailAccountService {
     /** Initial sync window. Capped low so the first connect is snappy. */
     static final int INITIAL_SYNC_LIMIT = 30;
 
+    /** Gmail's IMAP endpoint — fixed for every OAuth-connected Google mailbox. */
+    static final String GMAIL_IMAP_HOST = "imap.gmail.com";
+    static final int GMAIL_IMAP_PORT = 993;
+
     private final MailAccountRepository repository;
     private final ImapClient imapClient;
     private final CredentialEncryptor encryptor;
@@ -50,6 +55,22 @@ public class MailAccountService {
     }
 
     /**
+     * Disconnects a mailbox the user owns: deletes the account row, including
+     * its encrypted credentials and sync cursor, so polling stops. Conversations
+     * already imported stay in the inbox (they aren't tied to a single mailbox).
+     * Returns {@code true} if a matching mailbox was found and removed.
+     */
+    @Transactional
+    public boolean delete(User user, Long id) {
+        return repository.findByIdAndUser(id, user)
+                .map(account -> {
+                    repository.delete(account);
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    /**
      * Validates credentials, enforces the plan-level mailbox cap, persists
      * the account, then pulls the most recent INBOX messages and imports
      * each one. Returns the persisted {@link MailAccount}.
@@ -62,23 +83,45 @@ public class MailAccountService {
     public MailAccount connect(User user, String host, int port, boolean ssl,
                                String username, String rawPassword) {
         planLimitService.enforceCanCreateMailbox(user);
+        ImapCredentials credentials = ImapCredentials.password(host, port, ssl, username, rawPassword);
         // Throws ImapConnectionException on bad creds / unreachable host —
         // controller catches it and re-renders the form with the message.
-        imapClient.verifyConnection(host, port, ssl, username, rawPassword);
+        imapClient.verifyConnection(credentials);
 
         MailAccount account = new MailAccount(user, host, port, ssl, username,
                 encryptor.encrypt(rawPassword));
         MailAccount saved = repository.save(account);
 
-        runInitialSync(saved, rawPassword);
+        runInitialSync(saved, credentials);
         return repository.save(saved);
     }
 
-    private void runInitialSync(MailAccount account, String rawPassword) {
+    /**
+     * Connects a Gmail mailbox via OAuth: the IMAP session authenticates with
+     * XOAUTH2 using {@code accessToken}, and we persist the (longer-lived)
+     * {@code refreshToken} encrypted so the poller can mint fresh access
+     * tokens later. Host/port are fixed to Gmail's IMAP endpoint.
+     */
+    @Transactional
+    public MailAccount connectGmailOAuth(User user, String email,
+                                         String refreshToken, String accessToken) {
+        planLimitService.enforceCanCreateMailbox(user);
+        ImapCredentials credentials = ImapCredentials.xoauth2(
+                GMAIL_IMAP_HOST, GMAIL_IMAP_PORT, true, email, accessToken);
+        imapClient.verifyConnection(credentials);
+
+        MailAccount account = new MailAccount(user, GMAIL_IMAP_HOST, GMAIL_IMAP_PORT, true,
+                email, encryptor.encrypt(refreshToken), AuthType.XOAUTH2);
+        MailAccount saved = repository.save(account);
+
+        runInitialSync(saved, credentials);
+        return repository.save(saved);
+    }
+
+    private void runInitialSync(MailAccount account, ImapCredentials credentials) {
         try {
             List<MimeMessage> messages = imapClient.fetchRecentInbox(
-                    account.getHost(), account.getPort(), account.isSsl(),
-                    account.getUsername(), rawPassword, INITIAL_SYNC_LIMIT);
+                    credentials, INITIAL_SYNC_LIMIT);
             int imported = 0;
             for (MimeMessage mime : messages) {
                 try {
@@ -92,6 +135,9 @@ public class MailAccountService {
             }
             log.info("Initial sync imported {} of {} messages for {}@{}",
                     imported, messages.size(), account.getUsername(), account.getHost());
+            // Sent mail (imported as outbound) is pulled by the poller: the first
+            // poll backfills a recent Sent window, so this also surfaces sent
+            // history for mailboxes connected before sent sync existed.
             account.markSynced();
         } catch (ImapConnectionException e) {
             // The verify step already succeeded, so the user's credentials are

@@ -9,8 +9,10 @@ import com.emailmessenger.billing.PlanLimitService;
 import com.emailmessenger.billing.TrialConversionNudgeService;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.User;
+import com.emailmessenger.email.MailboxPollingService;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.service.Conversation;
+import com.emailmessenger.service.OutgoingAttachment;
 import com.emailmessenger.service.ReplyService;
 import com.emailmessenger.team.NoteMentionService;
 import com.emailmessenger.team.ThreadAccessService;
@@ -20,18 +22,26 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.security.Principal;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 @Controller
@@ -55,6 +65,8 @@ class ThreadController {
     private final ThreadNoteService threadNoteService;
     private final ThreadAccessService threadAccessService;
     private final NoteMentionService noteMentionService;
+    private final MailboxPollingService mailboxPollingService;
+    private final OutboundMessageService outboundMessageService;
     private final Clock clock;
 
     ThreadController(EmailThreadRepository threadRepository,
@@ -73,6 +85,8 @@ class ThreadController {
                      ThreadNoteService threadNoteService,
                      ThreadAccessService threadAccessService,
                      NoteMentionService noteMentionService,
+                     MailboxPollingService mailboxPollingService,
+                     OutboundMessageService outboundMessageService,
                      Clock clock) {
         this.threadRepository = threadRepository;
         this.threadViewService = threadViewService;
@@ -90,6 +104,8 @@ class ThreadController {
         this.threadNoteService = threadNoteService;
         this.threadAccessService = threadAccessService;
         this.noteMentionService = noteMentionService;
+        this.mailboxPollingService = mailboxPollingService;
+        this.outboundMessageService = outboundMessageService;
         this.clock = clock;
     }
 
@@ -112,6 +128,10 @@ class ThreadController {
         if (banner != null && banner.isSubscriptionEnded()) {
             return "threads";
         }
+        // Kick a non-blocking refresh of this user's due mailboxes so opening the
+        // inbox pulls fresh mail right away; only accounts past their next-poll
+        // time are touched, so this won't re-poll what the scheduler just did.
+        mailboxPollingService.refreshDueForUserAsync(owner.getId());
         if (savedSearchId != null) {
             savedSearchService.markViewed(owner, savedSearchId, LocalDateTime.now(clock));
         }
@@ -131,6 +151,9 @@ class ThreadController {
             }
         }
         model.addAttribute("threads", threads);
+        // When no single sender is filtered ("Everyone"), label each thread with
+        // its most recent correspondent so the list shows who it's from.
+        model.addAttribute("threadSenders", latestSenderLabels(trimmedFrom, threads));
         model.addAttribute("searchQuery", trimmedQuery);
         model.addAttribute("activeSender", trimmedFrom);
         model.addAttribute("activeFilters", filters);
@@ -142,7 +165,9 @@ class ThreadController {
         model.addAttribute("hasActiveSearchToSave",
                 !trimmedQuery.isEmpty() || trimmedFrom != null || filters.isActive());
         OnboardingChecklist checklist = onboardingService.checklistFor(owner);
-        if (!checklist.isComplete()) {
+        // Collapse the panel once the essential steps are done — saving a search
+        // and inviting a teammate are optional and shouldn't keep it pinned open.
+        if (!checklist.coreStepsComplete()) {
             model.addAttribute("onboarding", checklist);
         }
         OnboardingNudge.from(planLimitService.currentPlan(owner), checklist)
@@ -155,12 +180,22 @@ class ThreadController {
     @GetMapping("/threads/{id}")
     String viewConversation(@PathVariable Long id, Principal principal, Model model) {
         User viewer = userService.requireByEmail(principal.getName());
+        populateConversationModel(id, viewer, model);
+        model.addAttribute("replyForm", new ReplyForm());
+        return "conversation";
+    }
+
+    // Shared by the GET view and the reply-validation-error re-render so both
+    // paths supply every attribute conversation.html reads. demoMode in
+    // particular must always be present: the template uses `!demoMode`, and
+    // SpEL throws on `!null` rather than treating it as false.
+    private void populateConversationModel(Long id, User viewer, Model model) {
         Conversation conversation = threadViewService.getConversation(id, viewer);
         EmailThread thread = conversation.thread();
         boolean isOwner = threadAccessService.isOwner(thread, viewer);
+        model.addAttribute("demoMode", false);
         model.addAttribute("conversation", conversation);
         model.addAttribute("isThreadOwner", isOwner);
-        model.addAttribute("replyForm", new ReplyForm());
         model.addAttribute("billingBanner", billingBannerService.bannerFor(viewer).orElse(null));
         boolean canPostNote = threadNoteService.canAccessNotesOn(thread, viewer);
         model.addAttribute("teamNotes", threadNoteService.notesFor(thread, viewer));
@@ -173,7 +208,6 @@ class ThreadController {
         if (isOwner && !canPostNote) {
             model.addAttribute("teamNotesUpgradeNudge", true);
         }
-        return "conversation";
     }
 
     @PostMapping("/threads/{id}/note")
@@ -198,19 +232,71 @@ class ThreadController {
     String reply(@PathVariable Long id,
                  @Valid @ModelAttribute("replyForm") ReplyForm replyForm,
                  BindingResult bindingResult,
+                 @RequestParam(value = "attachments", required = false) MultipartFile[] attachments,
                  Principal principal,
                  RedirectAttributes redirectAttributes,
                  Model model) {
         User owner = userService.requireByEmail(principal.getName());
+        boolean hasAttachment = attachments != null
+                && Arrays.stream(attachments).anyMatch(f -> f != null && !f.isEmpty());
+        // A reply needs either text or at least one attachment.
+        if (replyForm.getBody().isBlank() && !hasAttachment) {
+            bindingResult.rejectValue("body", "reply.empty", "Add a message or an attachment.");
+        }
         if (bindingResult.hasErrors()) {
-            Conversation conversation = threadViewService.getConversation(id, owner);
-            model.addAttribute("conversation", conversation);
+            // replyForm is already in the model as the bound @ModelAttribute,
+            // carrying the validation errors the template renders.
+            populateConversationModel(id, owner, model);
             return "conversation";
         }
         EmailThread thread = threadRepository.findByIdAndOwner(id, owner)
                 .orElseThrow(NoSuchElementException::new);
-        replyService.sendReply(id, thread.getSubject(), replyForm.getBody());
+        List<OutgoingAttachment> outgoing = toOutgoingAttachments(attachments);
+        replyService.sendReply(id, thread.getSubject(), replyForm.getBody(), outgoing);
+        // Persist the sent reply so it appears in the conversation as a "you" bubble.
+        outboundMessageService.recordReply(id, owner, replyForm.getBody(), outgoing);
         redirectAttributes.addFlashAttribute("successMessage", "Reply sent successfully.");
         return "redirect:/threads/" + id;
+    }
+
+    // Convert uploaded files into web-agnostic attachments, skipping the empty
+    // file part browsers send when no file is chosen. Oversized uploads are
+    // rejected upstream by the multipart size limits (handled in
+    // GlobalExceptionHandler), so this only sees what's within bounds.
+    // Most-recent inbound sender per thread, keyed by thread id, for the inbox
+    // "from" line. Empty when a single sender is already the filter, since every
+    // row would then carry the same name.
+    private Map<Long, String> latestSenderLabels(String activeSender, Page<EmailThread> threads) {
+        Map<Long, String> labels = new HashMap<>();
+        if (activeSender != null || !threads.hasContent()) {
+            return labels;
+        }
+        List<Long> ids = threads.getContent().stream().map(EmailThread::getId).toList();
+        for (EmailThreadRepository.ThreadSenderRow row : threadRepository.latestInboundSenders(ids)) {
+            String label = (row.getDisplayName() != null && !row.getDisplayName().isBlank())
+                    ? row.getDisplayName() : row.getEmail();
+            labels.putIfAbsent(row.getThreadId(), label);
+        }
+        return labels;
+    }
+
+    private List<OutgoingAttachment> toOutgoingAttachments(MultipartFile[] files) {
+        if (files == null) {
+            return List.of();
+        }
+        List<OutgoingAttachment> out = new ArrayList<>();
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                continue;
+            }
+            String name = StringUtils.cleanPath(
+                    file.getOriginalFilename() == null ? "attachment" : file.getOriginalFilename());
+            try {
+                out.add(new OutgoingAttachment(name, file.getContentType(), file.getBytes()));
+            } catch (IOException e) {
+                throw new UncheckedIOException("Could not read uploaded attachment", e);
+            }
+        }
+        return out;
     }
 }

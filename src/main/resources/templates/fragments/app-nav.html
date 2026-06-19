@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+
+<!--
+  Persistent left sidebar for the authenticated app: brand, primary links,
+  the connected-mailbox list with an add button, and a footer pinned to the
+  bottom with the signed-in profile name and sign-out. Data comes from
+  NavModelAdvice so every page renders it identically.
+-->
+<aside th:fragment="nav" class="app-nav" aria-label="Primary navigation">
+  <a class="app-nav-brand" href="/threads">ConexusMail</a>
+
+  <nav class="app-nav-links" aria-label="Sections">
+    <a class="app-nav-link" href="/threads"
+       th:classappend="${navActive == 'inbox'} ? ' app-nav-link-active' : ''">
+      <span class="app-nav-ico" aria-hidden="true">🗨</span> Inbox
+    </a>
+    <a class="app-nav-link" href="/mailboxes"
+       th:classappend="${navActive == 'mailboxes'} ? ' app-nav-link-active' : ''">
+      <span class="app-nav-ico" aria-hidden="true">📥</span> Mailboxes
+    </a>
+    <a class="app-nav-link" href="/pricing"
+       th:classappend="${navActive == 'pricing'} ? ' app-nav-link-active' : ''">
+      <span class="app-nav-ico" aria-hidden="true">🏷️</span> Pricing
+    </a>
+    <a class="app-nav-link" href="/account"
+       th:classappend="${navActive == 'account'} ? ' app-nav-link-active' : ''">
+      <span class="app-nav-ico" aria-hidden="true">⚙️</span> Account
+    </a>
+    <form th:if="${navHasBilling}" th:action="@{/billing/portal}" method="post" class="app-nav-form">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button type="submit" class="app-nav-link app-nav-link-button">
+        <span class="app-nav-ico" aria-hidden="true">💳</span> Billing
+      </button>
+    </form>
+  </nav>
+
+  <div class="app-nav-section">
+    <div class="app-nav-section-title">Mailboxes</div>
+    <ul class="app-nav-mailboxes" th:if="${navMailboxes != null and !navMailboxes.isEmpty()}">
+      <li th:each="mb : ${navMailboxes}">
+        <a class="app-nav-mailbox" href="/mailboxes" th:title="${mb.address()}">
+          <span class="app-nav-mailbox-dot" aria-hidden="true"></span>
+          <span class="app-nav-mailbox-addr" th:text="${mb.address()}">you@example.com</span>
+        </a>
+      </li>
+    </ul>
+    <p class="app-nav-empty" th:if="${navMailboxes == null or navMailboxes.isEmpty()}">
+      No mailboxes connected yet.
+    </p>
+    <a class="app-nav-add" href="/mailboxes/new">
+      <span aria-hidden="true">＋</span> Add mailbox
+    </a>
+  </div>
+
+  <div class="app-nav-footer">
+    <div class="app-nav-profile">
+      <span class="app-nav-avatar" aria-hidden="true"
+            th:text="${navProfileName != null ? #strings.toUpperCase(#strings.substring(navProfileName, 0, 1)) : '?'}">A</span>
+      <span class="app-nav-name" th:text="${navProfileName}" th:title="${navProfileName}">You</span>
+    </div>
+    <form th:action="@{/logout}" method="post" class="app-nav-form">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button type="submit" class="app-nav-signout">Sign out</button>
+    </form>
+  </div>
+</aside>
+
+</body>
+</html>

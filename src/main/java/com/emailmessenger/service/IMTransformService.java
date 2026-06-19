@@ -15,6 +15,7 @@ class IMTransformService {
 
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
+            String trimmed = line.strip();
 
             // "On <date>, <name> wrote:" attribution — Gmail, Apple Mail, Outlook
             if (isAttributionStart(lines, i)) {
@@ -23,6 +24,17 @@ class IMTransformService {
 
             // Outlook "-----Original Message-----" divider
             if (line.matches("-{3,}\\s*[Oo]riginal [Mm]essage\\s*-{3,}")) {
+                break;
+            }
+
+            // Outlook reply header: "From: ..." followed by Sent:/To:/Subject:
+            if (isOutlookHeader(lines, i)) {
+                break;
+            }
+
+            // Signature delimiter ("-- ") and mobile signatures end the message.
+            if (trimmed.equals("--")
+                    || trimmed.regionMatches(true, 0, "Sent from my ", 0, 13)) {
                 break;
             }
 
@@ -36,6 +48,24 @@ class IMTransformService {
         // Collapse 3+ consecutive blank lines to 2
         result = result.replaceAll("\n{3,}", "\n\n");
         return result.strip();
+    }
+
+    // An Outlook-style quoted header: a "From:" line with Sent:/To:/Subject:
+    // within the next few lines.
+    private boolean isOutlookHeader(String[] lines, int i) {
+        String line = lines[i].strip();
+        if (line.length() < 5 || !line.regionMatches(true, 0, "From:", 0, 5)) {
+            return false;
+        }
+        for (int j = i; j < Math.min(i + 5, lines.length); j++) {
+            String l = lines[j].strip();
+            if (l.regionMatches(true, 0, "Sent:", 0, 5)
+                    || l.regionMatches(true, 0, "To:", 0, 3)
+                    || l.regionMatches(true, 0, "Subject:", 0, 8)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isAttributionStart(String[] lines, int i) {

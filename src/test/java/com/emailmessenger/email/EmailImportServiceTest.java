@@ -1,10 +1,7 @@
 package com.emailmessenger.email;
 
-import com.emailmessenger.billing.PlanLimitExceededException;
-import com.emailmessenger.billing.PlanLimitKind;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Message;
-import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.RecipientType;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
@@ -25,7 +22,6 @@ import java.util.Optional;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 @SpringBootTest
 @Transactional
@@ -42,6 +38,38 @@ class EmailImportServiceTest {
     @BeforeEach
     void setUp() {
         owner = userRepo.save(new User("import-owner@test.com", "hash", "Owner"));
+    }
+
+    @Test
+    void outboundImportMarksMessageSentAndLeavesFreshThreadRead() throws Exception {
+        MimeMessage mail = plainMessage("<sent1@test.com>", "Proposal", "import-owner@test.com",
+                null, null, "Here's the proposal I sent.");
+
+        Optional<Message> result = importService.importMessage(mail, owner, true);
+
+        assertThat(result).isPresent();
+        Message msg = result.get();
+        assertThat(msg.isOutbound()).isTrue();
+        // A thread created solely by a sent message isn't flagged unread.
+        assertThat(msg.getThread().isUnread()).isFalse();
+    }
+
+    @Test
+    void outboundImportDoesNotFlagExistingThreadUnread() throws Exception {
+        // Received message creates the thread (unread), then the user views it.
+        importService.importMessage(
+                plainMessage("<inb@test.com>", "Question", "alice@test.com", null, null, "Q?"), owner);
+        Message root = messageRepo.findByMessageIdHeaderAndOwner("<inb@test.com>", owner).orElseThrow();
+        root.getThread().markRead();
+        threadRepo.save(root.getThread());
+
+        // Our sent reply imported from the Sent folder must not re-flag it unread.
+        MimeMessage reply = plainMessage("<sent2@test.com>", "Re: Question", "import-owner@test.com",
+                "<inb@test.com>", null, "A.");
+        importService.importMessage(reply, owner, true);
+
+        assertThat(messageRepo.findByMessageIdHeaderAndOwner("<inb@test.com>", owner)
+                .orElseThrow().getThread().isUnread()).isFalse();
     }
 
     @Test
@@ -205,7 +233,7 @@ class EmailImportServiceTest {
     }
 
     @Test
-    void importingNewThreadAtFreeCapThrowsPlanLimitExceeded() throws Exception {
+    void importingNewThreadPastOldFreeCapNowSucceeds() throws Exception {
         for (int i = 0; i < 500; i++) {
             threadRepo.save(new EmailThread(owner, "seeded " + i, "<seed" + i + "@t>"));
         }
@@ -213,16 +241,11 @@ class EmailImportServiceTest {
         MimeMessage mail = plainMessage("<over@test.com>", "Over the cap",
                 "alice@test.com", null, null, "Body.");
 
-        PlanLimitExceededException ex = catchThrowableOfType(
-                () -> importService.importMessage(mail, owner),
-                PlanLimitExceededException.class);
+        // Thread caps are lifted for everyone, so the 501st thread imports fine.
+        Optional<Message> imported = importService.importMessage(mail, owner);
 
-        assertThat(ex).isNotNull();
-        assertThat(ex.getCurrentPlan()).isEqualTo(Plan.FREE);
-        assertThat(ex.getKind()).isEqualTo(PlanLimitKind.THREAD_COUNT);
-        assertThat(ex.getLimit()).isEqualTo(500);
-        // The over-the-cap import didn't insert anything.
-        assertThat(messageRepo.findByMessageIdHeaderAndOwner("<over@test.com>", owner)).isEmpty();
+        assertThat(imported).isPresent();
+        assertThat(messageRepo.findByMessageIdHeaderAndOwner("<over@test.com>", owner)).isPresent();
     }
 
     @Test

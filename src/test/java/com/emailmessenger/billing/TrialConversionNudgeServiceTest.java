@@ -75,7 +75,7 @@ class TrialConversionNudgeServiceTest {
         assertThat(nudge.annualMonthlyEquivalent()).isEqualTo("$7");
         assertThat(nudge.annualCashAmount()).isEqualTo("$84");
         assertThat(nudge.daysLeft()).isEqualTo(3L);
-        assertThat(nudge.dismissKey()).isEqualTo("mailim-trial-nudge-2026-06-08-d3");
+        assertThat(nudge.dismissKey()).isEqualTo("conexusmail-trial-nudge-2026-06-08-d3");
         assertThat(nudge.inAnnualUpsellWindow()).isTrue();
     }
 

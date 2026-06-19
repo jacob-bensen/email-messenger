@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Connect a mailbox — MailIM</title>
+  <title>Connect a mailbox — ConexusMail</title>
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>
 
 <header class="app-header">
-  <a href="/" class="brand">MailIM</a>
+  <a href="/" class="brand">ConexusMail</a>
   <nav class="header-nav">
     <a href="/threads">Inbox</a>
     <a href="/pricing">Pricing</a>
@@ -67,7 +67,28 @@
       <li class="wizard-step">3. Read your mail as chat</li>
     </ol>
     <h1 th:text="${provider != null ? 'Connect ' + provider.displayName : 'Connect your mailbox'}">Connect your mailbox</h1>
-    <p class="auth-sub" th:text="${provider != null ? provider.appPasswordHelp : 'MailIM logs in over IMAP and pulls your most recent threads. Use an app password rather than your main account password.'}">
+
+    <div th:if="${connectError}" class="alert alert-error">
+      <p th:text="${connectError}" style="margin:0;">Could not connect.</p>
+    </div>
+
+    <!-- Modern path for Gmail: OAuth (XOAUTH2) instead of an app password.
+         Shown only when the Google client is configured on this server. -->
+    <th:block th:if="${provider != null and provider.slug == 'gmail' and googleOAuthEnabled}">
+      <p class="auth-sub">
+        Connect securely with Google — no app password needed. ConexusMail only ever
+        reads your mail; you can disconnect any time from your Google account.
+      </p>
+      <a th:href="@{/mailboxes/gmail/connect}" class="btn btn-primary auth-submit"
+         style="display:block;text-align:center;text-decoration:none;">
+        Connect with Google
+      </a>
+      <p class="auth-alt" style="margin-top:16px;">
+        <a href="#app-password-form">Or connect with an app password instead</a>
+      </p>
+    </th:block>
+
+    <p class="auth-sub" th:text="${provider != null ? provider.appPasswordHelp : 'ConexusMail logs in over IMAP and pulls your most recent threads. Use an app password rather than your main account password.'}">
       Use an app password rather than your main account password.
     </p>
     <p class="auth-sub" th:if="${provider != null and provider.appPasswordUrl != null}" style="margin-top:-8px;">
@@ -77,7 +98,7 @@
       </a>
     </p>
 
-    <form method="post" th:action="@{/mailboxes}" th:object="${mailboxForm}" class="auth-form" autocomplete="off">
+    <form id="app-password-form" method="post" th:action="@{/mailboxes}" th:object="${mailboxForm}" class="auth-form" autocomplete="off">
       <input type="hidden" th:if="${_csrf != null}"
              th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
       <input type="hidden" th:field="*{provider}">

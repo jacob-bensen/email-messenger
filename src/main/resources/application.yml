@@ -2,6 +2,13 @@ spring:
   application:
     name: email-messenger
 
+  # Reply attachment uploads. Per-file and total-request caps; oversized
+  # uploads surface a friendly 413 via GlobalExceptionHandler.
+  servlet:
+    multipart:
+      max-file-size: ${MAX_ATTACHMENT_FILE_SIZE:10MB}
+      max-request-size: ${MAX_ATTACHMENT_REQUEST_SIZE:25MB}
+
   # Database connection comes entirely from environment variables. For local
   # development use the `local` profile (application-local.yml), which points
   # at localhost:5432/email_messenger — bootstrap it once with db/init.sql.
@@ -87,20 +94,23 @@ billing:
     trial-days: ${BILLING_TRIAL_DAYS:14}
 
 marketing:
-  base-url: ${MARKETING_BASE_URL:https://mailaim.app}
+  base-url: ${MARKETING_BASE_URL:https://conexusmail.com}
   landing:
     video:
       provider: ${MARKETING_LANDING_VIDEO_PROVIDER:}
       id: ${MARKETING_LANDING_VIDEO_ID:}
       poster-url: ${MARKETING_LANDING_VIDEO_POSTER_URL:}
-      title: ${MARKETING_LANDING_VIDEO_TITLE:MailIM demo}
+      title: ${MARKETING_LANDING_VIDEO_TITLE:ConexusMail demo}
 
 mailbox:
   encryption:
     password: ${MAILBOX_ENCRYPTION_PASSWORD:}
     salt: ${MAILBOX_ENCRYPTION_SALT:}
   polling:
-    enabled: ${MAILBOX_POLLING_ENABLED:false}
+    # On by default so connected mailboxes auto-pull new mail. The recurring
+    # scheduler ticks every interval-ms and polls accounts whose plan-tiered
+    # next-poll time is due (Free 15m / paid 5m); set false to disable entirely.
+    enabled: ${MAILBOX_POLLING_ENABLED:true}
     interval-ms: ${MAILBOX_POLLING_INTERVAL_MS:300000}
     initial-delay-ms: ${MAILBOX_POLLING_INITIAL_DELAY_MS:30000}
 

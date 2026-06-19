@@ -59,7 +59,7 @@ public class TrialConversionNudgeService {
         // Key embeds both the trial-end date and the current days-left bucket
         // so a Day-3 dismissal doesn't also silence the more-urgent Day-1
         // nudge the same user sees 48h later.
-        String dismissKey = "mailim-trial-nudge-"
+        String dismissKey = "conexusmail-trial-nudge-"
                 + sub.getTrialEndsAt().toLocalDate()
                 + "-d" + days;
 

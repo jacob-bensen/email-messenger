@@ -47,6 +47,7 @@ class OnboardingServiceTest {
         assertThat(checklist.savedSearchSaved()).isFalse();
         assertThat(checklist.teammateInvited()).isFalse();
         assertThat(checklist.isComplete()).isFalse();
+        assertThat(checklist.coreStepsComplete()).isFalse();
         assertThat(checklist.completedSteps()).isZero();
         assertThat(checklist.totalSteps()).isEqualTo(4);
         assertThat(checklist.percentComplete()).isZero();
@@ -99,6 +100,9 @@ class OnboardingServiceTest {
         assertThat(checklist.percentComplete()).isEqualTo(50);
         assertThat(checklist.nextStepCtaLabel()).isEqualTo("Save your first search");
         assertThat(checklist.isComplete()).isFalse();
+        // Core steps (mailbox + threads) are done, so the panel collapses even
+        // though the optional saved-search/teammate steps remain.
+        assertThat(checklist.coreStepsComplete()).isTrue();
     }
 
     @Test

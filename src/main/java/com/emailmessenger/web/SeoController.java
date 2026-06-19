@@ -103,7 +103,7 @@ class SeoController {
 
             g.setColor(Color.WHITE);
             g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 72));
-            g.drawString("MailIM", 80, 510);
+            g.drawString("ConexusMail", 80, 510);
             g.setColor(new Color(148, 163, 184));
             g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 36));
             g.drawString("Your inbox, as a chat.", 80, 560);
