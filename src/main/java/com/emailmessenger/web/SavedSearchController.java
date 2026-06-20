@@ -71,12 +71,10 @@ class SavedSearchController {
 
     private static String threadsUrl(String query, String fromSender, String since,
                                      boolean unread, boolean attachments) {
-        UriComponentsBuilder b = UriComponentsBuilder.fromPath("/threads");
+        // Back to the chats list, carrying the text query (the chats search
+        // supports `q`; the old inbox-only filter chips were retired).
+        UriComponentsBuilder b = UriComponentsBuilder.fromPath("/chats");
         if (query != null && !query.isBlank()) b.queryParam("q", query.trim());
-        if (fromSender != null && !fromSender.isBlank()) b.queryParam("from", fromSender.trim());
-        if (since != null && !since.isBlank()) b.queryParam("since", since.trim());
-        if (unread) b.queryParam("unread", "true");
-        if (attachments) b.queryParam("attachments", "true");
         return b.build().toUriString();
     }
 }

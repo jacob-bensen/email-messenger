@@ -159,6 +159,46 @@ class ReplyServiceTest {
     }
 
     @Test
+    void sendNewEmailSendsWithGivenSubjectRecipientsFromAndNoThreadingHeaders() throws Exception {
+        MimeMessage mimeMsg = new MimeMessage((Session) null);
+        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
+
+        replyService.sendNewEmail("Lunch?", "Friday work?", List.of(),
+                List.of("ada@example.com"), "me@mybox.com");
+
+        verify(mailSender).send(any(MimeMessage.class));
+        assertThat(mimeMsg.getSubject()).isEqualTo("Lunch?");
+        assertThat(mimeMsg.getAllRecipients()[0].toString()).isEqualTo("ada@example.com");
+        assertThat(mimeMsg.getFrom()[0].toString()).isEqualTo("me@mybox.com");
+        assertThat(mimeMsg.getHeader("In-Reply-To")).isNull();
+    }
+
+    @Test
+    void sendNewEmailDoesNothingWithoutRecipients() {
+        replyService.sendNewEmail("Subject", "Body", List.of(), List.of(), "me@mybox.com");
+
+        verify(mailSender, never()).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void replyUsesTheProvidedSenderAddressAndRecipientList() throws Exception {
+        EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
+        Participant alice = new Participant("alice@example.com", "Alice");
+        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
+
+        MimeMessage mimeMsg = new MimeMessage((Session) null);
+        when(messageRepository.findByThreadIdOrderBySentAtAsc(1L)).thenReturn(List.of(msg));
+        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
+
+        replyService.sendReply(1L, "Subject", "body", List.of(),
+                List.of("ada@example.com", "bob@example.com"), "me@mybox.com");
+
+        verify(mailSender).send(any(MimeMessage.class));
+        assertThat(mimeMsg.getFrom()[0].toString()).isEqualTo("me@mybox.com");
+        assertThat(mimeMsg.getAllRecipients()).hasSize(2);
+    }
+
+    @Test
     void sendReplyPropagatesMailSendExceptionOnFailure() {
         EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
         Participant alice = new Participant("alice@example.com", "Alice");

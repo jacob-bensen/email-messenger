@@ -4,6 +4,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
 import org.jsoup.safety.Safelist;
 
 import java.util.Locale;
@@ -29,36 +30,130 @@ final class EmailBodyCleaner {
 
     private static final Safelist SAFELIST = Safelist.relaxed();
 
+    // Containers email clients wrap signatures in. We lift these out rather
+    // than just dropping them, so the sender chat can pin the signature once
+    // beside the timeline instead of repeating it in every bubble.
+    private static final String SIGNATURE_CONTAINERS =
+            "#Signature, #ms-outlook-mobile-signature, #ms-outlook-android-signature, "
+            + ".gmail_signature, [data-smartmail=gmail_signature]";
+
+    /** The body with its signature split out; both are sanitized HTML. */
+    record Cleaned(String body, String signature) {}
+
+    /** The message body with quotes and signature removed. */
     String clean(String rawHtml) {
+        return process(rawHtml).body();
+    }
+
+    /** The signature lifted out of {@code rawHtml}, sanitized, or "" if none. */
+    String extractSignature(String rawHtml) {
+        return process(rawHtml).signature();
+    }
+
+    private Cleaned process(String rawHtml) {
         if (rawHtml == null || rawHtml.isBlank()) {
-            return "";
+            return new Cleaned("", "");
         }
         Document doc = Jsoup.parse(rawHtml);
         Element body = doc.body();
 
-        // 1. Known quote + signature containers.
-        body.select("blockquote, .gmail_quote, .gmail_extra, .moz-cite-prefix, "
-                + "#divRplyFwdMsg, #Signature, #ms-outlook-mobile-signature, "
-                + "#ms-outlook-android-signature").remove();
+        // 1. Lift out signatures that sit in a known container, before anything
+        //    else rearranges the tree.
+        StringBuilder signature = new StringBuilder();
+        for (Element sig : body.select(SIGNATURE_CONTAINERS)) {
+            append(signature, sig.html());
+            sig.remove();
+        }
 
-        // 2. Outlook appends its signature + quoted history after this marker.
+        // 2. Known quote-history containers.
+        body.select("blockquote, .gmail_quote, .gmail_extra, .moz-cite-prefix, "
+                + "#divRplyFwdMsg").remove();
+
+        // 3. Outlook appends its signature + quoted history after this marker.
         Element append = body.getElementById("appendonsend");
         if (append != null) {
             truncateFrom(append);
         }
 
-        // 3. Generic: cut from the first reply-attribution header onward, which
+        // 4. Generic: cut from the first reply-attribution header onward, which
         //    catches the inline "From:/Sent:" chains Outlook leaves in the body.
         Element boundary = findReplyBoundary(body);
         if (boundary != null) {
             truncateFrom(boundary);
         }
 
-        // 4. Drop blocks that are now empty (whitespace/nbsp only, no media).
+        // 5. With the quoted history gone, a standalone "--" delimiter marks a
+        //    plain-text signature: everything after it is the signature, not
+        //    new content. Only consult it when no container signature was found.
+        if (signature.length() == 0) {
+            append(signature, cutDelimiterSignature(body));
+        }
+
+        // 6. Drop blocks that are now empty (whitespace/nbsp only, no media).
         pruneEmpty(body);
 
-        // 5. Sanitize, then tidy leftover whitespace artifacts.
-        return tidy(Jsoup.clean(body.html(), SAFELIST));
+        // 7. Sanitize both halves, then tidy leftover whitespace artifacts.
+        return new Cleaned(
+                tidy(Jsoup.clean(body.html(), SAFELIST)),
+                tidy(Jsoup.clean(signature.toString(), SAFELIST)));
+    }
+
+    /**
+     * Finds a leaf block whose only text is the RFC 3676 "--" signature
+     * delimiter and returns the HTML that follows it (the signature),
+     * removing the delimiter and everything after it from {@code body}.
+     */
+    private static String cutDelimiterSignature(Element body) {
+        Element delimiter = null;
+        for (Element el : body.getAllElements()) {
+            if (el == body || !el.children().isEmpty()) {
+                continue;
+            }
+            String tag = el.tagName();
+            if ((tag.equals("div") || tag.equals("p") || tag.equals("span"))
+                    && normalize(el.text()).equals("--")) {
+                delimiter = el;
+                break;
+            }
+        }
+        if (delimiter == null) {
+            return "";
+        }
+        StringBuilder sig = new StringBuilder();
+        collectFollowing(delimiter, sig);
+        Element cur = delimiter.parent();
+        while (cur != null && !cur.tagName().equals("body")) {
+            collectFollowing(cur, sig);
+            cur = cur.parent();
+        }
+        truncateFrom(delimiter);
+        return sig.toString();
+    }
+
+    private static void collectFollowing(Node node, StringBuilder sb) {
+        Node sib = node.nextSibling();
+        while (sib != null) {
+            if (sib instanceof Element e) {
+                append(sb, e.outerHtml());
+            } else if (sib instanceof TextNode t && !t.text().isBlank()) {
+                append(sb, t.text());
+            }
+            sib = sib.nextSibling();
+        }
+    }
+
+    private static void append(StringBuilder sb, String html) {
+        if (html == null) {
+            return;
+        }
+        String trimmed = html.strip();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+        if (sb.length() > 0) {
+            sb.append('\n');
+        }
+        sb.append(trimmed);
     }
 
     private static Element findReplyBoundary(Element body) {

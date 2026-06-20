@@ -268,6 +268,26 @@ class EmailImportServiceTest {
         assertThat(threadRepo.count()).isEqualTo(500L);
     }
 
+    @Test
+    void importStampsConversationKeyAndKeepsItStableAcrossThreadReplies() throws Exception {
+        importService.importMessage(
+                plainMessage("<ck-root@test.com>", "Topic", "alice@test.com", null, null, "First."),
+                owner);
+        EmailThread thread = messageRepo.findByMessageIdHeaderAndOwner("<ck-root@test.com>", owner)
+                .orElseThrow().getThread();
+        String key = thread.getConversationKey();
+        assertThat(key).isNotBlank();
+
+        // A reply with the same participant set stays in the same conversation.
+        importService.importMessage(
+                plainMessage("<ck-reply@test.com>", "Re: Topic", "alice@test.com",
+                        "<ck-root@test.com>", null, "Second."),
+                owner);
+
+        assertThat(threadRepo.findById(thread.getId()).orElseThrow().getConversationKey())
+                .isEqualTo(key);
+    }
+
     private MimeMessage plainMessage(String messageId, String subject, String from,
                                      String inReplyTo, String references, String body)
             throws Exception {

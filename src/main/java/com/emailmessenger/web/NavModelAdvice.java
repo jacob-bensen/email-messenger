@@ -55,6 +55,9 @@ class NavModelAdvice {
         if (uri == null) {
             return "";
         }
+        if (uri.equals("/chats") || uri.startsWith("/chats/")) {
+            return "chats";
+        }
         if (uri.equals("/threads") || uri.startsWith("/threads/") || uri.startsWith("/senders")) {
             return "inbox";
         }

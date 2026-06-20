@@ -10,9 +10,9 @@
 <body>
 
 <header class="app-header">
-  <a href="/threads" class="brand">ConexusMail</a>
+  <a href="/chats" class="brand">ConexusMail</a>
   <nav class="header-nav">
-    <a href="/threads">Inbox</a>
+    <a href="/chats">Inbox</a>
     <a href="/mailboxes">Mailboxes</a>
     <a href="/account">Account</a>
     <form th:action="@{/logout}" method="post" class="header-logout">
@@ -24,7 +24,7 @@
 </header>
 
 <main class="thread-page">
-  <a href="/threads" class="back-link">← Inbox</a>
+  <a href="/chats" class="back-link">← Inbox</a>
   <h1 class="section-title">Invite a teammate</h1>
   <p class="auth-sub">
     Send an invite to add someone to <strong th:text="${team.name}">Your team</strong>.

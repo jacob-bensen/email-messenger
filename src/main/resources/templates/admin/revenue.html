@@ -12,7 +12,7 @@
 <header class="app-header">
   <span class="brand">ConexusMail</span>
   <nav class="header-nav">
-    <a href="/threads">Inbox</a>
+    <a href="/chats">Inbox</a>
     <a href="/account">Account</a>
     <form th:action="@{/logout}" method="post" class="header-logout">
       <input type="hidden" th:if="${_csrf != null}"
@@ -225,31 +225,12 @@
       Team-plan adoption — last 30 days
     </h2>
     <p class="admin-card-sub">
-      Daily-use signal for the shared-inbox surface plus the Free→Team
-      versus Personal→Team conversion split — a rising Personal→Team share
-      means existing Personal subscribers are climbing tiers; a rising
-      Free→Team share means the new collaboration surface is closing
-      cold signups directly.
+      The Free→Team versus Personal→Team conversion split — a rising
+      Personal→Team share means existing Personal subscribers are climbing
+      tiers; a rising Free→Team share means top-of-funnel acquisition is
+      closing cold signups directly.
     </p>
     <div class="admin-kpis">
-      <div class="admin-kpi">
-        <span class="admin-kpi-label">Notes posted</span>
-        <span class="admin-kpi-value" th:text="${teamAdoption.notesPosted()}">0</span>
-        <span class="admin-kpi-sub"
-              th:text="${teamAdoption.notesPostedDeltaLabel()}">vs. prior 30 days</span>
-      </div>
-      <div class="admin-kpi">
-        <span class="admin-kpi-label">Active note authors</span>
-        <span class="admin-kpi-value" th:text="${teamAdoption.activeNoteAuthors()}">0</span>
-      </div>
-      <div class="admin-kpi">
-        <span class="admin-kpi-label">Teams with notes</span>
-        <span class="admin-kpi-value" th:text="${teamAdoption.teamsWithNotes()}">0</span>
-      </div>
-      <div class="admin-kpi">
-        <span class="admin-kpi-label">@mentions written</span>
-        <span class="admin-kpi-value" th:text="${teamAdoption.mentionsWritten()}">0</span>
-      </div>
       <div class="admin-kpi">
         <span class="admin-kpi-label">Entitled Team subs</span>
         <span class="admin-kpi-value"
@@ -295,10 +276,9 @@
       </div>
     </div>
     <p class="admin-empty"
-       th:if="${teamAdoption.notesPosted() == 0 and teamAdoption.totalTeamConversions() == 0}">
-      No notes posted and no Team-plan conversions in the window yet — the
-      adoption card will populate once the first teammate drops an internal
-      note or a Free/Personal subscriber upgrades to Team.
+       th:if="${teamAdoption.totalTeamConversions() == 0}">
+      No Team-plan conversions in the window yet — the adoption card will
+      populate once a Free or Personal subscriber upgrades to Team.
     </p>
   </section>
 

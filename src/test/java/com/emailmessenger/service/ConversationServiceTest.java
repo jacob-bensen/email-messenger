@@ -3,10 +3,12 @@ package com.emailmessenger.service;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.Participant;
+import com.emailmessenger.domain.RecipientType;
 import com.emailmessenger.domain.User;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -311,6 +313,97 @@ class ConversationServiceTest {
         String bodyHtml = svc.buildConversation(t).runs().get(0).messages().get(0).bodyHtml();
         assertThat(bodyHtml).contains("Thanks!");
         assertThat(bodyHtml).doesNotContain("the original message");
+    }
+
+    @Test
+    void senderConversationPinsLatestSignatureAndStripsItFromBubbles() {
+        Participant ada = new Participant("ada@acme.com", "Ada");
+        EmailThread t = thread("Invoice");
+        Message m1 = new Message(t, ada, "Subject", "plain",
+            "<p>First note.</p><div class=\"gmail_signature\" data-smartmail=\"gmail_signature\">"
+            + "Ada at Acme, old-number</div>", BASE_TIME);
+        Message m2 = new Message(t, ada, "Subject", "plain",
+            "<p>Second note.</p><div class=\"gmail_signature\" data-smartmail=\"gmail_signature\">"
+            + "Ada at Acme, new-number</div>", BASE_TIME.plusMinutes(1));
+
+        SenderConversation conv = svc.buildSenderConversation(List.of(m1, m2), "ada@acme.com");
+
+        // Newest signature wins, and it is lifted out of every bubble.
+        assertThat(conv.signatureHtml()).contains("new-number").doesNotContain("old-number");
+        String body1 = conv.runs().get(0).messages().get(0).bodyHtml();
+        String body2 = conv.runs().get(0).messages().get(1).bodyHtml();
+        assertThat(body1).contains("First note").doesNotContain("Acme");
+        assertThat(body2).contains("Second note").doesNotContain("Acme");
+    }
+
+    @Test
+    void senderConversationHasNoSignatureWhenNonePresent() {
+        Participant ada = new Participant("ada@acme.com", "Ada");
+        EmailThread t = thread("Hi");
+        SenderConversation conv = svc.buildSenderConversation(
+            List.of(message(t, ada, "Just a quick note", 0)), "ada@acme.com");
+
+        assertThat(conv.signatureHtml()).isEmpty();
+    }
+
+    // --- chat conversation (participant-set, texting-style) ---
+
+    private static final Set<String> OWNER_ADDRS = Set.of("me@test.com");
+
+    @Test
+    void chatConversationListsEachGroupMemberWithTheirOwnSignature() {
+        Participant ada = new Participant("ada@acme.com", "Ada");
+        Participant bob = new Participant("bob@acme.com", "Bob");
+        EmailThread t = thread("Project");
+        Message m1 = new Message(t, ada, "Project", "plain",
+            "<p>Hi from Ada.</p><div class=\"gmail_signature\" data-smartmail=\"gmail_signature\">"
+            + "Ada at Acme</div>", BASE_TIME);
+        m1.addRecipient(bob, RecipientType.TO);
+        t.addMessage(m1);
+        Message m2 = new Message(t, bob, "Project", "plain",
+            "<p>Hi from Bob.</p><div class=\"gmail_signature\" data-smartmail=\"gmail_signature\">"
+            + "Bob at Acme</div>", BASE_TIME.plusMinutes(1));
+        m2.addRecipient(ada, RecipientType.TO);
+        t.addMessage(m2);
+
+        ChatConversation conv = svc.buildChatConversation(List.of(m1, m2), OWNER_ADDRS);
+
+        assertThat(conv.isGroup()).isTrue();
+        assertThat(conv.members()).extracting(ChatMember::email)
+                .containsExactlyInAnyOrder("ada@acme.com", "bob@acme.com");
+        assertThat(member(conv, "ada@acme.com").signatureHtml()).contains("Ada at Acme");
+        assertThat(member(conv, "bob@acme.com").signatureHtml()).contains("Bob at Acme");
+        assertThat(conv.title()).contains("Ada").contains("Bob");
+        // Signatures are lifted out of the bubbles.
+        assertThat(conv.runs().get(0).messages().get(0).bodyHtml())
+                .contains("Hi from Ada").doesNotContain("Acme");
+    }
+
+    @Test
+    void chatConversationExcludesTheOwnerFromMembersAndStaysOneToOne() {
+        Participant ada = new Participant("ada@acme.com", "Ada");
+        Participant me = new Participant("me@test.com", "Me");
+        EmailThread t = thread("Hi");
+        Message inbound = new Message(t, ada, "Hi", "Hello", null, BASE_TIME);
+        inbound.addRecipient(me, RecipientType.TO);
+        t.addMessage(inbound);
+        Message reply = new Message(t, me, "Re: Hi", "Hey back", null, BASE_TIME.plusMinutes(1));
+        reply.markOutbound();
+        reply.addRecipient(ada, RecipientType.TO);
+        t.addMessage(reply);
+
+        ChatConversation conv = svc.buildChatConversation(List.of(inbound, reply), OWNER_ADDRS);
+
+        assertThat(conv.isGroup()).isFalse();
+        assertThat(conv.members()).extracting(ChatMember::email).containsExactly("ada@acme.com");
+        assertThat(conv.title()).isEqualTo("Ada");
+        // Both sides still render.
+        assertThat(conv.runs()).hasSize(2);
+        assertThat(conv.messageCount()).isEqualTo(2);
+    }
+
+    private static ChatMember member(ChatConversation conv, String email) {
+        return conv.members().stream().filter(m -> m.email().equals(email)).findFirst().orElseThrow();
     }
 
     @Test

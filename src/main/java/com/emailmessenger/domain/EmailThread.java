@@ -37,6 +37,13 @@ public class EmailThread {
     @Column(name = "root_message_id", length = 998)
     private String rootMessageId;
 
+    // Groups threads into a texting-style conversation by the set of people
+    // involved: a hash of the sorted, lowercased non-owner participant emails
+    // (sender + To/Cc across the thread's messages). Recomputed whenever a
+    // message is added — see ConversationKeyService.
+    @Column(name = "conversation_key", length = 64)
+    private String conversationKey;
+
     @Column(name = "message_count", nullable = false)
     private int messageCount = 0;
 
@@ -98,6 +105,8 @@ public class EmailThread {
     public User getOwner() { return owner; }
     public String getSubject() { return subject; }
     public String getRootMessageId() { return rootMessageId; }
+    public String getConversationKey() { return conversationKey; }
+    public void setConversationKey(String conversationKey) { this.conversationKey = conversationKey; }
     public int getMessageCount() { return messageCount; }
     public boolean isUnread() { return unread; }
     public LocalDateTime getCreatedAt() { return createdAt; }

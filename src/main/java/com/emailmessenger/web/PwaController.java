@@ -35,7 +35,7 @@ class PwaController {
 
     static final String APP_NAME = "ConexusMail";
     static final String APP_SHORT_NAME = "ConexusMail";
-    static final String START_URL = "/threads";
+    static final String START_URL = "/chats";
     static final String SCOPE = "/";
     static final String THEME_COLOR = "#2f855a";
     static final String BACKGROUND_COLOR = "#0f1512";

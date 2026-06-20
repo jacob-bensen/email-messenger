@@ -145,7 +145,7 @@ public class ReengagementService {
           .append(" since you last opened ConexusMail, and you have ")
           .append(unread).append(unread == 1 ? " unread thread" : " unread threads")
           .append(" waiting.\n\n");
-        sb.append("Open your inbox: ").append(base).append("/threads\n\n");
+        sb.append("Open your chats: ").append(base).append("/chats\n\n");
         sb.append("Don't want these emails? Unsubscribe: ")
           .append(base).append("/digest/opt-out?token=").append(prefs.getOptOutToken()).append('\n');
         return sb.toString();

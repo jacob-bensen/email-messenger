@@ -32,7 +32,7 @@ class PwaControllerTest {
         assertThat(body)
                 .contains("\"name\":")
                 .contains("\"short_name\":")
-                .contains("\"start_url\": \"/threads\"")
+                .contains("\"start_url\": \"/chats\"")
                 .contains("\"scope\": \"/\"")
                 .contains("\"display\": \"standalone\"")
                 .contains("\"theme_color\": \"#2f855a\"")

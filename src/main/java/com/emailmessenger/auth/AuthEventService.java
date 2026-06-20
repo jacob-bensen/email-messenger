@@ -64,7 +64,7 @@ public class AuthEventService {
         if (user == null || user.getId() == null) {
             return List.of();
         }
-        return events.findByUserOrderByCreatedAtDesc(user, PageRequest.of(0, limit));
+        return events.findByUserOrderByCreatedAtDescIdDesc(user, PageRequest.of(0, limit));
     }
 
     static String normalize(String email) {

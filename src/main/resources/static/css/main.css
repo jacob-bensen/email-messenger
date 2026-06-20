@@ -885,6 +885,43 @@ body {
   background: #fff;
 }
 .reply-form textarea.error { border-color: #dc2626; }
+/* Optional subject line above the message — full width, matching the textarea. */
+.reply-subject {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.reply-subject:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(47, 133, 90, 0.12);
+  background: #fff;
+}
+.reply-subject:disabled { background: rgba(0, 0, 0, 0.04); color: var(--text-muted); cursor: not-allowed; }
+/* Row under the message: reply toggle + attachment picker. */
+.reply-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 8px;
+}
+.reply-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.reply-toggle input { accent-color: var(--brand); }
 /* Textarea + send button sit side by side; align-items:stretch makes the
    button exactly as tall as the (resizable) reply box, both inside the
    padded reply-area container. */
@@ -980,200 +1017,6 @@ body {
   .reply-readonly-text { color: #94a3b8; }
 }
 
-/* ── Internal team notes — top-right popup ──────────── */
-.team-notes {
-  position: fixed;
-  top: 64px;
-  right: 16px;
-  width: 340px;
-  max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 88px);
-  overflow-y: auto;
-  z-index: 300;
-  background: #fffaf0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-  padding: 14px 16px;
-  animation: notePopIn 160ms ease-out;
-}
-@keyframes notePopIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to   { opacity: 1; transform: none; }
-}
-.team-notes-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px 14px;
-  margin-bottom: 10px;
-}
-.team-notes-titles {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px 14px;
-  flex: 1;
-}
-.team-notes-close {
-  align-self: flex-start;
-  margin-left: auto;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 20px;
-  line-height: 1;
-  padding: 0 4px;
-  color: #92400e;
-  opacity: 0.7;
-}
-.team-notes-close:hover { opacity: 1; }
-.team-notes-header h2 {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #92400e;
-  margin: 0;
-}
-.team-notes-sub {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.note-list {
-  list-style: none;
-  margin: 0 0 10px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.note-bubble {
-  background: #fef3c7;
-  border: 1px solid #fcd34d;
-  border-radius: 8px;
-  padding: 8px 12px;
-}
-.note-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  font-size: 12px;
-  color: #78350f;
-  margin-bottom: 4px;
-}
-.note-author { font-weight: 600; }
-.note-time { color: var(--text-muted); }
-.note-body {
-  font-size: 14px;
-  color: #1f2937;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-.note-empty {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin: 0 0 10px;
-}
-.note-form textarea {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #fcd34d;
-  border-radius: 8px;
-  font-family: var(--font);
-  font-size: 14px;
-  resize: vertical;
-  background: #fff;
-  color: var(--text);
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.note-form textarea:focus {
-  border-color: #f59e0b;
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
-}
-.note-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 8px;
-}
-.note-hint {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-right: auto;
-}
-.note-hint code {
-  font-family: var(--font-mono, monospace);
-  background: rgba(0, 0, 0, 0.06);
-  padding: 0 4px;
-  border-radius: 3px;
-}
-.note-input-wrap { position: relative; }
-.mention-picker {
-  position: absolute;
-  z-index: 20;
-  left: 0;
-  bottom: 100%;
-  margin: 0 0 4px;
-  padding: 4px;
-  list-style: none;
-  background: #fff;
-  border: 1px solid #fcd34d;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  min-width: 220px;
-  max-height: 220px;
-  overflow-y: auto;
-}
-.mention-picker li {
-  padding: 6px 10px;
-  font-size: 13px;
-  color: var(--text);
-  border-radius: 4px;
-  cursor: pointer;
-}
-.mention-picker li.active,
-.mention-picker li:hover {
-  background: #fef3c7;
-}
-.note-upgrade {
-  background: #fff;
-  border: 1px dashed #fcd34d;
-  border-radius: 8px;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.note-upgrade-copy {
-  font-size: 13px;
-  color: #1f2937;
-  margin: 0;
-  line-height: 1.5;
-}
-.note-upgrade-form { margin: 0; }
-
-@media (prefers-color-scheme: dark) {
-  .team-notes { background: #2a2410; }
-  .team-notes-header h2 { color: #fbbf24; }
-  .team-notes-close { color: #fbbf24; }
-  .note-bubble { background: #3b3414; border-color: #92400e; }
-  .note-meta { color: #fde68a; }
-  .note-body { color: #fef3c7; }
-  .note-form textarea { background: #1f1b0d; color: #fef3c7; border-color: #92400e; }
-  .note-upgrade { background: #1f1b0d; border-color: #92400e; }
-  .note-upgrade-copy { color: #fef3c7; }
-  .mention-picker { background: #1f1b0d; border-color: #92400e; color: #fef3c7; }
-  .mention-picker li { color: #fef3c7; }
-  .mention-picker li.active, .mention-picker li:hover { background: #3b3414; }
-  .note-hint code { background: rgba(255, 255, 255, 0.1); }
-}
-
-@media (max-width: 640px) {
-  .team-notes { padding: 12px 16px; }
-}
 
 /* ── Header Nav (replaces inline styles) ────────────── */
 .header-nav {
@@ -3490,6 +3333,42 @@ body {
   height: 100%;
   overflow: hidden;
 }
+/* When a sender signature is pinned, the workspace grows a third column for it.
+   :has() keeps this scoped to pages that actually render the panel, so the
+   2-column layout (e.g. /threads) is untouched. */
+.workspace-with-rail:has(.signature-rail) {
+  grid-template-columns: 260px minmax(0, 1fr) 300px;
+}
+.signature-rail {
+  min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  padding: 24px 20px;
+}
+.signature-card { position: sticky; top: 0; }
+.signature-card-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.signature-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.signature-card-body {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  word-break: break-word;
+}
+.signature-card-body a { color: var(--brand); }
+.signature-card-body img { max-width: 100%; height: auto; }
 .chat-subheader {
   display: flex;
   align-items: center;
@@ -3544,6 +3423,272 @@ body {
   .chat-pane { height: auto; overflow: visible; }
   .chat-subheader { padding: 10px 16px; }
   .chat-pane .messages { padding: 16px 16px 8px; }
+  /* Stacked block layout: the pinned panel drops below the chat. */
+  .signature-rail {
+    height: auto;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+  .signature-card { position: static; }
+}
+
+/* ── Texting-style chats list (/chats) ──────────────── */
+.chats-screen {
+  margin-left: 248px;
+  max-width: 760px;
+  padding: 24px 24px 64px;
+}
+.chats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.chats-title { font-size: 24px; font-weight: 700; margin: 0; }
+.chats-notice { margin-bottom: 12px; }
+/* Search styled to match the site's inputs: surface fill, soft border,
+   brand focus ring. */
+.chats-search { display: flex; align-items: center; gap: 8px; }
+.chats-search input[type="search"] {
+  width: 260px;
+  max-width: 100%;
+  padding: 9px 12px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.chats-search input[type="search"]::placeholder { color: var(--text-muted); }
+.chats-search input[type="search"]:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(47, 125, 87, 0.18);
+}
+.chats-search-clear {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.chats-search-clear:hover { color: var(--brand); text-decoration: underline; }
+.chats-searching { font-size: 13px; color: var(--text-muted); margin: 0 0 12px; }
+.chats-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  color: var(--text-muted);
+  padding: 32px 0;
+}
+.chat-list { list-style: none; margin: 0; padding: 0; }
+.chat-list-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 12px;
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.chat-list-row:hover { background: #f9fafb; }
+.chat-list-avatar {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.chat-list-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.chat-list-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.chat-list-name {
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.chat-list-time { font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
+.chat-list-preview {
+  font-size: 13px;
+  color: var(--text-muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.chat-list-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.chat-list-group {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+.chat-list-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--brand); }
+.chat-list-unread .chat-list-name { font-weight: 700; }
+.chat-list-unread .chat-list-preview { color: var(--text); }
+.chats-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+.chats-pager-status { font-size: 13px; color: var(--text-muted); }
+
+/* ── Single chat view (/chats/{key}) ────────────────── */
+/* Columns: secondary conversation rail · chat pane · (optional) signatures. */
+.chat-workspace {
+  margin-left: 248px;
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  height: 100vh;
+  height: 100dvh;
+}
+.chat-workspace:has(.signature-rail) {
+  grid-template-columns: 270px minmax(0, 1fr) 300px;
+}
+
+/* Secondary nav rail — the collapsed conversation list, flush against the
+   main app nav so the two read as one connected navigation column. */
+.chat-rail {
+  min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+.chat-rail-head {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 14px;
+  z-index: 1;
+}
+.chat-rail-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.chat-rail-title:hover { color: var(--brand); }
+.chat-rail-list { list-style: none; margin: 0; padding: 4px 0; }
+.chat-rail-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  text-decoration: none;
+  color: var(--text);
+  border-left: 3px solid transparent;
+}
+.chat-rail-row:hover { background: #f9fafb; }
+.chat-rail-active {
+  background: rgba(47, 125, 87, 0.10);
+  border-left-color: var(--brand);
+}
+.chat-rail-avatar {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.chat-rail-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.chat-rail-name {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.chat-rail-preview {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.chat-rail-unread .chat-rail-name { font-weight: 700; }
+.chat-rail-unread .chat-rail-preview { color: var(--text); }
+.chat-rail-dot {
+  width: 8px; height: 8px; flex-shrink: 0;
+  border-radius: 50%; background: var(--brand);
+}
+.chat-back {
+  font-size: 20px;
+  line-height: 1;
+  text-decoration: none;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: var(--radius);
+}
+.chat-back:hover { background: rgba(0, 0, 0, 0.05); color: var(--text); }
+
+/* Group member list + per-person signature dropdowns in the side panel. */
+.member-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.member-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  cursor: pointer;
+  list-style: none;
+}
+.member-summary::-webkit-details-marker { display: none; }
+.member-summary-static { cursor: default; }
+.member-avatar {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.member-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.member-chevron { font-size: 11px; color: var(--text-muted); transition: transform 0.15s; }
+.member-details[open] .member-chevron { transform: rotate(180deg); }
+.member-signature { padding: 0 4px 10px 38px; }
+
+@media (max-width: 760px) {
+  .chats-screen { margin-left: 0; padding: 16px 16px 48px; }
+  .chats-search input[type="search"] { width: 100%; }
+  .chat-workspace { margin-left: 0; display: block; height: auto; }
+  .chat-workspace:has(.signature-rail) { grid-template-columns: 1fr; }
+  /* No room for the secondary rail on phones — the "←" back link returns to
+     the full list instead. */
+  .chat-rail { display: none; }
 }
 
 /* ── Left sidebar app shell ─────────────────────────── */

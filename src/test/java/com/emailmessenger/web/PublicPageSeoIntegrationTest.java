@@ -212,7 +212,7 @@ class PublicPageSeoIntegrationTest {
         String body = mockMvc.perform(get("/manifest.webmanifest"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(body).contains("\"start_url\": \"/threads\"");
+        assertThat(body).contains("\"start_url\": \"/chats\"");
         assertThat(body).contains("\"display\": \"standalone\"");
         assertThat(body).contains("/icons/icon-192.png");
         assertThat(body).contains("/icons/icon-512.png");

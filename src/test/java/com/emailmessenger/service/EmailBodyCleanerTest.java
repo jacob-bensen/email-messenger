@@ -85,4 +85,45 @@ class EmailBodyCleanerTest {
         assertThat(cleaner.clean(null)).isEmpty();
         assertThat(cleaner.clean("   ")).isEmpty();
     }
+
+    @Test
+    void liftsGmailSignatureContainerOutOfTheBody() {
+        String html = "<div>See you Tuesday.</div>"
+                + "<div class=\"gmail_signature\" data-smartmail=\"gmail_signature\">"
+                + "<div>Ada Lovelace</div><div>Analytical Engines Ltd</div></div>";
+
+        assertThat(cleaner.clean(html)).contains("See you Tuesday").doesNotContain("Ada Lovelace");
+
+        String signature = cleaner.extractSignature(html);
+        assertThat(signature).contains("Ada Lovelace").contains("Analytical Engines Ltd");
+    }
+
+    @Test
+    void cutsPlainDashDashSignatureFromBodyAndReturnsItAsSignature() {
+        String html = "<p>Thanks for the update.</p>"
+                + "<div>--</div><div>Grace Hopper</div><div>+1 555 0100</div>";
+
+        String body = cleaner.clean(html);
+        assertThat(body).contains("Thanks for the update").doesNotContain("Grace Hopper");
+
+        String signature = cleaner.extractSignature(html);
+        assertThat(signature).contains("Grace Hopper").contains("555 0100").doesNotContain("--");
+    }
+
+    @Test
+    void noSignaturePresentYieldsEmptySignature() {
+        assertThat(cleaner.extractSignature("<p>Just a quick note, no signature.</p>")).isEmpty();
+    }
+
+    @Test
+    void signatureBelowQuotedHistoryIsNotMistakenForNewContent() {
+        // The "--" sits inside the quoted reply, which is cut wholesale; it must
+        // not surface as this message's signature.
+        String html = "<p>My reply.</p>"
+                + "<div>On Mon, Ada wrote:</div>"
+                + "<blockquote><div>old text</div><div>--</div><div>Ada</div></blockquote>";
+
+        assertThat(cleaner.extractSignature(html)).isEmpty();
+        assertThat(cleaner.clean(html)).contains("My reply").doesNotContain("old text");
+    }
 }

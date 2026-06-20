@@ -81,8 +81,7 @@ class SavedSearchControllerTest {
                         .param("since", "30d")
                         .param("unread", "true"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl(
-                        "/threads?q=invoice&from=ada@example.com&since=30d&unread=true"))
+                .andExpect(redirectedUrl("/chats?q=invoice"))
                 .andExpect(flash().attributeExists("savedSearchMessage"));
 
         List<SavedSearch> saved = savedSearchRepository.findByOwnerOrderByCreatedAtAsc(owner);
@@ -167,7 +166,7 @@ class SavedSearchControllerTest {
                         .with(user("saver@example.com")).with(csrf())
                         .param("q", "invoice"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/threads?q=invoice"))
+                .andExpect(redirectedUrl("/chats?q=invoice"))
                 .andExpect(flash().attributeExists("savedSearchMessage"));
 
         assertThat(savedSearchRepository.findById(s.getId())).isEmpty();

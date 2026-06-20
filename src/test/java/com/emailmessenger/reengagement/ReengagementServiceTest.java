@@ -213,6 +213,6 @@ class ReengagementServiceTest {
         DigestEmailPreference prefs = preferences.findByUser(user).orElseThrow();
         assertThat(body).contains("2 unread threads waiting");
         assertThat(body).contains("/digest/opt-out?token=" + prefs.getOptOutToken());
-        assertThat(body).contains("/threads");
+        assertThat(body).contains("/chats");
     }
 }

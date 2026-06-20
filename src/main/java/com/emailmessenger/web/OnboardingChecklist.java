@@ -57,12 +57,12 @@ public record OnboardingChecklist(
             return "/mailboxes";
         }
         if (!savedSearchSaved) {
-            return "/threads";
+            return "/chats";
         }
         if (!teammateInvited) {
             return "/team/invite";
         }
-        return "/threads";
+        return "/chats";
     }
 
     public String nextStepCtaLabel() {

@@ -10,6 +10,7 @@ import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.repository.MessageRepository;
 import com.emailmessenger.repository.ParticipantRepository;
+import com.emailmessenger.service.ConversationKeyService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.stereotype.Service;
@@ -26,16 +27,22 @@ public class EmailImportService {
     private final MessageRepository messageRepo;
     private final ParticipantRepository participantRepo;
     private final PlanLimitService planLimitService;
+    private final ConversationKeyService conversationKeyService;
+    private final OwnerAddressService ownerAddressService;
     private final MimeMessageParser parser = new MimeMessageParser();
 
     EmailImportService(EmailThreadRepository threadRepo,
                        MessageRepository messageRepo,
                        ParticipantRepository participantRepo,
-                       PlanLimitService planLimitService) {
+                       PlanLimitService planLimitService,
+                       ConversationKeyService conversationKeyService,
+                       OwnerAddressService ownerAddressService) {
         this.threadRepo = threadRepo;
         this.messageRepo = messageRepo;
         this.participantRepo = participantRepo;
         this.planLimitService = planLimitService;
+        this.conversationKeyService = conversationKeyService;
+        this.ownerAddressService = ownerAddressService;
     }
 
     /**
@@ -103,6 +110,10 @@ public class EmailImportService {
         if (outbound && freshThread) {
             thread.markRead();
         }
+        // Re-key the thread from its full participant set so a new Cc keeps the
+        // conversation grouping in sync with who is actually in the thread.
+        thread.setConversationKey(
+                conversationKeyService.compute(thread, ownerAddressService.addressesFor(owner)));
         threadRepo.save(thread);
         return Optional.of(saved);
     }

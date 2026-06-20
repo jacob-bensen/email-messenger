@@ -177,14 +177,14 @@ public class WeeklyDigestService {
               .append('\n');
             for (EmailThread t : section.threads()) {
                 sb.append("    - ").append(safeSubject(t.getSubject()));
-                if (t.getId() != null) {
-                    sb.append("  ").append(base).append("/threads/").append(t.getId());
+                if (t.getConversationKey() != null) {
+                    sb.append("  ").append(base).append("/chats/").append(t.getConversationKey());
                 }
                 sb.append('\n');
             }
             sb.append('\n');
         }
-        sb.append("Open your inbox: ").append(base).append("/threads\n\n");
+        sb.append("Open your chats: ").append(base).append("/chats\n\n");
         sb.append("Don't want these emails? Unsubscribe: ")
           .append(base).append("/digest/opt-out?token=").append(prefs.getOptOutToken()).append('\n');
         return sb.toString();

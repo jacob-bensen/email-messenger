@@ -13,7 +13,10 @@ import java.util.List;
 
 public interface AuthEventRepository extends JpaRepository<AuthEvent, Long> {
 
-    List<AuthEvent> findByUserOrderByCreatedAtDesc(User user, Pageable pageable);
+    // id is the tie-breaker: events recorded in the same clock instant (a tight
+    // burst on a fast box) would otherwise order non-deterministically, since
+    // createdAt alone isn't unique. id DESC keeps them in insertion order.
+    List<AuthEvent> findByUserOrderByCreatedAtDescIdDesc(User user, Pageable pageable);
 
     @Query("""
             SELECT COUNT(e) FROM AuthEvent e

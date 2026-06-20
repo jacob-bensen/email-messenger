@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Chats — ConexusMail</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#2f855a">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ConexusMail">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <th:block th:replace="~{fragments/sw-register :: register}"></th:block>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<div class="app-shell">
+
+<th:block th:replace="~{fragments/app-nav :: nav}"></th:block>
+
+<main class="chats-screen">
+
+  <header class="chats-header">
+    <h1 class="chats-title">Chats</h1>
+    <form class="chats-search" method="get" th:action="@{/chats}" role="search">
+      <input type="search" name="q" th:value="${searchQuery}"
+             placeholder="Search people or messages…" aria-label="Search chats">
+      <button type="submit" class="btn btn-secondary btn-compact">Search</button>
+      <a th:if="${searchQuery != null and !searchQuery.isEmpty()}"
+         th:href="@{/chats}" class="chats-search-clear">Clear</a>
+    </form>
+  </header>
+
+  <p class="chats-searching" th:if="${searchQuery != null and !searchQuery.isEmpty()}"
+     th:text="|Results for &quot;${searchQuery}&quot;|">Results for "x"</p>
+
+  <div th:if="${emailUnverified}" class="alert alert-warning chats-notice">
+    Verify your email to keep your account secure. Check your inbox for the link.
+  </div>
+
+  <div th:if="${billingBanner != null and billingBanner.trialEnding}"
+       class="trial-banner trial-banner-compact"
+       th:classappend="${billingBanner.daysLeft <= 3} ? ' trial-banner-urgent' : ''">
+    <span class="trial-banner-text">
+      <strong th:if="${billingBanner.daysLeft == 0}">Trial ends today.</strong>
+      <strong th:if="${billingBanner.daysLeft == 1}">Trial ends tomorrow.</strong>
+      <strong th:if="${billingBanner.daysLeft > 1}"
+              th:text="|Trial ends in ${billingBanner.daysLeft} days.|">Trial ends in 14 days.</strong>
+    </span>
+    <a href="/pricing" class="trial-banner-link">Add card →</a>
+  </div>
+
+  <p class="chats-empty" th:if="${conversations.isEmpty()}">
+    No conversations yet. Connect a mailbox to pull your email in as chats.
+    <a class="btn btn-primary btn-compact" href="/mailboxes/new">Connect a mailbox</a>
+  </p>
+
+  <ul class="chat-list" th:unless="${conversations.isEmpty()}">
+    <li th:each="c : ${conversations.content}">
+      <a class="chat-list-row" th:classappend="${c.unread()} ? ' chat-list-unread' : ''"
+         th:href="@{/chats/{key}(key=${c.key()})}">
+        <span class="chat-list-avatar" aria-hidden="true" th:text="${c.initials()}">AB</span>
+        <span class="chat-list-main">
+          <span class="chat-list-top">
+            <span class="chat-list-name" th:text="${c.title()}">Ada Lovelace</span>
+            <span class="chat-list-time"
+                  th:text="${c.lastActivity() != null ? #temporals.format(c.lastActivity(), 'MMM d') : ''}">Jan 1</span>
+          </span>
+          <span class="chat-list-preview" th:text="${c.preview()}">Last message preview…</span>
+        </span>
+        <span class="chat-list-badges">
+          <span class="chat-list-group" th:if="${c.group()}"
+                th:text="|${c.memberCount()} people|" aria-hidden="true">3 people</span>
+          <span class="chat-list-dot" th:if="${c.unread()}" aria-label="Unread"></span>
+        </span>
+      </a>
+    </li>
+  </ul>
+
+  <nav class="chats-pager" th:if="${conversations.totalPages > 1}" aria-label="Pages">
+    <a class="btn btn-secondary btn-compact" th:if="${conversations.hasPrevious()}"
+       th:href="@{/chats(page=${conversations.number - 1})}">← Newer</a>
+    <span class="chats-pager-status"
+          th:text="|Page ${conversations.number + 1} of ${conversations.totalPages}|">Page 1 of 2</span>
+    <a class="btn btn-secondary btn-compact" th:if="${conversations.hasNext()}"
+       th:href="@{/chats(page=${conversations.number + 1})}">Older →</a>
+  </nav>
+
+</main>
+</div>
+
+</body>
+</html>

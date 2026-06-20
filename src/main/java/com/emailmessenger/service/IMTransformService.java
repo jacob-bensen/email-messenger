@@ -50,6 +50,46 @@ class IMTransformService {
         return result.strip();
     }
 
+    /**
+     * The signature trailing a plain-text body — the lines after a standalone
+     * "--" delimiter or a "Sent from my ..." line — or "" if there is none.
+     * Mirrors the boundaries {@link #stripQuotes} cuts at, so a signature that
+     * sits below quoted history is not picked up.
+     */
+    String extractSignature(String body) {
+        if (body == null) return "";
+
+        String[] lines = body.split("\n", -1);
+        int start = -1;
+        for (int i = 0; i < lines.length; i++) {
+            if (isQuoteBoundary(lines, i)) {
+                return ""; // quoted history starts before any signature
+            }
+            String trimmed = lines[i].strip();
+            if (trimmed.equals("--")
+                    || trimmed.regionMatches(true, 0, "Sent from my ", 0, 13)) {
+                start = i;
+                break;
+            }
+        }
+        if (start < 0) return "";
+
+        List<String> kept = new ArrayList<>();
+        for (int i = start; i < lines.length; i++) {
+            // Drop the bare "--" delimiter itself, but keep "Sent from my ...".
+            if (i == start && lines[i].strip().equals("--")) continue;
+            if (isQuoteBoundary(lines, i) || lines[i].startsWith(">")) break;
+            kept.add(lines[i]);
+        }
+        return String.join("\n", kept).replaceAll("\n{3,}", "\n\n").strip();
+    }
+
+    private boolean isQuoteBoundary(String[] lines, int i) {
+        return isAttributionStart(lines, i)
+                || lines[i].matches("-{3,}\\s*[Oo]riginal [Mm]essage\\s*-{3,}")
+                || isOutlookHeader(lines, i);
+    }
+
     // An Outlook-style quoted header: a "From:" line with Sent:/To:/Subject:
     // within the next few lines.
     private boolean isOutlookHeader(String[] lines, int i) {

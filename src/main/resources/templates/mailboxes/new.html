@@ -12,7 +12,7 @@
 <header class="app-header">
   <a href="/" class="brand">ConexusMail</a>
   <nav class="header-nav">
-    <a href="/threads">Inbox</a>
+    <a href="/chats">Inbox</a>
     <a href="/pricing">Pricing</a>
     <form th:action="@{/logout}" method="post" class="header-logout">
       <input type="hidden" th:if="${_csrf != null}"
@@ -54,7 +54,7 @@
     </ul>
 
     <p class="auth-alt">
-      <a href="/threads">← Back to inbox</a>
+      <a href="/chats">← Back to inbox</a>
     </p>
   </section>
 

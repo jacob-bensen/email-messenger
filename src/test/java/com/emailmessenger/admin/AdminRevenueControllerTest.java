@@ -229,9 +229,7 @@ class AdminRevenueControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(model().attributeExists("teamAdoption"))
                 .andExpect(content().string(containsString("Team-plan adoption")))
-                .andExpect(content().string(containsString("Notes posted")))
-                .andExpect(content().string(containsString("Active note authors")))
-                .andExpect(content().string(containsString("@mentions written")))
+                .andExpect(content().string(containsString("Entitled Team subs")))
                 .andExpect(content().string(containsString("Free → Team")))
                 .andExpect(content().string(containsString("Personal → Team")))
                 // Prior-window comparison labels must render so the

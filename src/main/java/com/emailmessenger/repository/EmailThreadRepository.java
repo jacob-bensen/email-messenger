@@ -2,6 +2,7 @@ package com.emailmessenger.repository;
 
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Message;
+import com.emailmessenger.domain.RecipientType;
 import com.emailmessenger.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +21,10 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
     Page<EmailThread> findByOwnerOrderByUpdatedAtDesc(User owner, Pageable pageable);
 
     Optional<EmailThread> findByIdAndOwner(Long id, User owner);
+
+    // Threads whose conversation key hasn't been computed yet — drives the
+    // one-time in-app backfill after the V32 migration adds the column.
+    List<EmailThread> findByConversationKeyIsNull();
 
     long countByOwner(User owner);
 
@@ -199,6 +204,146 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
             """)
     List<Message> findConversationWithSender(@Param("owner") User owner,
                                              @Param("senderEmail") String senderEmail);
+
+    // ── Conversation (participant-set) grouping — powers the texting-style chats ──
+
+    // One row per conversation: the threads sharing a conversationKey collapsed,
+    // ordered most-recently-active first. Paginated for the chat list.
+    @Query(value = """
+            SELECT t.conversationKey AS conversationKey,
+                   MAX(t.updatedAt) AS lastActivity,
+                   COUNT(t.id) AS threadCount,
+                   SUM(CASE WHEN t.unread = true THEN 1 ELSE 0 END) AS unreadCount
+            FROM EmailThread t
+            WHERE t.owner = :owner AND t.conversationKey IS NOT NULL
+            GROUP BY t.conversationKey
+            ORDER BY MAX(t.updatedAt) DESC
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT t.conversationKey) FROM EmailThread t
+            WHERE t.owner = :owner AND t.conversationKey IS NOT NULL
+            """)
+    Page<ConversationSummaryRow> conversationSummaries(@Param("owner") User owner, Pageable pageable);
+
+    interface ConversationSummaryRow {
+        String getConversationKey();
+        LocalDateTime getLastActivity();
+        long getThreadCount();
+        long getUnreadCount();
+    }
+
+    // Conversation list filtered by a free-text query: matches the subject, any
+    // message's sender/body, or any participant's name/email. Grouped by key so
+    // a match in any thread surfaces the whole conversation.
+    @Query(value = """
+            SELECT t.conversationKey AS conversationKey,
+                   MAX(t.updatedAt) AS lastActivity,
+                   COUNT(t.id) AS threadCount,
+                   SUM(CASE WHEN t.unread = true THEN 1 ELSE 0 END) AS unreadCount
+            FROM EmailThread t
+            WHERE t.owner = :owner AND t.conversationKey IS NOT NULL
+              AND (
+                LOWER(t.subject) LIKE LOWER(CONCAT('%', :q, '%'))
+                OR EXISTS (SELECT 1 FROM Message m WHERE m.thread = t AND (
+                    LOWER(m.sender.email) LIKE LOWER(CONCAT('%', :q, '%'))
+                    OR LOWER(COALESCE(m.sender.displayName, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+                    OR LOWER(COALESCE(m.bodyPlain, '')) LIKE LOWER(CONCAT('%', :q, '%'))))
+                OR EXISTS (SELECT 1 FROM MessageRecipient r JOIN r.message rm JOIN r.participant p
+                    WHERE rm.thread = t AND (
+                        LOWER(p.email) LIKE LOWER(CONCAT('%', :q, '%'))
+                        OR LOWER(COALESCE(p.displayName, '')) LIKE LOWER(CONCAT('%', :q, '%'))))
+              )
+            GROUP BY t.conversationKey
+            ORDER BY MAX(t.updatedAt) DESC
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT t.conversationKey) FROM EmailThread t
+            WHERE t.owner = :owner AND t.conversationKey IS NOT NULL
+              AND (
+                LOWER(t.subject) LIKE LOWER(CONCAT('%', :q, '%'))
+                OR EXISTS (SELECT 1 FROM Message m WHERE m.thread = t AND (
+                    LOWER(m.sender.email) LIKE LOWER(CONCAT('%', :q, '%'))
+                    OR LOWER(COALESCE(m.sender.displayName, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+                    OR LOWER(COALESCE(m.bodyPlain, '')) LIKE LOWER(CONCAT('%', :q, '%'))))
+                OR EXISTS (SELECT 1 FROM MessageRecipient r JOIN r.message rm JOIN r.participant p
+                    WHERE rm.thread = t AND (
+                        LOWER(p.email) LIKE LOWER(CONCAT('%', :q, '%'))
+                        OR LOWER(COALESCE(p.displayName, '')) LIKE LOWER(CONCAT('%', :q, '%'))))
+              )
+            """)
+    Page<ConversationSummaryRow> conversationSummariesMatching(@Param("owner") User owner,
+                                                              @Param("q") String q, Pageable pageable);
+
+    // The latest message in each of the given conversations, for the list preview.
+    // A sentAt tie can yield >1 row per key; the caller keeps the first.
+    @Query("""
+            SELECT t.conversationKey AS conversationKey, m.id AS messageId,
+                   m.bodyPlain AS bodyPlain, m.bodyHtml AS bodyHtml,
+                   m.sentAt AS sentAt, m.outbound AS outbound
+            FROM Message m JOIN m.thread t
+            WHERE t.owner = :owner AND t.conversationKey IN :keys
+              AND m.sentAt = (SELECT MAX(m2.sentAt) FROM Message m2 JOIN m2.thread t2
+                              WHERE t2.owner = :owner AND t2.conversationKey = t.conversationKey)
+            """)
+    List<ConversationPreviewRow> latestMessagePerConversation(@Param("owner") User owner,
+                                                              @Param("keys") Collection<String> keys);
+
+    interface ConversationPreviewRow {
+        String getConversationKey();
+        Long getMessageId();
+        String getBodyPlain();
+        String getBodyHtml();
+        LocalDateTime getSentAt();
+        boolean getOutbound();
+    }
+
+    // Senders and (non-Bcc) recipients across each conversation's threads, used
+    // to label the chat list and the group member panel. Merged + owner-filtered
+    // in Java; two queries avoid a JPQL UNION.
+    @Query("""
+            SELECT t.conversationKey AS conversationKey,
+                   p.email AS email, p.displayName AS displayName
+            FROM Message m JOIN m.thread t JOIN m.sender p
+            WHERE t.owner = :owner AND t.conversationKey IN :keys
+            """)
+    List<ConversationParticipantRow> sendersForConversations(@Param("owner") User owner,
+                                                             @Param("keys") Collection<String> keys);
+
+    @Query("""
+            SELECT t.conversationKey AS conversationKey,
+                   p.email AS email, p.displayName AS displayName
+            FROM MessageRecipient r JOIN r.message m JOIN m.thread t JOIN r.participant p
+            WHERE t.owner = :owner AND t.conversationKey IN :keys
+              AND r.recipientType <> :excludeType
+            """)
+    List<ConversationParticipantRow> recipientsForConversations(@Param("owner") User owner,
+                                                               @Param("keys") Collection<String> keys,
+                                                               @Param("excludeType") RecipientType excludeType);
+
+    interface ConversationParticipantRow {
+        String getConversationKey();
+        String getEmail();
+        String getDisplayName();
+    }
+
+    // Every message in a conversation (all threads sharing the key), oldest first
+    // — the unified timeline. Generalizes findConversationWithSender to a set.
+    @Query("""
+            SELECT m FROM Message m JOIN m.thread t
+            WHERE t.owner = :owner AND t.conversationKey = :key
+            ORDER BY m.sentAt ASC
+            """)
+    List<Message> findMessagesByConversationKey(@Param("owner") User owner,
+                                                @Param("key") String key);
+
+    // The conversation's threads, most-recent first — used to pick the reply target.
+    @Query("""
+            SELECT t FROM EmailThread t
+            WHERE t.owner = :owner AND t.conversationKey = :key
+            ORDER BY t.updatedAt DESC
+            """)
+    List<EmailThread> findThreadsByConversationKey(@Param("owner") User owner,
+                                                   @Param("key") String key);
 
     @Query("""
             SELECT m.sender.email AS email,

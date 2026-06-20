@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title th:text="|${chat.title()} — ConexusMail|">Chat — ConexusMail</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#2f855a">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ConexusMail">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <th:block th:replace="~{fragments/sw-register :: register}"></th:block>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<div class="app-shell">
+
+<th:block th:replace="~{fragments/app-nav :: nav}"></th:block>
+
+<div class="chat-workspace">
+
+  <!--
+    Secondary nav: the conversation list collapsed into a rail beside the main
+    app nav, so the other chats stay one click away while one is open.
+  -->
+  <aside class="chat-rail" aria-label="Conversations">
+    <div class="chat-rail-head">
+      <a class="chat-rail-title" href="/chats">
+        <span aria-hidden="true">←</span> All chats
+      </a>
+    </div>
+    <ul class="chat-rail-list">
+      <li th:each="c : ${conversations.content}">
+        <a class="chat-rail-row" th:href="@{/chats/{key}(key=${c.key()})}"
+           th:classappend="${c.key() == activeKey} ? ' chat-rail-active' : (${c.unread()} ? ' chat-rail-unread' : '')">
+          <span class="chat-rail-avatar" aria-hidden="true" th:text="${c.initials()}">AB</span>
+          <span class="chat-rail-main">
+            <span class="chat-rail-name" th:text="${c.title()}">Ada Lovelace</span>
+            <span class="chat-rail-preview" th:text="${c.preview()}">Last message…</span>
+          </span>
+          <span class="chat-rail-dot" th:if="${c.unread()}" aria-label="Unread"></span>
+        </a>
+      </li>
+    </ul>
+  </aside>
+
+  <main class="chat-pane">
+
+    <header class="chat-subheader">
+      <a class="chat-back" href="/chats" aria-label="Back to chats">←</a>
+      <div class="chat-subheader-avatar" aria-hidden="true" th:text="${chat.initials()}">AB</div>
+      <div class="chat-subheader-id">
+        <div class="chat-subheader-name" th:text="${chat.title()}">Ada Lovelace</div>
+        <div class="chat-subheader-meta"
+             th:text="|${chat.messageCount()} message${chat.messageCount() != 1 ? 's' : ''}${chat.isGroup() ? ' · ' + chat.members().size() + ' people' : ''}|">
+          12 messages
+        </div>
+      </div>
+    </header>
+
+    <div th:if="${billingBanner != null and billingBanner.trialEnding}"
+         class="trial-banner trial-banner-compact"
+         th:classappend="${billingBanner.daysLeft <= 3} ? ' trial-banner-urgent' : ''">
+      <span class="trial-banner-text">
+        <strong th:if="${billingBanner.daysLeft == 0}">Trial ends today.</strong>
+        <strong th:if="${billingBanner.daysLeft == 1}">Trial ends tomorrow.</strong>
+        <strong th:if="${billingBanner.daysLeft > 1}"
+                th:text="|Trial ends in ${billingBanner.daysLeft} days.|">Trial ends in 14 days.</strong>
+      </span>
+      <a href="/pricing" class="trial-banner-link">Add card →</a>
+    </div>
+
+    <div class="messages" id="messages">
+      <!-- th:utext renders pre-sanitized HTML (jsoup, in ConversationService). -->
+      <div class="bubble-run" th:each="run : ${chat.runs()}"
+           th:classappend="${run.outbound()} ? ' bubble-run-me' : ''"
+           th:attr="data-date=${run.date() != null ? #temporals.format(run.date(), 'yyyy-MM-dd') : ''}">
+        <div class="avatar"
+             th:text="${run.sender().initials()}"
+             th:title="${run.sender().displayName() != null ? run.sender().displayName() : run.sender().email()}">AB</div>
+        <div class="bubble-group">
+          <div class="bubble-sender" th:if="${run.outbound()}">You</div>
+          <div class="bubble-sender" th:unless="${run.outbound()}"
+               th:text="${run.sender().displayName() != null ? run.sender().displayName() : run.sender().email()}">Sender</div>
+          <span class="thread-badge" th:title="${run.thread().subject()}">
+            <span class="thread-badge-icon" aria-hidden="true">#</span>
+            <span class="thread-badge-subject" th:text="${run.thread().subject()}">Thread subject</span>
+          </span>
+          <div th:each="bubble : ${run.messages()}">
+            <div class="bubble" th:id="|msg-${bubble.messageId()}|"
+                 th:classappend="${run.outbound()} ? ' bubble-me' : ''">
+              <a class="reply-ref" th:if="${bubble.replyToMessageId() != null}"
+                 th:href="|#msg-${bubble.replyToMessageId()}|">↩ In reply to</a>
+              <div class="bubble-text"
+                   th:if="${bubble.bodyHtml() != null and !bubble.bodyHtml().isBlank()}"
+                   th:utext="${bubble.bodyHtml()}">Message body</div>
+              <ul class="bubble-attachments" th:if="${!#lists.isEmpty(bubble.attachments())}">
+                <li class="bubble-attachment" th:each="att : ${bubble.attachments()}">
+                  <span aria-hidden="true">📎</span>
+                  <span class="bubble-attachment-name" th:text="${att.filename}">file.txt</span>
+                </li>
+              </ul>
+            </div>
+            <div class="bubble-time"
+                 th:text="${#temporals.format(bubble.sentAt(), 'MMM d, h:mm a')}">Jan 1, 12:00 PM</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="reply-area">
+      <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Sent.</div>
+      <div th:if="${sendError}" class="alert alert-error" th:text="${sendError}">Could not send.</div>
+      <form th:action="@{/chats/{key}/send(key=${chat.key()})}"
+            th:object="${replyForm}" method="post" enctype="multipart/form-data" class="reply-form">
+        <input type="hidden" th:if="${_csrf != null}"
+               th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <input type="text" name="subject" class="reply-subject"
+               placeholder="Subject (optional)" data-subject-input>
+        <div class="reply-row">
+          <textarea th:field="*{body}" placeholder="Type a message…" rows="2"
+                    th:classappend="${#fields.hasErrors('body')} ? ' error' : ''"></textarea>
+          <button type="submit" class="btn btn-primary reply-send">Send</button>
+        </div>
+        <div class="reply-meta">
+          <label class="reply-toggle">
+            <input type="checkbox" name="asReply" value="true" data-reply-toggle>
+            <span>Reply to latest thread</span>
+          </label>
+          <label class="reply-attach-btn">
+            <input type="file" name="attachments" multiple hidden data-attach-input>
+            <span aria-hidden="true">📎</span> Attach files
+          </label>
+          <ul class="reply-attach-list" data-attach-list></ul>
+        </div>
+        <div class="field-error" th:if="${#fields.hasErrors('body')}" th:errors="*{body}">Validation error</div>
+      </form>
+    </div>
+
+  </main>
+
+  <!--
+    The people in this conversation and their signatures, pinned to the side.
+    A 1:1 shows the one signature; a group lists every member with a dropdown
+    to each. th:utext renders pre-sanitized HTML (jsoup, in EmailBodyCleaner).
+  -->
+  <aside class="signature-rail" th:if="${chat.hasSignatures()}">
+    <div class="signature-card">
+      <div class="signature-card-label" th:text="${chat.isGroup()} ? 'People' : 'Signature'">Signature</div>
+
+      <th:block th:unless="${chat.isGroup()}">
+        <div class="signature-card-name" th:text="${chat.members()[0].label()}">Ada Lovelace</div>
+        <div class="signature-card-body" th:utext="${chat.members()[0].signatureHtml()}">Signature</div>
+      </th:block>
+
+      <ul class="member-list" th:if="${chat.isGroup()}">
+        <li class="member-item" th:each="m : ${chat.members()}">
+          <details th:if="${m.hasSignature()}" class="member-details">
+            <summary class="member-summary">
+              <span class="member-avatar" aria-hidden="true" th:text="${m.initials()}">AB</span>
+              <span class="member-name" th:text="${m.label()}">Member</span>
+              <span class="member-chevron" aria-hidden="true">▾</span>
+            </summary>
+            <div class="signature-card-body member-signature" th:utext="${m.signatureHtml()}">Signature</div>
+          </details>
+          <div th:unless="${m.hasSignature()}" class="member-summary member-summary-static">
+            <span class="member-avatar" aria-hidden="true" th:text="${m.initials()}">AB</span>
+            <span class="member-name" th:text="${m.label()}">Member</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </aside>
+
+</div>
+</div>
+
+<script th:inline="javascript">
+(function () {
+  const msgs = document.getElementById('messages');
+  if (!msgs) return;
+  const runs = Array.from(msgs.querySelectorAll('.bubble-run'));
+  let lastDate = null;
+  runs.forEach(function (run) {
+    const date = run.dataset.date;
+    if (!date || date === lastDate) { lastDate = date || lastDate; return; }
+    const sep = document.createElement('div');
+    sep.className = 'day-separator';
+    sep.innerHTML = '<span>' + formatDateLabel(date) + '</span>';
+    msgs.insertBefore(sep, run);
+    lastDate = date;
+  });
+  msgs.scrollTop = msgs.scrollHeight;
+}());
+
+(function () {
+  document.addEventListener('click', function (e) {
+    var ref = e.target.closest ? e.target.closest('.reply-ref') : null;
+    if (!ref) return;
+    var href = ref.getAttribute('href') || '';
+    if (href.charAt(0) !== '#') return;
+    var target = document.getElementById(href.slice(1));
+    if (!target) return;
+    e.preventDefault();
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.add('bubble-flash');
+    setTimeout(function () { target.classList.remove('bubble-flash'); }, 1200);
+  });
+}());
+
+function formatDateLabel(iso) {
+  var parts = iso.split('-');
+  var d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  if (d.getTime() === today.getTime())     return 'Today';
+  if (d.getTime() === yesterday.getTime()) return 'Yesterday';
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+(function () {
+  var input = document.querySelector('[data-attach-input]');
+  var list = document.querySelector('[data-attach-list]');
+  if (!input || !list) return;
+  input.addEventListener('change', function () {
+    list.innerHTML = '';
+    Array.prototype.forEach.call(input.files, function (file) {
+      var li = document.createElement('li');
+      li.className = 'reply-attach-item';
+      li.textContent = file.name;
+      list.appendChild(li);
+    });
+  });
+}());
+
+// Replying keeps the thread's subject, so the subject field is irrelevant then.
+(function () {
+  var toggle = document.querySelector('[data-reply-toggle]');
+  var subject = document.querySelector('[data-subject-input]');
+  if (!toggle || !subject) return;
+  function sync() {
+    subject.disabled = toggle.checked;
+    subject.placeholder = toggle.checked ? 'Reply keeps the existing subject' : 'Subject (optional)';
+  }
+  toggle.addEventListener('change', sync);
+  sync();
+}());
+
+</script>
+
+</body>
+</html>

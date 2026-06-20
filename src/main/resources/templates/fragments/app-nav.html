@@ -9,12 +9,12 @@
   NavModelAdvice so every page renders it identically.
 -->
 <aside th:fragment="nav" class="app-nav" aria-label="Primary navigation">
-  <a class="app-nav-brand" href="/threads">ConexusMail</a>
+  <a class="app-nav-brand" href="/chats">ConexusMail</a>
 
   <nav class="app-nav-links" aria-label="Sections">
-    <a class="app-nav-link" href="/threads"
-       th:classappend="${navActive == 'inbox'} ? ' app-nav-link-active' : ''">
-      <span class="app-nav-ico" aria-hidden="true">🗨</span> Inbox
+    <a class="app-nav-link" href="/chats"
+       th:classappend="${navActive == 'chats'} ? ' app-nav-link-active' : ''">
+      <span class="app-nav-ico" aria-hidden="true">💬</span> Chats
     </a>
     <a class="app-nav-link" href="/mailboxes"
        th:classappend="${navActive == 'mailboxes'} ? ' app-nav-link-active' : ''">
