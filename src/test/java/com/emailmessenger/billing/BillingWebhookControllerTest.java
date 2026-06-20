@@ -13,15 +13,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.HexFormat;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,7 +32,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("dev")
 @Transactional
 class BillingWebhookControllerTest {
 
@@ -42,9 +43,9 @@ class BillingWebhookControllerTest {
     @Autowired UserRepository users;
     @Autowired SubscriptionRepository subscriptions;
 
-    @MockBean StripeCheckoutGateway checkoutGateway;
-    @MockBean ReplyService replyService;
-    @MockBean EmailThreadRepository threadRepository;
+    @MockitoBean StripeCheckoutGateway checkoutGateway;
+    @MockitoBean ReplyService replyService;
+    @MockitoBean EmailThreadRepository threadRepository;
 
     private User user;
 
@@ -112,6 +113,51 @@ class BillingWebhookControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void verifiedSubscriptionUpdatedParsesPerItemPriceAndPeriodEnd() throws Exception {
+        // Modern Stripe API (≥ 2024-09) nests price.id and current_period_end
+        // under items.data[0], not at the top level. Drive a real signed payload
+        // through StripeWebhookGatewayImpl.parse() to lock in that extraction.
+        properties.setPersonalPriceId("price_personal_test");
+        long periodEnd = Instant.parse("2026-09-30T00:00:00Z").getEpochSecond();
+        String payload = """
+                {
+                  "id": "evt_items_shape",
+                  "type": "customer.subscription.updated",
+                  "data": {
+                    "object": {
+                      "id": "sub_items_shape",
+                      "customer": "cus_hook_test",
+                      "status": "active",
+                      "items": {
+                        "data": [
+                          {
+                            "current_period_end": %d,
+                            "price": { "id": "price_personal_test" }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+                """.formatted(periodEnd);
+        String header = sign(payload);
+
+        mockMvc.perform(post("/billing/webhook")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Stripe-Signature", header)
+                        .content(payload))
+                .andExpect(status().isOk());
+
+        Subscription sub = subscriptions.findByUser(user).orElseThrow();
+        assertThat(sub.getStripeSubscriptionId()).isEqualTo("sub_items_shape");
+        assertThat(sub.getStatus()).isEqualTo("active");
+        assertThat(sub.getStripePriceId()).isEqualTo("price_personal_test");
+        assertThat(sub.getBillingPeriod()).isEqualTo(BillingPeriod.MONTHLY);
+        assertThat(sub.getCurrentPeriodEnd())
+                .isEqualTo(LocalDateTime.ofInstant(Instant.ofEpochSecond(periodEnd), ZoneOffset.UTC));
     }
 
     private String sign(String payload) throws Exception {

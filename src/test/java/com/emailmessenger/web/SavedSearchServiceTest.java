@@ -15,8 +15,7 @@ import com.emailmessenger.service.ReplyService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -26,7 +25,6 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
-@ActiveProfiles("dev")
 @Transactional
 class SavedSearchServiceTest {
 
@@ -37,9 +35,9 @@ class SavedSearchServiceTest {
     @Autowired SubscriptionRepository subscriptions;
     @Autowired PlanLimitService planLimitService;
 
-    @MockBean StripeCheckoutGateway gateway;
-    @MockBean StripePortalGateway portalGateway;
-    @MockBean ReplyService replyService;
+    @MockitoBean StripeCheckoutGateway gateway;
+    @MockitoBean StripePortalGateway portalGateway;
+    @MockitoBean ReplyService replyService;
 
     private User newUser(String email) {
         userService.register(email, "password1", "Test");

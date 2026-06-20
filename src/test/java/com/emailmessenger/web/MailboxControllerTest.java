@@ -19,8 +19,7 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,7 +44,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("dev")
 @Transactional
 class MailboxControllerTest {
 
@@ -54,11 +52,11 @@ class MailboxControllerTest {
     @Autowired UserRepository userRepository;
     @Autowired MailAccountRepository mailAccountRepository;
 
-    @MockBean MailAccountService mailAccountService;
-    @MockBean MailboxPollingService pollingService;
+    @MockitoBean MailAccountService mailAccountService;
+    @MockitoBean MailboxPollingService pollingService;
     // Avoid SMTP / Stripe wiring noise.
-    @MockBean ReplyService replyService;
-    @MockBean EmailThreadRepository threadRepository;
+    @MockitoBean ReplyService replyService;
+    @MockitoBean EmailThreadRepository threadRepository;
 
     private User owner;
 

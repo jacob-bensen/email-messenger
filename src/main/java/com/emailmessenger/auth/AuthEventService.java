@@ -9,6 +9,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,10 +29,12 @@ public class AuthEventService {
 
     private final AuthEventRepository events;
     private final UserRepository users;
+    private final Clock clock;
 
-    AuthEventService(AuthEventRepository events, UserRepository users) {
+    AuthEventService(AuthEventRepository events, UserRepository users, Clock clock) {
         this.events = events;
         this.users = users;
+        this.clock = clock;
     }
 
     @Transactional
@@ -43,7 +47,11 @@ public class AuthEventService {
         if (resolved == null) {
             resolved = users.findByEmail(normalizedEmail).orElse(null);
         }
-        events.save(new AuthEvent(resolved, normalizedEmail, type, ipAddress));
+        AuthEvent event = new AuthEvent(resolved, normalizedEmail, type, ipAddress);
+        // Stamp on the app clock (UTC) so the throttle's window query — which
+        // also uses the clock — counts these regardless of the host timezone.
+        event.setCreatedAt(LocalDateTime.now(clock));
+        events.save(event);
     }
 
     @Transactional

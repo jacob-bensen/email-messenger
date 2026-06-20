@@ -19,9 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -33,7 +32,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest
-@ActiveProfiles("dev")
 @Transactional
 class TeamInviteServiceTest {
 
@@ -45,10 +43,10 @@ class TeamInviteServiceTest {
     @Autowired TeamInviteRepository invites;
     @Autowired TeamMemberRepository teamMembers;
 
-    @MockBean JavaMailSender mailSender;
-    @MockBean StripeCheckoutGateway stripeCheckout;
-    @MockBean StripePortalGateway stripePortal;
-    @MockBean ReplyService replyService;
+    @MockitoBean JavaMailSender mailSender;
+    @MockitoBean StripeCheckoutGateway stripeCheckout;
+    @MockitoBean StripePortalGateway stripePortal;
+    @MockitoBean ReplyService replyService;
 
     @BeforeEach
     void stubMimeFactory() {

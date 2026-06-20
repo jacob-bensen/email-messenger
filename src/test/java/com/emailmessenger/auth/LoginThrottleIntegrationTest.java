@@ -12,9 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +25,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("dev")
 @Transactional
 class LoginThrottleIntegrationTest {
 
@@ -35,10 +33,10 @@ class LoginThrottleIntegrationTest {
     @Autowired AuthEventRepository events;
     @Autowired LoginThrottleService throttle;
 
-    @MockBean ReplyService replyService;
-    @MockBean EmailThreadRepository threadRepository;
-    @MockBean BillingService billingService;
-    @MockBean org.springframework.mail.javamail.JavaMailSender mailSender;
+    @MockitoBean ReplyService replyService;
+    @MockitoBean EmailThreadRepository threadRepository;
+    @MockitoBean BillingService billingService;
+    @MockitoBean org.springframework.mail.javamail.JavaMailSender mailSender;
 
     @BeforeEach
     void stubMimeFactory() {

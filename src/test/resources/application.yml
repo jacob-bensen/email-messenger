@@ -4,9 +4,9 @@
 # with a real Postgres via @DynamicPropertySource.
 #
 # Mirrors the property blocks of the main application.yml with the values
-# tests historically ran against (the old `dev` profile). Many tests still
-# declare @ActiveProfiles("dev"); that profile no longer carries config and
-# activating it is a no-op.
+# tests historically ran against (the old `dev` profile, since removed). No
+# test activates a profile now — this config is the default test classpath
+# config and applies to every @SpringBootTest.
 spring:
   application:
     name: email-messenger

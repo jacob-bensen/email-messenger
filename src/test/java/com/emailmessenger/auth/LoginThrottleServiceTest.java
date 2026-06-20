@@ -12,28 +12,28 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest
-@ActiveProfiles("dev")
 @Transactional
 class LoginThrottleServiceTest {
 
     @Autowired LoginThrottleService throttle;
     @Autowired AuthEventRepository events;
+    @Autowired Clock clock;
 
-    @MockBean JavaMailSender mailSender;
-    @MockBean StripeCheckoutGateway stripeCheckout;
-    @MockBean StripePortalGateway stripePortal;
-    @MockBean ReplyService replyService;
+    @MockitoBean JavaMailSender mailSender;
+    @MockitoBean StripeCheckoutGateway stripeCheckout;
+    @MockitoBean StripePortalGateway stripePortal;
+    @MockitoBean ReplyService replyService;
 
     @BeforeEach
     void stubMimeFactory() {
@@ -54,7 +54,7 @@ class LoginThrottleServiceTest {
 
     @Test
     void fiveFailuresInWindowForEmailLocks() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         for (int i = 0; i < throttle.getMaxFailures(); i++) {
             recordFailure("victim@example.com", "10.0.0." + i, now.minusMinutes(i));
         }
@@ -64,7 +64,7 @@ class LoginThrottleServiceTest {
 
     @Test
     void fourFailuresInWindowDoesNotLock() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         for (int i = 0; i < throttle.getMaxFailures() - 1; i++) {
             recordFailure("survivor@example.com", "10.0.0." + i, now.minusMinutes(i));
         }
@@ -74,7 +74,7 @@ class LoginThrottleServiceTest {
 
     @Test
     void oldFailuresOutsideWindowDoNotLock() {
-        LocalDateTime ancient = LocalDateTime.now()
+        LocalDateTime ancient = LocalDateTime.now(clock)
                 .minus(throttle.getWindow().plusMinutes(5));
         for (int i = 0; i < throttle.getMaxFailures() + 3; i++) {
             recordFailure("old@example.com", "10.0.0." + i, ancient.minusMinutes(i));
@@ -85,7 +85,7 @@ class LoginThrottleServiceTest {
 
     @Test
     void ipThresholdLocksRegardlessOfEmail() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         for (int i = 0; i < throttle.getMaxFailures(); i++) {
             recordFailure("rotating-" + i + "@example.com", "198.51.100.7", now.minusSeconds(i));
         }
@@ -95,7 +95,7 @@ class LoginThrottleServiceTest {
 
     @Test
     void emailNormalizationMatchesAcrossCase() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         for (int i = 0; i < throttle.getMaxFailures(); i++) {
             recordFailure("mixed@example.com", "10.0.0." + i, now.minusSeconds(i));
         }

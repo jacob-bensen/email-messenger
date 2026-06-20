@@ -17,9 +17,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -52,7 +51,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
-@ActiveProfiles("dev")
 @EnabledIf("com.emailmessenger.integration.EndToEndMailboxFlowIntegrationTest#dockerAvailable")
 class EndToEndMailboxFlowIntegrationTest {
 
@@ -90,7 +88,7 @@ class EndToEndMailboxFlowIntegrationTest {
     @Autowired EmailThreadRepository threadRepository;
 
     // SMTP isn't reachable in tests; the reply path is out of scope here.
-    @MockBean ReplyService replyService;
+    @MockitoBean ReplyService replyService;
 
     @Test
     void connectMailboxImportsThreadOverGreenMailAndShowsItOnThreadsView() throws Exception {

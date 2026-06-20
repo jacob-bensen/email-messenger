@@ -11,8 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -22,7 +21,6 @@ import java.time.ZoneOffset;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-@ActiveProfiles("dev")
 @Transactional
 class BillingWebhookHandlingTest {
 
@@ -32,8 +30,8 @@ class BillingWebhookHandlingTest {
     @Autowired UserRepository users;
     @Autowired SubscriptionRepository subscriptions;
 
-    @MockBean StripeCheckoutGateway checkoutGateway;
-    @MockBean ReplyService replyService;
+    @MockitoBean StripeCheckoutGateway checkoutGateway;
+    @MockitoBean ReplyService replyService;
 
     private User user;
     private Subscription pending;

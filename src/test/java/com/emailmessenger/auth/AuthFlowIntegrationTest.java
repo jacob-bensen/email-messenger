@@ -9,9 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +36,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("dev")
 @Transactional
 class AuthFlowIntegrationTest {
 
@@ -46,14 +44,14 @@ class AuthFlowIntegrationTest {
     @Autowired UserService userService;
 
     // The mail-sending side path is irrelevant to auth and avoids a real SMTP host.
-    @MockBean ReplyService replyService;
-    @MockBean EmailThreadRepository threadRepository;
+    @MockitoBean ReplyService replyService;
+    @MockitoBean EmailThreadRepository threadRepository;
     // Stripe is unconfigured in the dev profile; mock so happy-path checkout
     // is deterministic without hitting the real gateway.
-    @MockBean BillingService billingService;
+    @MockitoBean BillingService billingService;
     // Registration now sends a verification email; mock so we don't try
     // to reach a real SMTP relay from the test JVM.
-    @MockBean JavaMailSender mailSender;
+    @MockitoBean JavaMailSender mailSender;
 
     @BeforeEach
     void stubMimeFactory() {

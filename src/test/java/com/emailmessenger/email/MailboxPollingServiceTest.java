@@ -13,8 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +32,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest
-@ActiveProfiles("dev")
 @TestPropertySource(properties = {
         "mailbox.polling.enabled=true",
         // Push the auto schedule far enough out that the manual pollOne calls
@@ -49,9 +47,10 @@ class MailboxPollingServiceTest {
     @Autowired UserService userService;
     @Autowired UserRepository userRepository;
     @Autowired CredentialEncryptor encryptor;
+    @Autowired java.time.Clock clock;
 
-    @MockBean ImapClient imapClient;
-    @MockBean EmailImportService importService;
+    @MockitoBean ImapClient imapClient;
+    @MockitoBean EmailImportService importService;
 
     private MailAccount account;
 
@@ -217,11 +216,12 @@ class MailboxPollingServiceTest {
 
         MailAccount reloaded = accountRepository.findById(account.getId()).orElseThrow();
         assertThat(reloaded.getNextPollAt()).isNotNull();
-        // Free tier (no subscription row) → next poll between 14:30 and 15:30 from now.
-        java.time.LocalDateTime earliest = java.time.LocalDateTime.now()
-                .plusMinutes(14).plusSeconds(20);
-        java.time.LocalDateTime latest = java.time.LocalDateTime.now()
-                .plusMinutes(15).plusSeconds(40);
+        // Paid cadence applies to all accounts (every account is entitled to the
+        // top tier) → next poll ~5 minutes out, ±30s jitter.
+        java.time.LocalDateTime earliest = java.time.LocalDateTime.now(clock)
+                .plusMinutes(4).plusSeconds(20);
+        java.time.LocalDateTime latest = java.time.LocalDateTime.now(clock)
+                .plusMinutes(5).plusSeconds(40);
         assertThat(reloaded.getNextPollAt()).isAfter(earliest).isBefore(latest);
     }
 

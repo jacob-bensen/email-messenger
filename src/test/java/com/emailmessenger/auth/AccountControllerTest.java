@@ -16,12 +16,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,7 +40,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("dev")
 @Transactional
 class AccountControllerTest {
 
@@ -51,10 +49,10 @@ class AccountControllerTest {
     @Autowired SubscriptionRepository subscriptions;
     @Autowired PasswordEncoder passwordEncoder;
 
-    @MockBean JavaMailSender mailSender;
-    @MockBean StripeCheckoutGateway stripeCheckout;
-    @MockBean StripePortalGateway stripePortal;
-    @MockBean ReplyService replyService;
+    @MockitoBean JavaMailSender mailSender;
+    @MockitoBean StripeCheckoutGateway stripeCheckout;
+    @MockitoBean StripePortalGateway stripePortal;
+    @MockitoBean ReplyService replyService;
 
     @BeforeEach
     void stubMimeFactory() {

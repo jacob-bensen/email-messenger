@@ -7,8 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -24,7 +23,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("dev")
 @TestPropertySource(properties = {
         "marketing.landing.video.provider=youtube",
         "marketing.landing.video.id=dQw4w9WgXcQ",
@@ -35,9 +33,9 @@ class LandingHeroVideoIntegrationTest {
 
     @Autowired MockMvc mockMvc;
 
-    @MockBean ReplyService replyService;
-    @MockBean EmailThreadRepository threadRepository;
-    @MockBean BillingService billingService;
+    @MockitoBean ReplyService replyService;
+    @MockitoBean EmailThreadRepository threadRepository;
+    @MockitoBean BillingService billingService;
 
     @Test
     void landingRendersVideoFacadeWhenConfigured() throws Exception {

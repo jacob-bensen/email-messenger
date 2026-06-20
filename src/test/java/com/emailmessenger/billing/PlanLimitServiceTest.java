@@ -10,8 +10,7 @@ import com.emailmessenger.service.ReplyService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  * behavior (the old free-tier paywall assertions were removed with the paywall).
  */
 @SpringBootTest
-@ActiveProfiles("dev")
 @Transactional
 class PlanLimitServiceTest {
 
@@ -32,9 +30,9 @@ class PlanLimitServiceTest {
     @Autowired UserRepository users;
     @Autowired SubscriptionRepository subscriptions;
 
-    @MockBean StripeCheckoutGateway gateway;
-    @MockBean StripePortalGateway portalGateway;
-    @MockBean ReplyService replyService;
+    @MockitoBean StripeCheckoutGateway gateway;
+    @MockitoBean StripePortalGateway portalGateway;
+    @MockitoBean ReplyService replyService;
 
     private User newUser(String email) {
         userService.register(email, "password1", "Test");

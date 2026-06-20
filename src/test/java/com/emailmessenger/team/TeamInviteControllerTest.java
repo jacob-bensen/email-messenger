@@ -17,10 +17,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +36,6 @@ import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("dev")
 @Transactional
 class TeamInviteControllerTest {
 
@@ -49,10 +47,10 @@ class TeamInviteControllerTest {
     @Autowired TeamMemberRepository teamMembers;
     @Autowired TeamInviteService teamInviteService;
 
-    @MockBean JavaMailSender mailSender;
-    @MockBean StripeCheckoutGateway stripeCheckout;
-    @MockBean StripePortalGateway stripePortal;
-    @MockBean ReplyService replyService;
+    @MockitoBean JavaMailSender mailSender;
+    @MockitoBean StripeCheckoutGateway stripeCheckout;
+    @MockitoBean StripePortalGateway stripePortal;
+    @MockitoBean ReplyService replyService;
 
     @BeforeEach
     void stubMimeFactory() {

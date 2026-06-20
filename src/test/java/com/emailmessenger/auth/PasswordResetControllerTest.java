@@ -14,14 +14,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,7 +38,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("dev")
 @Transactional
 class PasswordResetControllerTest {
 
@@ -47,11 +46,12 @@ class PasswordResetControllerTest {
     @Autowired UserRepository users;
     @Autowired PasswordResetTokenRepository tokens;
     @Autowired PasswordEncoder passwordEncoder;
+    @Autowired Clock clock;
 
-    @MockBean JavaMailSender mailSender;
-    @MockBean StripeCheckoutGateway stripeCheckout;
-    @MockBean StripePortalGateway stripePortal;
-    @MockBean ReplyService replyService;
+    @MockitoBean JavaMailSender mailSender;
+    @MockitoBean StripeCheckoutGateway stripeCheckout;
+    @MockitoBean StripePortalGateway stripePortal;
+    @MockitoBean ReplyService replyService;
 
     @BeforeEach
     void stubMimeFactory() {
@@ -184,7 +184,9 @@ class PasswordResetControllerTest {
         tokens.save(new PasswordResetToken(
                 user,
                 PasswordResetService.sha256Hex(plain),
-                LocalDateTime.now().plusMinutes(30)));
+                // On the app clock (UTC) so a non-UTC test box doesn't see the
+                // token as already expired (the service checks expiry via clock).
+                LocalDateTime.now(clock).plusMinutes(30)));
         return plain;
     }
 }

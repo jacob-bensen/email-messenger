@@ -7,10 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -27,7 +26,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("dev")
 @TestPropertySource(properties = {
         "auth.google.client-id=test-client-id.apps.googleusercontent.com",
         "auth.google.client-secret=test-client-secret"
@@ -37,9 +35,9 @@ class GoogleOAuthSignInIntegrationTest {
     @Autowired MockMvc mockMvc;
     @Autowired ClientRegistrationRepository registrationRepository;
 
-    @MockBean ReplyService replyService;
-    @MockBean EmailThreadRepository threadRepository;
-    @MockBean BillingService billingService;
+    @MockitoBean ReplyService replyService;
+    @MockitoBean EmailThreadRepository threadRepository;
+    @MockitoBean BillingService billingService;
 
     @Test
     void clientRegistrationRepositoryHoldsGoogle() {

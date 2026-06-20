@@ -21,8 +21,9 @@ import com.emailmessenger.service.ReplyService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -31,7 +32,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-@ActiveProfiles("dev")
 @Transactional
 class SavedSearchCountServiceTest {
 
@@ -44,9 +44,11 @@ class SavedSearchCountServiceTest {
     @Autowired UserRepository users;
     @Autowired SubscriptionRepository subscriptions;
 
-    @MockBean StripeCheckoutGateway stripeCheckout;
-    @MockBean StripePortalGateway stripePortal;
-    @MockBean ReplyService replyService;
+    @PersistenceContext EntityManager em;
+
+    @MockitoBean StripeCheckoutGateway stripeCheckout;
+    @MockitoBean StripePortalGateway stripePortal;
+    @MockitoBean ReplyService replyService;
 
     private User newUser(String email) {
         userService.register(email, "password1", "Owner");
@@ -69,7 +71,17 @@ class SavedSearchCountServiceTest {
         m.addRecipient(sender, RecipientType.TO);
         messageRepo.save(m);
         t.addMessage(m);
-        return threadRepo.saveAndFlush(t);
+        EmailThread saved = threadRepo.saveAndFlush(t);
+        // addMessage()/@PreUpdate stamp updatedAt to "now", clobbering the
+        // intended age. Force it to sentAt via a bulk update (bypasses the
+        // lifecycle callback) so thread ordering in these tests is deterministic.
+        em.createQuery("update EmailThread x set x.updatedAt = :ts where x.id = :id")
+                .setParameter("ts", sentAt)
+                .setParameter("id", saved.getId())
+                .executeUpdate();
+        em.flush();
+        em.clear();
+        return threadRepo.findById(saved.getId()).orElseThrow();
     }
 
     @Test

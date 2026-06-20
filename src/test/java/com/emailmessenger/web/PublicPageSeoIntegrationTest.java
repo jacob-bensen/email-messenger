@@ -7,8 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -25,16 +24,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("dev")
 @TestPropertySource(properties = "marketing.base-url=https://test.conexusmail.com")
 class PublicPageSeoIntegrationTest {
 
     @Autowired MockMvc mockMvc;
 
     // Stub the side-paths so the dev profile boots without a real SMTP/Stripe.
-    @MockBean ReplyService replyService;
-    @MockBean EmailThreadRepository threadRepository;
-    @MockBean BillingService billingService;
+    @MockitoBean ReplyService replyService;
+    @MockitoBean EmailThreadRepository threadRepository;
+    @MockitoBean BillingService billingService;
 
     @Test
     void landingPageRendersUniqueSeoTags() throws Exception {
