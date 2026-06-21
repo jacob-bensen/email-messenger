@@ -208,16 +208,21 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
     // ── Conversation (participant-set) grouping — powers the texting-style chats ──
 
     // One row per conversation: the threads sharing a conversationKey collapsed,
-    // ordered most-recently-active first. Paginated for the chat list.
+    // ordered by the most recent message's actual timestamp (sentAt), newest
+    // first — texting-style. We deliberately order by MAX(msg.sentAt), NOT
+    // t.updatedAt, so marking a chat read (or any other row touch) never
+    // reshuffles the list and a freshly-imported old email sorts by when it was
+    // sent, not when it was pulled in. The join fans threads out per message, so
+    // thread/unread counts use COUNT(DISTINCT t.id) to stay per-thread.
     @Query(value = """
             SELECT t.conversationKey AS conversationKey,
-                   MAX(t.updatedAt) AS lastActivity,
-                   COUNT(t.id) AS threadCount,
-                   SUM(CASE WHEN t.unread = true THEN 1 ELSE 0 END) AS unreadCount
-            FROM EmailThread t
+                   MAX(msg.sentAt) AS lastActivity,
+                   COUNT(DISTINCT t.id) AS threadCount,
+                   COUNT(DISTINCT CASE WHEN t.unread = true THEN t.id END) AS unreadCount
+            FROM EmailThread t JOIN t.messages msg
             WHERE t.owner = :owner AND t.conversationKey IS NOT NULL
             GROUP BY t.conversationKey
-            ORDER BY MAX(t.updatedAt) DESC
+            ORDER BY MAX(msg.sentAt) DESC
             """,
             countQuery = """
             SELECT COUNT(DISTINCT t.conversationKey) FROM EmailThread t
@@ -237,10 +242,10 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
     // a match in any thread surfaces the whole conversation.
     @Query(value = """
             SELECT t.conversationKey AS conversationKey,
-                   MAX(t.updatedAt) AS lastActivity,
-                   COUNT(t.id) AS threadCount,
-                   SUM(CASE WHEN t.unread = true THEN 1 ELSE 0 END) AS unreadCount
-            FROM EmailThread t
+                   MAX(msg.sentAt) AS lastActivity,
+                   COUNT(DISTINCT t.id) AS threadCount,
+                   COUNT(DISTINCT CASE WHEN t.unread = true THEN t.id END) AS unreadCount
+            FROM EmailThread t JOIN t.messages msg
             WHERE t.owner = :owner AND t.conversationKey IS NOT NULL
               AND (
                 LOWER(t.subject) LIKE LOWER(CONCAT('%', :q, '%'))
@@ -254,7 +259,7 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
                         OR LOWER(COALESCE(p.displayName, '')) LIKE LOWER(CONCAT('%', :q, '%'))))
               )
             GROUP BY t.conversationKey
-            ORDER BY MAX(t.updatedAt) DESC
+            ORDER BY MAX(msg.sentAt) DESC
             """,
             countQuery = """
             SELECT COUNT(DISTINCT t.conversationKey) FROM EmailThread t

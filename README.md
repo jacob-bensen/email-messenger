@@ -102,7 +102,6 @@ falls back to a working default and needs no configuration.
 | Google sign-in      | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | blank | Enables "Continue with Google" (blank hides it) |
 | Stripe billing      | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | blank | Enables checkout & subscription sync (inert if blank) |
 | IMAP polling        | `MAILBOX_POLLING_ENABLED`| `true`  | Background poll of connected mailboxes   |
-| HTTP port           | `PORT`                   | `8080`  | Server listen port                       |
 
 The `/admin/**` operator dashboard is gated by an allowlist hardcoded in
 `application.yml` (`admin.emails`) — no env var required; comma-separate to add

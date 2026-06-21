@@ -91,6 +91,36 @@ class ConversationListServiceTest {
     }
 
     @Test
+    void orderIsByEmailTimestampAndStableAcrossReads() {
+        Participant ada = participants.save(new Participant("ada@acme.com", "Ada"));
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+
+        // Bob's only email is the most recent by sentAt; Ada's is older. Bob's
+        // arrives unread (a freshly-pulled chat we'll then "open").
+        inbound("Hi from Ada", ada, List.of(me), "older", false,
+                LocalDateTime.of(2026, 2, 1, 9, 0));
+        inbound("Hi from Bob", bob, List.of(me), "newer", true,
+                LocalDateTime.of(2026, 2, 2, 9, 0));
+
+        List<ConversationListItem> before = listService.list(owner, PageRequest.of(0, 20)).getContent();
+        assertThat(before).extracting(ConversationListItem::title)
+                .containsExactly("Bob", "Ada"); // newest email first
+
+        // "Open" Bob's chat: mark its thread read. This used to bump updatedAt
+        // and reshuffle the list; it must not change order now.
+        EmailThread bobThread = threads.findThreadsByConversationKey(
+                owner, keyService.keyFor(List.of(bob.getEmail()),
+                        ownerAddressService.addressesFor(owner))).get(0);
+        bobThread.markRead();
+        threads.saveAndFlush(bobThread);
+        em.clear();
+
+        List<ConversationListItem> after = listService.list(owner, PageRequest.of(0, 20)).getContent();
+        assertThat(after).extracting(ConversationListItem::title)
+                .containsExactly("Bob", "Ada"); // unchanged
+    }
+
+    @Test
     void outboundLatestMessageIsPreviewedAsYou() {
         Participant ada = participants.save(new Participant("ada@acme.com", "Ada"));
         inbound("Q", ada, List.of(me), "A question", false,
@@ -112,7 +142,7 @@ class ConversationListServiceTest {
         if (!unread) {
             thread.markRead();
         }
-        finalizeThread(thread, at);
+        finalizeThread(thread);
     }
 
     private void outboundReply(String subject, Participant correspondent, String body, LocalDateTime at) {
@@ -124,16 +154,15 @@ class ConversationListServiceTest {
         m.addRecipient(correspondent, RecipientType.TO);
         thread.addMessage(messages.save(m));
         thread.markRead();
-        finalizeThread(thread, at);
+        finalizeThread(thread);
     }
 
-    private void finalizeThread(EmailThread thread, LocalDateTime at) {
+    private void finalizeThread(EmailThread thread) {
         thread.setConversationKey(
                 keyService.compute(thread, ownerAddressService.addressesFor(owner)));
         threads.saveAndFlush(thread);
-        // Force updatedAt so ordering is deterministic (addMessage stamps "now").
-        em.createQuery("update EmailThread t set t.updatedAt = :ts where t.id = :id")
-                .setParameter("ts", at).setParameter("id", thread.getId()).executeUpdate();
+        // No updatedAt fixup needed: the chat list orders by the message's
+        // sentAt, so the `at` we stamped on each Message is what drives order.
         em.flush();
         em.clear();
     }
