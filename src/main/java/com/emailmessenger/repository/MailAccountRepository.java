@@ -55,4 +55,22 @@ public interface MailAccountRepository extends JpaRepository<MailAccount, Long> 
             """)
     List<MailAccount> findDueForPollingByUserId(@Param("userId") Long userId,
                                                 @Param("now") LocalDateTime now);
+
+    /**
+     * The current user's accounts for the foreground "page is open" heartbeat:
+     * not circuit-broken and not synced within the last minute. Unlike
+     * {@link #findDueForPollingByUserId}, this ignores the plan-tiered
+     * {@code nextPollAt} and keys off {@code lastSyncedAt} instead, so an
+     * actively-open page polls on a ~1-minute cadence regardless of the slower
+     * background schedule, while the cutoff still stops multiple tabs / rapid
+     * pings from re-polling an account that was just serviced.
+     */
+    @Query("""
+            select a from MailAccount a
+            where a.user.id = :userId
+              and a.pollingSuspended = false
+              and (a.lastSyncedAt is null or a.lastSyncedAt <= :cutoff)
+            """)
+    List<MailAccount> findActiveRefreshable(@Param("userId") Long userId,
+                                            @Param("cutoff") LocalDateTime cutoff);
 }

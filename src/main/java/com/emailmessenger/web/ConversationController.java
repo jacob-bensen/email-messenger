@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -31,6 +32,7 @@ import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The texting-style chats experience: a list of conversations (people and
@@ -87,6 +89,21 @@ class ConversationController {
         model.addAttribute("billingBanner", billingBannerService.bannerFor(owner).orElse(null));
         model.addAttribute("emailUnverified", !owner.isEmailVerified());
         return "chats";
+    }
+
+    /**
+     * Foreground heartbeat: the open chats/chat page pings this ~every minute so
+     * connected mailboxes refresh on a 1-minute cadence while in use. Returns the
+     * number of newly imported messages so the page only reloads when something
+     * actually arrived. Synchronous (mirrors the manual "Sync now" path) so the
+     * count is accurate.
+     */
+    @PostMapping("/chats/refresh")
+    @ResponseBody
+    Map<String, Integer> refresh(Principal principal) {
+        User owner = userService.requireByEmail(principal.getName());
+        int imported = mailboxPollingService.refreshActiveUserNow(owner.getId());
+        return Map.of("imported", imported);
     }
 
     @GetMapping("/chats/{key}")

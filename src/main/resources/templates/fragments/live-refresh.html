@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<!--
+  Foreground "page is open" heartbeat. While the tab is visible, POSTs to
+  /chats/refresh roughly every minute so connected mailboxes sync on a
+  ~1-minute cadence in active use (the background scheduler is far slower).
+  Reloads only when new mail actually arrived, and never while a reply draft
+  is being typed. Include once per page via:
+    <th:block th:replace="~{fragments/live-refresh :: script}"></th:block>
+  The page must also expose the CSRF token as meta tags in its <head>:
+    <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}">
+    <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : ''}">
+-->
+<script th:fragment="script">
+(function () {
+  var INTERVAL_MS = 60000;
+  var tokenMeta = document.querySelector('meta[name="_csrf"]');
+  var headerMeta = document.querySelector('meta[name="_csrf_header"]');
+  var token = tokenMeta ? tokenMeta.getAttribute('content') : '';
+  var header = headerMeta ? headerMeta.getAttribute('content') : '';
+  var inFlight = false;
+
+  function hasDraft() {
+    var box = document.querySelector('.reply-form textarea');
+    return !!(box && box.value.trim() !== '');
+  }
+
+  function tick() {
+    if (inFlight || document.visibilityState !== 'visible') return;
+    inFlight = true;
+    var headers = { 'Accept': 'application/json' };
+    if (token && header) headers[header] = token;
+    fetch('/chats/refresh', {
+      method: 'POST',
+      headers: headers,
+      credentials: 'same-origin'
+    })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (data && data.imported > 0 && !hasDraft()) {
+          window.location.reload();
+        }
+      })
+      .catch(function () { /* transient; next tick retries */ })
+      .then(function () { inFlight = false; });
+  }
+
+  setInterval(tick, INTERVAL_MS);
+}());
+</script>
+</html>

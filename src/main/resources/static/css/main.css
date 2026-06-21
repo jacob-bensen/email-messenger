@@ -1307,7 +1307,10 @@ body {
   letter-spacing: 0.06em;
   padding: 4px 10px;
   border-radius: 999px;
+  white-space: nowrap;
 }
+/* Free "limited time" badge — amber so it reads as an offer, not "most popular". */
+.plan-tag-free { background: #b7791f; }
 .plan-name {
   font-size: 16px;
   font-weight: 700;
@@ -3359,7 +3362,18 @@ body {
 .signature-card-name {
   font-size: 14px;
   font-weight: 600;
+  margin-bottom: 2px;
+}
+.signature-card-email {
+  font-size: 12px;
+  color: var(--text-muted);
+  word-break: break-word;
   margin-bottom: 12px;
+}
+.signature-card-empty {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-muted);
 }
 .signature-card-body {
   font-size: 13px;
@@ -3671,8 +3685,19 @@ body {
 .member-name {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.member-name-label {
   font-size: 13px;
   font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.member-name-email {
+  font-size: 11px;
+  color: var(--text-muted);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

@@ -22,10 +22,11 @@
 <main class="marketing">
 
   <section class="hero-narrow">
-    <h1>Every feature, free</h1>
+    <h1>Every feature, free — for a limited time</h1>
     <p class="hero-sub">
-      ConexusMail is free for everyone — every feature on every plan below is
-      currently unlocked on all accounts, with no card required.
+      While we launch, every feature on every plan below is unlocked on all
+      accounts at no cost — no credit card required. The paid plans below are
+      where pricing is headed; for now, you get full access.
     </p>
 
     <div class="billing-toggle" role="group" aria-label="Billing period">
@@ -39,21 +40,23 @@
   <section class="plan-grid">
 
     <article class="plan-card">
+      <span class="plan-tag plan-tag-free">Full access · limited time</span>
       <h2 class="plan-name">Free</h2>
       <p class="plan-price">
         <span class="price-amount">$0</span>
-        <span class="price-period">/ forever</span>
+        <span class="price-period">/ right now</span>
       </p>
-      <p class="plan-blurb">Try ConexusMail with up to three mailboxes. No credit card.</p>
+      <p class="plan-blurb">Today, Free unlocks everything — every paid feature
+        included, no credit card.</p>
       <ul class="plan-features">
-        <li>3 mailboxes</li>
-        <li>30-day thread history</li>
-        <li>Up to 500 threads</li>
+        <li>Everything in every plan, unlocked</li>
+        <li>Unlimited mailboxes &amp; threads</li>
+        <li>Full-text search</li>
         <li>IM-style conversation view</li>
         <li>Dark mode</li>
       </ul>
       <a th:href="${utmSource != null} ? @{/register(utm_source=${utmSource})} : @{/register}"
-         class="btn btn-secondary plan-cta">Get started</a>
+         class="btn btn-primary plan-cta">Get started — free</a>
     </article>
 
     <article class="plan-card plan-card-featured">
@@ -131,9 +134,11 @@
          is required to start the trial.</p>
     </details>
     <details class="faq-item">
-      <summary>What happens if I exceed my plan's mailbox limit?</summary>
-      <p>You'll see a prompt to upgrade in-app. Existing mailboxes keep
-         working — you just can't add more until you upgrade.</p>
+      <summary>Are there any limits right now?</summary>
+      <p>No. For a limited time every account has full access — all features and
+         no mailbox, thread, or search caps. The paid plans above show how
+         pricing will be structured later; we'll give plenty of notice before
+         anything changes.</p>
     </details>
     <details class="faq-item">
       <summary>How is my email data handled?</summary>

@@ -2,6 +2,7 @@ package com.emailmessenger.email;
 
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.domain.MailAccount;
+import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.MailAccountRepository;
 import com.emailmessenger.repository.UserRepository;
@@ -172,6 +173,56 @@ class MailboxPollingServiceTest {
         assertThat(reloaded.isPollingSuspended()).isFalse();
         assertThat(reloaded.getConsecutiveFailureCount()).isZero();
         assertThat(reloaded.getLastSyncError()).isNull();
+    }
+
+    @Test
+    void activeRefreshPollsStaleAccountAndReturnsImportCount() throws Exception {
+        User owner = userRepository.findByEmail("polling-owner@example.com").orElseThrow();
+        // Fresh account: lastSyncedAt is null → due for a foreground refresh.
+        MimeMessage m1 = plainMessage("<active-1@test>", "Hello", "a@example.com", "Body");
+        when(imapClient.fetchSinceUid(any(ImapCredentials.class), any()))
+                .thenReturn(new ImapClient.IncrementalFetch(List.of(m1), 7L));
+        when(importService.importMessage(any(MimeMessage.class), any(User.class)))
+                .thenReturn(Optional.of(Mockito.mock(Message.class)));
+
+        int imported = polling.refreshActiveUserNow(owner.getId());
+
+        assertThat(imported).isEqualTo(1);
+        assertThat(accountRepository.findById(account.getId()).orElseThrow().getLastSyncedAt())
+                .isNotNull();
+    }
+
+    @Test
+    void activeRefreshSkipsAccountSyncedWithinTheLastMinute() {
+        User owner = userRepository.findByEmail("polling-owner@example.com").orElseThrow();
+        // Stamp it just-synced; the 1-minute floor must skip it so multiple tabs
+        // / rapid heartbeats don't re-poll an account serviced moments ago.
+        account.markSynced();
+        accountRepository.save(account);
+
+        int imported = polling.refreshActiveUserNow(owner.getId());
+
+        assertThat(imported).isZero();
+        verifyNoInteractions(imapClient);
+    }
+
+    @Test
+    void activeRefreshSkipsSuspendedAccount() {
+        when(imapClient.fetchSinceUid(any(ImapCredentials.class), any()))
+                .thenThrow(new ImapConnectionException("Login failed", null));
+        for (int i = 0; i < PollingPolicy.SUSPEND_AT_FAILURES; i++) {
+            polling.pollOne(account.getId());
+        }
+        assertThat(accountRepository.findById(account.getId()).orElseThrow().isPollingSuspended())
+                .isTrue();
+        Mockito.reset(imapClient, importService);
+        User owner = userRepository.findByEmail("polling-owner@example.com").orElseThrow();
+
+        int imported = polling.refreshActiveUserNow(owner.getId());
+
+        // Circuit-broken accounts stay out of the active-refresh set too.
+        assertThat(imported).isZero();
+        verifyNoInteractions(imapClient);
     }
 
     @Test

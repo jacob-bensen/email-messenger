@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
+  <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}">
+  <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : ''}">
   <title th:text="|${chat.title()} — ConexusMail|">Chat — ConexusMail</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#2f855a">
@@ -148,13 +150,20 @@
     A 1:1 shows the one signature; a group lists every member with a dropdown
     to each. th:utext renders pre-sanitized HTML (jsoup, in EmailBodyCleaner).
   -->
-  <aside class="signature-rail" th:if="${chat.hasSignatures()}">
+  <aside class="signature-rail">
     <div class="signature-card">
       <div class="signature-card-label" th:text="${chat.isGroup()} ? 'People' : 'Signature'">Signature</div>
 
       <th:block th:unless="${chat.isGroup()}">
         <div class="signature-card-name" th:text="${chat.members()[0].label()}">Ada Lovelace</div>
-        <div class="signature-card-body" th:utext="${chat.members()[0].signatureHtml()}">Signature</div>
+        <div class="signature-card-email"
+             th:if="${chat.members()[0].label() != chat.members()[0].email()}"
+             th:text="${chat.members()[0].email()}">ada@acme.com</div>
+        <div class="signature-card-body" th:if="${chat.members()[0].hasSignature()}"
+             th:utext="${chat.members()[0].signatureHtml()}">Signature</div>
+        <div class="signature-card-empty" th:unless="${chat.members()[0].hasSignature()}">
+          No signature on file yet.
+        </div>
       </th:block>
 
       <ul class="member-list" th:if="${chat.isGroup()}">
@@ -162,14 +171,22 @@
           <details th:if="${m.hasSignature()}" class="member-details">
             <summary class="member-summary">
               <span class="member-avatar" aria-hidden="true" th:text="${m.initials()}">AB</span>
-              <span class="member-name" th:text="${m.label()}">Member</span>
+              <span class="member-name">
+                <span class="member-name-label" th:text="${m.label()}">Member</span>
+                <span class="member-name-email"
+                      th:if="${m.label() != m.email()}" th:text="${m.email()}">m@x.com</span>
+              </span>
               <span class="member-chevron" aria-hidden="true">▾</span>
             </summary>
             <div class="signature-card-body member-signature" th:utext="${m.signatureHtml()}">Signature</div>
           </details>
           <div th:unless="${m.hasSignature()}" class="member-summary member-summary-static">
             <span class="member-avatar" aria-hidden="true" th:text="${m.initials()}">AB</span>
-            <span class="member-name" th:text="${m.label()}">Member</span>
+            <span class="member-name">
+              <span class="member-name-label" th:text="${m.label()}">Member</span>
+              <span class="member-name-email"
+                    th:if="${m.label() != m.email()}" th:text="${m.email()}">m@x.com</span>
+            </span>
           </div>
         </li>
       </ul>
@@ -251,6 +268,8 @@ function formatDateLabel(iso) {
 }());
 
 </script>
+
+<th:block th:replace="~{fragments/live-refresh :: script}"></th:block>
 
 </body>
 </html>

@@ -100,11 +100,43 @@ public class MailboxPollingService {
         }
     }
 
-    @Transactional
-    public void pollOne(Long accountId) {
-        MailAccount account = accounts.findById(accountId).orElse(null);
-        if (account == null) return;
+    /** Foreground "page is open" cadence — much tighter than the background tier. */
+    static final java.time.Duration ACTIVE_REFRESH_INTERVAL = java.time.Duration.ofMinutes(1);
 
+    /**
+     * Synchronous poll driven by the open chats page's ~1-minute heartbeat, so
+     * connected mailboxes refresh roughly every minute while the app is in
+     * active use. Skips accounts synced within {@link #ACTIVE_REFRESH_INTERVAL}
+     * (so multiple tabs / rapid pings don't hammer IMAP) and circuit-broken
+     * ones. Returns the total messages imported so the caller can decide
+     * whether the on-screen list needs refreshing.
+     */
+    public int refreshActiveUserNow(Long userId) {
+        // lastSyncedAt is stamped by MailAccount.markSynced() with
+        // LocalDateTime.now() (system zone), so the cutoff must use the same
+        // basis — the injected Clock is systemUTC(), and using it here would
+        // skew the 1-minute floor by the host's zone offset (e.g. 5h locally),
+        // defeating it. Compare like-with-like.
+        LocalDateTime cutoff = LocalDateTime.now().minus(ACTIVE_REFRESH_INTERVAL);
+        int imported = 0;
+        for (MailAccount account : accounts.findActiveRefreshable(userId, cutoff)) {
+            try {
+                imported += pollOne(account.getId());
+            } catch (Exception e) {
+                log.warn("Active refresh failed for mailbox id={} ({}): {}",
+                        account.getId(), account.getUsername(), e.getMessage());
+            }
+        }
+        return imported;
+    }
+
+    @Transactional
+    public int pollOne(Long accountId) {
+        MailAccount account = accounts.findById(accountId).orElse(null);
+        if (account == null) return 0;
+
+        int imported = 0;
+        int sentImported = 0;
         try {
             // Resolving creds can fail (undecryptable secret, expired OAuth
             // refresh) — that throws ImapConnectionException, handled below on
@@ -113,7 +145,6 @@ public class MailboxPollingService {
             ImapClient.IncrementalFetch fetch = imapClient.fetchSinceUid(
                     credentials, account.getLastSeenUid());
 
-            int imported = 0;
             for (MimeMessage mime : fetch.messages()) {
                 try {
                     if (importService.importMessage(mime, account.getUser()).isPresent()) {
@@ -132,7 +163,6 @@ public class MailboxPollingService {
             // conversation stay in sync. The first time (cursor null) we backfill
             // a recent window — this surfaces sent history even for mailboxes
             // connected before sent sync existed — then track only newer sent mail.
-            int sentImported = 0;
             if (account.getLastSeenSentUid() == null) {
                 for (MimeMessage mime : imapClient.fetchRecentSent(credentials, SENT_BACKFILL_LIMIT)) {
                     sentImported += importSent(mime, account);
@@ -168,6 +198,7 @@ public class MailboxPollingService {
         }
         scheduleNextPoll(account);
         accounts.save(account);
+        return imported + sentImported;
     }
 
     private int importSent(MimeMessage mime, MailAccount account) {
