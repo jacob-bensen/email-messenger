@@ -68,12 +68,12 @@ mailbox:
   polling:
     enabled: ${MAILBOX_POLLING_ENABLED:true}
 
-# Operator allowlist gating /admin/**. Comma-separated; empty means no admins
-# and every /admin/** request 404s. Cron schedulers (digest, reengagement,
-# activation, trial-end, admin weekly-digest) stay off unless their *.enabled
-# flag is explicitly set to true.
+# Operator allowlist gating /admin/**. Hardcoded to the sole operator, so no
+# env var is needed; comma-separate to add more. A non-admin hitting /admin/**
+# gets a 404. Cron schedulers (digest, reengagement, activation, trial-end,
+# admin weekly-digest) stay off unless their *.enabled flag is explicitly true.
 admin:
-  emails: ${ADMIN_EMAILS:}
+  emails: jbensen92@gmail.com
 
 logging:
   level:
