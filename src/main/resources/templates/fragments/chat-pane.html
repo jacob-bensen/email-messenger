@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+
+<!--
+  The right side of the chats workspace for one open conversation: the timeline
+  + reply box, and the signatures panel. Rendered inline on a full page load and
+  returned on its own from GET /chats/{key}/pane for the in-place (no-reload)
+  conversation switch. Assumes ${chat} is present.
+-->
+<th:block th:fragment="pane">
+
+  <main class="chat-pane">
+
+    <header class="chat-subheader">
+      <a class="chat-back" th:href="@{/chats(mailbox=${navActiveMailboxId})}" aria-label="Back to chats">←</a>
+      <div class="chat-subheader-avatar" aria-hidden="true" th:text="${chat.initials()}">AB</div>
+      <div class="chat-subheader-id">
+        <div class="chat-subheader-name" th:text="${chat.title()}">Ada Lovelace</div>
+        <div class="chat-subheader-meta"
+             th:text="|${chat.messageCount()} message${chat.messageCount() != 1 ? 's' : ''}${chat.isGroup() ? ' · ' + chat.members().size() + ' people' : ''}|">
+          12 messages
+        </div>
+      </div>
+    </header>
+
+    <div th:if="${billingBanner != null and billingBanner.trialEnding}"
+         class="trial-banner trial-banner-compact"
+         th:classappend="${billingBanner.daysLeft <= 3} ? ' trial-banner-urgent' : ''">
+      <span class="trial-banner-text">
+        <strong th:if="${billingBanner.daysLeft == 0}">Trial ends today.</strong>
+        <strong th:if="${billingBanner.daysLeft == 1}">Trial ends tomorrow.</strong>
+        <strong th:if="${billingBanner.daysLeft > 1}"
+                th:text="|Trial ends in ${billingBanner.daysLeft} days.|">Trial ends in 14 days.</strong>
+      </span>
+      <a href="/pricing" class="trial-banner-link">Add card →</a>
+    </div>
+
+    <div class="messages" id="messages">
+      <!-- th:utext renders pre-sanitized HTML (jsoup, in ConversationService). -->
+      <div class="bubble-run" th:each="run : ${chat.runs()}"
+           th:classappend="${run.outbound()} ? ' bubble-run-me' : ''"
+           th:attr="data-date=${run.date() != null ? #temporals.format(run.date(), 'yyyy-MM-dd') : ''}">
+        <div class="avatar"
+             th:text="${run.sender().initials()}"
+             th:title="${run.sender().displayName() != null ? run.sender().displayName() : run.sender().email()}">AB</div>
+        <div class="bubble-group">
+          <div class="bubble-sender" th:if="${run.outbound()}">You</div>
+          <div class="bubble-sender" th:unless="${run.outbound()}"
+               th:text="${run.sender().displayName() != null ? run.sender().displayName() : run.sender().email()}">Sender</div>
+          <span class="thread-badge" th:title="${run.thread().subject()}">
+            <span class="thread-badge-icon" aria-hidden="true">#</span>
+            <span class="thread-badge-subject" th:text="${run.thread().subject()}">Thread subject</span>
+          </span>
+          <div th:each="bubble : ${run.messages()}">
+            <div class="bubble" th:id="|msg-${bubble.messageId()}|"
+                 th:classappend="${run.outbound()} ? ' bubble-me' : ''">
+              <a class="reply-ref" th:if="${bubble.replyToMessageId() != null}"
+                 th:href="|#msg-${bubble.replyToMessageId()}|">↩ In reply to</a>
+              <div class="bubble-text"
+                   th:if="${bubble.bodyHtml() != null and !bubble.bodyHtml().isBlank()}"
+                   th:utext="${bubble.bodyHtml()}">Message body</div>
+              <ul class="bubble-attachments" th:if="${!#lists.isEmpty(bubble.attachments())}">
+                <li class="bubble-attachment" th:each="att : ${bubble.attachments()}">
+                  <span aria-hidden="true">📎</span>
+                  <span class="bubble-attachment-name" th:text="${att.filename}">file.txt</span>
+                </li>
+              </ul>
+            </div>
+            <div class="bubble-time"
+                 th:text="${#temporals.format(bubble.sentAt(), 'MMM d, h:mm a')}">Jan 1, 12:00 PM</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="reply-area">
+      <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Sent.</div>
+      <div th:if="${sendError}" class="alert alert-error" th:text="${sendError}">Could not send.</div>
+      <form th:action="@{/chats/{key}/send(key=${chat.key()}, mailbox=${navActiveMailboxId})}"
+            th:object="${replyForm}" method="post" enctype="multipart/form-data" class="reply-form">
+        <input type="hidden" th:if="${_csrf != null}"
+               th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <input type="text" name="subject" class="reply-subject"
+               placeholder="Subject (optional)" data-subject-input>
+        <div class="reply-row">
+          <textarea th:field="*{body}" placeholder="Type a message…" rows="2"
+                    th:classappend="${#fields.hasErrors('body')} ? ' error' : ''"></textarea>
+          <button type="submit" class="btn btn-primary reply-send">Send</button>
+        </div>
+        <div class="reply-meta">
+          <label class="reply-toggle">
+            <input type="checkbox" name="asReply" value="true" data-reply-toggle>
+            <span>Reply to latest thread</span>
+          </label>
+          <label class="reply-attach-btn">
+            <input type="file" name="attachments" multiple hidden data-attach-input>
+            <span aria-hidden="true">📎</span> Attach files
+          </label>
+          <ul class="reply-attach-list" data-attach-list></ul>
+        </div>
+        <div class="field-error" th:if="${#fields.hasErrors('body')}" th:errors="*{body}">Validation error</div>
+      </form>
+    </div>
+
+  </main>
+
+  <aside class="signature-rail">
+    <div class="signature-card">
+      <div class="signature-card-label" th:text="${chat.isGroup()} ? 'People' : 'Signature'">Signature</div>
+
+      <th:block th:unless="${chat.isGroup()}">
+        <div class="signature-card-name" th:text="${chat.members()[0].label()}">Ada Lovelace</div>
+        <div class="signature-card-email"
+             th:if="${chat.members()[0].label() != chat.members()[0].email()}"
+             th:text="${chat.members()[0].email()}">ada@acme.com</div>
+        <div class="signature-card-body" th:if="${chat.members()[0].hasSignature()}"
+             th:utext="${chat.members()[0].signatureHtml()}">Signature</div>
+        <div class="signature-card-empty" th:unless="${chat.members()[0].hasSignature()}">
+          No signature on file yet.
+        </div>
+      </th:block>
+
+      <ul class="member-list" th:if="${chat.isGroup()}">
+        <li class="member-item" th:each="m : ${chat.members()}">
+          <details th:if="${m.hasSignature()}" class="member-details">
+            <summary class="member-summary">
+              <span class="member-avatar" aria-hidden="true" th:text="${m.initials()}">AB</span>
+              <span class="member-name">
+                <span class="member-name-label" th:text="${m.label()}">Member</span>
+                <span class="member-name-email"
+                      th:if="${m.label() != m.email()}" th:text="${m.email()}">m@x.com</span>
+              </span>
+              <span class="member-chevron" aria-hidden="true">▾</span>
+            </summary>
+            <div class="signature-card-body member-signature" th:utext="${m.signatureHtml()}">Signature</div>
+          </details>
+          <div th:unless="${m.hasSignature()}" class="member-summary member-summary-static">
+            <span class="member-avatar" aria-hidden="true" th:text="${m.initials()}">AB</span>
+            <span class="member-name">
+              <span class="member-name-label" th:text="${m.label()}">Member</span>
+              <span class="member-name-email"
+                    th:if="${m.label() != m.email()}" th:text="${m.email()}">m@x.com</span>
+            </span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </aside>
+
+</th:block>
+
+<!-- Shown if the pane is requested for a conversation that no longer resolves. -->
+<div th:fragment="missing" class="chat-empty-pane">
+  <div class="chat-empty-pane-inner">
+    <p>This conversation could not be loaded.</p>
+  </div>
+</div>
+
+</body>
+</html>

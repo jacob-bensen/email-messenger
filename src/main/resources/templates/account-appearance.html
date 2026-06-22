@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org" lang="en"
+      th:attr="data-theme=${htmlTheme}, data-accent=${htmlAccent}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,59 +20,85 @@
 <main class="settings-content settings-page">
 
   <h1 class="account-title">Appearance</h1>
-  <p class="settings-intro">Make ConexusMail look the way you like. Coming soon.</p>
 
-  <section class="settings-section">
-    <div class="settings-section-head">
-      <div class="settings-section-title">Theme</div>
-      <div class="settings-section-sub">Today the app follows your system light/dark setting.</div>
-    </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">Color theme <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="settings-row-desc">Choose System, Light, or Dark.</div>
-      </div>
-      <div class="settings-row-control">
-        <select class="settings-select" disabled>
-          <option>System</option>
-        </select>
-      </div>
-    </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">Accent color <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="settings-row-desc">Pick the highlight color used across the app.</div>
-      </div>
-      <div class="settings-row-control"><span class="settings-swatch" aria-hidden="true"></span></div>
-    </div>
-  </section>
+  <form id="appearanceForm" method="post" th:action="@{/account/appearance}">
+    <input type="hidden" th:if="${_csrf != null}"
+           th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
 
-  <section class="settings-section">
-    <div class="settings-section-head">
-      <div class="settings-section-title">Layout</div>
-      <div class="settings-section-sub">How chats and lists are displayed.</div>
+    <section class="acct-section acct-section-first">
+      <h2 class="acct-section-title">Theme</h2>
+      <p class="acct-section-sub">System follows your device's light/dark setting.</p>
+      <div class="acct-row acct-row-soon">
+        <div class="acct-soon-main">
+          <div class="acct-soon-title">Color theme</div>
+          <div class="acct-soon-desc">Pick a light or dark palette, or match your system.</div>
+        </div>
+        <div class="seg" role="radiogroup" aria-label="Color theme">
+          <label class="seg-option">
+            <input type="radio" name="theme" value="system" th:checked="${currentTheme == 'system'}">
+            <span>System</span>
+          </label>
+          <label class="seg-option">
+            <input type="radio" name="theme" value="light" th:checked="${currentTheme == 'light'}">
+            <span>Light</span>
+          </label>
+          <label class="seg-option">
+            <input type="radio" name="theme" value="dark" th:checked="${currentTheme == 'dark'}">
+            <span>Dark</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class="acct-section">
+      <h2 class="acct-section-title">Accent color</h2>
+      <p class="acct-section-sub">The highlight color used for buttons, links, and active items.</p>
+      <div class="swatches" role="radiogroup" aria-label="Accent color">
+        <label class="swatch swatch-green">
+          <input type="radio" name="accent" value="green" th:checked="${currentAccent == 'green'}">
+          <span class="swatch-dot" aria-hidden="true"></span>
+          <span class="swatch-name">Green</span>
+        </label>
+        <label class="swatch swatch-blue">
+          <input type="radio" name="accent" value="blue" th:checked="${currentAccent == 'blue'}">
+          <span class="swatch-dot" aria-hidden="true"></span>
+          <span class="swatch-name">Blue</span>
+        </label>
+        <label class="swatch swatch-purple">
+          <input type="radio" name="accent" value="purple" th:checked="${currentAccent == 'purple'}">
+          <span class="swatch-dot" aria-hidden="true"></span>
+          <span class="swatch-name">Purple</span>
+        </label>
+        <label class="swatch swatch-rose">
+          <input type="radio" name="accent" value="rose" th:checked="${currentAccent == 'rose'}">
+          <span class="swatch-dot" aria-hidden="true"></span>
+          <span class="swatch-name">Rose</span>
+        </label>
+      </div>
+    </section>
+
+  </form>
+
+  <section class="acct-section">
+    <h2 class="acct-section-title">Layout</h2>
+    <p class="acct-section-sub">How chats and lists are displayed.</p>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">Message density <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">Comfortable or compact spacing in conversations.</div>
+      </div>
+      <select class="settings-select" disabled>
+        <option>Comfortable</option>
+      </select>
     </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">Message density <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="settings-row-desc">Comfortable or compact spacing in conversations.</div>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">Time format <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">Show times as 12-hour or 24-hour.</div>
       </div>
-      <div class="settings-row-control">
-        <select class="settings-select" disabled>
-          <option>Comfortable</option>
-        </select>
-      </div>
-    </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">Time format <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="settings-row-desc">Show times as 12-hour or 24-hour.</div>
-      </div>
-      <div class="settings-row-control">
-        <select class="settings-select" disabled>
-          <option>12-hour</option>
-        </select>
-      </div>
+      <select class="settings-select" disabled>
+        <option>12-hour</option>
+      </select>
     </div>
   </section>
 
@@ -79,6 +106,36 @@
 </div>
 </div>
 </div>
+
+<script>
+(function () {
+  var form = document.getElementById('appearanceForm');
+  if (!form) return;
+  var html = document.documentElement;
+  function applyAndSave() {
+    var themeInput = form.querySelector('input[name="theme"]:checked');
+    var accentInput = form.querySelector('input[name="accent"]:checked');
+    var theme = themeInput ? themeInput.value : 'system';
+    var accent = accentInput ? accentInput.value : 'green';
+    // Apply instantly so the whole page reflects the choice without a reload.
+    if (theme === 'system') { html.removeAttribute('data-theme'); } else { html.setAttribute('data-theme', theme); }
+    if (accent === 'green') { html.removeAttribute('data-accent'); } else { html.setAttribute('data-accent', accent); }
+    // Persist in the background (sets the cookies; response is ignored).
+    var body = new URLSearchParams();
+    body.set('theme', theme);
+    body.set('accent', accent);
+    var csrf = form.querySelector('input[type="hidden"][name]');
+    if (csrf) { body.set(csrf.name, csrf.value); }
+    fetch(form.getAttribute('action'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+      credentials: 'same-origin'
+    });
+  }
+  form.addEventListener('change', applyAndSave);
+}());
+</script>
 
 </body>
 </html>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org" lang="en" th:attr="data-theme=${htmlTheme}, data-accent=${htmlAccent}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,61 +19,56 @@
 <main class="settings-content settings-page">
 
   <h1 class="account-title">Notifications</h1>
-  <p class="settings-intro">Choose what we tell you about and how. These controls are on the way.</p>
 
-  <section class="settings-section">
-    <div class="settings-section-head">
-      <div class="settings-section-title">Email</div>
-      <div class="settings-section-sub">Messages we send to your inbox.</div>
-    </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">New message alerts <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="settings-row-desc">Get an email when a new chat arrives in a connected account.</div>
+  <section class="acct-section acct-section-first">
+    <h2 class="acct-section-title">Email</h2>
+    <p class="acct-section-sub">Messages we send to your inbox.</p>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">New message alerts <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">Get an email when a new chat arrives in a connected account.</div>
       </div>
-      <div class="settings-row-control"><span class="settings-switch" aria-hidden="true"></span></div>
+      <span class="settings-switch" aria-hidden="true"></span>
     </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">Daily digest <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="settings-row-desc">A once-a-day summary of unread conversations.</div>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">Daily digest <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">A once-a-day summary of unread conversations.</div>
       </div>
-      <div class="settings-row-control"><span class="settings-switch" aria-hidden="true"></span></div>
+      <span class="settings-switch" aria-hidden="true"></span>
     </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">Security alerts <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="settings-row-desc">New sign-ins and password changes. Recommended on.</div>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">Security alerts <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">New sign-ins and password changes. Recommended on.</div>
       </div>
-      <div class="settings-row-control"><span class="settings-switch" aria-hidden="true"></span></div>
+      <span class="settings-switch" aria-hidden="true"></span>
     </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">Product &amp; tips <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="settings-row-desc">Occasional updates about new features.</div>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">Product &amp; tips <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">Occasional updates about new features.</div>
       </div>
-      <div class="settings-row-control"><span class="settings-switch" aria-hidden="true"></span></div>
+      <span class="settings-switch" aria-hidden="true"></span>
     </div>
   </section>
 
-  <section class="settings-section">
-    <div class="settings-section-head">
-      <div class="settings-section-title">Push</div>
-      <div class="settings-section-sub">Notifications on your devices.</div>
-    </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">Browser &amp; mobile push <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="settings-row-desc">Real-time alerts when the app is closed.</div>
+  <section class="acct-section">
+    <h2 class="acct-section-title">Push</h2>
+    <p class="acct-section-sub">Notifications on your devices.</p>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">Browser &amp; mobile push <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">Real-time alerts when the app is closed.</div>
       </div>
-      <div class="settings-row-control"><span class="settings-switch" aria-hidden="true"></span></div>
+      <span class="settings-switch" aria-hidden="true"></span>
     </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">Quiet hours <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="settings-row-desc">Pause push notifications during a window you choose.</div>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">Quiet hours <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">Pause push notifications during a window you choose.</div>
       </div>
-      <div class="settings-row-control"><button type="button" class="btn btn-secondary btn-compact" disabled>Set hours</button></div>
+      <button type="button" class="btn btn-secondary btn-compact" disabled>Set hours</button>
     </div>
   </section>
 

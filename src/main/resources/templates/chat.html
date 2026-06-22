@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org" lang="en" th:attr="data-theme=${htmlTheme}, data-accent=${htmlAccent}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}">
   <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : ''}">
-  <title th:text="|${chat.title()} — ConexusMail|">Chat — ConexusMail</title>
+  <title th:text="${chat != null} ? |${chat.title()} — ConexusMail| : 'Chats — ConexusMail'">Chats — ConexusMail</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#2f855a">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -23,211 +23,245 @@
 
 <th:block th:replace="~{fragments/app-nav :: nav}"></th:block>
 
-<div class="chat-workspace">
+<div class="chat-workspace" th:classappend="${chat != null} ? ' chat-open' : ''">
 
-  <!--
-    Secondary nav: the conversation list collapsed into a rail beside the main
-    app nav, so the other chats stay one click away while one is open.
-  -->
+  <!-- The conversation list: search + triage tiles + the chats themselves. -->
   <aside class="chat-rail" aria-label="Conversations">
     <div class="chat-rail-head">
       <div class="chat-rail-head-top">
-        <a class="chat-rail-title" th:href="@{/chats(mailbox=${navActiveMailboxId})}">
-          <span aria-hidden="true">←</span> All chats
-        </a>
+        <span class="chat-rail-title" th:text="${isHub} ? 'Dashboard' : 'Chats'">Dashboard</span>
         <a class="btn btn-primary btn-compact chat-rail-new"
            th:href="@{/chats/new(mailbox=${navActiveMailboxId})}">
           <span aria-hidden="true">✎</span> New
         </a>
       </div>
-      <span class="chat-rail-account" th:if="${selectedMailbox != null}"
+      <span class="chat-rail-account" th:if="${isHub}">All accounts</span>
+      <span class="chat-rail-account" th:if="${!isHub and selectedMailbox != null}"
             th:text="${selectedMailbox}" th:title="${selectedMailbox}">you@example.com</span>
+
+      <form class="chats-search rail-search" method="get" th:action="@{/chats}" role="search">
+        <input type="hidden" name="mailbox" th:if="${navActiveMailboxId != null}"
+               th:value="${navActiveMailboxId}">
+        <input type="search" name="q" th:value="${searchQuery}"
+               placeholder="Search people or messages…" aria-label="Search chats">
+      </form>
+
+      <nav class="dash-tiles rail-tiles" aria-label="Filter conversations" th:if="${chatCounts != null}">
+        <a class="dash-tile" th:classappend="${activeFilter == 'all'} ? ' dash-tile-active' : ''"
+           th:href="@{/chats(mailbox=${navActiveMailboxId}, q=${searchQuery})}">
+          <span class="dash-tile-count" th:text="${chatCounts.all()}">0</span>
+          <span class="dash-tile-label">All</span>
+        </a>
+        <a class="dash-tile dash-tile-unread" th:classappend="${activeFilter == 'unread'} ? ' dash-tile-active' : ''"
+           th:href="@{/chats(filter='unread', mailbox=${navActiveMailboxId}, q=${searchQuery})}">
+          <span class="dash-tile-count" th:text="${chatCounts.unread()}">0</span>
+          <span class="dash-tile-label">Unread</span>
+        </a>
+        <a class="dash-tile" th:classappend="${activeFilter == 'awaiting'} ? ' dash-tile-active' : ''"
+           th:href="@{/chats(filter='awaiting', mailbox=${navActiveMailboxId}, q=${searchQuery})}">
+          <span class="dash-tile-count" th:text="${chatCounts.awaiting()}">0</span>
+          <span class="dash-tile-label">Awaiting</span>
+        </a>
+        <a class="dash-tile" th:classappend="${activeFilter == 'attachments'} ? ' dash-tile-active' : ''"
+           th:href="@{/chats(filter='attachments', mailbox=${navActiveMailboxId}, q=${searchQuery})}">
+          <span class="dash-tile-count" th:text="${chatCounts.attachments()}">0</span>
+          <span class="dash-tile-label">Files</span>
+        </a>
+      </nav>
     </div>
-    <ul class="chat-rail-list">
+
+    <div th:if="${emailUnverified}" class="alert alert-warning chats-notice rail-notice">
+      Verify your email to keep your account secure.
+    </div>
+
+    <p class="chats-empty rail-empty" th:if="${conversations.isEmpty()}">
+      <span th:if="${activeFilter != 'all' or (searchQuery != null and !searchQuery.isEmpty())}">
+        Nothing matches this view right now.
+      </span>
+      <th:block th:if="${activeFilter == 'all' and (searchQuery == null or searchQuery.isEmpty())}">
+        No conversations yet.
+        <a class="btn btn-primary btn-compact" href="/mailboxes/new">Connect a mailbox</a>
+      </th:block>
+    </p>
+
+    <ul class="chat-list chat-rail-list" th:unless="${conversations.isEmpty()}">
       <li th:each="c : ${conversations.content}">
-        <a class="chat-rail-row" th:href="@{/chats/{key}(key=${c.key()}, mailbox=${navActiveMailboxId})}"
-           th:classappend="${c.key() == activeKey} ? ' chat-rail-active' : (${c.unread()} ? ' chat-rail-unread' : '')">
-          <span class="chat-rail-avatar" aria-hidden="true" th:text="${c.initials()}">AB</span>
-          <span class="chat-rail-main">
-            <span class="chat-rail-nameline">
-              <span class="chat-rail-name" th:text="${c.title()}">Ada Lovelace</span>
-              <span class="chat-rail-sender" th:if="${c.senderEmail() != null}"
-                    th:text="${c.memberCount() > 1} ? |${c.senderEmail()} +${c.memberCount() - 1}| : ${c.senderEmail()}">ada@acme.com</span>
+        <a class="chat-list-row" th:attr="data-key=${c.key()}"
+           th:classappend="${c.key() == activeKey} ? ' chat-list-row-active' : (${c.unread()} ? ' chat-list-unread' : '')"
+           th:href="@{/chats/{key}(key=${c.key()}, mailbox=${navActiveMailboxId})}">
+          <span class="chat-list-avatar" aria-hidden="true" th:text="${c.initials()}">AB</span>
+          <span class="chat-list-main">
+            <span class="chat-list-top">
+              <span class="chat-list-namewrap">
+                <span class="chat-list-name" th:text="${c.title()}">Ada Lovelace</span>
+                <span class="chat-list-sender" th:if="${c.senderEmail() != null}">
+                  <span class="chat-list-sender-email" th:text="${c.senderEmail()}">ada@acme.com</span>
+                  <span class="chat-list-sender-more" th:if="${c.memberCount() > 1}"
+                        th:text="|+${c.memberCount() - 1}|">+2</span>
+                </span>
+              </span>
+              <span class="chat-list-time" th:if="${c.lastActivity() != null}"
+                    th:text="${#temporals.format(c.lastActivity(), 'MMM d, h:mm a')}">Jan 1, 7:39 PM</span>
             </span>
-            <span class="chat-rail-preview" th:text="${c.preview()}">Last message…</span>
+            <span class="chat-list-preview" th:text="${c.preview()}">Last message…</span>
           </span>
-          <span class="chat-rail-meta" th:if="${c.lastActivity() != null}"
-                th:text="${#temporals.format(c.lastActivity(), 'MMM d, h:mm a')}">Jan 1, 7:39 PM</span>
         </a>
       </li>
     </ul>
+
+    <nav class="chats-pager rail-pager" th:if="${conversations.totalPages > 1}" aria-label="Pages">
+      <a class="btn btn-secondary btn-compact" th:if="${conversations.hasPrevious()}"
+         th:href="@{/chats(page=${conversations.number - 1}, mailbox=${navActiveMailboxId}, q=${searchQuery}, filter=${activeFilter})}">← Newer</a>
+      <span class="chats-pager-status"
+            th:text="|${conversations.number + 1} / ${conversations.totalPages}|">1 / 2</span>
+      <a class="btn btn-secondary btn-compact" th:if="${conversations.hasNext()}"
+         th:href="@{/chats(page=${conversations.number + 1}, mailbox=${navActiveMailboxId}, q=${searchQuery}, filter=${activeFilter})}">Older →</a>
+    </nav>
   </aside>
 
-  <main class="chat-pane">
-
-    <header class="chat-subheader">
-      <a class="chat-back" th:href="@{/chats(mailbox=${navActiveMailboxId})}" aria-label="Back to chats">←</a>
-      <div class="chat-subheader-avatar" aria-hidden="true" th:text="${chat.initials()}">AB</div>
-      <div class="chat-subheader-id">
-        <div class="chat-subheader-name" th:text="${chat.title()}">Ada Lovelace</div>
-        <div class="chat-subheader-meta"
-             th:text="|${chat.messageCount()} message${chat.messageCount() != 1 ? 's' : ''}${chat.isGroup() ? ' · ' + chat.members().size() + ' people' : ''}|">
-          12 messages
-        </div>
-      </div>
-    </header>
-
-    <div th:if="${billingBanner != null and billingBanner.trialEnding}"
-         class="trial-banner trial-banner-compact"
-         th:classappend="${billingBanner.daysLeft <= 3} ? ' trial-banner-urgent' : ''">
-      <span class="trial-banner-text">
-        <strong th:if="${billingBanner.daysLeft == 0}">Trial ends today.</strong>
-        <strong th:if="${billingBanner.daysLeft == 1}">Trial ends tomorrow.</strong>
-        <strong th:if="${billingBanner.daysLeft > 1}"
-                th:text="|Trial ends in ${billingBanner.daysLeft} days.|">Trial ends in 14 days.</strong>
-      </span>
-      <a href="/pricing" class="trial-banner-link">Add card →</a>
-    </div>
-
-    <div class="messages" id="messages">
-      <!-- th:utext renders pre-sanitized HTML (jsoup, in ConversationService). -->
-      <div class="bubble-run" th:each="run : ${chat.runs()}"
-           th:classappend="${run.outbound()} ? ' bubble-run-me' : ''"
-           th:attr="data-date=${run.date() != null ? #temporals.format(run.date(), 'yyyy-MM-dd') : ''}">
-        <div class="avatar"
-             th:text="${run.sender().initials()}"
-             th:title="${run.sender().displayName() != null ? run.sender().displayName() : run.sender().email()}">AB</div>
-        <div class="bubble-group">
-          <div class="bubble-sender" th:if="${run.outbound()}">You</div>
-          <div class="bubble-sender" th:unless="${run.outbound()}"
-               th:text="${run.sender().displayName() != null ? run.sender().displayName() : run.sender().email()}">Sender</div>
-          <span class="thread-badge" th:title="${run.thread().subject()}">
-            <span class="thread-badge-icon" aria-hidden="true">#</span>
-            <span class="thread-badge-subject" th:text="${run.thread().subject()}">Thread subject</span>
-          </span>
-          <div th:each="bubble : ${run.messages()}">
-            <div class="bubble" th:id="|msg-${bubble.messageId()}|"
-                 th:classappend="${run.outbound()} ? ' bubble-me' : ''">
-              <a class="reply-ref" th:if="${bubble.replyToMessageId() != null}"
-                 th:href="|#msg-${bubble.replyToMessageId()}|">↩ In reply to</a>
-              <div class="bubble-text"
-                   th:if="${bubble.bodyHtml() != null and !bubble.bodyHtml().isBlank()}"
-                   th:utext="${bubble.bodyHtml()}">Message body</div>
-              <ul class="bubble-attachments" th:if="${!#lists.isEmpty(bubble.attachments())}">
-                <li class="bubble-attachment" th:each="att : ${bubble.attachments()}">
-                  <span aria-hidden="true">📎</span>
-                  <span class="bubble-attachment-name" th:text="${att.filename}">file.txt</span>
-                </li>
-              </ul>
-            </div>
-            <div class="bubble-time"
-                 th:text="${#temporals.format(bubble.sentAt(), 'MMM d, h:mm a')}">Jan 1, 12:00 PM</div>
-          </div>
-        </div>
+  <!-- The open conversation (or a placeholder); swapped in place when you click a chat. -->
+  <div id="chatPane" class="chat-pane-wrap" th:classappend="${chat != null} ? ' has-chat' : ''">
+    <th:block th:if="${chat != null}">
+      <th:block th:replace="~{fragments/chat-pane :: pane}"></th:block>
+    </th:block>
+    <div th:unless="${chat != null}" class="chat-empty-pane">
+      <div class="chat-empty-pane-inner">
+        <div class="chat-empty-icon" aria-hidden="true">💬</div>
+        <p>Select a conversation to read it here.</p>
       </div>
     </div>
-
-    <div class="reply-area">
-      <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Sent.</div>
-      <div th:if="${sendError}" class="alert alert-error" th:text="${sendError}">Could not send.</div>
-      <form th:action="@{/chats/{key}/send(key=${chat.key()}, mailbox=${navActiveMailboxId})}"
-            th:object="${replyForm}" method="post" enctype="multipart/form-data" class="reply-form">
-        <input type="hidden" th:if="${_csrf != null}"
-               th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-        <input type="text" name="subject" class="reply-subject"
-               placeholder="Subject (optional)" data-subject-input>
-        <div class="reply-row">
-          <textarea th:field="*{body}" placeholder="Type a message…" rows="2"
-                    th:classappend="${#fields.hasErrors('body')} ? ' error' : ''"></textarea>
-          <button type="submit" class="btn btn-primary reply-send">Send</button>
-        </div>
-        <div class="reply-meta">
-          <label class="reply-toggle">
-            <input type="checkbox" name="asReply" value="true" data-reply-toggle>
-            <span>Reply to latest thread</span>
-          </label>
-          <label class="reply-attach-btn">
-            <input type="file" name="attachments" multiple hidden data-attach-input>
-            <span aria-hidden="true">📎</span> Attach files
-          </label>
-          <ul class="reply-attach-list" data-attach-list></ul>
-        </div>
-        <div class="field-error" th:if="${#fields.hasErrors('body')}" th:errors="*{body}">Validation error</div>
-      </form>
-    </div>
-
-  </main>
-
-  <!--
-    The people in this conversation and their signatures, pinned to the side.
-    A 1:1 shows the one signature; a group lists every member with a dropdown
-    to each. th:utext renders pre-sanitized HTML (jsoup, in EmailBodyCleaner).
-  -->
-  <aside class="signature-rail">
-    <div class="signature-card">
-      <div class="signature-card-label" th:text="${chat.isGroup()} ? 'People' : 'Signature'">Signature</div>
-
-      <th:block th:unless="${chat.isGroup()}">
-        <div class="signature-card-name" th:text="${chat.members()[0].label()}">Ada Lovelace</div>
-        <div class="signature-card-email"
-             th:if="${chat.members()[0].label() != chat.members()[0].email()}"
-             th:text="${chat.members()[0].email()}">ada@acme.com</div>
-        <div class="signature-card-body" th:if="${chat.members()[0].hasSignature()}"
-             th:utext="${chat.members()[0].signatureHtml()}">Signature</div>
-        <div class="signature-card-empty" th:unless="${chat.members()[0].hasSignature()}">
-          No signature on file yet.
-        </div>
-      </th:block>
-
-      <ul class="member-list" th:if="${chat.isGroup()}">
-        <li class="member-item" th:each="m : ${chat.members()}">
-          <details th:if="${m.hasSignature()}" class="member-details">
-            <summary class="member-summary">
-              <span class="member-avatar" aria-hidden="true" th:text="${m.initials()}">AB</span>
-              <span class="member-name">
-                <span class="member-name-label" th:text="${m.label()}">Member</span>
-                <span class="member-name-email"
-                      th:if="${m.label() != m.email()}" th:text="${m.email()}">m@x.com</span>
-              </span>
-              <span class="member-chevron" aria-hidden="true">▾</span>
-            </summary>
-            <div class="signature-card-body member-signature" th:utext="${m.signatureHtml()}">Signature</div>
-          </details>
-          <div th:unless="${m.hasSignature()}" class="member-summary member-summary-static">
-            <span class="member-avatar" aria-hidden="true" th:text="${m.initials()}">AB</span>
-            <span class="member-name">
-              <span class="member-name-label" th:text="${m.label()}">Member</span>
-              <span class="member-name-email"
-                    th:if="${m.label() != m.email()}" th:text="${m.email()}">m@x.com</span>
-            </span>
-          </div>
-        </li>
-      </ul>
-    </div>
-  </aside>
+  </div>
 
 </div>
 </div>
 
-<script th:inline="javascript">
+<script>
 (function () {
-  const msgs = document.getElementById('messages');
-  if (!msgs) return;
-  const runs = Array.from(msgs.querySelectorAll('.bubble-run'));
-  let lastDate = null;
-  runs.forEach(function (run) {
-    const date = run.dataset.date;
-    if (!date || date === lastDate) { lastDate = date || lastDate; return; }
-    const sep = document.createElement('div');
-    sep.className = 'day-separator';
-    sep.innerHTML = '<span>' + formatDateLabel(date) + '</span>';
-    msgs.insertBefore(sep, run);
-    lastDate = date;
+  var workspace = document.querySelector('.chat-workspace');
+  var paneWrap = document.getElementById('chatPane');
+  var railList = workspace ? workspace.querySelector('.chat-rail-list') : null;
+  if (!workspace || !paneWrap) return;
+
+  var EMPTY_PANE =
+    '<div class="chat-empty-pane"><div class="chat-empty-pane-inner">' +
+    '<div class="chat-empty-icon" aria-hidden="true">💬</div>' +
+    '<p>Select a conversation to read it here.</p></div></div>';
+
+  function formatDateLabel(iso) {
+    var parts = iso.split('-');
+    var d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+    if (d.getTime() === today.getTime())     return 'Today';
+    if (d.getTime() === yesterday.getTime()) return 'Yesterday';
+    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+
+  function decorateMessages() {
+    var msgs = document.getElementById('messages');
+    if (!msgs) return;
+    var runs = Array.prototype.slice.call(msgs.querySelectorAll('.bubble-run'));
+    var lastDate = null;
+    runs.forEach(function (run) {
+      var date = run.dataset.date;
+      if (!date || date === lastDate) { lastDate = date || lastDate; return; }
+      var sep = document.createElement('div');
+      sep.className = 'day-separator';
+      sep.innerHTML = '<span>' + formatDateLabel(date) + '</span>';
+      msgs.insertBefore(sep, run);
+      lastDate = date;
+    });
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function wirePane() {
+    var input = paneWrap.querySelector('[data-attach-input]');
+    var list = paneWrap.querySelector('[data-attach-list]');
+    if (input && list) {
+      input.addEventListener('change', function () {
+        list.innerHTML = '';
+        Array.prototype.forEach.call(input.files, function (file) {
+          var li = document.createElement('li');
+          li.className = 'reply-attach-item';
+          li.textContent = file.name;
+          list.appendChild(li);
+        });
+      });
+    }
+    var toggle = paneWrap.querySelector('[data-reply-toggle]');
+    var subject = paneWrap.querySelector('[data-subject-input]');
+    if (toggle && subject) {
+      var sync = function () {
+        subject.disabled = toggle.checked;
+        subject.placeholder = toggle.checked ? 'Reply keeps the existing subject' : 'Subject (optional)';
+      };
+      toggle.addEventListener('change', sync);
+      sync();
+    }
+  }
+
+  function initPane() { decorateMessages(); wirePane(); }
+
+  function paneUrl(href) {
+    var u = new URL(href, location.origin);
+    return u.pathname.replace(/\/$/, '') + '/pane' + u.search;
+  }
+
+  function setActive(key) {
+    if (!railList) return;
+    Array.prototype.forEach.call(railList.querySelectorAll('.chat-list-row'), function (row) {
+      var active = key && row.getAttribute('data-key') === key;
+      row.classList.toggle('chat-list-row-active', !!active);
+      if (active) row.classList.remove('chat-list-unread');
+    });
+  }
+
+  function showEmpty() {
+    paneWrap.innerHTML = EMPTY_PANE;
+    paneWrap.classList.remove('has-chat');
+    workspace.classList.remove('chat-open');
+    setActive(null);
+  }
+
+  function loadChat(href, key, push) {
+    paneWrap.classList.add('loading');
+    fetch(paneUrl(href), { credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' } })
+      .then(function (r) {
+        if (!r.ok) throw new Error('pane');
+        return r.text();
+      })
+      .then(function (html) {
+        paneWrap.innerHTML = html;
+        paneWrap.classList.add('has-chat');
+        paneWrap.classList.remove('loading');
+        workspace.classList.add('chat-open');
+        initPane();
+        setActive(key);
+        if (push) history.pushState({ key: key }, '', href);
+      })
+      .catch(function () { window.location = href; });
+  }
+
+  if (railList) {
+    railList.addEventListener('click', function (e) {
+      var row = e.target.closest ? e.target.closest('.chat-list-row') : null;
+      if (!row) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+      e.preventDefault();
+      loadChat(row.getAttribute('href'), row.getAttribute('data-key'), true);
+    });
+  }
+
+  window.addEventListener('popstate', function () {
+    var m = location.pathname.match(/^\/chats\/([^\/]+)$/);
+    if (m && m[1] !== 'new') {
+      loadChat(location.pathname + location.search, m[1], false);
+    } else {
+      showEmpty();
+    }
   });
-  msgs.scrollTop = msgs.scrollHeight;
-}());
 
-(function () {
+  // Smooth-scroll to a quoted message regardless of which pane is loaded.
   document.addEventListener('click', function (e) {
     var ref = e.target.closest ? e.target.closest('.reply-ref') : null;
     if (!ref) return;
@@ -240,46 +274,9 @@
     target.classList.add('bubble-flash');
     setTimeout(function () { target.classList.remove('bubble-flash'); }, 1200);
   });
+
+  if (paneWrap.classList.contains('has-chat')) initPane();
 }());
-
-function formatDateLabel(iso) {
-  var parts = iso.split('-');
-  var d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
-  var today = new Date(); today.setHours(0, 0, 0, 0);
-  var yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
-  if (d.getTime() === today.getTime())     return 'Today';
-  if (d.getTime() === yesterday.getTime()) return 'Yesterday';
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-}
-
-(function () {
-  var input = document.querySelector('[data-attach-input]');
-  var list = document.querySelector('[data-attach-list]');
-  if (!input || !list) return;
-  input.addEventListener('change', function () {
-    list.innerHTML = '';
-    Array.prototype.forEach.call(input.files, function (file) {
-      var li = document.createElement('li');
-      li.className = 'reply-attach-item';
-      li.textContent = file.name;
-      list.appendChild(li);
-    });
-  });
-}());
-
-// Replying keeps the thread's subject, so the subject field is irrelevant then.
-(function () {
-  var toggle = document.querySelector('[data-reply-toggle]');
-  var subject = document.querySelector('[data-subject-input]');
-  if (!toggle || !subject) return;
-  function sync() {
-    subject.disabled = toggle.checked;
-    subject.placeholder = toggle.checked ? 'Reply keeps the existing subject' : 'Subject (optional)';
-  }
-  toggle.addEventListener('change', sync);
-  sync();
-}());
-
 </script>
 
 <th:block th:replace="~{fragments/live-refresh :: script}"></th:block>

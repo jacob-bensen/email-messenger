@@ -1,5 +1,6 @@
 package com.emailmessenger.web;
 
+import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.OwnerAddressService;
@@ -64,5 +65,30 @@ class ChatService {
         }
         return conversationService.buildChatConversation(
                 messages, ownerAddressService.addressesFor(owner));
+    }
+
+    /**
+     * Marks the opened conversation's threads read. Scoped to {@code mailboxAddress}
+     * when an account is selected (so the same correspondent reached via another
+     * account keeps its own unread state); otherwise marks every thread of the key.
+     * No-op when nothing is unread.
+     */
+    @Transactional
+    void markRead(User owner, String mailboxAddress, String conversationKey) {
+        if (conversationKey == null || conversationKey.isBlank()) {
+            return;
+        }
+        List<EmailThread> conversationThreads;
+        if (mailboxAddress == null || mailboxAddress.isBlank()) {
+            conversationThreads = threads.findThreadsByConversationKey(owner, conversationKey);
+        } else {
+            conversationThreads = threads.findThreadsByConversationKeyForMailbox(
+                    owner, mailboxAddress.trim().toLowerCase(Locale.ROOT), conversationKey);
+        }
+        for (EmailThread thread : conversationThreads) {
+            if (thread.isUnread()) {
+                thread.markRead();
+            }
+        }
     }
 }

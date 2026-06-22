@@ -4,7 +4,9 @@ import com.emailmessenger.domain.AuthEvent;
 import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.SubscriptionRepository;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -70,8 +72,41 @@ class AccountController {
     }
 
     @GetMapping("/account/appearance")
-    String appearance() {
+    String appearance(HttpServletRequest request, Model model) {
+        model.addAttribute("currentTheme",
+                AppearanceSettings.theme(readCookie(request, AppearanceSettings.THEME_COOKIE)));
+        model.addAttribute("currentAccent",
+                AppearanceSettings.accent(readCookie(request, AppearanceSettings.ACCENT_COOKIE)));
         return "account-appearance";
+    }
+
+    @PostMapping("/account/appearance")
+    String saveAppearance(@RequestParam(value = "theme", required = false) String theme,
+                          @RequestParam(value = "accent", required = false) String accent,
+                          HttpServletResponse response,
+                          RedirectAttributes redirectAttributes) {
+        writeCookie(response, AppearanceSettings.THEME_COOKIE, AppearanceSettings.theme(theme));
+        writeCookie(response, AppearanceSettings.ACCENT_COOKIE, AppearanceSettings.accent(accent));
+        redirectAttributes.addFlashAttribute("appearanceSaved", true);
+        return "redirect:/account/appearance";
+    }
+
+    private static String readCookie(HttpServletRequest request, String name) {
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if (name.equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
+    }
+
+    private static void writeCookie(HttpServletResponse response, String name, String value) {
+        Cookie cookie = new Cookie(name, value);
+        cookie.setPath("/");
+        cookie.setMaxAge(60 * 60 * 24 * 365);
+        response.addCookie(cookie);
     }
 
     @GetMapping("/account/privacy")

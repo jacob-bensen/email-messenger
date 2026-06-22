@@ -1,5 +1,6 @@
 package com.emailmessenger.web;
 
+import com.emailmessenger.auth.AppearanceSettings;
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.billing.BillingService;
 import com.emailmessenger.domain.User;
@@ -35,6 +36,7 @@ class NavModelAdvice {
     @ModelAttribute
     void populateNav(Principal principal, HttpServletRequest request, Model model) {
         model.addAttribute("navActive", activeSection(request.getRequestURI()));
+        applyAppearance(request, model);
         if (principal == null) {
             return;
         }
@@ -49,6 +51,31 @@ class NavModelAdvice {
                 .map(a -> new NavMailbox(a.getId(), a.getUsername()))
                 .toList());
         model.addAttribute("navHasBilling", billingService.hasManagedBilling(user));
+    }
+
+    /**
+     * Resolves the saved appearance cookies into {@code <html>} attributes the
+     * templates set ({@code data-theme}/{@code data-accent}). "System" theme and
+     * the default green accent are left unset so the OS media query / default
+     * palette apply. See {@link com.emailmessenger.auth.AppearanceSettings}.
+     */
+    private static void applyAppearance(HttpServletRequest request, Model model) {
+        model.addAttribute("htmlTheme",
+                AppearanceSettings.themeAttribute(cookie(request, AppearanceSettings.THEME_COOKIE)));
+        model.addAttribute("htmlAccent",
+                AppearanceSettings.accentAttribute(cookie(request, AppearanceSettings.ACCENT_COOKIE)));
+    }
+
+    private static String cookie(HttpServletRequest request, String name) {
+        if (request.getCookies() == null) {
+            return null;
+        }
+        for (jakarta.servlet.http.Cookie c : request.getCookies()) {
+            if (name.equals(c.getName())) {
+                return c.getValue();
+            }
+        }
+        return null;
     }
 
     private static String activeSection(String uri) {

@@ -12,9 +12,47 @@
   --border: #e3ded2;
   --text: #20271f;
   --text-muted: #5f665b;
+  --hover-bg: rgba(0, 0, 0, 0.04);
   --radius: 8px;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
+
+/*
+  Theme override: "System" (no data-theme) follows the OS via the media query
+  below; "Light"/"Dark" force the palette regardless of the OS. Accent overrides
+  just the brand color over whichever theme is active. Set on <html> server-side
+  from the user's saved cookies (NavModelAdvice) so there's no flash.
+*/
+:root[data-theme="dark"] {
+  --bg: #0f1512;
+  --surface: #161d18;
+  --border: #2a342d;
+  --text: #e6efe8;
+  --text-muted: #8a978d;
+  --brand: #5fb98a;
+  --brand-dark: #4aa276;
+  --on-brand: #0e211a;
+  --accent-blue: #7fb0d2;
+  --accent-blue-dark: #6fa3c6;
+  --accent-brown: #c39a6f;
+  --hover-bg: rgba(255, 255, 255, 0.06);
+}
+:root[data-theme="light"] {
+  --bg: #f4f3ec;
+  --surface: #ffffff;
+  --border: #e3ded2;
+  --text: #20271f;
+  --text-muted: #5f665b;
+  --brand: #2f7d57;
+  --brand-dark: #25624a;
+  --on-brand: #0e211a;
+  --accent-blue: #2c5d7c;
+  --accent-blue-dark: #224b66;
+  --accent-brown: #6f4a30;
+  --hover-bg: rgba(0, 0, 0, 0.04);
+}
+/* Accent color override lives at the END of this file (see bottom) so it wins
+   over both the light :root and the dark-mode block regardless of theme. */
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1114,7 +1152,9 @@ body {
 
 /* ── Dark Mode ──────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
-  :root {
+  /* "System" mode only — an explicit Light choice opts out so the OS can't
+     force dark on it. Explicit Dark is handled by :root[data-theme="dark"]. */
+  :root:not([data-theme="light"]) {
     /* Jungle after dark — deep forest charcoal, luminous green, with warmer
        brown and cooler blue accents lifted for contrast on the dark ground. */
     --bg: #0f1512;
@@ -1128,6 +1168,7 @@ body {
     --accent-blue: #7fb0d2;
     --accent-blue-dark: #6fa3c6;
     --accent-brown: #c39a6f;
+    --hover-bg: rgba(255, 255, 255, 0.06);
   }
 
   .thread-item:hover   { background: #1a2233; }
@@ -1760,7 +1801,7 @@ body {
 }
 .btn-secondary:hover { background: #f3f4f6; }
 .mailbox-sync-btn { padding: 6px 14px; font-size: 13px; }
-.mailbox-add-cta { margin-top: 24px; }
+.mailbox-add-cta { margin-top: 24px; margin-bottom: 28px; }
 
 @media (prefers-color-scheme: dark) {
   .mailbox-error {
@@ -3522,32 +3563,33 @@ body {
 .chat-list-row {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px 12px;
-  border-radius: var(--radius);
+  gap: 11px;
+  padding: 9px 10px;
   text-decoration: none;
   color: var(--text);
   border-bottom: 1px solid var(--border);
 }
-.chat-list-row:hover { background: rgba(0, 0, 0, 0.04); }
+.chat-list-row:hover { background: var(--hover-bg); }
+.chat-list-row-active,
+.chat-list-row-active:hover { background: rgba(47, 125, 87, 0.12); }
 .chat-list-avatar {
-  width: 46px;
-  height: 46px;
+  width: 38px;
+  height: 38px;
   flex-shrink: 0;
   border-radius: 50%;
   background: var(--brand);
   color: var(--on-brand);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.chat-list-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.chat-list-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .chat-list-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .chat-list-namewrap { display: flex; align-items: baseline; gap: 6px; flex: 1; min-width: 0; overflow: hidden; }
 .chat-list-name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   overflow: hidden;
   white-space: nowrap;
@@ -3571,9 +3613,9 @@ body {
   text-overflow: ellipsis;
 }
 .chat-list-sender-more { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
-.chat-list-time { font-size: 12px; color: var(--text-muted); flex-shrink: 0; white-space: nowrap; }
+.chat-list-time { font-size: 11.5px; color: var(--text-muted); flex-shrink: 0; white-space: nowrap; }
 .chat-list-preview {
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--text-muted);
   overflow: hidden;
   white-space: nowrap;
@@ -3600,25 +3642,42 @@ body {
 
 /* ── Single chat view (/chats/{key}) ────────────────── */
 /* Columns: secondary conversation rail · chat pane · (optional) signatures. */
+/* The unified chats workspace: the conversation list on the left, and the open
+   conversation (or a placeholder) swapped in place on the right. With nothing
+   open the list is wide (a roomy dashboard); selecting a chat animates it down
+   to its compact width as the conversation slides in. */
 .chat-workspace {
   margin-left: 248px;
   display: grid;
-  grid-template-columns: 310px minmax(0, 1fr);
+  grid-template-columns: min(760px, 58vw) minmax(0, 1fr);
   height: 100vh;
   height: 100dvh;
+  transition: grid-template-columns 0.3s ease;
 }
-.chat-workspace:has(.signature-rail) {
-  grid-template-columns: 310px minmax(0, 1fr) 340px;
+.chat-workspace.chat-open {
+  grid-template-columns: 380px minmax(0, 1fr);
 }
+@media (prefers-reduced-motion: reduce) {
+  .chat-workspace { transition: none; }
+}
+/* The right side holds the chat pane + signature panel (a 2-col grid when a
+   chat is open) or a centered placeholder when nothing is selected. */
+.chat-pane-wrap { min-width: 0; height: 100%; overflow: hidden; }
+.chat-pane-wrap.has-chat { display: grid; grid-template-columns: minmax(0, 1fr) 340px; }
+.chat-pane-wrap:not(.has-chat) { display: flex; align-items: center; justify-content: center; }
+.chat-empty-pane { padding: 32px; text-align: center; color: var(--text-muted); }
+.chat-empty-icon { font-size: 40px; opacity: 0.5; margin-bottom: 8px; }
+.chat-empty-pane p { font-size: 14px; }
 
-/* Secondary nav rail — the collapsed conversation list, flush against the
-   main app nav so the two read as one connected navigation column. */
+/* Conversation list rail. */
 .chat-rail {
   min-width: 0;
   height: 100%;
   overflow-y: auto;
   background: var(--surface);
   border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
 }
 .chat-rail-head {
   position: sticky;
@@ -3628,74 +3687,26 @@ body {
   padding: 12px 14px;
   z-index: 1;
 }
+.chat-rail-head-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .chat-rail-title {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
-  text-decoration: none;
-}
-.chat-rail-title:hover { color: var(--brand); }
-.chat-rail-list { list-style: none; margin: 0; padding: 4px 0; }
-.chat-rail-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 14px;
-  text-decoration: none;
   color: var(--text);
-  border-left: 3px solid transparent;
 }
-.chat-rail-row:hover { background: rgba(0, 0, 0, 0.04); }
-.chat-rail-active {
-  background: rgba(47, 125, 87, 0.10);
-  border-left-color: var(--brand);
-}
-.chat-rail-avatar {
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--brand);
-  color: var(--on-brand);
-  font-size: 12px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.chat-rail-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.chat-rail-nameline { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
-.chat-rail-name {
-  font-size: 13px;
-  font-weight: 600;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  min-width: 0;
-  flex-shrink: 0;
-  max-width: 62%;
-}
-.chat-rail-sender {
-  font-size: 11px;
-  color: var(--text-muted);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-.chat-rail-preview {
-  font-size: 12px;
-  color: var(--text-muted);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.chat-rail-meta { font-size: 11px; color: var(--text-muted); flex-shrink: 0; white-space: nowrap; }
-.chat-rail-unread .chat-rail-name { font-weight: 700; color: var(--brand-dark); }
-.chat-rail-unread .chat-rail-preview { color: var(--text); }
+.rail-search { display: block; margin-top: 10px; }
+.rail-search input[type="search"] { width: 100%; }
+.dash-tiles.rail-tiles { gap: 6px; margin: 10px 0 0; }
+.rail-tiles .dash-tile { padding: 7px 6px; border-radius: 9px; align-items: center; text-align: center; }
+.rail-tiles .dash-tile-count { font-size: 16px; }
+.rail-tiles .dash-tile-label { font-size: 10.5px; }
+.rail-empty { padding: 24px 14px; font-size: 13px; }
+.rail-notice { margin: 10px 14px 0; }
+.rail-pager { margin: auto 0 0; padding: 10px 14px; gap: 10px; }
+/* The rail reuses the .chat-list row styling so opening a chat doesn't feel like
+   a different screen — same rows, just a narrower scrolling column. */
+.chat-rail-list { padding: 0; }
 .chat-back {
+  display: none;
   font-size: 20px;
   line-height: 1;
   text-decoration: none;
@@ -3703,7 +3714,7 @@ body {
   padding: 4px 8px;
   border-radius: var(--radius);
 }
-.chat-back:hover { background: rgba(0, 0, 0, 0.05); color: var(--text); }
+.chat-back:hover { background: var(--hover-bg); color: var(--text); }
 
 /* Group member list + per-person signature dropdowns in the side panel. */
 .member-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -3757,11 +3768,13 @@ body {
 @media (max-width: 760px) {
   .chats-screen { margin-left: 0; padding: 16px 16px 48px; }
   .chats-search input[type="search"] { width: 100%; }
+  /* One column on phones: the list fills the screen, and opening a chat swaps to
+     the pane full-width (the "←" back link returns to the list). */
   .chat-workspace { margin-left: 0; display: block; height: auto; }
-  .chat-workspace:has(.signature-rail) { grid-template-columns: 1fr; }
-  /* No room for the secondary rail on phones — the "←" back link returns to
-     the full list instead. */
-  .chat-rail { display: none; }
+  .chat-pane-wrap { display: none; }
+  .chat-pane-wrap.has-chat { display: block; }
+  .chat-workspace.chat-open .chat-rail { display: none; }
+  .chat-back { display: inline-block; }
 }
 
 /* ── Left sidebar app shell ─────────────────────────── */
@@ -3800,7 +3813,7 @@ body {
   font-size: 14px;
   font-weight: 600;
 }
-.app-nav-link:hover { background: rgba(0, 0, 0, 0.04); }
+.app-nav-link:hover { background: var(--hover-bg); }
 .app-nav-link-active { background: rgba(47, 133, 90, 0.12); color: var(--brand-dark); }
 .app-nav-link-button {
   width: 100%;
@@ -3836,25 +3849,25 @@ body {
 .app-nav-mailbox {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
+  gap: 10px;
+  padding: 9px 10px;
   border-radius: 8px;
   color: var(--text);
   text-decoration: none;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
 }
-.app-nav-mailbox:hover { background: rgba(0, 0, 0, 0.04); }
+.app-nav-mailbox:hover { background: var(--hover-bg); }
 .app-nav-mailbox-active {
   background: rgba(47, 133, 90, 0.12);
   color: var(--brand-dark);
-  font-weight: 600;
 }
 .app-nav-mailbox-active .app-nav-mailbox-ico { color: var(--brand-dark); opacity: 1; }
 .app-nav-mailbox-ico {
-  width: 16px;
+  width: 18px;
   text-align: center;
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   opacity: 0.85;
 }
@@ -3933,15 +3946,6 @@ body {
   padding: 0 12px 10px;
 }
 .settings-nav-group { display: flex; flex-direction: column; gap: 2px; }
-.settings-nav-group + .settings-nav-group { margin-top: 16px; }
-.settings-nav-group-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  padding: 0 12px 4px;
-}
 .settings-nav-link {
   display: block;
   padding: 7px 12px;
@@ -3951,7 +3955,7 @@ body {
   font-size: 13.5px;
   font-weight: 600;
 }
-.settings-nav-link:hover { background: rgba(0, 0, 0, 0.04); }
+.settings-nav-link:hover { background: var(--hover-bg); }
 .settings-nav-link-active { background: rgba(47, 133, 90, 0.12); color: var(--brand-dark); }
 .settings-content { flex: 1; min-width: 0; }
 
@@ -3967,6 +3971,69 @@ body {
 /* Compact the real (form) cards so they sit tighter and left-aligned. */
 .settings-page .account-card { padding: 18px 20px; margin-bottom: 14px; }
 .settings-page .account-card-title { font-size: 15px; margin-bottom: 12px; }
+
+/* Flat, compact account page: no card boxes — sections split by a divider, and
+   every field/value laid out as a left label + right control on one line. */
+.account-flat .account-title { margin-bottom: 8px; }
+.acct-section { padding: 16px 0; border-top: 1px solid var(--border); }
+.acct-section-first { border-top: none; padding-top: 0; }
+.acct-section-danger .acct-section-title { color: #b91c1c; }
+.acct-section-title { font-size: 14px; font-weight: 700; margin: 0 0 10px; }
+.acct-section-sub { font-size: 12.5px; color: var(--text-muted); margin: -4px 0 12px; }
+.acct-row { display: flex; align-items: center; gap: 16px; padding: 4px 0; }
+.acct-label {
+  flex: 0 0 150px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.acct-value { flex: 1; min-width: 0; font-size: 14px; }
+.acct-form { margin-top: 2px; }
+.acct-input {
+  flex: 1;
+  width: 100%;
+  max-width: 300px;
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+}
+.acct-input:focus { outline: 2px solid var(--brand); outline-offset: -1px; border-color: var(--brand); }
+.acct-field { flex: 1; max-width: 300px; display: flex; flex-direction: column; gap: 4px; }
+/* Submit row: aligned with the input column, button pinned bottom-right, in line
+   with the hint (which is pushed to the left). */
+.acct-row-foot { padding-top: 10px; }
+.acct-foot {
+  flex: 1;
+  max-width: 300px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: flex-end;
+}
+.acct-foot .auth-hint { margin-right: auto; }
+/* Coming-soon rows: title + desc on the left, the (disabled) control on the right. */
+.acct-row-soon { align-items: center; justify-content: space-between; padding: 8px 0; }
+.acct-soon-main { flex: 1; min-width: 0; }
+.acct-soon-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.acct-soon-desc { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+.acct-row-soon > :last-child { flex-shrink: 0; }
+@media (max-width: 640px) {
+  .acct-row { flex-direction: column; align-items: stretch; gap: 4px; }
+  .acct-label { flex-basis: auto; }
+  .acct-input, .acct-field { max-width: none; }
+  .acct-row-action { align-items: flex-start; }
+}
 
 /* Coming-soon pill, used inline next to a row title. */
 .settings-coming-soon {
@@ -4061,8 +4128,61 @@ body {
 }
 .danger-button { color: #b91c1c; border-color: #e7b4b4; }
 
+/* Appearance: segmented theme control + accent swatches. */
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.seg-option input { position: absolute; opacity: 0; pointer-events: none; }
+.seg-option span {
+  display: block;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.seg-option + .seg-option span { border-left: 1px solid var(--border); }
+.seg-option input:checked + span { background: var(--brand); color: var(--on-brand); }
+.seg-option input:focus-visible + span { outline: 2px solid var(--brand); outline-offset: -2px; }
+
+.settings-row-control-wide { flex: 1; }
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.swatch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.swatch input { position: absolute; opacity: 0; pointer-events: none; }
+.swatch-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--swatch, var(--brand));
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+.swatch:has(input:checked) { border-color: var(--swatch); box-shadow: 0 0 0 2px var(--swatch); }
+.swatch:has(input:focus-visible) { outline: 2px solid var(--swatch); outline-offset: 2px; }
+.swatch-green  { --swatch: #2f7d57; }
+.swatch-blue   { --swatch: #2f7fe8; }
+.swatch-purple { --swatch: #8a63e8; }
+.swatch-rose   { --swatch: #db3f80; }
+.appearance-actions { margin-top: 6px; }
+
 @media (prefers-color-scheme: dark) {
-  .settings-nav-link:hover { background: rgba(255, 255, 255, 0.05); }
   .danger-button,
   .settings-section-danger .settings-section-title { color: #fca5a5; }
   .settings-section-danger { border-color: #5a2a2a; }
@@ -4079,8 +4199,6 @@ body {
   }
   .settings-nav-title { padding: 0 8px 8px; }
   .settings-nav-group { flex-direction: row; flex-wrap: wrap; gap: 6px; }
-  .settings-nav-group + .settings-nav-group { margin-top: 10px; }
-  .settings-nav-group-label { flex-basis: 100%; padding: 0 8px 2px; }
   .settings-page { padding: 24px 16px 48px; }
 }
 
@@ -4108,7 +4226,6 @@ body {
 
 /* ── Dashboard: account list + triage tiles ─────────────── */
 .app-nav-dashboard { font-weight: 700; }
-.app-nav-section .app-nav-mailboxes { margin-left: 8px; }
 .chats-account-all { font-weight: 600; }
 
 .dash-tiles {
@@ -4160,13 +4277,6 @@ body {
 
 @media (max-width: 760px) {
   .dash-tiles { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (prefers-color-scheme: dark) {
-  .app-nav-link:hover,
-  .app-nav-mailbox:hover,
-  .chat-list-row:hover,
-  .chat-rail-row:hover { background: rgba(255, 255, 255, 0.06); }
 }
 
 @media (max-width: 760px) {
@@ -4229,3 +4339,11 @@ body {
   font-weight: 400;
 }
 .thread-meta .thread-from:only-child::after { content: none; }
+
+/* ── Accent color override ──────────────────────────────
+   Last in the file so it wins over the light :root, the explicit
+   :root[data-theme] blocks, AND the dark-mode media block (all equal
+   specificity) in every theme. Only retints the brand. */
+:root[data-accent="blue"]   { --brand: #2f7fe8; --brand-dark: #2568cc; --on-brand: #ffffff; }
+:root[data-accent="purple"] { --brand: #8a63e8; --brand-dark: #7445d8; --on-brand: #ffffff; }
+:root[data-accent="rose"]   { --brand: #db3f80; --brand-dark: #c22e6c; --on-brand: #ffffff; }

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org" lang="en" th:attr="data-theme=${htmlTheme}, data-accent=${htmlAccent}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,54 +16,52 @@
 <div class="app-main">
 <div class="settings-shell">
 <th:block th:replace="~{fragments/settings-nav :: nav('account')}"></th:block>
-<main class="settings-content settings-page">
+<main class="settings-content settings-page account-flat">
 
   <h1 class="account-title">Account</h1>
-  <p class="settings-intro">Manage your profile, sign-in, and subscription.</p>
 
-  <section class="account-card">
-    <h2 class="account-card-title">Profile</h2>
-    <dl class="account-summary">
-      <dt>Email</dt>
-      <dd>
+  <section class="acct-section acct-section-first">
+    <h2 class="acct-section-title">Profile</h2>
+    <div class="acct-row">
+      <div class="acct-label">Email</div>
+      <div class="acct-value">
         <span th:text="${currentEmail}">you@example.com</span>
         <span th:if="${emailVerified}" class="account-verified-badge"
               title="Address confirmed">verified</span>
         <span th:if="${!emailVerified}" class="account-unverified-badge"
               title="Address not confirmed yet">unverified</span>
-      </dd>
-      <dt th:if="${displayName != null and !displayName.isEmpty()}">Display name</dt>
-      <dd th:if="${displayName != null and !displayName.isEmpty()}"
-          th:text="${displayName}">Ada Lovelace</dd>
-    </dl>
+      </div>
+    </div>
+    <div class="acct-row" th:if="${displayName != null and !displayName.isEmpty()}">
+      <div class="acct-label">Display name</div>
+      <div class="acct-value" th:text="${displayName}">Ada Lovelace</div>
+    </div>
   </section>
 
-  <section class="account-card" th:if="${billing != null}">
-    <h2 class="account-card-title">Subscription</h2>
-    <dl class="account-summary">
-      <dt>Plan</dt>
-      <dd>
-        <span th:text="${billing.label()}">Personal · Monthly</span>
-      </dd>
-      <dt th:if="${billing.renewsOn() != null and !billing.canceled()}">
+  <section class="acct-section" th:if="${billing != null}">
+    <h2 class="acct-section-title">Subscription</h2>
+    <div class="acct-row">
+      <div class="acct-label">Plan</div>
+      <div class="acct-value" th:text="${billing.label()}">Personal · Monthly</div>
+    </div>
+    <div class="acct-row" th:if="${billing.renewsOn() != null and !billing.canceled()}">
+      <div class="acct-label">
         <span th:if="${billing.trialing()}">Trial ends</span>
         <span th:if="${!billing.trialing()}">Renews</span>
-      </dt>
-      <dd th:if="${billing.renewsOn() != null and !billing.canceled()}"
-          th:text="${#temporals.format(billing.renewsOn(), 'yyyy-MM-dd')}">
-        2027-06-07
-      </dd>
-    </dl>
-    <p th:if="${!billing.canceled()}" class="account-billing-actions">
-      <a href="/billing/cancel-subscription" class="link-button danger-link">
-        Cancel subscription
-      </a>
-    </p>
+      </div>
+      <div class="acct-value"
+           th:text="${#temporals.format(billing.renewsOn(), 'yyyy-MM-dd')}">2027-06-07</div>
+    </div>
+    <div class="acct-row" th:if="${!billing.canceled()}">
+      <div class="acct-label"></div>
+      <div class="acct-value">
+        <a href="/billing/cancel-subscription" class="link-button danger-link">Cancel subscription</a>
+      </div>
+    </div>
   </section>
 
-  <section class="account-card">
-    <h2 class="account-card-title">Change password</h2>
-
+  <section class="acct-section">
+    <h2 class="acct-section-title">Password</h2>
     <div th:if="${passwordOutcome == 'OK'}" class="alert alert-success">
       Password updated. Use the new password the next time you sign in.
     </div>
@@ -73,36 +71,32 @@
     <div th:if="${passwordOutcome == 'NEW_TOO_SHORT'}" class="alert alert-error">
       New password must be at least 8 characters.
     </div>
-
-    <form method="post" th:action="@{/account/password}" class="auth-form"
-          autocomplete="off">
+    <form method="post" th:action="@{/account/password}" class="acct-form" autocomplete="off">
       <input type="hidden" th:if="${_csrf != null}"
              th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-      <label class="auth-label">
-        <span>Current password</span>
-        <input type="password" name="currentPassword" required
-               autocomplete="current-password">
-      </label>
-      <label class="auth-label">
-        <span>New password</span>
-        <input type="password" name="newPassword" required minlength="8"
-               autocomplete="new-password">
-        <small class="auth-hint">At least 8 characters.</small>
-      </label>
-      <button type="submit" class="btn btn-primary auth-submit">
-        Update password
-      </button>
+      <div class="acct-row">
+        <label class="acct-label" for="currentPassword">Current password</label>
+        <input class="acct-input" id="currentPassword" type="password" name="currentPassword"
+               required autocomplete="current-password">
+      </div>
+      <div class="acct-row">
+        <label class="acct-label" for="newPassword">New password</label>
+        <input class="acct-input" id="newPassword" type="password" name="newPassword"
+               required minlength="8" autocomplete="new-password">
+      </div>
+      <div class="acct-row acct-row-foot">
+        <div class="acct-label"></div>
+        <div class="acct-foot">
+          <small class="auth-hint">At least 8 characters.</small>
+          <button type="submit" class="btn btn-primary btn-compact">Update password</button>
+        </div>
+      </div>
     </form>
   </section>
 
-  <section class="account-card">
-    <h2 class="account-card-title">Change email address</h2>
-
-    <p class="auth-sub">
-      We'll send a confirmation link to the new address. You'll be signed
-      out so you can sign back in with the new email.
-    </p>
-
+  <section class="acct-section">
+    <h2 class="acct-section-title">Email address</h2>
+    <p class="acct-section-sub">We'll send a confirmation link to the new address and sign you out.</p>
     <div th:if="${emailOutcome == 'CURRENT_INCORRECT'}" class="alert alert-error">
       That isn't your current password. Try again.
     </div>
@@ -115,73 +109,56 @@
     <div th:if="${emailOutcome == 'NO_CHANGE'}" class="alert alert-error">
       That's already your email address.
     </div>
-
-    <form method="post" th:action="@{/account/email}" class="auth-form"
-          autocomplete="off">
+    <form method="post" th:action="@{/account/email}" class="acct-form" autocomplete="off">
       <input type="hidden" th:if="${_csrf != null}"
              th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-      <label class="auth-label">
-        <span>New email address</span>
-        <input type="email" name="newEmail" required
-               autocomplete="email">
-      </label>
-      <label class="auth-label">
-        <span>Current password</span>
-        <input type="password" name="currentPassword" required
-               autocomplete="current-password">
-      </label>
-      <button type="submit" class="btn btn-primary auth-submit">
-        Update email
-      </button>
+      <div class="acct-row">
+        <label class="acct-label" for="newEmail">New email</label>
+        <input class="acct-input" id="newEmail" type="email" name="newEmail"
+               required autocomplete="email">
+      </div>
+      <div class="acct-row">
+        <label class="acct-label" for="emailCurrentPassword">Current password</label>
+        <input class="acct-input" id="emailCurrentPassword" type="password" name="currentPassword"
+               required autocomplete="current-password">
+      </div>
+      <div class="acct-row acct-row-foot">
+        <div class="acct-label"></div>
+        <div class="acct-foot">
+          <button type="submit" class="btn btn-primary btn-compact">Update email</button>
+        </div>
+      </div>
     </form>
   </section>
 
-  <section class="settings-section">
-    <div class="settings-section-head">
-      <div class="settings-section-title">Security</div>
-      <div class="settings-section-sub">Extra protection for your account.</div>
+  <section class="acct-section">
+    <h2 class="acct-section-title">Security</h2>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">Two-factor authentication <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">Require a one-time code from an authenticator app at sign-in.</div>
+      </div>
+      <span class="settings-switch" aria-hidden="true"></span>
     </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">
-          Two-factor authentication
-          <span class="settings-coming-soon">Coming soon</span>
-        </div>
-        <div class="settings-row-desc">Require a one-time code from an authenticator app at sign-in.</div>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">Connected accounts <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">Sign in with Google instead of a password.</div>
       </div>
-      <div class="settings-row-control">
-        <span class="settings-switch" aria-hidden="true"></span>
-      </div>
+      <button type="button" class="btn btn-secondary btn-compact" disabled>Connect</button>
     </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">
-          Connected accounts
-          <span class="settings-coming-soon">Coming soon</span>
-        </div>
-        <div class="settings-row-desc">Sign in with Google instead of a password.</div>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">Active sessions <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">Review where you're signed in and sign out everywhere.</div>
       </div>
-      <div class="settings-row-control">
-        <button type="button" class="btn btn-secondary btn-compact" disabled>Connect</button>
-      </div>
-    </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">
-          Active sessions
-          <span class="settings-coming-soon">Coming soon</span>
-        </div>
-        <div class="settings-row-desc">Review where you're signed in and sign out everywhere.</div>
-      </div>
-      <div class="settings-row-control">
-        <button type="button" class="btn btn-secondary btn-compact" disabled>Manage</button>
-      </div>
+      <button type="button" class="btn btn-secondary btn-compact" disabled>Manage</button>
     </div>
   </section>
 
-  <section class="account-card">
-    <h2 class="account-card-title">Recent account activity</h2>
-    <p class="auth-sub" th:if="${recentActivity == null or recentActivity.isEmpty()}">
+  <section class="acct-section">
+    <h2 class="acct-section-title">Recent account activity</h2>
+    <p class="acct-section-sub" th:if="${recentActivity == null or recentActivity.isEmpty()}">
       No activity recorded yet. Sign-ins and account changes will show up here.
     </p>
     <ul class="account-activity" th:if="${recentActivity != null and !recentActivity.isEmpty()}">

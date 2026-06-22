@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org" lang="en" th:attr="data-theme=${htmlTheme}, data-accent=${htmlAccent}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,63 +24,55 @@
     rights like GDPR and CCPA — we're building them now.
   </p>
 
-  <section class="settings-section">
-    <div class="settings-section-head">
-      <div class="settings-section-title">Your data</div>
-      <div class="settings-section-sub">Access and portability.</div>
+  <section class="acct-section acct-section-first">
+    <h2 class="acct-section-title">Your data</h2>
+    <p class="acct-section-sub">Access and portability.</p>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">Download your data <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">Export your conversations, contacts, and account details in a portable file.</div>
+      </div>
+      <button type="button" class="btn btn-secondary btn-compact" disabled>Request export</button>
     </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">Download your data <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="settings-row-desc">Export your conversations, contacts, and account details in a portable file.</div>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">Data retention <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">Choose how long imported mail is kept before it's automatically removed.</div>
       </div>
-      <div class="settings-row-control"><button type="button" class="btn btn-secondary btn-compact" disabled>Request export</button></div>
-    </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">Data retention <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="settings-row-desc">Choose how long imported mail is kept before it's automatically removed.</div>
-      </div>
-      <div class="settings-row-control">
-        <select class="settings-select" disabled>
-          <option>Keep forever</option>
-        </select>
-      </div>
+      <select class="settings-select" disabled>
+        <option>Keep forever</option>
+      </select>
     </div>
   </section>
 
-  <section class="settings-section">
-    <div class="settings-section-head">
-      <div class="settings-section-title">Consent</div>
-      <div class="settings-section-sub">What you've agreed to.</div>
-    </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">Communication preferences <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="settings-row-desc">Decide which non-essential emails we may send you.</div>
+  <section class="acct-section">
+    <h2 class="acct-section-title">Consent</h2>
+    <p class="acct-section-sub">What you've agreed to.</p>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">Communication preferences <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">Decide which non-essential emails we may send you.</div>
       </div>
-      <div class="settings-row-control"><button type="button" class="btn btn-secondary btn-compact" disabled>Manage</button></div>
+      <button type="button" class="btn btn-secondary btn-compact" disabled>Manage</button>
     </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">Cookie &amp; tracking preferences <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="settings-row-desc">Review analytics and tracking consent.</div>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">Cookie &amp; tracking preferences <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">Review analytics and tracking consent.</div>
       </div>
-      <div class="settings-row-control"><button type="button" class="btn btn-secondary btn-compact" disabled>Review</button></div>
+      <button type="button" class="btn btn-secondary btn-compact" disabled>Review</button>
     </div>
   </section>
 
-  <section class="settings-section settings-section-danger">
-    <div class="settings-section-head">
-      <div class="settings-section-title">Delete account</div>
-      <div class="settings-section-sub">Permanent and irreversible.</div>
-    </div>
-    <div class="settings-row">
-      <div class="settings-row-main">
-        <div class="settings-row-title">Delete your account <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="settings-row-desc">Erase your account and all imported mail, contacts, and settings. This can't be undone.</div>
+  <section class="acct-section acct-section-danger">
+    <h2 class="acct-section-title">Delete account</h2>
+    <p class="acct-section-sub">Permanent and irreversible.</p>
+    <div class="acct-row acct-row-soon">
+      <div class="acct-soon-main">
+        <div class="acct-soon-title">Delete your account <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="acct-soon-desc">Erase your account and all imported mail, contacts, and settings. This can't be undone.</div>
       </div>
-      <div class="settings-row-control"><button type="button" class="btn btn-secondary btn-compact danger-button" disabled>Delete account</button></div>
+      <button type="button" class="btn btn-secondary btn-compact danger-button" disabled>Delete account</button>
     </div>
   </section>
 

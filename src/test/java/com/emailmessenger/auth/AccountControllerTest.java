@@ -94,6 +94,30 @@ class AccountControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "appearance@example.com")
+    void savingAppearanceWritesCookiesAndAppliesThemeAttributes() throws Exception {
+        userService.register("appearance@example.com", "password1", null);
+
+        var posted = mockMvc.perform(post("/account/appearance")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("theme", "dark")
+                        .param("accent", "blue"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/account/appearance"))
+                .andReturn();
+        assertThat(posted.getResponse().getCookie("theme").getValue()).isEqualTo("dark");
+        assertThat(posted.getResponse().getCookie("accent").getValue()).isEqualTo("blue");
+
+        String body = mockMvc.perform(get("/account/appearance")
+                        .cookie(new jakarta.servlet.http.Cookie("theme", "dark"),
+                                new jakarta.servlet.http.Cookie("accent", "blue")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(body).contains("data-theme=\"dark\"");
+        assertThat(body).contains("data-accent=\"blue\"");
+    }
+
+    @Test
     @WithMockUser(username = "pwok@example.com")
     void changePasswordHappyPathFlashesOkAndRedirects() throws Exception {
         User user = userService.register("pwok@example.com", "password1", "PwOk");

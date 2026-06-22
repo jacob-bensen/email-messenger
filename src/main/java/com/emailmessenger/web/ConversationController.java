@@ -51,7 +51,6 @@ import java.util.Map;
 class ConversationController {
 
     private static final int PAGE_SIZE = 30;
-    private static final int RAIL_SIZE = 50;
 
     private final ConversationListService conversationListService;
     private final ChatService chatService;
@@ -98,14 +97,20 @@ class ConversationController {
         User owner = userService.requireByEmail(principal.getName());
         // Non-blocking refresh of due mailboxes, mirroring the old inbox.
         mailboxPollingService.refreshDueForUserAsync(owner.getId());
-        String trimmedQuery = query == null ? "" : query.trim();
         List<MailAccount> accounts = mailAccountService.list(owner);
         // No mailbox param => the cross-account Dashboard (Hub); a param scopes to
         // that one account so its chats stay separate.
         MailAccount selected = selectMailbox(accounts, mailboxParam);
-        String scope = selected != null ? address(selected) : null;
-        ConversationListService.ChatFilter filter = parseFilter(filterParam);
+        populateList(owner, accounts, selected, query, parseFilter(filterParam), page, model);
+        // No "chat" attribute => the workspace renders the list with an empty pane.
+        return "chat";
+    }
 
+    /** The conversation list + dashboard model shared by the list and open-chat views. */
+    private void populateList(User owner, List<MailAccount> accounts, MailAccount selected,
+                              String query, ConversationListService.ChatFilter filter, int page, Model model) {
+        String scope = selected != null ? address(selected) : null;
+        String trimmedQuery = query == null ? "" : query.trim();
         PageRequest pageable = PageRequest.of(Math.max(0, page), PAGE_SIZE);
         model.addAttribute("conversations",
                 conversationListService.list(owner, scope, trimmedQuery, filter, pageable));
@@ -118,7 +123,6 @@ class ConversationController {
         model.addAttribute("billingBanner", billingBannerService.bannerFor(owner).orElse(null));
         model.addAttribute("emailUnverified", !owner.isEmailVerified());
         applyMailboxModel(model, selected);
-        return "chats";
     }
 
     private static ConversationListService.ChatFilter parseFilter(String raw) {
@@ -254,14 +258,47 @@ class ConversationController {
                 @RequestParam(name = "mailbox", required = false) String mailboxParam,
                 Principal principal, Model model) {
         User owner = userService.requireByEmail(principal.getName());
-        MailAccount selected = selectMailbox(mailAccountService.list(owner), mailboxParam);
-        if (!populateChat(owner, selected, key, model)) {
+        mailboxPollingService.refreshDueForUserAsync(owner.getId());
+        List<MailAccount> accounts = mailAccountService.list(owner);
+        MailAccount selected = selectMailbox(accounts, mailboxParam);
+        // Opening a conversation marks it read (committed before the list/dashboard
+        // below re-read unread state).
+        chatService.markRead(owner, selected != null ? address(selected) : null, key);
+        ChatConversation conversation = chatFor(owner, selected, key);
+        if (conversation == null) {
             return "redirect:/chats" + mailboxQuery(selected);
         }
-        // Secondary rail: the other conversations, collapsed beside the main nav,
-        // with the open one marked active so you can switch between chats.
+        // The whole workspace: the list (so deep-links/reloads show it) plus the
+        // open conversation in the pane.
+        populateList(owner, accounts, selected, "", ConversationListService.ChatFilter.ALL, 0, model);
+        model.addAttribute("chat", conversation);
+        model.addAttribute("activeKey", key);
         model.addAttribute("replyForm", new ReplyForm());
         return "chat";
+    }
+
+    /**
+     * Just the open conversation's pane (timeline + reply box + signatures),
+     * returned as an HTML fragment so the list can swap conversations in place
+     * without a full page reload. Marks the conversation read like a full open.
+     */
+    @GetMapping("/chats/{key}/pane")
+    String chatPane(@PathVariable String key,
+                    @RequestParam(name = "mailbox", required = false) String mailboxParam,
+                    Principal principal, Model model) {
+        User owner = userService.requireByEmail(principal.getName());
+        MailAccount selected = selectMailbox(mailAccountService.list(owner), mailboxParam);
+        chatService.markRead(owner, selected != null ? address(selected) : null, key);
+        ChatConversation conversation = chatFor(owner, selected, key);
+        if (conversation == null) {
+            return "fragments/chat-pane :: missing";
+        }
+        model.addAttribute("chat", conversation);
+        model.addAttribute("activeKey", key);
+        model.addAttribute("replyForm", new ReplyForm());
+        model.addAttribute("billingBanner", billingBannerService.bannerFor(owner).orElse(null));
+        applyMailboxModel(model, selected);
+        return "fragments/chat-pane :: pane";
     }
 
     /**
@@ -282,14 +319,15 @@ class ConversationController {
                 RedirectAttributes redirectAttributes,
                 Model model) {
         User owner = userService.requireByEmail(principal.getName());
-        MailAccount selected = selectMailbox(mailAccountService.list(owner), mailboxParam);
+        List<MailAccount> accounts = mailAccountService.list(owner);
+        MailAccount selected = selectMailbox(accounts, mailboxParam);
         boolean hasAttachment = attachments != null
                 && Arrays.stream(attachments).anyMatch(f -> f != null && !f.isEmpty());
         if (replyForm.getBody().isBlank() && !hasAttachment) {
             bindingResult.rejectValue("body", "reply.empty", "Add a message or an attachment.");
         }
         if (bindingResult.hasErrors()) {
-            if (!populateChat(owner, selected, key, model)) {
+            if (!populateChat(owner, accounts, selected, key, model)) {
                 return "redirect:/chats" + mailboxQuery(selected);
             }
             return "chat";
@@ -327,21 +365,15 @@ class ConversationController {
         return "redirect:/chats/" + key + mailboxQuery(selected);
     }
 
-    private boolean populateChat(User owner, MailAccount selected, String key, Model model) {
+    private boolean populateChat(User owner, List<MailAccount> accounts, MailAccount selected,
+                                 String key, Model model) {
         ChatConversation conversation = chatFor(owner, selected, key);
         if (conversation == null) {
             return false;
         }
+        populateList(owner, accounts, selected, "", ConversationListService.ChatFilter.ALL, 0, model);
         model.addAttribute("chat", conversation);
-        model.addAttribute("billingBanner", billingBannerService.bannerFor(owner).orElse(null));
-        // Secondary rail: the other conversations (scoped to the same account),
-        // with the open one active.
-        PageRequest railPage = PageRequest.of(0, RAIL_SIZE);
-        model.addAttribute("conversations", selected != null
-                ? conversationListService.list(owner, address(selected), null, railPage)
-                : conversationListService.list(owner, railPage));
         model.addAttribute("activeKey", key);
-        applyMailboxModel(model, selected);
         return true;
     }
 

@@ -92,7 +92,7 @@ class ConversationControllerTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        assertThat(body).contains("class=\"chat-list\"");
+        assertThat(body).contains("chat-list-row");
         assertThat(body).contains("Ada Lovelace");
         // Group row labels both people.
         assertThat(body).contains("Ada Lovelace, Bob Stone");
@@ -177,6 +177,30 @@ class ConversationControllerTest {
 
     @Test
     @WithMockUser(username = "chat-user@example.com")
+    void chatPaneReturnsJustTheConversationFragment() throws Exception {
+        String body = mockMvc.perform(get("/chats/{key}/pane", adaKey))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // The pane fragment: the conversation + reply box, but not the whole page.
+        assertThat(body).contains("About the invoice");
+        assertThat(body).contains("reply-form");
+        assertThat(body).doesNotContain("chat-workspace");
+        assertThat(body).doesNotContain("app-nav");
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void openingAConversationMarksItRead() throws Exception {
+        assertThat(threads.findThreadsByConversationKey(owner, adaKey).get(0).isUnread()).isTrue();
+
+        mockMvc.perform(get("/chats/{key}", adaKey)).andExpect(status().isOk());
+
+        assertThat(threads.findThreadsByConversationKey(owner, adaKey).get(0).isUnread()).isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
     void unknownConversationRedirectsToChats() throws Exception {
         mockMvc.perform(get("/chats/{key}", "deadbeefdeadbeefdeadbeefdeadbeef"))
                 .andExpect(status().is3xxRedirection())
@@ -190,8 +214,8 @@ class ConversationControllerTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        assertThat(body).contains("class=\"dash-tiles\"");
-        assertThat(body).contains("Awaiting reply");
+        assertThat(body).contains("dash-tiles");
+        assertThat(body).contains("Awaiting");
     }
 
     @Test

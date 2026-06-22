@@ -571,6 +571,23 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
     List<EmailThread> findThreadsByConversationKey(@Param("owner") User owner,
                                                    @Param("key") String key);
 
+    // Per-mailbox variant: the conversation's threads that involve :mailbox
+    // (already lowercased) — used to mark only the opened account's threads read.
+    @Query("""
+            SELECT t FROM EmailThread t
+            WHERE t.owner = :owner AND t.conversationKey = :key
+              AND (
+                EXISTS (SELECT 1 FROM Message sm WHERE sm.thread = t
+                        AND LOWER(sm.sender.email) = :mailbox)
+                OR EXISTS (SELECT 1 FROM MessageRecipient rr JOIN rr.message rm JOIN rr.participant rp
+                           WHERE rm.thread = t AND LOWER(rp.email) = :mailbox)
+              )
+            ORDER BY t.updatedAt DESC
+            """)
+    List<EmailThread> findThreadsByConversationKeyForMailbox(@Param("owner") User owner,
+                                                             @Param("mailbox") String mailbox,
+                                                             @Param("key") String key);
+
     @Query("""
             SELECT m.sender.email AS email,
                    MAX(m.sender.displayName) AS displayName,
