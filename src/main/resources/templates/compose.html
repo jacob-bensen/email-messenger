@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>New message — ConexusMail</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<div class="app-shell">
+
+<th:block th:replace="~{fragments/app-nav :: nav}"></th:block>
+
+<div class="app-main">
+<main class="compose-page">
+
+  <header class="compose-header">
+    <a class="chat-back" th:href="@{/chats(mailbox=${navActiveMailboxId})}" aria-label="Back to chats">←</a>
+    <h1 class="compose-title">New message</h1>
+    <span class="compose-from" th:if="${selectedMailbox != null}"
+          th:text="|From ${selectedMailbox}|" th:title="${selectedMailbox}">From you@example.com</span>
+  </header>
+
+  <div th:if="${composeError}" class="alert alert-error" th:text="${composeError}">Error</div>
+
+  <form method="post" th:action="@{/chats/new(mailbox=${navActiveMailboxId})}"
+        enctype="multipart/form-data" class="auth-form compose-form">
+    <input type="hidden" th:if="${_csrf != null}"
+           th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+    <label class="auth-label">
+      <span>To</span>
+      <input type="text" name="to" th:value="${toValue}" required
+             placeholder="name@example.com, another@example.com" autocomplete="off">
+      <small class="auth-hint">Separate multiple recipients with commas.</small>
+    </label>
+
+    <label class="auth-label">
+      <span>Subject</span>
+      <input type="text" name="subject" th:value="${subjectValue}" placeholder="(optional)">
+    </label>
+
+    <label class="auth-label">
+      <span>Message</span>
+      <textarea name="body" rows="8" placeholder="Type your message…" th:text="${bodyValue}"></textarea>
+    </label>
+
+    <div class="compose-attach">
+      <label class="reply-attach-btn">
+        <input type="file" name="attachments" multiple hidden data-attach-input>
+        <span aria-hidden="true">📎</span> Attach files
+      </label>
+      <ul class="reply-attach-list" data-attach-list></ul>
+    </div>
+
+    <div class="compose-actions">
+      <a class="btn btn-secondary" th:href="@{/chats(mailbox=${navActiveMailboxId})}">Cancel</a>
+      <button type="submit" class="btn btn-primary">Send</button>
+    </div>
+  </form>
+
+</main>
+</div>
+</div>
+
+<script>
+(function () {
+  var input = document.querySelector('[data-attach-input]');
+  var list = document.querySelector('[data-attach-list]');
+  if (!input || !list) return;
+  input.addEventListener('change', function () {
+    list.innerHTML = '';
+    Array.prototype.forEach.call(input.files, function (file) {
+      var li = document.createElement('li');
+      li.className = 'reply-attach-item';
+      li.textContent = file.name;
+      list.appendChild(li);
+    });
+  });
+}());
+</script>
+
+</body>
+</html>

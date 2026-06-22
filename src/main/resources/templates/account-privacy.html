@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Data &amp; privacy — ConexusMail</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<div class="app-shell">
+
+<th:block th:replace="~{fragments/app-nav :: nav}"></th:block>
+
+<div class="app-main">
+<div class="settings-shell">
+<th:block th:replace="~{fragments/settings-nav :: nav('privacy')}"></th:block>
+<main class="settings-content settings-page">
+
+  <h1 class="account-title">Data &amp; privacy</h1>
+  <p class="settings-intro">
+    Control your personal data and how it's used. These tools support privacy
+    rights like GDPR and CCPA — we're building them now.
+  </p>
+
+  <section class="settings-section">
+    <div class="settings-section-head">
+      <div class="settings-section-title">Your data</div>
+      <div class="settings-section-sub">Access and portability.</div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">Download your data <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="settings-row-desc">Export your conversations, contacts, and account details in a portable file.</div>
+      </div>
+      <div class="settings-row-control"><button type="button" class="btn btn-secondary btn-compact" disabled>Request export</button></div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">Data retention <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="settings-row-desc">Choose how long imported mail is kept before it's automatically removed.</div>
+      </div>
+      <div class="settings-row-control">
+        <select class="settings-select" disabled>
+          <option>Keep forever</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <div class="settings-section-head">
+      <div class="settings-section-title">Consent</div>
+      <div class="settings-section-sub">What you've agreed to.</div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">Communication preferences <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="settings-row-desc">Decide which non-essential emails we may send you.</div>
+      </div>
+      <div class="settings-row-control"><button type="button" class="btn btn-secondary btn-compact" disabled>Manage</button></div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">Cookie &amp; tracking preferences <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="settings-row-desc">Review analytics and tracking consent.</div>
+      </div>
+      <div class="settings-row-control"><button type="button" class="btn btn-secondary btn-compact" disabled>Review</button></div>
+    </div>
+  </section>
+
+  <section class="settings-section settings-section-danger">
+    <div class="settings-section-head">
+      <div class="settings-section-title">Delete account</div>
+      <div class="settings-section-sub">Permanent and irreversible.</div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">Delete your account <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="settings-row-desc">Erase your account and all imported mail, contacts, and settings. This can't be undone.</div>
+      </div>
+      <div class="settings-row-control"><button type="button" class="btn btn-secondary btn-compact danger-button" disabled>Delete account</button></div>
+    </div>
+  </section>
+
+</main>
+</div>
+</div>
+</div>
+
+</body>
+</html>

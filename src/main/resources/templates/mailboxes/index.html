@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Mailboxes — ConexusMail</title>
+  <title>Email accounts — ConexusMail</title>
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>
@@ -14,8 +14,12 @@
 <th:block th:replace="~{fragments/app-nav :: nav}"></th:block>
 
 <div class="app-main">
-<main class="thread-page">
-  <h1 class="section-title">Mailboxes</h1>
+<div class="settings-shell">
+<th:block th:replace="~{fragments/settings-nav :: nav('accounts')}"></th:block>
+<main class="settings-content">
+<div class="settings-page">
+  <h1 class="account-title">Email accounts</h1>
+  <p class="settings-intro">Connect the mailboxes whose email you want to read as chats.</p>
 
   <div th:if="${syncMessage}" class="alert alert-success" th:text="${syncMessage}">Mailbox synced.</div>
   <div th:if="${syncError}" class="alert alert-error" th:text="${syncError}">Sync failed.</div>
@@ -73,7 +77,45 @@
       <a href="/mailboxes/new" class="btn btn-primary">+ Add another mailbox</a>
     </p>
   </div>
+
+  <section class="settings-section">
+    <div class="settings-section-head">
+      <div class="settings-section-title">Mail preferences</div>
+      <div class="settings-section-sub">How your accounts send and sync.</div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">Default sending account <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="settings-row-desc">Pick which account new messages are sent from by default.</div>
+      </div>
+      <div class="settings-row-control">
+        <select class="settings-select" disabled>
+          <option>Most recent</option>
+        </select>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">Email signatures <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="settings-row-desc">Add a per-account signature appended to outgoing messages.</div>
+      </div>
+      <div class="settings-row-control"><button type="button" class="btn btn-secondary btn-compact" disabled>Edit</button></div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">Sync frequency <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="settings-row-desc">Control how often we check your mailboxes for new messages.</div>
+      </div>
+      <div class="settings-row-control">
+        <select class="settings-select" disabled>
+          <option>Every minute</option>
+        </select>
+      </div>
+    </div>
+  </section>
+</div>
 </main>
+</div>
 </div>
 </div>
 

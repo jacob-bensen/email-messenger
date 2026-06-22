@@ -237,6 +237,41 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
         long getUnreadCount();
     }
 
+    // Per-mailbox variant of conversationSummaries: only conversations one of
+    // whose threads involves the given owner-side address (:mailbox, already
+    // lowercased) — as a message sender or a non-deleted recipient. This keeps
+    // each connected account's chats separate; they are never merged into one
+    // unified list. See ConversationListService#list(owner, mailbox, …).
+    @Query(value = """
+            SELECT t.conversationKey AS conversationKey,
+                   MAX(msg.sentAt) AS lastActivity,
+                   COUNT(DISTINCT t.id) AS threadCount,
+                   COUNT(DISTINCT CASE WHEN t.unread = true THEN t.id END) AS unreadCount
+            FROM EmailThread t JOIN t.messages msg
+            WHERE t.owner = :owner AND t.conversationKey IS NOT NULL
+              AND (
+                EXISTS (SELECT 1 FROM Message sm WHERE sm.thread = t
+                        AND LOWER(sm.sender.email) = :mailbox)
+                OR EXISTS (SELECT 1 FROM MessageRecipient rr JOIN rr.message rm JOIN rr.participant rp
+                           WHERE rm.thread = t AND LOWER(rp.email) = :mailbox)
+              )
+            GROUP BY t.conversationKey
+            ORDER BY MAX(msg.sentAt) DESC
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT t.conversationKey) FROM EmailThread t
+            WHERE t.owner = :owner AND t.conversationKey IS NOT NULL
+              AND (
+                EXISTS (SELECT 1 FROM Message sm WHERE sm.thread = t
+                        AND LOWER(sm.sender.email) = :mailbox)
+                OR EXISTS (SELECT 1 FROM MessageRecipient rr JOIN rr.message rm JOIN rr.participant rp
+                           WHERE rm.thread = t AND LOWER(rp.email) = :mailbox)
+              )
+            """)
+    Page<ConversationSummaryRow> conversationSummariesForMailbox(@Param("owner") User owner,
+                                                                @Param("mailbox") String mailbox,
+                                                                Pageable pageable);
+
     // Conversation list filtered by a free-text query: matches the subject, any
     // message's sender/body, or any participant's name/email. Grouped by key so
     // a match in any thread surfaces the whole conversation.
@@ -279,12 +314,178 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
     Page<ConversationSummaryRow> conversationSummariesMatching(@Param("owner") User owner,
                                                               @Param("q") String q, Pageable pageable);
 
+    // Per-mailbox variant of conversationSummariesMatching: the same free-text
+    // search, scoped to conversations involving :mailbox (already lowercased).
+    @Query(value = """
+            SELECT t.conversationKey AS conversationKey,
+                   MAX(msg.sentAt) AS lastActivity,
+                   COUNT(DISTINCT t.id) AS threadCount,
+                   COUNT(DISTINCT CASE WHEN t.unread = true THEN t.id END) AS unreadCount
+            FROM EmailThread t JOIN t.messages msg
+            WHERE t.owner = :owner AND t.conversationKey IS NOT NULL
+              AND (
+                EXISTS (SELECT 1 FROM Message sm WHERE sm.thread = t
+                        AND LOWER(sm.sender.email) = :mailbox)
+                OR EXISTS (SELECT 1 FROM MessageRecipient rr JOIN rr.message rm JOIN rr.participant rp
+                           WHERE rm.thread = t AND LOWER(rp.email) = :mailbox)
+              )
+              AND (
+                LOWER(t.subject) LIKE LOWER(CONCAT('%', :q, '%'))
+                OR EXISTS (SELECT 1 FROM Message m WHERE m.thread = t AND (
+                    LOWER(m.sender.email) LIKE LOWER(CONCAT('%', :q, '%'))
+                    OR LOWER(COALESCE(m.sender.displayName, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+                    OR LOWER(COALESCE(m.bodyPlain, '')) LIKE LOWER(CONCAT('%', :q, '%'))))
+                OR EXISTS (SELECT 1 FROM MessageRecipient r JOIN r.message rm JOIN r.participant p
+                    WHERE rm.thread = t AND (
+                        LOWER(p.email) LIKE LOWER(CONCAT('%', :q, '%'))
+                        OR LOWER(COALESCE(p.displayName, '')) LIKE LOWER(CONCAT('%', :q, '%'))))
+              )
+            GROUP BY t.conversationKey
+            ORDER BY MAX(msg.sentAt) DESC
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT t.conversationKey) FROM EmailThread t
+            WHERE t.owner = :owner AND t.conversationKey IS NOT NULL
+              AND (
+                EXISTS (SELECT 1 FROM Message sm WHERE sm.thread = t
+                        AND LOWER(sm.sender.email) = :mailbox)
+                OR EXISTS (SELECT 1 FROM MessageRecipient rr JOIN rr.message rm JOIN rr.participant rp
+                           WHERE rm.thread = t AND LOWER(rp.email) = :mailbox)
+              )
+              AND (
+                LOWER(t.subject) LIKE LOWER(CONCAT('%', :q, '%'))
+                OR EXISTS (SELECT 1 FROM Message m WHERE m.thread = t AND (
+                    LOWER(m.sender.email) LIKE LOWER(CONCAT('%', :q, '%'))
+                    OR LOWER(COALESCE(m.sender.displayName, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+                    OR LOWER(COALESCE(m.bodyPlain, '')) LIKE LOWER(CONCAT('%', :q, '%'))))
+                OR EXISTS (SELECT 1 FROM MessageRecipient r JOIN r.message rm JOIN r.participant p
+                    WHERE rm.thread = t AND (
+                        LOWER(p.email) LIKE LOWER(CONCAT('%', :q, '%'))
+                        OR LOWER(COALESCE(p.displayName, '')) LIKE LOWER(CONCAT('%', :q, '%'))))
+              )
+            """)
+    Page<ConversationSummaryRow> conversationSummariesMatchingForMailbox(@Param("owner") User owner,
+                                                                        @Param("mailbox") String mailbox,
+                                                                        @Param("q") String q,
+                                                                        Pageable pageable);
+
+    // Flexible conversation summary powering the Dashboard/Hub: optional account
+    // scope (:mailbox null = all connected accounts merged into one feed),
+    // optional free-text (:q null = no search), and optional triage filters
+    // evaluated at the conversation level — unread (any thread unread),
+    // attachments (any message has one), awaiting (the conversation's latest
+    // message is inbound, i.e. they replied last and you haven't).
+    @Query(value = """
+            SELECT t.conversationKey AS conversationKey,
+                   MAX(msg.sentAt) AS lastActivity,
+                   COUNT(DISTINCT t.id) AS threadCount,
+                   COUNT(DISTINCT CASE WHEN t.unread = true THEN t.id END) AS unreadCount
+            FROM EmailThread t JOIN t.messages msg
+            WHERE t.owner = :owner AND t.conversationKey IS NOT NULL
+              AND (CAST(:mailbox AS string) IS NULL OR (
+                    EXISTS (SELECT 1 FROM Message sm WHERE sm.thread = t
+                            AND LOWER(sm.sender.email) = CAST(:mailbox AS string))
+                    OR EXISTS (SELECT 1 FROM MessageRecipient rr JOIN rr.message rm JOIN rr.participant rp
+                               WHERE rm.thread = t AND LOWER(rp.email) = CAST(:mailbox AS string))))
+              AND (:requireUnread = false OR EXISTS (
+                    SELECT 1 FROM EmailThread ut WHERE ut.owner = :owner
+                      AND ut.conversationKey = t.conversationKey AND ut.unread = true))
+              AND (:requireAttachments = false OR EXISTS (
+                    SELECT 1 FROM Message am JOIN am.attachments aa JOIN am.thread at
+                    WHERE at.owner = :owner AND at.conversationKey = t.conversationKey))
+              AND (:requireAwaiting = false OR EXISTS (
+                    SELECT 1 FROM Message lm JOIN lm.thread lt
+                    WHERE lt.owner = :owner AND lt.conversationKey = t.conversationKey
+                      AND lm.outbound = false
+                      AND lm.sentAt = (SELECT MAX(m3.sentAt) FROM Message m3 JOIN m3.thread t3
+                                       WHERE t3.owner = :owner AND t3.conversationKey = t.conversationKey)))
+              AND (CAST(:q AS string) IS NULL OR (
+                    LOWER(t.subject) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
+                    OR EXISTS (SELECT 1 FROM Message m WHERE m.thread = t AND (
+                        LOWER(m.sender.email) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
+                        OR LOWER(COALESCE(m.sender.displayName, '')) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
+                        OR LOWER(COALESCE(m.bodyPlain, '')) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))))
+                    OR EXISTS (SELECT 1 FROM MessageRecipient r JOIN r.message rm2 JOIN r.participant p
+                        WHERE rm2.thread = t AND (
+                            LOWER(p.email) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
+                            OR LOWER(COALESCE(p.displayName, '')) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))))))
+            GROUP BY t.conversationKey
+            ORDER BY MAX(msg.sentAt) DESC
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT t.conversationKey) FROM EmailThread t
+            WHERE t.owner = :owner AND t.conversationKey IS NOT NULL
+              AND (CAST(:mailbox AS string) IS NULL OR (
+                    EXISTS (SELECT 1 FROM Message sm WHERE sm.thread = t
+                            AND LOWER(sm.sender.email) = CAST(:mailbox AS string))
+                    OR EXISTS (SELECT 1 FROM MessageRecipient rr JOIN rr.message rm JOIN rr.participant rp
+                               WHERE rm.thread = t AND LOWER(rp.email) = CAST(:mailbox AS string))))
+              AND (:requireUnread = false OR EXISTS (
+                    SELECT 1 FROM EmailThread ut WHERE ut.owner = :owner
+                      AND ut.conversationKey = t.conversationKey AND ut.unread = true))
+              AND (:requireAttachments = false OR EXISTS (
+                    SELECT 1 FROM Message am JOIN am.attachments aa JOIN am.thread at
+                    WHERE at.owner = :owner AND at.conversationKey = t.conversationKey))
+              AND (:requireAwaiting = false OR EXISTS (
+                    SELECT 1 FROM Message lm JOIN lm.thread lt
+                    WHERE lt.owner = :owner AND lt.conversationKey = t.conversationKey
+                      AND lm.outbound = false
+                      AND lm.sentAt = (SELECT MAX(m3.sentAt) FROM Message m3 JOIN m3.thread t3
+                                       WHERE t3.owner = :owner AND t3.conversationKey = t.conversationKey)))
+              AND (CAST(:q AS string) IS NULL OR (
+                    LOWER(t.subject) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
+                    OR EXISTS (SELECT 1 FROM Message m WHERE m.thread = t AND (
+                        LOWER(m.sender.email) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
+                        OR LOWER(COALESCE(m.sender.displayName, '')) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
+                        OR LOWER(COALESCE(m.bodyPlain, '')) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))))
+                    OR EXISTS (SELECT 1 FROM MessageRecipient r JOIN r.message rm2 JOIN r.participant p
+                        WHERE rm2.thread = t AND (
+                            LOWER(p.email) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
+                            OR LOWER(COALESCE(p.displayName, '')) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))))))
+            """)
+    Page<ConversationSummaryRow> conversationSummariesFiltered(@Param("owner") User owner,
+                                                              @Param("mailbox") String mailbox,
+                                                              @Param("q") String q,
+                                                              @Param("requireUnread") boolean requireUnread,
+                                                              @Param("requireAttachments") boolean requireAttachments,
+                                                              @Param("requireAwaiting") boolean requireAwaiting,
+                                                              Pageable pageable);
+
+    // Dashboard tile count for a given scope + triage filter (no free-text).
+    @Query("""
+            SELECT COUNT(DISTINCT t.conversationKey) FROM EmailThread t
+            WHERE t.owner = :owner AND t.conversationKey IS NOT NULL
+              AND (CAST(:mailbox AS string) IS NULL OR (
+                    EXISTS (SELECT 1 FROM Message sm WHERE sm.thread = t
+                            AND LOWER(sm.sender.email) = CAST(:mailbox AS string))
+                    OR EXISTS (SELECT 1 FROM MessageRecipient rr JOIN rr.message rm JOIN rr.participant rp
+                               WHERE rm.thread = t AND LOWER(rp.email) = CAST(:mailbox AS string))))
+              AND (:requireUnread = false OR EXISTS (
+                    SELECT 1 FROM EmailThread ut WHERE ut.owner = :owner
+                      AND ut.conversationKey = t.conversationKey AND ut.unread = true))
+              AND (:requireAttachments = false OR EXISTS (
+                    SELECT 1 FROM Message am JOIN am.attachments aa JOIN am.thread at
+                    WHERE at.owner = :owner AND at.conversationKey = t.conversationKey))
+              AND (:requireAwaiting = false OR EXISTS (
+                    SELECT 1 FROM Message lm JOIN lm.thread lt
+                    WHERE lt.owner = :owner AND lt.conversationKey = t.conversationKey
+                      AND lm.outbound = false
+                      AND lm.sentAt = (SELECT MAX(m3.sentAt) FROM Message m3 JOIN m3.thread t3
+                                       WHERE t3.owner = :owner AND t3.conversationKey = t.conversationKey)))
+            """)
+    long countConversationsFiltered(@Param("owner") User owner,
+                                    @Param("mailbox") String mailbox,
+                                    @Param("requireUnread") boolean requireUnread,
+                                    @Param("requireAttachments") boolean requireAttachments,
+                                    @Param("requireAwaiting") boolean requireAwaiting);
+
     // The latest message in each of the given conversations, for the list preview.
     // A sentAt tie can yield >1 row per key; the caller keeps the first.
     @Query("""
             SELECT t.conversationKey AS conversationKey, m.id AS messageId,
                    m.bodyPlain AS bodyPlain, m.bodyHtml AS bodyHtml,
-                   m.sentAt AS sentAt, m.outbound AS outbound
+                   m.sentAt AS sentAt, m.outbound AS outbound,
+                   m.sender.email AS senderEmail, m.sender.displayName AS senderDisplayName
             FROM Message m JOIN m.thread t
             WHERE t.owner = :owner AND t.conversationKey IN :keys
               AND m.sentAt = (SELECT MAX(m2.sentAt) FROM Message m2 JOIN m2.thread t2
@@ -300,6 +501,8 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
         String getBodyHtml();
         LocalDateTime getSentAt();
         boolean getOutbound();
+        String getSenderEmail();
+        String getSenderDisplayName();
     }
 
     // Senders and (non-Bcc) recipients across each conversation's threads, used
@@ -340,6 +543,24 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
             """)
     List<Message> findMessagesByConversationKey(@Param("owner") User owner,
                                                 @Param("key") String key);
+
+    // Per-mailbox variant: the unified timeline for a conversation, but only the
+    // threads that involve :mailbox (already lowercased). Keeps an account's chat
+    // history separate from the same correspondent reached via another account.
+    @Query("""
+            SELECT m FROM Message m JOIN m.thread t
+            WHERE t.owner = :owner AND t.conversationKey = :key
+              AND (
+                EXISTS (SELECT 1 FROM Message sm WHERE sm.thread = t
+                        AND LOWER(sm.sender.email) = :mailbox)
+                OR EXISTS (SELECT 1 FROM MessageRecipient rr JOIN rr.message rm JOIN rr.participant rp
+                           WHERE rm.thread = t AND LOWER(rp.email) = :mailbox)
+              )
+            ORDER BY m.sentAt ASC
+            """)
+    List<Message> findMessagesByConversationKeyForMailbox(@Param("owner") User owner,
+                                                          @Param("mailbox") String mailbox,
+                                                          @Param("key") String key);
 
     // The conversation's threads, most-recent first — used to pick the reply target.
     @Query("""

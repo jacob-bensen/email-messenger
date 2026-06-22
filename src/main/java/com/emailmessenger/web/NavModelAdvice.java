@@ -61,11 +61,10 @@ class NavModelAdvice {
         if (uri.equals("/threads") || uri.startsWith("/threads/") || uri.startsWith("/senders")) {
             return "inbox";
         }
-        if (uri.startsWith("/mailboxes")) {
-            return "mailboxes";
-        }
-        if (uri.startsWith("/account")) {
-            return "account";
+        // Mailbox management and account settings both live under the Settings
+        // section now, so the single Settings nav item highlights for either.
+        if (uri.startsWith("/mailboxes") || uri.startsWith("/account")) {
+            return "settings";
         }
         if (uri.startsWith("/pricing")) {
             return "pricing";

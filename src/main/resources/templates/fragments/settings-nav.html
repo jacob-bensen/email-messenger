@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+
+<!--
+  Secondary settings nav, rendered to the right of the primary app nav on every
+  Settings subsection. The caller passes the active key: 'account',
+  'notifications', 'appearance', 'accounts' (email accounts), or 'privacy'.
+-->
+<nav th:fragment="nav(active)" class="settings-nav" aria-label="Settings sections">
+  <div class="settings-nav-title">Settings</div>
+
+  <div class="settings-nav-group">
+    <div class="settings-nav-group-label">General</div>
+    <a class="settings-nav-link" href="/account"
+       th:classappend="${active == 'account'} ? ' settings-nav-link-active' : ''">Account</a>
+    <a class="settings-nav-link" href="/account/notifications"
+       th:classappend="${active == 'notifications'} ? ' settings-nav-link-active' : ''">Notifications</a>
+    <a class="settings-nav-link" href="/account/appearance"
+       th:classappend="${active == 'appearance'} ? ' settings-nav-link-active' : ''">Appearance</a>
+  </div>
+
+  <div class="settings-nav-group">
+    <div class="settings-nav-group-label">Mail</div>
+    <a class="settings-nav-link" href="/mailboxes"
+       th:classappend="${active == 'accounts'} ? ' settings-nav-link-active' : ''">Email accounts</a>
+  </div>
+
+  <div class="settings-nav-group">
+    <div class="settings-nav-group-label">Privacy &amp; data</div>
+    <a class="settings-nav-link" href="/account/privacy"
+       th:classappend="${active == 'privacy'} ? ' settings-nav-link-active' : ''">Data &amp; privacy</a>
+  </div>
+</nav>
+
+</body>
+</html>

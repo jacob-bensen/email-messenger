@@ -35,7 +35,9 @@ import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Boots the real Thymeleaf stack for the unified chats experience: the list at
@@ -95,6 +97,9 @@ class ConversationControllerTest {
         // Group row labels both people.
         assertThat(body).contains("Ada Lovelace, Bob Stone");
         assertThat(body).contains("Kickoff Monday");
+        // Sender email shown in grey after the name; the group appends +N for the rest.
+        assertThat(body).contains("ada@acme.com");
+        assertThat(body).contains("+1");
     }
 
     @Test
@@ -176,6 +181,54 @@ class ConversationControllerTest {
         mockMvc.perform(get("/chats/{key}", "deadbeefdeadbeefdeadbeefdeadbeef"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/chats"));
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void dashboardShowsTriageTiles() throws Exception {
+        String body = mockMvc.perform(get("/chats"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).contains("class=\"dash-tiles\"");
+        assertThat(body).contains("Awaiting reply");
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void newMessageFormRenders() throws Exception {
+        mockMvc.perform(get("/chats/new"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("compose"));
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void composingANewMessageSendsAndRedirectsToTheConversation() throws Exception {
+        long before = messages.count();
+
+        mockMvc.perform(post("/chats/new")
+                        .param("to", "newperson@acme.com")
+                        .param("subject", "Hello there")
+                        .param("body", "Starting a new conversation.")
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("/chats/*"));
+
+        verify(replyService).sendNewEmail(eq("Hello there"), eq("Starting a new conversation."),
+                anyList(), anyList(), anyString());
+        assertThat(messages.count()).isEqualTo(before + 1);
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void composingWithNoRecipientRedisplaysTheFormWithAnError() throws Exception {
+        mockMvc.perform(post("/chats/new")
+                        .param("to", "   ")
+                        .param("body", "no recipient")
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(view().name("compose"));
     }
 
     private String seed(String subject, Participant sender, List<Participant> to, String html,

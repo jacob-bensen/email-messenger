@@ -31,20 +31,33 @@
   -->
   <aside class="chat-rail" aria-label="Conversations">
     <div class="chat-rail-head">
-      <a class="chat-rail-title" href="/chats">
-        <span aria-hidden="true">←</span> All chats
-      </a>
+      <div class="chat-rail-head-top">
+        <a class="chat-rail-title" th:href="@{/chats(mailbox=${navActiveMailboxId})}">
+          <span aria-hidden="true">←</span> All chats
+        </a>
+        <a class="btn btn-primary btn-compact chat-rail-new"
+           th:href="@{/chats/new(mailbox=${navActiveMailboxId})}">
+          <span aria-hidden="true">✎</span> New
+        </a>
+      </div>
+      <span class="chat-rail-account" th:if="${selectedMailbox != null}"
+            th:text="${selectedMailbox}" th:title="${selectedMailbox}">you@example.com</span>
     </div>
     <ul class="chat-rail-list">
       <li th:each="c : ${conversations.content}">
-        <a class="chat-rail-row" th:href="@{/chats/{key}(key=${c.key()})}"
+        <a class="chat-rail-row" th:href="@{/chats/{key}(key=${c.key()}, mailbox=${navActiveMailboxId})}"
            th:classappend="${c.key() == activeKey} ? ' chat-rail-active' : (${c.unread()} ? ' chat-rail-unread' : '')">
           <span class="chat-rail-avatar" aria-hidden="true" th:text="${c.initials()}">AB</span>
           <span class="chat-rail-main">
-            <span class="chat-rail-name" th:text="${c.title()}">Ada Lovelace</span>
+            <span class="chat-rail-nameline">
+              <span class="chat-rail-name" th:text="${c.title()}">Ada Lovelace</span>
+              <span class="chat-rail-sender" th:if="${c.senderEmail() != null}"
+                    th:text="${c.memberCount() > 1} ? |${c.senderEmail()} +${c.memberCount() - 1}| : ${c.senderEmail()}">ada@acme.com</span>
+            </span>
             <span class="chat-rail-preview" th:text="${c.preview()}">Last message…</span>
           </span>
-          <span class="chat-rail-dot" th:if="${c.unread()}" aria-label="Unread"></span>
+          <span class="chat-rail-meta" th:if="${c.lastActivity() != null}"
+                th:text="${#temporals.format(c.lastActivity(), 'MMM d, h:mm a')}">Jan 1, 7:39 PM</span>
         </a>
       </li>
     </ul>
@@ -53,7 +66,7 @@
   <main class="chat-pane">
 
     <header class="chat-subheader">
-      <a class="chat-back" href="/chats" aria-label="Back to chats">←</a>
+      <a class="chat-back" th:href="@{/chats(mailbox=${navActiveMailboxId})}" aria-label="Back to chats">←</a>
       <div class="chat-subheader-avatar" aria-hidden="true" th:text="${chat.initials()}">AB</div>
       <div class="chat-subheader-id">
         <div class="chat-subheader-name" th:text="${chat.title()}">Ada Lovelace</div>
@@ -117,7 +130,7 @@
     <div class="reply-area">
       <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Sent.</div>
       <div th:if="${sendError}" class="alert alert-error" th:text="${sendError}">Could not send.</div>
-      <form th:action="@{/chats/{key}/send(key=${chat.key()})}"
+      <form th:action="@{/chats/{key}/send(key=${chat.key()}, mailbox=${navActiveMailboxId})}"
             th:object="${replyForm}" method="post" enctype="multipart/form-data" class="reply-form">
         <input type="hidden" th:if="${_csrf != null}"
                th:name="${_csrf.parameterName}" th:value="${_csrf.token}">

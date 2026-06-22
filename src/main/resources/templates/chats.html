@@ -26,15 +26,51 @@
 <main class="chats-screen">
 
   <header class="chats-header">
-    <h1 class="chats-title">Chats</h1>
-    <form class="chats-search" method="get" th:action="@{/chats}" role="search">
-      <input type="search" name="q" th:value="${searchQuery}"
-             placeholder="Search people or messages…" aria-label="Search chats">
-      <button type="submit" class="btn btn-secondary btn-compact">Search</button>
-      <a th:if="${searchQuery != null and !searchQuery.isEmpty()}"
-         th:href="@{/chats}" class="chats-search-clear">Clear</a>
-    </form>
+    <div class="chats-heading">
+      <h1 class="chats-title" th:text="${isHub} ? 'Dashboard' : 'Chats'">Dashboard</h1>
+      <span class="chats-account chats-account-all" th:if="${isHub}">All accounts</span>
+      <span class="chats-account" th:if="${!isHub and selectedMailbox != null}"
+            th:text="${selectedMailbox}" th:title="${selectedMailbox}">you@example.com</span>
+    </div>
+    <div class="chats-actions">
+      <a class="btn btn-primary btn-compact chats-new-btn"
+         th:href="@{/chats/new(mailbox=${navActiveMailboxId})}">
+        <span aria-hidden="true">✎</span> New message
+      </a>
+      <form class="chats-search" method="get" th:action="@{/chats}" role="search">
+        <input type="hidden" name="mailbox" th:if="${navActiveMailboxId != null}"
+               th:value="${navActiveMailboxId}">
+        <input type="search" name="q" th:value="${searchQuery}"
+               placeholder="Search people or messages…" aria-label="Search chats">
+        <button type="submit" class="btn btn-secondary btn-compact">Search</button>
+        <a th:if="${searchQuery != null and !searchQuery.isEmpty()}"
+           th:href="@{/chats(mailbox=${navActiveMailboxId})}" class="chats-search-clear">Clear</a>
+      </form>
+    </div>
   </header>
+
+  <nav class="dash-tiles" aria-label="Filter conversations" th:if="${chatCounts != null}">
+    <a class="dash-tile" th:classappend="${activeFilter == 'all'} ? ' dash-tile-active' : ''"
+       th:href="@{/chats(mailbox=${navActiveMailboxId}, q=${searchQuery})}">
+      <span class="dash-tile-count" th:text="${chatCounts.all()}">0</span>
+      <span class="dash-tile-label">All</span>
+    </a>
+    <a class="dash-tile dash-tile-unread" th:classappend="${activeFilter == 'unread'} ? ' dash-tile-active' : ''"
+       th:href="@{/chats(filter='unread', mailbox=${navActiveMailboxId}, q=${searchQuery})}">
+      <span class="dash-tile-count" th:text="${chatCounts.unread()}">0</span>
+      <span class="dash-tile-label">Unread</span>
+    </a>
+    <a class="dash-tile" th:classappend="${activeFilter == 'awaiting'} ? ' dash-tile-active' : ''"
+       th:href="@{/chats(filter='awaiting', mailbox=${navActiveMailboxId}, q=${searchQuery})}">
+      <span class="dash-tile-count" th:text="${chatCounts.awaiting()}">0</span>
+      <span class="dash-tile-label">Awaiting reply</span>
+    </a>
+    <a class="dash-tile" th:classappend="${activeFilter == 'attachments'} ? ' dash-tile-active' : ''"
+       th:href="@{/chats(filter='attachments', mailbox=${navActiveMailboxId}, q=${searchQuery})}">
+      <span class="dash-tile-count" th:text="${chatCounts.attachments()}">0</span>
+      <span class="dash-tile-label">Attachments</span>
+    </a>
+  </nav>
 
   <p class="chats-searching" th:if="${searchQuery != null and !searchQuery.isEmpty()}"
      th:text="|Results for &quot;${searchQuery}&quot;|">Results for "x"</p>
@@ -56,27 +92,46 @@
   </div>
 
   <p class="chats-empty" th:if="${conversations.isEmpty()}">
-    No conversations yet. Connect a mailbox to pull your email in as chats.
-    <a class="btn btn-primary btn-compact" href="/mailboxes/new">Connect a mailbox</a>
+    <span th:if="${activeFilter != 'all' or (searchQuery != null and !searchQuery.isEmpty())}">
+      Nothing matches this view right now.
+    </span>
+    <th:block th:if="${activeFilter == 'all' and (searchQuery == null or searchQuery.isEmpty())}">
+      No conversations yet. Connect a mailbox to pull your email in as chats.
+      <a class="btn btn-primary btn-compact" href="/mailboxes/new">Connect a mailbox</a>
+    </th:block>
   </p>
 
   <ul class="chat-list" th:unless="${conversations.isEmpty()}">
     <li th:each="c : ${conversations.content}">
       <a class="chat-list-row" th:classappend="${c.unread()} ? ' chat-list-unread' : ''"
-         th:href="@{/chats/{key}(key=${c.key()})}">
+         th:href="@{/chats/{key}(key=${c.key()}, mailbox=${navActiveMailboxId})}">
         <span class="chat-list-avatar" aria-hidden="true" th:text="${c.initials()}">AB</span>
         <span class="chat-list-main">
           <span class="chat-list-top">
-            <span class="chat-list-name" th:text="${c.title()}">Ada Lovelace</span>
-            <span class="chat-list-time"
-                  th:text="${c.lastActivity() != null ? #temporals.format(c.lastActivity(), 'MMM d') : ''}">Jan 1</span>
+            <span class="chat-list-namewrap">
+              <span class="chat-list-name" th:text="${c.title()}">Ada Lovelace</span>
+              <span class="chat-list-sender" th:if="${c.senderEmail() != null}">
+                <span class="chat-list-sender-email" th:text="${c.senderEmail()}">ada@acme.com</span>
+                <span class="chat-list-sender-more" th:if="${c.memberCount() > 1}"
+                      th:text="|+${c.memberCount() - 1}|">+2</span>
+              </span>
+            </span>
+            <span class="chat-list-time" th:if="${c.lastActivity() != null}"
+                  th:text="${#temporals.format(c.lastActivity(), 'MMM d, h:mm a')}">Jan 1, 7:39 PM</span>
           </span>
           <span class="chat-list-preview" th:text="${c.preview()}">Last message preview…</span>
+          <span class="chat-list-accounts" th:if="${isHub}">
+            <span class="acct-badge" th:each="acct : ${c.accounts()}"
+                  th:classappend="'acct-color-' + (${accountColors.containsKey(acct)} ? ${accountColors.get(acct)} % 6 : 0)"
+                  th:title="|In ${acct}|" th:text="${acct}">you@example.com</span>
+            <span class="acct-badge" th:if="${c.accounts().isEmpty() and fallbackAccount != null}"
+                  th:classappend="'acct-color-' + (${accountColors.containsKey(fallbackAccount)} ? ${accountColors.get(fallbackAccount)} % 6 : 0)"
+                  th:title="|Likely in ${fallbackAccount}|" th:text="${fallbackAccount}">you@example.com</span>
+          </span>
         </span>
         <span class="chat-list-badges">
           <span class="chat-list-group" th:if="${c.group()}"
                 th:text="|${c.memberCount()} people|" aria-hidden="true">3 people</span>
-          <span class="chat-list-dot" th:if="${c.unread()}" aria-label="Unread"></span>
         </span>
       </a>
     </li>
@@ -84,11 +139,11 @@
 
   <nav class="chats-pager" th:if="${conversations.totalPages > 1}" aria-label="Pages">
     <a class="btn btn-secondary btn-compact" th:if="${conversations.hasPrevious()}"
-       th:href="@{/chats(page=${conversations.number - 1})}">← Newer</a>
+       th:href="@{/chats(page=${conversations.number - 1}, mailbox=${navActiveMailboxId}, q=${searchQuery}, filter=${activeFilter})}">← Newer</a>
     <span class="chats-pager-status"
           th:text="|Page ${conversations.number + 1} of ${conversations.totalPages}|">Page 1 of 2</span>
     <a class="btn btn-secondary btn-compact" th:if="${conversations.hasNext()}"
-       th:href="@{/chats(page=${conversations.number + 1})}">Older →</a>
+       th:href="@{/chats(page=${conversations.number + 1}, mailbox=${navActiveMailboxId}, q=${searchQuery}, filter=${activeFilter})}">Older →</a>
   </nav>
 
 </main>

@@ -61,6 +61,24 @@ class AccountController {
         return "account";
     }
 
+    // Settings subsections whose controls aren't built yet — each template
+    // presents its options as "coming soon". Privacy & data also covers the
+    // compliance tools (data export, account deletion, consent).
+    @GetMapping("/account/notifications")
+    String notifications() {
+        return "account-notifications";
+    }
+
+    @GetMapping("/account/appearance")
+    String appearance() {
+        return "account-appearance";
+    }
+
+    @GetMapping("/account/privacy")
+    String privacy() {
+        return "account-privacy";
+    }
+
     @PostMapping("/account/password")
     String changePassword(@RequestParam(value = "currentPassword", required = false) String currentPassword,
                           @RequestParam(value = "newPassword", required = false) String newPassword,

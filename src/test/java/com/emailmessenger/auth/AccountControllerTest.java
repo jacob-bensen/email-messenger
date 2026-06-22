@@ -81,6 +81,19 @@ class AccountControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "settings@example.com")
+    void settingsSubsectionsRenderWithTheSecondaryNav() throws Exception {
+        userService.register("settings@example.com", "password1", "Settings User");
+
+        for (String path : new String[]{"/account/notifications", "/account/appearance", "/account/privacy"}) {
+            mockMvc.perform(get(path))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("class=\"settings-nav\"")))
+                    .andExpect(content().string(containsString("Coming soon")));
+        }
+    }
+
+    @Test
     @WithMockUser(username = "pwok@example.com")
     void changePasswordHappyPathFlashesOkAndRedirects() throws Exception {
         User user = userService.register("pwok@example.com", "password1", "PwOk");

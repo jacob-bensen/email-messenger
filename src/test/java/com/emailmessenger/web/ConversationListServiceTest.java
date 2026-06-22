@@ -1,12 +1,14 @@
 package com.emailmessenger.web;
 
 import com.emailmessenger.domain.EmailThread;
+import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.Participant;
 import com.emailmessenger.domain.RecipientType;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.OwnerAddressService;
 import com.emailmessenger.repository.EmailThreadRepository;
+import com.emailmessenger.repository.MailAccountRepository;
 import com.emailmessenger.repository.MessageRepository;
 import com.emailmessenger.repository.ParticipantRepository;
 import com.emailmessenger.repository.UserRepository;
@@ -44,6 +46,7 @@ class ConversationListServiceTest {
     @Autowired EmailThreadRepository threads;
     @Autowired MessageRepository messages;
     @Autowired ParticipantRepository participants;
+    @Autowired MailAccountRepository mailAccounts;
 
     @PersistenceContext EntityManager em;
 
@@ -129,6 +132,70 @@ class ConversationListServiceTest {
 
         ConversationListItem item = listService.list(owner, PageRequest.of(0, 20)).getContent().get(0);
         assertThat(item.preview()).startsWith("You: ").contains("My answer");
+    }
+
+    @Test
+    void scopesChatsToTheSelectedAccountAndNeverMergesAccounts() {
+        // A second connected account; its address counts as "me" so a thread
+        // addressed to it is keyed by the other person, not treated as a group.
+        mailAccounts.save(new MailAccount(owner, "imap.acme.com", 993, true,
+                "work@acme.com", "ciphertext"));
+        Participant work = participants.save(new Participant("work@acme.com", "Work"));
+        Participant ada = participants.save(new Participant("ada@acme.com", "Ada"));
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+
+        // Ada wrote to the work account; Bob wrote to the personal (owner) address.
+        inbound("Work thing", ada, List.of(work), "work matter", false,
+                LocalDateTime.of(2026, 1, 1, 9, 0));
+        inbound("Personal thing", bob, List.of(me), "personal matter", false,
+                LocalDateTime.of(2026, 1, 2, 9, 0));
+
+        List<ConversationListItem> workScope =
+                listService.list(owner, "work@acme.com", null, PageRequest.of(0, 20)).getContent();
+        assertThat(workScope).extracting(ConversationListItem::title).containsExactly("Ada");
+
+        List<ConversationListItem> personalScope =
+                listService.list(owner, "owner@chat.com", null, PageRequest.of(0, 20)).getContent();
+        assertThat(personalScope).extracting(ConversationListItem::title).containsExactly("Bob");
+    }
+
+    @Test
+    void dashboardCountsAndFiltersByTriageLens() {
+        Participant ada = participants.save(new Participant("ada@acme.com", "Ada"));
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        // Ada: a single unread inbound — latest message is inbound => unread + awaiting reply.
+        inbound("Q1", ada, List.of(me), "need an answer", true,
+                LocalDateTime.of(2026, 1, 1, 9, 0));
+        // Bob: inbound then your outbound reply — read, latest outbound => neither.
+        inbound("Q2", bob, List.of(me), "thanks", false,
+                LocalDateTime.of(2026, 1, 2, 9, 0));
+        outboundReply("Q2", bob, "you're welcome", LocalDateTime.of(2026, 1, 2, 10, 0));
+
+        ConversationListService.ChatCounts counts = listService.counts(owner, null);
+        assertThat(counts.all()).isEqualTo(2);
+        assertThat(counts.unread()).isEqualTo(1);
+        assertThat(counts.awaiting()).isEqualTo(1);
+        assertThat(counts.attachments()).isEqualTo(0);
+
+        assertThat(listService.list(owner, null, null, ConversationListService.ChatFilter.UNREAD,
+                        PageRequest.of(0, 20)).getContent())
+                .extracting(ConversationListItem::title).containsExactly("Ada");
+        assertThat(listService.list(owner, null, null, ConversationListService.ChatFilter.AWAITING,
+                        PageRequest.of(0, 20)).getContent())
+                .extracting(ConversationListItem::title).containsExactly("Ada");
+    }
+
+    @Test
+    void hubTagsEachConversationWithTheAccountItBelongsTo() {
+        mailAccounts.save(new MailAccount(owner, "imap.acme.com", 993, true,
+                "work@acme.com", "ciphertext"));
+        Participant work = participants.save(new Participant("work@acme.com", "Work"));
+        Participant ada = participants.save(new Participant("ada@acme.com", "Ada"));
+        inbound("Hi", ada, List.of(work), "hello", false, LocalDateTime.of(2026, 1, 1, 9, 0));
+
+        ConversationListItem item = listService.list(owner, null, null,
+                ConversationListService.ChatFilter.ALL, PageRequest.of(0, 20)).getContent().get(0);
+        assertThat(item.accounts()).containsExactly("work@acme.com");
     }
 
     private void inbound(String subject, Participant sender, List<Participant> to, String body,

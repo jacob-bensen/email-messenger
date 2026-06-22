@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Appearance — ConexusMail</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<div class="app-shell">
+
+<th:block th:replace="~{fragments/app-nav :: nav}"></th:block>
+
+<div class="app-main">
+<div class="settings-shell">
+<th:block th:replace="~{fragments/settings-nav :: nav('appearance')}"></th:block>
+<main class="settings-content settings-page">
+
+  <h1 class="account-title">Appearance</h1>
+  <p class="settings-intro">Make ConexusMail look the way you like. Coming soon.</p>
+
+  <section class="settings-section">
+    <div class="settings-section-head">
+      <div class="settings-section-title">Theme</div>
+      <div class="settings-section-sub">Today the app follows your system light/dark setting.</div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">Color theme <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="settings-row-desc">Choose System, Light, or Dark.</div>
+      </div>
+      <div class="settings-row-control">
+        <select class="settings-select" disabled>
+          <option>System</option>
+        </select>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">Accent color <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="settings-row-desc">Pick the highlight color used across the app.</div>
+      </div>
+      <div class="settings-row-control"><span class="settings-swatch" aria-hidden="true"></span></div>
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <div class="settings-section-head">
+      <div class="settings-section-title">Layout</div>
+      <div class="settings-section-sub">How chats and lists are displayed.</div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">Message density <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="settings-row-desc">Comfortable or compact spacing in conversations.</div>
+      </div>
+      <div class="settings-row-control">
+        <select class="settings-select" disabled>
+          <option>Comfortable</option>
+        </select>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">Time format <span class="settings-coming-soon">Coming soon</span></div>
+        <div class="settings-row-desc">Show times as 12-hour or 24-hour.</div>
+      </div>
+      <div class="settings-row-control">
+        <select class="settings-select" disabled>
+          <option>12-hour</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+</main>
+</div>
+</div>
+</div>
+
+</body>
+</html>

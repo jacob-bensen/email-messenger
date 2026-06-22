@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Account — ConexusMail</title>
+  <title>Account settings — ConexusMail</title>
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>
@@ -14,9 +14,12 @@
 <th:block th:replace="~{fragments/app-nav :: nav}"></th:block>
 
 <div class="app-main">
-<main class="account-page">
+<div class="settings-shell">
+<th:block th:replace="~{fragments/settings-nav :: nav('account')}"></th:block>
+<main class="settings-content settings-page">
 
   <h1 class="account-title">Account</h1>
+  <p class="settings-intro">Manage your profile, sign-in, and subscription.</p>
 
   <section class="account-card">
     <h2 class="account-card-title">Profile</h2>
@@ -133,6 +136,49 @@
     </form>
   </section>
 
+  <section class="settings-section">
+    <div class="settings-section-head">
+      <div class="settings-section-title">Security</div>
+      <div class="settings-section-sub">Extra protection for your account.</div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">
+          Two-factor authentication
+          <span class="settings-coming-soon">Coming soon</span>
+        </div>
+        <div class="settings-row-desc">Require a one-time code from an authenticator app at sign-in.</div>
+      </div>
+      <div class="settings-row-control">
+        <span class="settings-switch" aria-hidden="true"></span>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">
+          Connected accounts
+          <span class="settings-coming-soon">Coming soon</span>
+        </div>
+        <div class="settings-row-desc">Sign in with Google instead of a password.</div>
+      </div>
+      <div class="settings-row-control">
+        <button type="button" class="btn btn-secondary btn-compact" disabled>Connect</button>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-main">
+        <div class="settings-row-title">
+          Active sessions
+          <span class="settings-coming-soon">Coming soon</span>
+        </div>
+        <div class="settings-row-desc">Review where you're signed in and sign out everywhere.</div>
+      </div>
+      <div class="settings-row-control">
+        <button type="button" class="btn btn-secondary btn-compact" disabled>Manage</button>
+      </div>
+    </div>
+  </section>
+
   <section class="account-card">
     <h2 class="account-card-title">Recent account activity</h2>
     <p class="auth-sub" th:if="${recentActivity == null or recentActivity.isEmpty()}">
@@ -161,6 +207,7 @@
   </section>
 
 </main>
+</div>
 </div>
 </div>
 

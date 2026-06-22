@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Loads a single conversation (all messages sharing a {@code conversationKey})
@@ -38,6 +39,26 @@ class ChatService {
             return null;
         }
         List<Message> messages = threads.findMessagesByConversationKey(owner, conversationKey);
+        if (messages.isEmpty()) {
+            return null;
+        }
+        return conversationService.buildChatConversation(
+                messages, ownerAddressService.addressesFor(owner));
+    }
+
+    /**
+     * Same as {@link #buildFor(User, String)} but scoped to a single connected
+     * account: only the conversation's threads involving {@code mailboxAddress}
+     * are included, so an account's chat history stays separate from the same
+     * correspondent reached through another account.
+     */
+    @Transactional(readOnly = true)
+    ChatConversation buildFor(User owner, String mailboxAddress, String conversationKey) {
+        if (conversationKey == null || conversationKey.isBlank()) {
+            return null;
+        }
+        String mbox = mailboxAddress == null ? "" : mailboxAddress.trim().toLowerCase(Locale.ROOT);
+        List<Message> messages = threads.findMessagesByConversationKeyForMailbox(owner, mbox, conversationKey);
         if (messages.isEmpty()) {
             return null;
         }
