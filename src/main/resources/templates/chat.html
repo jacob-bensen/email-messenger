@@ -223,6 +223,22 @@
     setActive(null);
   }
 
+  function reducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  // Strip the conversation key off a row href, keeping the mailbox filter, to
+  // get back to the wide list view.
+  function listUrl(href) {
+    var u = new URL(href, location.origin);
+    return '/chats' + u.search;
+  }
+
+  function closeChat(href, push) {
+    showEmpty();
+    if (push) history.pushState({}, '', listUrl(href));
+  }
+
   function loadChat(href, key, push) {
     paneWrap.classList.add('loading');
     fetch(paneUrl(href), { credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' } })
@@ -248,7 +264,32 @@
       if (!row) return;
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
       e.preventDefault();
+      // Re-selecting the open chat collapses it and re-expands the wide list.
+      if (workspace.classList.contains('chat-open') && row.classList.contains('chat-list-row-active')) {
+        closeChat(row.getAttribute('href'), true);
+        return;
+      }
       loadChat(row.getAttribute('href'), row.getAttribute('data-key'), true);
+    });
+  }
+
+  // Dashboard / mailbox nav also re-expands the list. When a chat is open,
+  // play the collapse animation first, then navigate.
+  var appNav = document.querySelector('.app-nav');
+  if (appNav) {
+    appNav.addEventListener('click', function (e) {
+      var link = e.target.closest
+        ? e.target.closest('.app-nav-dashboard, .app-nav-mailbox')
+        : null;
+      if (!link) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+      if (!workspace.classList.contains('chat-open')) return;
+      var href = link.getAttribute('href');
+      if (!href) return;
+      e.preventDefault();
+      if (reducedMotion()) { window.location = href; return; }
+      showEmpty();
+      setTimeout(function () { window.location = href; }, 300);
     });
   }
 
