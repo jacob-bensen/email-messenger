@@ -55,8 +55,8 @@ class BillingWebhookControllerTest {
         userService.register("hook@example.com", "password1", "Hook");
         user = users.findByEmail("hook@example.com").orElseThrow();
         Subscription pending = new Subscription(user, "cus_hook_test", "incomplete");
-        pending.setPlan(Plan.PERSONAL);
-        pending.setStripePriceId("price_personal_test");
+        pending.setPlan(Plan.PRO);
+        pending.setStripePriceId("price_pro_test");
         subscriptions.save(pending);
     }
 
@@ -120,7 +120,7 @@ class BillingWebhookControllerTest {
         // Modern Stripe API (≥ 2024-09) nests price.id and current_period_end
         // under items.data[0], not at the top level. Drive a real signed payload
         // through StripeWebhookGatewayImpl.parse() to lock in that extraction.
-        properties.setPersonalPriceId("price_personal_test");
+        properties.setProPriceId("price_pro_test");
         long periodEnd = Instant.parse("2026-09-30T00:00:00Z").getEpochSecond();
         String payload = """
                 {
@@ -135,7 +135,7 @@ class BillingWebhookControllerTest {
                         "data": [
                           {
                             "current_period_end": %d,
-                            "price": { "id": "price_personal_test" }
+                            "price": { "id": "price_pro_test" }
                           }
                         ]
                       }
@@ -154,7 +154,7 @@ class BillingWebhookControllerTest {
         Subscription sub = subscriptions.findByUser(user).orElseThrow();
         assertThat(sub.getStripeSubscriptionId()).isEqualTo("sub_items_shape");
         assertThat(sub.getStatus()).isEqualTo("active");
-        assertThat(sub.getStripePriceId()).isEqualTo("price_personal_test");
+        assertThat(sub.getStripePriceId()).isEqualTo("price_pro_test");
         assertThat(sub.getBillingPeriod()).isEqualTo(BillingPeriod.MONTHLY);
         assertThat(sub.getCurrentPeriodEnd())
                 .isEqualTo(LocalDateTime.ofInstant(Instant.ofEpochSecond(periodEnd), ZoneOffset.UTC));

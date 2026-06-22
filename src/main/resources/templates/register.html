@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <th:block th:replace="~{fragments/seo :: meta(
       pageTitle='Create your account — ConexusMail',
-      pageDescription='Create a free ConexusMail account and read your email threads as an IM chat. One mailbox free forever, no credit card required.',
+      pageDescription='Create a free ConexusMail account and read your email threads as an IM chat. Up to 3 mailboxes free forever, no credit card required.',
       pagePath='/register')}"></th:block>
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
@@ -22,17 +22,14 @@
 <main class="auth-page">
   <section class="auth-card">
     <h1>Create your account</h1>
-    <p class="auth-sub" th:if="${plan == 'personal'}">
-      Start your 14-day Personal trial — no credit card required.
+    <p class="auth-sub" th:if="${plan == 'pro'}">
+      Start your 14-day Pro trial — no credit card required.
     </p>
-    <p class="auth-sub" th:if="${plan == 'team'}">
-      Start your 14-day Team trial — no credit card required.
-    </p>
-    <p class="auth-sub" th:if="${plan == null or (plan != 'personal' and plan != 'team')}">
+    <p class="auth-sub" th:if="${plan == null or plan != 'pro'}">
       Free forever. Upgrade anytime.
     </p>
 
-    <div class="auth-billing-badge" th:if="${billing == 'annual' and (plan == 'personal' or plan == 'team')}">
+    <div class="auth-billing-badge" th:if="${billing == 'annual' and plan == 'pro'}">
       <span class="auth-billing-badge-label">Annual billing</span>
       <span class="auth-billing-badge-bonus">2 months free</span>
     </div>

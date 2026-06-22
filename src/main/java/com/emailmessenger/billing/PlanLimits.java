@@ -7,9 +7,9 @@ import java.util.Map;
 
 /**
  * Per-plan caps on mailboxes, threads, and saved searches. {@link #UNLIMITED}
- * signals no enforced ceiling for paid plans. Free is what creates upgrade
- * pressure; paid tiers exist here mainly so the cap can be wired in once the
- * matching feature ships.
+ * signals no enforced ceiling. Free is what creates upgrade pressure: it has
+ * every feature but caps mailboxes and thread history. Pro lifts those two
+ * caps; Business is unbounded.
  */
 public final class PlanLimits {
 
@@ -17,14 +17,13 @@ public final class PlanLimits {
 
     private static final Map<Plan, PlanLimits> CAPS = new EnumMap<>(Plan.class);
     static {
-        // Free is capped at 3 mailboxes. NOTE: not currently enforced —
-        // PlanLimitService.currentPlan() returns the top tier for everyone, so
-        // every account gets unlimited today. These caps define the intended
-        // free tier for when/if the paywall is switched back on.
-        CAPS.put(Plan.FREE,       new PlanLimits(3,  500,       1));
-        CAPS.put(Plan.PERSONAL,   new PlanLimits(3,  UNLIMITED, UNLIMITED));
-        CAPS.put(Plan.TEAM,       new PlanLimits(10, UNLIMITED, UNLIMITED));
-        CAPS.put(Plan.ENTERPRISE, new PlanLimits(UNLIMITED, UNLIMITED, UNLIMITED));
+        // Free: full feature access, but capped at 3 mailboxes and 500 threads
+        // of history (saved searches are unlimited — the only paid levers are
+        // mailbox count and history). Pro lifts those to 5 mailboxes + full
+        // history; Business is unbounded and sales-assisted.
+        CAPS.put(Plan.FREE,     new PlanLimits(3, 500,       UNLIMITED));
+        CAPS.put(Plan.PRO,      new PlanLimits(5, UNLIMITED, UNLIMITED));
+        CAPS.put(Plan.BUSINESS, new PlanLimits(UNLIMITED, UNLIMITED, UNLIMITED));
     }
 
     private final long mailboxes;

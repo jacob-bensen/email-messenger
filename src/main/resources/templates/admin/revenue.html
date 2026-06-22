@@ -95,7 +95,7 @@
       </thead>
       <tbody>
         <tr th:each="row : ${metrics.planBreakdown()}">
-          <td th:text="${row.planLabel()}">Personal</td>
+          <td th:text="${row.planLabel()}">Pro</td>
           <td class="admin-num" th:text="${row.monthlyActive()}">0</td>
           <td class="admin-num" th:text="${row.annualActive()}">0</td>
           <td class="admin-num" th:text="${row.mrrFormatted()}">$0</td>
@@ -221,64 +221,39 @@
 
   <section class="admin-card">
     <h2 class="admin-card-title"
-        th:text="|Team-plan adoption — last ${teamAdoption.windowDays()} days|">
-      Team-plan adoption — last 30 days
+        th:text="|Pro-plan adoption — last ${proAdoption.windowDays()} days|">
+      Pro-plan adoption — last 30 days
     </h2>
     <p class="admin-card-sub">
-      The Free→Team versus Personal→Team conversion split — a rising
-      Personal→Team share means existing Personal subscribers are climbing
-      tiers; a rising Free→Team share means top-of-funnel acquisition is
-      closing cold signups directly.
+      Free→Pro conversions in the window, with the prior-30-day baseline so you
+      can read the lift directly. The entitled counts anchor what the paying
+      install base looks like right now.
     </p>
     <div class="admin-kpis">
       <div class="admin-kpi">
-        <span class="admin-kpi-label">Entitled Team subs</span>
+        <span class="admin-kpi-label">Entitled Pro subs</span>
         <span class="admin-kpi-value"
-              th:text="${teamAdoption.entitledTeamSubscribers()}">0</span>
+              th:text="${proAdoption.entitledProSubscribers()}">0</span>
         <span class="admin-kpi-sub"
-              th:if="${teamAdoption.entitledEnterpriseSubscribers() > 0}"
-              th:text="|+ ${teamAdoption.entitledEnterpriseSubscribers()} Enterprise|">
-          + 0 Enterprise
+              th:if="${proAdoption.entitledBusinessSubscribers() > 0}"
+              th:text="|+ ${proAdoption.entitledBusinessSubscribers()} Business|">
+          + 0 Business
         </span>
       </div>
     </div>
     <div class="admin-funnel-row">
       <div class="admin-funnel-step">
-        <span class="admin-funnel-label">Free → Team</span>
+        <span class="admin-funnel-label">Free → Pro</span>
         <span class="admin-funnel-count"
-              th:text="${teamAdoption.freeToTeamConversions()}">0</span>
-        <span class="admin-funnel-rate"
-              th:text="|${teamAdoption.freeToTeamSharePercent()}% of Team conversions|">
-          0% of Team conversions
-        </span>
+              th:text="${proAdoption.freeToProConversions()}">0</span>
         <span class="admin-funnel-delta"
-              th:text="${teamAdoption.freeToTeamDeltaLabel()}">vs. prior 30 days</span>
-      </div>
-      <div class="admin-funnel-arrow" aria-hidden="true">·</div>
-      <div class="admin-funnel-step">
-        <span class="admin-funnel-label">Personal → Team</span>
-        <span class="admin-funnel-count"
-              th:text="${teamAdoption.personalToTeamConversions()}">0</span>
-        <span class="admin-funnel-rate"
-              th:text="|${teamAdoption.personalToTeamSharePercent()}% of Team conversions|">
-          0% of Team conversions
-        </span>
-        <span class="admin-funnel-delta"
-              th:text="${teamAdoption.personalToTeamDeltaLabel()}">vs. prior 30 days</span>
-      </div>
-      <div class="admin-funnel-arrow" aria-hidden="true">=</div>
-      <div class="admin-funnel-step">
-        <span class="admin-funnel-label">Total Team conversions</span>
-        <span class="admin-funnel-count"
-              th:text="${teamAdoption.totalTeamConversions()}">0</span>
-        <span class="admin-funnel-delta"
-              th:text="${teamAdoption.totalTeamConversionsDeltaLabel()}">vs. prior 30 days</span>
+              th:text="${proAdoption.freeToProDeltaLabel()}">vs. prior 30 days</span>
       </div>
     </div>
     <p class="admin-empty"
-       th:if="${teamAdoption.totalTeamConversions() == 0}">
-      No Team-plan conversions in the window yet — the adoption card will
-      populate once a Free or Personal subscriber upgrades to Team.
+       th:if="${proAdoption.freeToProConversions() == 0}">
+      No Pro-plan conversions in the window yet — the adoption card will
+      populate once a Free subscriber upgrades to Pro.
     </p>
   </section>
 
@@ -291,8 +266,7 @@
       Lost MRR is the monthly-equivalent dollar value of subscriptions that
       flipped to <code>canceled</code> in the window. Gross revenue churn
       compares lost MRR against the MRR that was active at the start of the
-      window — a falling rate is the signal Team-plan retention work is
-      landing.
+      window — a falling rate is the signal retention work is landing.
     </p>
     <div class="admin-kpis">
       <div class="admin-kpi">
@@ -334,7 +308,7 @@
       </thead>
       <tbody>
         <tr th:each="row : ${churn.byPlan()}">
-          <td th:text="${row.planLabel()}">Personal</td>
+          <td th:text="${row.planLabel()}">Pro</td>
           <td class="admin-num" th:text="${row.canceledSubscribers()}">0</td>
           <td class="admin-num" th:text="${row.lostMrrFormatted()}">$0</td>
         </tr>
@@ -411,9 +385,9 @@
             </time>
           </td>
           <td th:text="${row.customerEmail()}">customer@example.com</td>
-          <td th:text="${row.planLabel()}">Personal</td>
+          <td th:text="${row.planLabel()}">Pro</td>
           <td th:text="${row.cadenceLabel()}">Monthly</td>
-          <td class="admin-num" th:text="${row.monthlyEquivalentFormatted()}">$9</td>
+          <td class="admin-num" th:text="${row.monthlyEquivalentFormatted()}">$6.99</td>
           <td th:text="${row.sourceLabel()}">producthunt</td>
           <td th:text="${row.reasonLabel()}">Too expensive</td>
           <td>
@@ -569,7 +543,7 @@
             </time>
           </td>
           <td th:text="${event.userEmail()}">customer@example.com</td>
-          <td th:text="${event.planLabel()}">Personal</td>
+          <td th:text="${event.planLabel()}">Pro</td>
           <td th:text="${event.periodLabel()}">Monthly</td>
           <td th:text="${event.status()}">active</td>
         </tr>

@@ -35,7 +35,7 @@ class OAuthStartControllerTest {
     @Test
     void storesPlanBillingUtmIntoSessionAndRedirectsToSpringSecurityAuthorization() throws Exception {
         HttpSession session = mockMvc.perform(get("/auth/google/start")
-                        .param("plan", "personal")
+                        .param("plan", "pro")
                         .param("billing", "annual")
                         .param("utm_source", "producthunt"))
                 .andExpect(status().is3xxRedirection())
@@ -43,7 +43,7 @@ class OAuthStartControllerTest {
                 .andReturn().getRequest().getSession(false);
 
         assertThat(session).isNotNull();
-        assertThat(session.getAttribute("conexusmail.oauth.plan")).isEqualTo("personal");
+        assertThat(session.getAttribute("conexusmail.oauth.plan")).isEqualTo("pro");
         assertThat(session.getAttribute("conexusmail.oauth.billing")).isEqualTo("annual");
         assertThat(session.getAttribute("conexusmail.oauth.utm_source")).isEqualTo("producthunt");
     }
@@ -75,13 +75,13 @@ class OAuthStartControllerTest {
     @Test
     void unknownBillingDegradesToMonthly() throws Exception {
         HttpSession session = mockMvc.perform(get("/auth/google/start")
-                        .param("plan", "personal")
+                        .param("plan", "pro")
                         .param("billing", "quarterly"))
                 .andExpect(status().is3xxRedirection())
                 .andReturn().getRequest().getSession(false);
 
         assertThat(session).isNotNull();
-        assertThat(session.getAttribute("conexusmail.oauth.plan")).isEqualTo("personal");
+        assertThat(session.getAttribute("conexusmail.oauth.plan")).isEqualTo("pro");
         assertThat(session.getAttribute("conexusmail.oauth.billing")).isEqualTo("monthly");
     }
 

@@ -1,7 +1,5 @@
 package com.emailmessenger.web;
 
-import com.emailmessenger.billing.PlanLimitService;
-import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.SavedSearch;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
@@ -19,10 +17,9 @@ import java.util.List;
  *
  * <p>Match count uses the same repository methods that power the inbox
  * results page so the rail figure stays consistent with what the user
- * actually sees after clicking through. Free users still get
- * subject/participant matches only (body content is paid-only) — same as
- * the result page. The "new" subset re-runs the same query with the
- * since-filter floor raised to {@code lastViewedAt} (falling back to
+ * actually sees after clicking through. Body-content matching is available
+ * on every plan, same as the result page. The "new" subset re-runs the same
+ * query with the since-filter floor raised to {@code lastViewedAt} (falling back to
  * {@code createdAt} on never-opened rows so the badge doesn't bleed every
  * historical thread on a brand-new saved search).
  */
@@ -32,14 +29,11 @@ public class SavedSearchCountService {
     private static final PageRequest ONE = PageRequest.of(0, 1);
 
     private final EmailThreadRepository threads;
-    private final PlanLimitService planLimits;
     private final Clock clock;
 
     SavedSearchCountService(EmailThreadRepository threads,
-                            PlanLimitService planLimits,
                             Clock clock) {
         this.threads = threads;
-        this.planLimits = planLimits;
         this.clock = clock;
     }
 
@@ -48,18 +42,17 @@ public class SavedSearchCountService {
         if (saved.isEmpty()) {
             return List.of();
         }
-        Plan plan = planLimits.currentPlan(owner);
-        return saved.stream().map(s -> withCounts(owner, plan, s)).toList();
+        return saved.stream().map(s -> withCounts(owner, s)).toList();
     }
 
-    private SavedSearchView withCounts(User owner, Plan plan, SavedSearch s) {
-        long match = countMatching(owner, plan, s, null);
+    private SavedSearchView withCounts(User owner, SavedSearch s) {
+        long match = countMatching(owner, s, null);
         LocalDateTime cutoff = s.getLastViewedAt() != null ? s.getLastViewedAt() : s.getCreatedAt();
-        long fresh = (cutoff == null) ? match : countMatching(owner, plan, s, cutoff);
+        long fresh = (cutoff == null) ? match : countMatching(owner, s, cutoff);
         return SavedSearchView.withCounts(s, match, fresh);
     }
 
-    private long countMatching(User owner, Plan plan, SavedSearch s, LocalDateTime newerThan) {
+    private long countMatching(User owner, SavedSearch s, LocalDateTime newerThan) {
         LocalDateTime since = sinceForPreset(s.getSincePreset());
         if (newerThan != null) {
             since = (since == null || newerThan.isAfter(since)) ? newerThan : since;
@@ -76,10 +69,7 @@ public class SavedSearchCountService {
             }
             return threads.findByOwnerAndSender(owner, sender, since, unread, att, ONE).getTotalElements();
         }
-        if (plan != Plan.FREE) {
-            return threads.searchIncludingBody(owner, q, sender, since, unread, att, ONE).getTotalElements();
-        }
-        return threads.search(owner, q, sender, since, unread, att, ONE).getTotalElements();
+        return threads.searchIncludingBody(owner, q, sender, since, unread, att, ONE).getTotalElements();
     }
 
     private LocalDateTime sinceForPreset(String preset) {

@@ -20,9 +20,8 @@ class PollingPolicyTest {
 
     @Test
     void paidTiersPollEveryFiveMinutes() {
-        assertThat(policy.intervalFor(Plan.PERSONAL)).isEqualTo(Duration.ofMinutes(5));
-        assertThat(policy.intervalFor(Plan.TEAM)).isEqualTo(Duration.ofMinutes(5));
-        assertThat(policy.intervalFor(Plan.ENTERPRISE)).isEqualTo(Duration.ofMinutes(5));
+        assertThat(policy.intervalFor(Plan.PRO)).isEqualTo(Duration.ofMinutes(5));
+        assertThat(policy.intervalFor(Plan.BUSINESS)).isEqualTo(Duration.ofMinutes(5));
     }
 
     @Test
@@ -37,11 +36,11 @@ class PollingPolicyTest {
     }
 
     @Test
-    void nextPollAtForPersonalFallsWithinFiveMinuteWindowPlusOrMinusThirtySeconds() {
+    void nextPollAtForProFallsWithinFiveMinuteWindowPlusOrMinusThirtySeconds() {
         LocalDateTime earliest = FROM.plusMinutes(5).minusSeconds(PollingPolicy.JITTER_SECONDS);
         LocalDateTime latest = FROM.plusMinutes(5).plusSeconds(PollingPolicy.JITTER_SECONDS);
         for (int i = 0; i < 200; i++) {
-            LocalDateTime next = policy.nextPollAt(Plan.PERSONAL, FROM);
+            LocalDateTime next = policy.nextPollAt(Plan.PRO, FROM);
             assertThat(next).isBetween(earliest, latest);
         }
     }
@@ -51,10 +50,10 @@ class PollingPolicyTest {
         // 200 draws over a 61-second window: getting the same value every time
         // would mean the jitter was wired in but always zero. Assert that we
         // see at least two distinct values across the sample.
-        LocalDateTime first = policy.nextPollAt(Plan.PERSONAL, FROM);
+        LocalDateTime first = policy.nextPollAt(Plan.PRO, FROM);
         boolean sawDifferent = false;
         for (int i = 0; i < 200; i++) {
-            if (!policy.nextPollAt(Plan.PERSONAL, FROM).equals(first)) {
+            if (!policy.nextPollAt(Plan.PRO, FROM).equals(first)) {
                 sawDifferent = true;
                 break;
             }

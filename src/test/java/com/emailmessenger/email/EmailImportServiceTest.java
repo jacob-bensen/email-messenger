@@ -1,5 +1,6 @@
 package com.emailmessenger.email;
 
+import com.emailmessenger.billing.PlanLimitExceededException;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.RecipientType;
@@ -22,6 +23,7 @@ import java.util.Optional;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
@@ -233,7 +235,7 @@ class EmailImportServiceTest {
     }
 
     @Test
-    void importingNewThreadPastOldFreeCapNowSucceeds() throws Exception {
+    void importingNewThreadPastFreeCapThrowsForFreeUser() throws Exception {
         for (int i = 0; i < 500; i++) {
             threadRepo.save(new EmailThread(owner, "seeded " + i, "<seed" + i + "@t>"));
         }
@@ -241,11 +243,11 @@ class EmailImportServiceTest {
         MimeMessage mail = plainMessage("<over@test.com>", "Over the cap",
                 "alice@test.com", null, null, "Body.");
 
-        // Thread caps are lifted for everyone, so the 501st thread imports fine.
-        Optional<Message> imported = importService.importMessage(mail, owner);
-
-        assertThat(imported).isPresent();
-        assertThat(messageRepo.findByMessageIdHeaderAndOwner("<over@test.com>", owner)).isPresent();
+        // Free is capped at 500 threads of history; with no paid subscription the
+        // owner is on Free, so the 501st new thread is blocked.
+        assertThatThrownBy(() -> importService.importMessage(mail, owner))
+                .isInstanceOf(PlanLimitExceededException.class);
+        assertThat(messageRepo.findByMessageIdHeaderAndOwner("<over@test.com>", owner)).isEmpty();
     }
 
     @Test

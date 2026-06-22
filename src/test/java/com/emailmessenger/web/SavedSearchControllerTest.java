@@ -116,7 +116,7 @@ class SavedSearchControllerTest {
     @Test
     void personalUserCanSaveMultiple() throws Exception {
         Subscription sub = new Subscription(owner, "cus_x", "active");
-        sub.setPlan(Plan.PERSONAL);
+        sub.setPlan(Plan.PRO);
         subscriptions.save(sub);
         savedSearchRepository.save(new SavedSearch(owner, "First", null,
                 "first@example.com", null, false, false));

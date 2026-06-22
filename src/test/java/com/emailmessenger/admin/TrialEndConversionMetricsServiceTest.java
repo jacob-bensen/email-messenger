@@ -82,7 +82,7 @@ class TrialEndConversionMetricsServiceTest {
     private Subscription emailed(String email, String status) {
         User u = new User(email, "hash", null);
         Subscription s = new Subscription(u, "cus_" + email, status);
-        s.setPlan(Plan.PERSONAL);
+        s.setPlan(Plan.PRO);
         s.setBillingPeriod(BillingPeriod.MONTHLY);
         s.setLastTrialEndEmailSentAt(now.minusHours(6));
         return s;

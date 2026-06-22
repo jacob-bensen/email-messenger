@@ -32,28 +32,12 @@ public record OnboardingNudge(
         if (currentPlan != Plan.FREE) {
             return Optional.empty();
         }
-        if (checklist.teammateInvited()) {
-            return Optional.of(new OnboardingNudge(
-                    Plan.TEAM,
-                    "Sharing your inbox is on the Team plan",
-                    "Free includes 1 mailbox and no shared threads. Team adds 10 mailboxes, shared threads with your invitees, and unlimited saved searches.",
-                    "Upgrade to Team — $29/mo",
-                    "step4"));
-        }
-        if (checklist.savedSearchSaved()) {
-            return Optional.of(new OnboardingNudge(
-                    Plan.PERSONAL,
-                    "Free includes 1 saved search",
-                    "Personal is unlimited saved searches, unlimited threads, and 3 mailboxes — pin every \"everything from X\" view you care about.",
-                    "Upgrade to Personal — $9/mo",
-                    "step3"));
-        }
         if (checklist.threadsImported()) {
             return Optional.of(new OnboardingNudge(
-                    Plan.PERSONAL,
+                    Plan.PRO,
                     "Free caps at 500 threads",
-                    "Personal removes the thread cap, lifts mailboxes to 3, and unlocks unlimited saved searches and history — keep importing without losing a message.",
-                    "Upgrade to Personal — $9/mo",
+                    "Pro removes the thread cap for full history and lifts mailboxes from 3 to 5 — keep importing without losing a message.",
+                    "Upgrade to Pro — $6.99/mo",
                     "step2"));
         }
         return Optional.empty();

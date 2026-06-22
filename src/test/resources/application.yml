@@ -60,12 +60,8 @@ billing:
   stripe:
     secret-key: ${STRIPE_SECRET_KEY:}
     webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
-    personal-price-id: ${STRIPE_PERSONAL_PRICE_ID:}
-    team-price-id: ${STRIPE_TEAM_PRICE_ID:}
-    enterprise-price-id: ${STRIPE_ENTERPRISE_PRICE_ID:}
-    personal-annual-price-id: ${STRIPE_PERSONAL_ANNUAL_PRICE_ID:}
-    team-annual-price-id: ${STRIPE_TEAM_ANNUAL_PRICE_ID:}
-    enterprise-annual-price-id: ${STRIPE_ENTERPRISE_ANNUAL_PRICE_ID:}
+    pro-price-id: ${STRIPE_PRO_PRICE_ID:}
+    pro-annual-price-id: ${STRIPE_PRO_ANNUAL_PRICE_ID:}
     success-url: ${BILLING_SUCCESS_URL:http://localhost:8080/billing/success?session_id={CHECKOUT_SESSION_ID}}
     cancel-url: ${BILLING_CANCEL_URL:http://localhost:8080/billing/cancel}
     portal-return-url: ${BILLING_PORTAL_RETURN_URL:http://localhost:8080/threads}

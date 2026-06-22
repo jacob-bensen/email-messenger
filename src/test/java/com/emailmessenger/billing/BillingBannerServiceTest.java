@@ -94,12 +94,12 @@ class BillingBannerServiceTest {
     @Test
     void trialBannerSurfacesChosenPlanLabel() {
         Subscription sub = new Subscription(user, "cus_1", "trialing");
-        sub.setPlan(Plan.PERSONAL);
+        sub.setPlan(Plan.PRO);
         sub.setTrialEndsAt(now.plusDays(5));
         when(subscriptions.findByUser(user)).thenReturn(Optional.of(sub));
 
         BillingBanner banner = service.bannerFor(user).orElseThrow();
-        assertThat(banner.planLabel()).isEqualTo("Personal");
+        assertThat(banner.planLabel()).isEqualTo("Pro");
         assertThat(banner.daysLeft()).isEqualTo(5L);
     }
 

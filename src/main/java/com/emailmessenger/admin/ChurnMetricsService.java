@@ -75,7 +75,7 @@ public class ChurnMetricsService {
         int priorChurnRate = ratePercent(priorLostMrrCents, priorStartingMrrCents);
 
         List<PlanChurnBreakdown> byPlan = new ArrayList<>();
-        for (Plan plan : List.of(Plan.PERSONAL, Plan.TEAM, Plan.ENTERPRISE)) {
+        for (Plan plan : List.of(Plan.PRO, Plan.BUSINESS)) {
             long[] row = perPlan.getOrDefault(plan, new long[2]);
             byPlan.add(new PlanChurnBreakdown(
                     planLabel(plan), row[0], row[1],
@@ -122,9 +122,8 @@ public class ChurnMetricsService {
 
     private static String planLabel(Plan plan) {
         return switch (plan) {
-            case PERSONAL -> "Personal";
-            case TEAM -> "Team";
-            case ENTERPRISE -> "Enterprise";
+            case PRO -> "Pro";
+            case BUSINESS -> "Business";
             case FREE -> "Free";
         };
     }

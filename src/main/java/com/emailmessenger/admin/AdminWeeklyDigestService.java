@@ -40,7 +40,7 @@ public class AdminWeeklyDigestService {
     private static final Logger log = LoggerFactory.getLogger(AdminWeeklyDigestService.class);
     private static final DateTimeFormatter WEEK_END_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE;
     static final Duration LOOKBACK = Duration.ofDays(7);
-    private static final List<Plan> PAID_PLANS = List.of(Plan.PERSONAL, Plan.TEAM, Plan.ENTERPRISE);
+    private static final List<Plan> PAID_PLANS = List.of(Plan.PRO, Plan.BUSINESS);
 
     private final AdminProperties adminProperties;
     private final RevenueMetricsService metricsService;
@@ -167,9 +167,8 @@ public class AdminWeeklyDigestService {
 
     private static String planLabel(Plan plan) {
         return switch (plan) {
-            case PERSONAL -> "Personal";
-            case TEAM -> "Team";
-            case ENTERPRISE -> "Enterprise";
+            case PRO -> "Pro";
+            case BUSINESS -> "Business";
             case FREE -> "Free";
         };
     }

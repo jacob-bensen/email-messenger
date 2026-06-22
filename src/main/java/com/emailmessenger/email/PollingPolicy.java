@@ -11,9 +11,9 @@ import java.util.concurrent.ThreadLocalRandom;
  * Cadence + circuit-breaker policy for the recurring IMAP poll loop.
  *
  * <ul>
- *   <li>Free polls every 15 minutes; Personal / Team / Enterprise every
- *       5 minutes. Paid tiers get a tighter loop so "always-fresh inbox"
- *       — the thing they pay $9/mo for — actually delivers within sight.</li>
+ *   <li>Free polls every 15 minutes; Pro / Business every 5 minutes.
+ *       Paid tiers get a tighter loop so "always-fresh inbox" — the thing
+ *       they pay $6.99/mo for — actually delivers within sight.</li>
  *   <li>Each scheduled next-poll time gets {@value #JITTER_SECONDS}s of
  *       symmetric jitter so a herd of mailboxes that connected at the same
  *       instant doesn't slam IMAP servers in lockstep five minutes later.</li>

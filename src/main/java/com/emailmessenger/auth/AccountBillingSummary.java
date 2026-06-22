@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
 /**
  * Pre-formatted billing slice for the /account page.
  *
- * <p>{@code label} is the headline cadence ("Personal · Annual"). When the
- * subscription is in trial it reads "Personal · Annual trial". {@code
+ * <p>{@code label} is the headline cadence ("Pro · Annual"). When the
+ * subscription is in trial it reads "Pro · Annual trial". {@code
  * renewsOn} is the next-renewal date in ISO format, or null when Stripe
  * hasn't surfaced one yet (e.g. status=incomplete before the first
  * customer.subscription.created event).
@@ -50,9 +50,8 @@ public record AccountBillingSummary(String label,
 
     private static String planLabel(Plan plan) {
         return switch (plan) {
-            case PERSONAL -> "Personal";
-            case TEAM -> "Team";
-            case ENTERPRISE -> "Enterprise";
+            case PRO -> "Pro";
+            case BUSINESS -> "Business";
             case FREE -> "Free";
         };
     }

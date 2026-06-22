@@ -47,7 +47,7 @@ class WinBackConversionMetricsServiceTest {
         assertThat(m.emailsSent()).isZero();
         assertThat(m.reactivated()).isZero();
         assertThat(m.mrrRecoveredCents()).isZero();
-        assertThat(m.mrrRecoveredFormatted()).isEqualTo("$0");
+        assertThat(m.mrrRecoveredFormatted()).isEqualTo("$0.00");
         assertThat(m.conversionRatePercent()).isZero();
         assertThat(m.priorEmailsSent()).isZero();
         assertThat(m.priorReactivated()).isZero();
@@ -71,18 +71,18 @@ class WinBackConversionMetricsServiceTest {
     @Test
     void countsCurrentWindowSentAndReactivatedAndMrr() {
         when(subscriptions.findWinBackEmailedSince(any())).thenReturn(List.of(
-                emailed("a@example.com", "active", Plan.PERSONAL, BillingPeriod.MONTHLY, now.minusDays(1)),
-                emailed("b@example.com", "active", Plan.TEAM, BillingPeriod.MONTHLY, now.minusDays(5)),
-                emailed("c@example.com", "canceled", Plan.PERSONAL, BillingPeriod.MONTHLY, now.minusDays(10)),
-                emailed("d@example.com", "canceled", Plan.ENTERPRISE, BillingPeriod.ANNUAL, now.minusDays(15))));
+                emailed("a@example.com", "active", Plan.PRO, BillingPeriod.MONTHLY, now.minusDays(1)),
+                emailed("b@example.com", "active", Plan.PRO, BillingPeriod.ANNUAL, now.minusDays(5)),
+                emailed("c@example.com", "canceled", Plan.PRO, BillingPeriod.MONTHLY, now.minusDays(10)),
+                emailed("d@example.com", "canceled", Plan.BUSINESS, BillingPeriod.ANNUAL, now.minusDays(15))));
 
         WinBackConversionMetrics m = service.snapshot();
 
         assertThat(m.emailsSent()).isEqualTo(4);
         assertThat(m.reactivated()).isEqualTo(2);
-        // Personal monthly 900 + Team monthly 2900 = 3800c
-        assertThat(m.mrrRecoveredCents()).isEqualTo(3800L);
-        assertThat(m.mrrRecoveredFormatted()).isEqualTo("$38");
+        // Pro monthly 699 + Pro annual (monthly-eq) 599 = 1298c
+        assertThat(m.mrrRecoveredCents()).isEqualTo(1298L);
+        assertThat(m.mrrRecoveredFormatted()).isEqualTo("$12.98");
         // 2 / 4 = 50%
         assertThat(m.conversionRatePercent()).isEqualTo(50);
     }
@@ -90,29 +90,29 @@ class WinBackConversionMetricsServiceTest {
     @Test
     void priorWindowFiguresMirrorCurrentAndDeltasShowMomentum() {
         when(subscriptions.findWinBackEmailedSince(any())).thenReturn(List.of(
-                // Current window: 2 sent, 1 reactivated, 900c recovered
-                emailed("now1@example.com", "active", Plan.PERSONAL, BillingPeriod.MONTHLY, now.minusDays(5)),
-                emailed("now2@example.com", "canceled", Plan.PERSONAL, BillingPeriod.MONTHLY, now.minusDays(20)),
-                // Prior window: 4 sent, 2 reactivated, 1800c recovered
-                emailed("p1@example.com", "active", Plan.PERSONAL, BillingPeriod.MONTHLY, now.minusDays(40)),
-                emailed("p2@example.com", "active", Plan.PERSONAL, BillingPeriod.MONTHLY, now.minusDays(45)),
-                emailed("p3@example.com", "canceled", Plan.PERSONAL, BillingPeriod.MONTHLY, now.minusDays(50)),
-                emailed("p4@example.com", "canceled", Plan.PERSONAL, BillingPeriod.MONTHLY, now.minusDays(55))));
+                // Current window: 2 sent, 1 reactivated, 699c recovered
+                emailed("now1@example.com", "active", Plan.PRO, BillingPeriod.MONTHLY, now.minusDays(5)),
+                emailed("now2@example.com", "canceled", Plan.PRO, BillingPeriod.MONTHLY, now.minusDays(20)),
+                // Prior window: 4 sent, 2 reactivated, 1398c recovered
+                emailed("p1@example.com", "active", Plan.PRO, BillingPeriod.MONTHLY, now.minusDays(40)),
+                emailed("p2@example.com", "active", Plan.PRO, BillingPeriod.MONTHLY, now.minusDays(45)),
+                emailed("p3@example.com", "canceled", Plan.PRO, BillingPeriod.MONTHLY, now.minusDays(50)),
+                emailed("p4@example.com", "canceled", Plan.PRO, BillingPeriod.MONTHLY, now.minusDays(55))));
 
         WinBackConversionMetrics m = service.snapshot();
 
         assertThat(m.emailsSent()).isEqualTo(2);
         assertThat(m.reactivated()).isEqualTo(1);
-        assertThat(m.mrrRecoveredCents()).isEqualTo(900L);
+        assertThat(m.mrrRecoveredCents()).isEqualTo(699L);
         assertThat(m.conversionRatePercent()).isEqualTo(50);
 
         assertThat(m.priorEmailsSent()).isEqualTo(4);
         assertThat(m.priorReactivated()).isEqualTo(2);
-        assertThat(m.priorMrrRecoveredCents()).isEqualTo(1800L);
-        assertThat(m.priorMrrRecoveredFormatted()).isEqualTo("$18");
+        assertThat(m.priorMrrRecoveredCents()).isEqualTo(1398L);
+        assertThat(m.priorMrrRecoveredFormatted()).isEqualTo("$13.98");
         assertThat(m.priorConversionRatePercent()).isEqualTo(50);
 
-        // Current 2 vs prior 4 → -50%; recovered 900 vs 1800 → -50%.
+        // Current 2 vs prior 4 → -50%; recovered 699 vs 1398 → -50%.
         assertThat(m.emailsSentDeltaPercent()).isEqualTo(-50);
         assertThat(m.mrrRecoveredDeltaPercent()).isEqualTo(-50);
         assertThat(m.emailsSentDeltaLabel()).isEqualTo("▼ 50% vs. prior 30 days");
@@ -125,7 +125,7 @@ class WinBackConversionMetricsServiceTest {
     @Test
     void boundaryAtWindowStartCountsAsCurrentWindow() {
         when(subscriptions.findWinBackEmailedSince(any())).thenReturn(List.of(
-                emailed("edge@example.com", "active", Plan.PERSONAL,
+                emailed("edge@example.com", "active", Plan.PRO,
                         BillingPeriod.MONTHLY, now.minusDays(30))));
 
         WinBackConversionMetrics m = service.snapshot();
@@ -160,7 +160,7 @@ class WinBackConversionMetricsServiceTest {
     @Test
     void newDeltaLabelWhenCurrentNonZeroAndPriorZero() {
         when(subscriptions.findWinBackEmailedSince(any())).thenReturn(List.of(
-                emailed("a@example.com", "active", Plan.PERSONAL,
+                emailed("a@example.com", "active", Plan.PRO,
                         BillingPeriod.MONTHLY, now.minusDays(2))));
 
         WinBackConversionMetrics m = service.snapshot();

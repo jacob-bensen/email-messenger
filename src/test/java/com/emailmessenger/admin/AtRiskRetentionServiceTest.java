@@ -75,7 +75,7 @@ class AtRiskRetentionServiceTest {
 
     @Test
     void rowMapsPlanCadenceMrrSourceReasonAndCanceledAt() {
-        Subscription sub = canceled("payer@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY,
+        Subscription sub = canceled("payer@example.com", Plan.PRO, BillingPeriod.MONTHLY,
                 "producthunt", CancellationReason.TOO_EXPENSIVE,
                 now.minusHours(2));
         when(subscriptions.findCanceledBetween(eq(now.minusDays(30)), eq(now)))
@@ -86,10 +86,10 @@ class AtRiskRetentionServiceTest {
         assertThat(m.entries()).hasSize(1);
         AtRiskRetentionMetrics.Entry e = m.entries().get(0);
         assertThat(e.customerEmail()).isEqualTo("payer@example.com");
-        assertThat(e.planLabel()).isEqualTo("Personal");
+        assertThat(e.planLabel()).isEqualTo("Pro");
         assertThat(e.cadenceLabel()).isEqualTo("Monthly");
-        assertThat(e.monthlyEquivalentCents()).isEqualTo(900L);
-        assertThat(e.monthlyEquivalentFormatted()).isEqualTo("$9");
+        assertThat(e.monthlyEquivalentCents()).isEqualTo(699L);
+        assertThat(e.monthlyEquivalentFormatted()).isEqualTo("$6.99");
         assertThat(e.sourceLabel()).isEqualTo("producthunt");
         assertThat(e.reasonLabel()).isEqualTo("Too expensive");
         assertThat(e.canceledAt()).isEqualTo(now.minusHours(2));
@@ -98,7 +98,7 @@ class AtRiskRetentionServiceTest {
 
     @Test
     void nullSourceAndNullReasonFallBackToOperatorReadableLabels() {
-        Subscription sub = canceled("nosrc@example.com", Plan.TEAM, BillingPeriod.ANNUAL,
+        Subscription sub = canceled("nosrc@example.com", Plan.BUSINESS, BillingPeriod.ANNUAL,
                 null, null, now.minusDays(1));
         when(subscriptions.findCanceledBetween(eq(now.minusDays(30)), eq(now)))
                 .thenReturn(List.of(sub));
@@ -108,18 +108,19 @@ class AtRiskRetentionServiceTest {
         assertThat(m.entries().get(0).sourceLabel()).isEqualTo("Direct / unknown");
         assertThat(m.entries().get(0).reasonLabel()).isEqualTo("not recorded");
         assertThat(m.entries().get(0).cadenceLabel()).isEqualTo("Annual");
-        assertThat(m.entries().get(0).monthlyEquivalentCents()).isEqualTo(2400L);
+        // Business is custom/contact-sales — contributes 0c to MRR.
+        assertThat(m.entries().get(0).monthlyEquivalentCents()).isEqualTo(0L);
     }
 
     @Test
     void entriesAreSortedNewestFirst() {
-        Subscription oldest = canceled("oldest@example.com", Plan.PERSONAL,
+        Subscription oldest = canceled("oldest@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, "google", CancellationReason.OTHER,
                 now.minusDays(25));
-        Subscription mid = canceled("mid@example.com", Plan.PERSONAL,
+        Subscription mid = canceled("mid@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, "google", CancellationReason.OTHER,
                 now.minusDays(10));
-        Subscription newest = canceled("newest@example.com", Plan.PERSONAL,
+        Subscription newest = canceled("newest@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, "google", CancellationReason.OTHER,
                 now.minusHours(1));
         when(subscriptions.findCanceledBetween(eq(now.minusDays(30)), eq(now)))
@@ -137,7 +138,7 @@ class AtRiskRetentionServiceTest {
                 null, null, now.minusDays(2));
         Subscription unknown = canceled("unknown@example.com", null, BillingPeriod.MONTHLY,
                 null, null, now.minusDays(3));
-        Subscription paid = canceled("paid@example.com", Plan.TEAM, BillingPeriod.MONTHLY,
+        Subscription paid = canceled("paid@example.com", Plan.BUSINESS, BillingPeriod.MONTHLY,
                 "twitter", CancellationReason.SWITCHING, now.minusDays(1));
         when(subscriptions.findCanceledBetween(eq(now.minusDays(30)), eq(now)))
                 .thenReturn(List.of(free, unknown, paid));
@@ -154,7 +155,7 @@ class AtRiskRetentionServiceTest {
     void displayLimitCapsAt20AndTruncationFlagFires() {
         List<Subscription> twentyFive = new ArrayList<>();
         for (int i = 0; i < 25; i++) {
-            twentyFive.add(canceled("u" + i + "@example.com", Plan.PERSONAL,
+            twentyFive.add(canceled("u" + i + "@example.com", Plan.PRO,
                     BillingPeriod.MONTHLY, "ads", CancellationReason.OTHER,
                     now.minusHours(i + 1)));
         }
@@ -174,15 +175,15 @@ class AtRiskRetentionServiceTest {
 
     @Test
     void allFiveReasonEnumsRenderHumanReadableLabels() {
-        Subscription tooExp = canceled("a@example.com", Plan.PERSONAL,
+        Subscription tooExp = canceled("a@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, null, CancellationReason.TOO_EXPENSIVE, now.minusMinutes(1));
-        Subscription missingFeat = canceled("b@example.com", Plan.PERSONAL,
+        Subscription missingFeat = canceled("b@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, null, CancellationReason.MISSING_FEATURE, now.minusMinutes(2));
-        Subscription switching = canceled("c@example.com", Plan.PERSONAL,
+        Subscription switching = canceled("c@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, null, CancellationReason.SWITCHING, now.minusMinutes(3));
-        Subscription temp = canceled("d@example.com", Plan.PERSONAL,
+        Subscription temp = canceled("d@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, null, CancellationReason.TEMPORARY, now.minusMinutes(4));
-        Subscription other = canceled("e@example.com", Plan.PERSONAL,
+        Subscription other = canceled("e@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, null, CancellationReason.OTHER, now.minusMinutes(5));
         when(subscriptions.findCanceledBetween(eq(now.minusDays(30)), eq(now)))
                 .thenReturn(List.of(tooExp, missingFeat, switching, temp, other));
@@ -196,11 +197,11 @@ class AtRiskRetentionServiceTest {
 
     @Test
     void entryCarriesSubscriptionIdAndWinBackTimestampForTheActionColumn() {
-        Subscription notSent = canceled("fresh@example.com", Plan.PERSONAL,
+        Subscription notSent = canceled("fresh@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, "ads", CancellationReason.OTHER,
                 now.minusHours(1));
         setId(notSent, 42L);
-        Subscription alreadySent = canceled("alreadyemailed@example.com", Plan.TEAM,
+        Subscription alreadySent = canceled("alreadyemailed@example.com", Plan.BUSINESS,
                 BillingPeriod.MONTHLY, "twitter", CancellationReason.OTHER,
                 now.minusHours(2));
         setId(alreadySent, 99L);
@@ -224,11 +225,11 @@ class AtRiskRetentionServiceTest {
 
     @Test
     void recoveredRowsAreSurfacedWithRecoveredFlagSetAndCountedSeparately() {
-        Subscription stillCanceled = canceled("walked@example.com", Plan.PERSONAL,
+        Subscription stillCanceled = canceled("walked@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, "ads", CancellationReason.TOO_EXPENSIVE,
                 now.minusHours(4));
         setId(stillCanceled, 1L);
-        Subscription comeback = active("comeback@example.com", Plan.TEAM,
+        Subscription comeback = active("comeback@example.com", Plan.BUSINESS,
                 BillingPeriod.MONTHLY, "google",
                 now.minusHours(1));
         setId(comeback, 2L);
@@ -257,7 +258,7 @@ class AtRiskRetentionServiceTest {
     void recoveredRowsAreDedupedAgainstCanceledCohortById() {
         // A subscription that's somehow returned by both queries — e.g. a
         // canceled row stamped with a win-back send — must not double up.
-        Subscription sub = canceled("dup@example.com", Plan.PERSONAL,
+        Subscription sub = canceled("dup@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, null, CancellationReason.OTHER,
                 now.minusHours(3));
         setId(sub, 777L);
@@ -287,7 +288,7 @@ class AtRiskRetentionServiceTest {
                 BillingPeriod.MONTHLY, null, now.minusHours(2));
         setId(nullPlanRecovered, 51L);
         nullPlanRecovered.setLastWinBackEmailSentAt(now.minusDays(2));
-        Subscription paidRecovered = active("paid@example.com", Plan.PERSONAL,
+        Subscription paidRecovered = active("paid@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, "google", now.minusHours(3));
         setId(paidRecovered, 52L);
         paidRecovered.setLastWinBackEmailSentAt(now.minusDays(2));
@@ -307,13 +308,13 @@ class AtRiskRetentionServiceTest {
     void truncationFlagFiresWhenCanceledPlusRecoveredExceedsDisplayLimit() {
         List<Subscription> twelveCanceled = new ArrayList<>();
         for (int i = 0; i < 12; i++) {
-            twelveCanceled.add(canceled("c" + i + "@example.com", Plan.PERSONAL,
+            twelveCanceled.add(canceled("c" + i + "@example.com", Plan.PRO,
                     BillingPeriod.MONTHLY, "ads", CancellationReason.OTHER,
                     now.minusHours(i + 1)));
         }
         List<Subscription> tenRecovered = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
-            Subscription r = active("r" + i + "@example.com", Plan.TEAM,
+            Subscription r = active("r" + i + "@example.com", Plan.BUSINESS,
                     BillingPeriod.MONTHLY, "google", now.minusDays(i + 1));
             setId(r, (long) (1000 + i));
             r.setLastWinBackEmailSentAt(now.minusDays(i + 2));

@@ -64,15 +64,14 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
      * never previously stamped, with the owning user eager-joined for the
      * opt-out / addressee lookup. Status filter on {@code trialing} keeps
      * already-converted ({@code active}) and canceled rows out — the
-     * email is meant only for the conversion-leak cohort. ENTERPRISE
+     * email is meant only for the conversion-leak cohort. BUSINESS
      * is excluded because that's a sales-led path, mirroring the
      * existing in-app {@link com.emailmessenger.billing.TrialConversionNudgeService}.
      */
     @Query("""
             SELECT s FROM Subscription s JOIN FETCH s.user
             WHERE s.status = 'trialing'
-              AND s.plan IN (com.emailmessenger.domain.Plan.PERSONAL,
-                             com.emailmessenger.domain.Plan.TEAM)
+              AND s.plan = com.emailmessenger.domain.Plan.PRO
               AND s.trialEndsAt IS NOT NULL
               AND s.trialEndsAt <= :endingBy
               AND s.lastTrialEndEmailSentAt IS NULL
@@ -153,9 +152,9 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     long countActiveOwnersIn(@Param("userIds") Collection<Long> userIds);
 
     /**
-     * Currently-active subscribers on the given plan. Used by the Team-plan
+     * Currently-active subscribers on the given plan. Used by the Pro-plan
      * adoption card to anchor "this is what the install base looks like
-     * right now" alongside the rolling-window conversion split.
+     * right now" alongside the rolling-window conversion count.
      */
     @Query("""
             SELECT COUNT(s) FROM Subscription s

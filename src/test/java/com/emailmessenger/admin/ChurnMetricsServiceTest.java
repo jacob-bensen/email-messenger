@@ -39,7 +39,7 @@ class ChurnMetricsServiceTest {
     }
 
     @Test
-    void emptyDataYieldsZeroChurnAndAllThreePaidPlansInBreakdown() {
+    void emptyDataYieldsZeroChurnAndBothPaidPlansInBreakdown() {
         when(subscriptions.findAllWithUserNewestFirst()).thenReturn(List.of());
         when(subscriptions.findCanceledBetween(any(), any())).thenReturn(List.of());
 
@@ -48,13 +48,13 @@ class ChurnMetricsServiceTest {
         assertThat(m.windowDays()).isEqualTo(30);
         assertThat(m.canceledSubscribers()).isZero();
         assertThat(m.lostMrrCents()).isZero();
-        assertThat(m.lostMrrFormatted()).isEqualTo("$0");
+        assertThat(m.lostMrrFormatted()).isEqualTo("$0.00");
         assertThat(m.lostArrCents()).isZero();
         assertThat(m.startingMrrCents()).isZero();
         assertThat(m.grossRevenueChurnRatePercent()).isZero();
-        assertThat(m.byPlan()).hasSize(3);
+        assertThat(m.byPlan()).hasSize(2);
         assertThat(m.byPlan()).extracting(ChurnMetrics.PlanChurnBreakdown::planLabel)
-                .containsExactly("Personal", "Team", "Enterprise");
+                .containsExactly("Pro", "Business");
     }
 
     @Test
@@ -79,66 +79,66 @@ class ChurnMetricsServiceTest {
     void lostMrrSumsPerPlanMonthlyEquivalentsAndExcludesFree() {
         when(subscriptions.findAllWithUserNewestFirst()).thenReturn(List.of());
         when(subscriptions.findCanceledBetween(eq(now.minusDays(30)), eq(now))).thenReturn(List.of(
-                canceled("a@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY),
-                canceled("b@example.com", Plan.PERSONAL, BillingPeriod.ANNUAL),
-                canceled("c@example.com", Plan.TEAM,     BillingPeriod.MONTHLY),
+                canceled("a@example.com", Plan.PRO,      BillingPeriod.MONTHLY),
+                canceled("b@example.com", Plan.PRO,      BillingPeriod.ANNUAL),
+                canceled("c@example.com", Plan.BUSINESS, BillingPeriod.MONTHLY),
                 canceled("d@example.com", Plan.FREE,     BillingPeriod.MONTHLY)));
         when(subscriptions.findCanceledBetween(eq(now.minusDays(60)), eq(now.minusDays(30))))
                 .thenReturn(List.of());
 
         ChurnMetrics m = service.snapshot();
 
-        // 900 (Personal monthly) + 700 (Personal annual = monthly-eq) + 2900 (Team monthly)
-        // = 4500 cents; FREE row excluded.
+        // 699 (Pro monthly) + 599 (Pro annual = monthly-eq) + 0 (Business = custom)
+        // = 1298 cents; FREE row excluded but the 3 paid cancels still count.
         assertThat(m.canceledSubscribers()).isEqualTo(3);
-        assertThat(m.lostMrrCents()).isEqualTo(4500L);
-        assertThat(m.lostMrrFormatted()).isEqualTo("$45");
-        assertThat(m.lostArrCents()).isEqualTo(54_000L);
-        assertThat(m.lostArrFormatted()).isEqualTo("$540");
+        assertThat(m.lostMrrCents()).isEqualTo(1298L);
+        assertThat(m.lostMrrFormatted()).isEqualTo("$12.98");
+        assertThat(m.lostArrCents()).isEqualTo(15_576L);
+        assertThat(m.lostArrFormatted()).isEqualTo("$155.76");
     }
 
     @Test
     void perPlanBreakdownBucketsCancellationsByPlan() {
         when(subscriptions.findAllWithUserNewestFirst()).thenReturn(List.of());
         when(subscriptions.findCanceledBetween(eq(now.minusDays(30)), eq(now))).thenReturn(List.of(
-                canceled("p1@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY),
-                canceled("p2@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY),
-                canceled("t1@example.com", Plan.TEAM,     BillingPeriod.MONTHLY),
-                canceled("e1@example.com", Plan.ENTERPRISE, BillingPeriod.MONTHLY)));
+                canceled("p1@example.com", Plan.PRO,      BillingPeriod.MONTHLY),
+                canceled("p2@example.com", Plan.PRO,      BillingPeriod.MONTHLY),
+                canceled("b1@example.com", Plan.BUSINESS, BillingPeriod.MONTHLY),
+                canceled("b2@example.com", Plan.BUSINESS, BillingPeriod.MONTHLY)));
         when(subscriptions.findCanceledBetween(eq(now.minusDays(60)), eq(now.minusDays(30))))
                 .thenReturn(List.of());
 
         ChurnMetrics m = service.snapshot();
 
-        assertThat(m.byPlan()).hasSize(3);
-        assertThat(m.byPlan().get(0).planLabel()).isEqualTo("Personal");
+        // Service iterates plans in List.of(PRO, BUSINESS), so get(0)=Pro, get(1)=Business.
+        assertThat(m.byPlan()).hasSize(2);
+        assertThat(m.byPlan().get(0).planLabel()).isEqualTo("Pro");
         assertThat(m.byPlan().get(0).canceledSubscribers()).isEqualTo(2);
-        assertThat(m.byPlan().get(0).lostMrrCents()).isEqualTo(1800L);
-        assertThat(m.byPlan().get(1).planLabel()).isEqualTo("Team");
-        assertThat(m.byPlan().get(1).canceledSubscribers()).isEqualTo(1);
-        assertThat(m.byPlan().get(1).lostMrrCents()).isEqualTo(2900L);
-        assertThat(m.byPlan().get(2).planLabel()).isEqualTo("Enterprise");
-        assertThat(m.byPlan().get(2).canceledSubscribers()).isEqualTo(1);
-        assertThat(m.byPlan().get(2).lostMrrCents()).isEqualTo(9900L);
+        // 2 × Pro monthly 699 = 1398c
+        assertThat(m.byPlan().get(0).lostMrrCents()).isEqualTo(1398L);
+        assertThat(m.byPlan().get(1).planLabel()).isEqualTo("Business");
+        assertThat(m.byPlan().get(1).canceledSubscribers()).isEqualTo(2);
+        // Business is custom/contact-sales — 0c MRR.
+        assertThat(m.byPlan().get(1).lostMrrCents()).isEqualTo(0L);
     }
 
     @Test
     void grossChurnRateIsLostMrrOverCurrentPlusLostMrr() {
         when(subscriptions.findAllWithUserNewestFirst()).thenReturn(List.of(
-                active("keep1@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY),
-                active("keep2@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY),
-                active("keep3@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY)));
+                active("keep1@example.com", Plan.PRO, BillingPeriod.MONTHLY),
+                active("keep2@example.com", Plan.PRO, BillingPeriod.MONTHLY),
+                active("keep3@example.com", Plan.PRO, BillingPeriod.MONTHLY)));
         when(subscriptions.findCanceledBetween(eq(now.minusDays(30)), eq(now))).thenReturn(List.of(
-                canceled("gone@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY)));
+                canceled("gone@example.com", Plan.PRO, BillingPeriod.MONTHLY)));
         when(subscriptions.findCanceledBetween(eq(now.minusDays(60)), eq(now.minusDays(30))))
                 .thenReturn(List.of());
 
         ChurnMetrics m = service.snapshot();
 
-        // current MRR = 3 × 900 = 2700; lost = 900; starting = 3600;
-        // gross churn = 900 / 3600 = 25%
-        assertThat(m.startingMrrCents()).isEqualTo(3600L);
-        assertThat(m.startingMrrFormatted()).isEqualTo("$36");
+        // current MRR = 3 × 699 = 2097; lost = 699; starting = 2796;
+        // gross churn = 699 / 2796 = 25%
+        assertThat(m.startingMrrCents()).isEqualTo(2796L);
+        assertThat(m.startingMrrFormatted()).isEqualTo("$27.96");
         assertThat(m.grossRevenueChurnRatePercent()).isEqualTo(25);
     }
 
@@ -155,21 +155,21 @@ class ChurnMetricsServiceTest {
     @Test
     void priorWindowFiguresAndDeltasReflectChurnMomentum() {
         when(subscriptions.findAllWithUserNewestFirst()).thenReturn(List.of(
-                active("survivor@example.com", Plan.TEAM, BillingPeriod.MONTHLY)));
+                active("survivor@example.com", Plan.PRO, BillingPeriod.MONTHLY)));
         when(subscriptions.findCanceledBetween(eq(now.minusDays(30)), eq(now))).thenReturn(List.of(
-                canceled("recent@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY)));
+                canceled("recent@example.com", Plan.PRO, BillingPeriod.MONTHLY)));
         when(subscriptions.findCanceledBetween(eq(now.minusDays(60)), eq(now.minusDays(30))))
                 .thenReturn(List.of(
-                        canceled("older@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY),
-                        canceled("older2@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY)));
+                        canceled("older@example.com", Plan.PRO, BillingPeriod.MONTHLY),
+                        canceled("older2@example.com", Plan.PRO, BillingPeriod.MONTHLY)));
 
         ChurnMetrics m = service.snapshot();
 
         assertThat(m.priorCanceledSubscribers()).isEqualTo(2);
-        assertThat(m.priorLostMrrCents()).isEqualTo(1800L);
-        assertThat(m.priorLostMrrFormatted()).isEqualTo("$18");
+        assertThat(m.priorLostMrrCents()).isEqualTo(1398L);
+        assertThat(m.priorLostMrrFormatted()).isEqualTo("$13.98");
 
-        // Current 1 vs. prior 2 → -50%; lost MRR 900 vs. 1800 → -50%.
+        // Current 1 vs. prior 2 → -50%; lost MRR 699 vs. 1398 → -50%.
         assertThat(m.canceledDeltaPercent()).isEqualTo(-50);
         assertThat(m.lostMrrDeltaPercent()).isEqualTo(-50);
         assertThat(m.canceledDeltaLabel()).isEqualTo("▼ 50% vs. prior 30 days");
@@ -178,31 +178,31 @@ class ChurnMetricsServiceTest {
 
     @Test
     void churnRateDeltaIsInPercentagePointsNotPercent() {
-        // Current churn rate: lost 900, starting = 900 + 0 = 900, rate = 100%
+        // Current churn rate: lost 699, starting = 699 + 0 = 699, rate = 100%
         // Prior churn rate: lost 0, prior starting = 0 + 0 + 0 (no current MRR), rate = 0%
-        // Reuse a tighter setup: build current rate ≈ 10%, prior ≈ 20%.
+        // Reuse a tighter setup: build current rate ≈ 10%, prior ≈ 17%.
         when(subscriptions.findAllWithUserNewestFirst()).thenReturn(List.of(
-                active("a@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY),
-                active("b@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY),
-                active("c@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY),
-                active("d@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY),
-                active("e@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY),
-                active("f@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY),
-                active("g@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY),
-                active("h@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY),
-                active("i@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY)));
+                active("a@example.com", Plan.PRO, BillingPeriod.MONTHLY),
+                active("b@example.com", Plan.PRO, BillingPeriod.MONTHLY),
+                active("c@example.com", Plan.PRO, BillingPeriod.MONTHLY),
+                active("d@example.com", Plan.PRO, BillingPeriod.MONTHLY),
+                active("e@example.com", Plan.PRO, BillingPeriod.MONTHLY),
+                active("f@example.com", Plan.PRO, BillingPeriod.MONTHLY),
+                active("g@example.com", Plan.PRO, BillingPeriod.MONTHLY),
+                active("h@example.com", Plan.PRO, BillingPeriod.MONTHLY),
+                active("i@example.com", Plan.PRO, BillingPeriod.MONTHLY)));
         when(subscriptions.findCanceledBetween(eq(now.minusDays(30)), eq(now))).thenReturn(List.of(
-                canceled("recent@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY)));
+                canceled("recent@example.com", Plan.PRO, BillingPeriod.MONTHLY)));
         when(subscriptions.findCanceledBetween(eq(now.minusDays(60)), eq(now.minusDays(30))))
                 .thenReturn(List.of(
-                        canceled("o1@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY),
-                        canceled("o2@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY)));
+                        canceled("o1@example.com", Plan.PRO, BillingPeriod.MONTHLY),
+                        canceled("o2@example.com", Plan.PRO, BillingPeriod.MONTHLY)));
 
         ChurnMetrics m = service.snapshot();
 
-        // current rate = 900 / (9*900 + 900) = 900 / 9000 = 10%
+        // current rate = 699 / (9*699 + 699) = 699 / 6990 = 10%
         assertThat(m.grossRevenueChurnRatePercent()).isEqualTo(10);
-        // prior rate = 1800 / (9*900 + 900 + 1800) = 1800 / 10800 = 17% (rounded)
+        // prior rate = 1398 / (9*699 + 699 + 1398) = 1398 / 8388 = 17% (rounded)
         assertThat(m.priorGrossRevenueChurnRatePercent()).isEqualTo(17);
         assertThat(m.churnRateDeltaPoints()).isEqualTo(-7);
         assertThat(m.churnRateDeltaLabel()).isEqualTo("▼ 7 pts vs. prior 30 days");
@@ -211,9 +211,9 @@ class ChurnMetricsServiceTest {
     @Test
     void deltaLabelsHandleNoPriorDataCases() {
         when(subscriptions.findAllWithUserNewestFirst()).thenReturn(List.of(
-                active("a@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY)));
+                active("a@example.com", Plan.PRO, BillingPeriod.MONTHLY)));
         when(subscriptions.findCanceledBetween(eq(now.minusDays(30)), eq(now))).thenReturn(List.of(
-                canceled("recent@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY)));
+                canceled("recent@example.com", Plan.PRO, BillingPeriod.MONTHLY)));
         when(subscriptions.findCanceledBetween(eq(now.minusDays(60)), eq(now.minusDays(30))))
                 .thenReturn(List.of());
 

@@ -5,7 +5,7 @@ import com.emailmessenger.domain.Plan;
 /**
  * Raised when a user attempts an operation that would exceed the caps of
  * their current {@link Plan}. The upgrade modal catches this and renders a
- * plan-comparison panel with a "Upgrade to Personal" CTA into Checkout.
+ * plan-comparison panel with a "Upgrade to Pro" CTA into Checkout.
  */
 public class PlanLimitExceededException extends RuntimeException {
 

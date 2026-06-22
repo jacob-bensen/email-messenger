@@ -181,36 +181,36 @@ class AuthFlowIntegrationTest {
     @Test
     void loginWithPlanRedirectsToCheckout() throws Exception {
         userService.register("funnel@example.com", "password1", null);
-        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.MONTHLY)))
+        when(billingService.startCheckout(any(User.class), eq(Plan.PRO), eq(BillingPeriod.MONTHLY)))
                 .thenReturn("https://checkout.stripe.com/c/pay/cs_test_login_funnel");
 
         mockMvc.perform(post("/login")
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .param("email", "funnel@example.com")
                         .param("password", "password1")
-                        .param("plan", "personal"))
+                        .param("plan", "pro"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("https://checkout.stripe.com/c/pay/cs_test_login_funnel"));
 
-        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.MONTHLY));
+        verify(billingService).startCheckout(any(User.class), eq(Plan.PRO), eq(BillingPeriod.MONTHLY));
     }
 
     @Test
     void loginWithAnnualBillingPassesAnnualPeriodToCheckout() throws Exception {
         userService.register("annuallogin@example.com", "password1", null);
-        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.ANNUAL)))
+        when(billingService.startCheckout(any(User.class), eq(Plan.PRO), eq(BillingPeriod.ANNUAL)))
                 .thenReturn("https://checkout.stripe.com/c/pay/cs_test_annual_login");
 
         mockMvc.perform(post("/login")
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .param("email", "annuallogin@example.com")
                         .param("password", "password1")
-                        .param("plan", "personal")
+                        .param("plan", "pro")
                         .param("billing", "annual"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("https://checkout.stripe.com/c/pay/cs_test_annual_login"));
 
-        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.ANNUAL));
+        verify(billingService).startCheckout(any(User.class), eq(Plan.PRO), eq(BillingPeriod.ANNUAL));
     }
 
     @Test
@@ -230,54 +230,54 @@ class AuthFlowIntegrationTest {
 
     @Test
     void loginPageRendersHiddenPlanInput() throws Exception {
-        mockMvc.perform(get("/login").param("plan", "personal"))
+        mockMvc.perform(get("/login").param("plan", "pro"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("login"));
     }
 
     @Test
     void registrationWithPlanStartsCheckoutAndRedirectsToStripe() throws Exception {
-        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.MONTHLY)))
+        when(billingService.startCheckout(any(User.class), eq(Plan.PRO), eq(BillingPeriod.MONTHLY)))
                 .thenReturn("https://checkout.stripe.com/c/pay/cs_test_funnel");
 
         mockMvc.perform(post("/register")
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .param("email", "trial@example.com")
                         .param("password", "password1")
-                        .param("plan", "personal"))
+                        .param("plan", "pro"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("https://checkout.stripe.com/c/pay/cs_test_funnel"));
 
         assertThat(users.findByEmail("trial@example.com")).isPresent();
-        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.MONTHLY));
+        verify(billingService).startCheckout(any(User.class), eq(Plan.PRO), eq(BillingPeriod.MONTHLY));
     }
 
     @Test
     void registrationWithAnnualBillingPassesAnnualPeriodToCheckout() throws Exception {
-        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.ANNUAL)))
+        when(billingService.startCheckout(any(User.class), eq(Plan.PRO), eq(BillingPeriod.ANNUAL)))
                 .thenReturn("https://checkout.stripe.com/c/pay/cs_test_annual_register");
 
         mockMvc.perform(post("/register")
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .param("email", "annualregister@example.com")
                         .param("password", "password1")
-                        .param("plan", "personal")
+                        .param("plan", "pro")
                         .param("billing", "annual"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("https://checkout.stripe.com/c/pay/cs_test_annual_register"));
 
         assertThat(users.findByEmail("annualregister@example.com")).isPresent();
-        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.ANNUAL));
+        verify(billingService).startCheckout(any(User.class), eq(Plan.PRO), eq(BillingPeriod.ANNUAL));
     }
 
     @Test
     void loginConsumesSessionStoredOauthIntentToReachCheckout() throws Exception {
         userService.register("oauthcarry@example.com", "password1", null);
-        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.ANNUAL)))
+        when(billingService.startCheckout(any(User.class), eq(Plan.PRO), eq(BillingPeriod.ANNUAL)))
                 .thenReturn("https://checkout.stripe.com/c/pay/cs_test_oauth_carry");
 
         org.springframework.mock.web.MockHttpSession session = new org.springframework.mock.web.MockHttpSession();
-        session.setAttribute("conexusmail.oauth.plan", "personal");
+        session.setAttribute("conexusmail.oauth.plan", "pro");
         session.setAttribute("conexusmail.oauth.billing", "annual");
 
         mockMvc.perform(post("/login")
@@ -288,7 +288,7 @@ class AuthFlowIntegrationTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("https://checkout.stripe.com/c/pay/cs_test_oauth_carry"));
 
-        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.ANNUAL));
+        verify(billingService).startCheckout(any(User.class), eq(Plan.PRO), eq(BillingPeriod.ANNUAL));
         // Intent must not stick around for the next login on the same session.
         assertThat(session.getAttribute("conexusmail.oauth.plan")).isNull();
         assertThat(session.getAttribute("conexusmail.oauth.billing")).isNull();

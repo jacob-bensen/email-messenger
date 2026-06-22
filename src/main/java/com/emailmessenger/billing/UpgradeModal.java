@@ -28,7 +28,7 @@ public record UpgradeModal(
 ) implements Serializable {
 
     public static UpgradeModal fromException(PlanLimitExceededException ex) {
-        Plan target = Plan.PERSONAL;
+        Plan target = Plan.PRO;
         return new UpgradeModal(
                 ex.getCurrentPlan(),
                 ex.getKind(),
@@ -47,25 +47,22 @@ public record UpgradeModal(
 
     private static String monthlyPrice(Plan plan) {
         return switch (plan) {
-            case PERSONAL -> "$9";
-            case TEAM -> "$29";
-            case ENTERPRISE, FREE -> "";
+            case PRO -> "$6.99";
+            case BUSINESS, FREE -> "";
         };
     }
 
     private static String annualMonthlyEquivalent(Plan plan) {
         return switch (plan) {
-            case PERSONAL -> "$7";
-            case TEAM -> "$24";
-            case ENTERPRISE, FREE -> "";
+            case PRO -> "$5.99";
+            case BUSINESS, FREE -> "";
         };
     }
 
     private static String annualCashAmount(Plan plan) {
         return switch (plan) {
-            case PERSONAL -> "$84";
-            case TEAM -> "$288";
-            case ENTERPRISE, FREE -> "";
+            case PRO -> "$71.88";
+            case BUSINESS, FREE -> "";
         };
     }
 }

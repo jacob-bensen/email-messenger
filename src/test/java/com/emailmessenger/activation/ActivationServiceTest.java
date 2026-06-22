@@ -331,7 +331,7 @@ class ActivationServiceTest {
         users.touchActivationNudgeSent(user.getId(), LocalDateTime.now().minusDays(7));
         users.touchActivationFollowupSent(user.getId(), LocalDateTime.now().minusDays(5));
         Subscription sub = new Subscription(user, "cus_test_paid_intent", "trialing");
-        sub.setPlan(Plan.PERSONAL);
+        sub.setPlan(Plan.PRO);
         subscriptions.save(sub);
 
         int sent = activationService.runActivationLastChanceCycle();

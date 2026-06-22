@@ -14,7 +14,7 @@ import java.util.Locale;
 
 /**
  * Carries plan, billing, and utm_source across the Google OAuth round-trip
- * via the HTTP session. The visitor's intent (e.g. "wanted Personal annual,
+ * via the HTTP session. The visitor's intent (e.g. "wanted Pro annual,
  * came from utm=producthunt") would otherwise be lost when Spring Security
  * redirects to Google — Spring's authorization-request URL has no slot for
  * our params and Google strips anything it doesn't understand.

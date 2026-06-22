@@ -231,14 +231,14 @@ class AccountControllerTest {
     void accountPageShowsActiveAnnualCadenceAndRenewalDate() throws Exception {
         User user = userService.register("billed@example.com", "password1", null);
         Subscription sub = new Subscription(user, "cus_billed", "active");
-        sub.setPlan(Plan.PERSONAL);
+        sub.setPlan(Plan.PRO);
         sub.setBillingPeriod(BillingPeriod.ANNUAL);
         sub.setCurrentPeriodEnd(java.time.LocalDateTime.of(2027, 6, 7, 12, 0));
         subscriptions.save(sub);
 
         mockMvc.perform(get("/account"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Personal · Annual")))
+                .andExpect(content().string(containsString("Pro · Annual")))
                 .andExpect(content().string(containsString("2027-06-07")));
     }
 
@@ -247,14 +247,14 @@ class AccountControllerTest {
     void accountPageShowsTrialCadenceWithTrialEnd() throws Exception {
         User user = userService.register("trialing@example.com", "password1", null);
         Subscription sub = new Subscription(user, "cus_trial", "trialing");
-        sub.setPlan(Plan.PERSONAL);
+        sub.setPlan(Plan.PRO);
         sub.setBillingPeriod(BillingPeriod.MONTHLY);
         sub.setTrialEndsAt(java.time.LocalDateTime.of(2026, 6, 22, 12, 0));
         subscriptions.save(sub);
 
         mockMvc.perform(get("/account"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Personal · Monthly trial")))
+                .andExpect(content().string(containsString("Pro · Monthly trial")))
                 .andExpect(content().string(containsString("2026-06-22")));
     }
 

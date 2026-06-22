@@ -172,9 +172,8 @@ public class TrialEndConversionService {
             return "";
         }
         return switch (plan) {
-            case PERSONAL -> "Personal";
-            case TEAM -> "Team";
-            case ENTERPRISE -> "Enterprise";
+            case PRO -> "Pro";
+            case BUSINESS -> "Business";
             case FREE -> "";
         };
     }

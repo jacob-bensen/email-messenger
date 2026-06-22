@@ -17,7 +17,7 @@ class AdminRevenueController {
     private final FunnelMetricsService funnelService;
     private final TrialEndConversionMetricsService trialEndMetricsService;
     private final OnboardingFunnelMetricsService onboardingFunnelService;
-    private final TeamAdoptionMetricsService teamAdoptionService;
+    private final ProAdoptionMetricsService proAdoptionService;
     private final ChurnMetricsService churnMetricsService;
     private final AtRiskRetentionService atRiskRetentionService;
     private final BillingPeriodBackfillService backfillService;
@@ -29,7 +29,7 @@ class AdminRevenueController {
                            FunnelMetricsService funnelService,
                            TrialEndConversionMetricsService trialEndMetricsService,
                            OnboardingFunnelMetricsService onboardingFunnelService,
-                           TeamAdoptionMetricsService teamAdoptionService,
+                           ProAdoptionMetricsService proAdoptionService,
                            ChurnMetricsService churnMetricsService,
                            AtRiskRetentionService atRiskRetentionService,
                            BillingPeriodBackfillService backfillService,
@@ -40,7 +40,7 @@ class AdminRevenueController {
         this.funnelService = funnelService;
         this.trialEndMetricsService = trialEndMetricsService;
         this.onboardingFunnelService = onboardingFunnelService;
-        this.teamAdoptionService = teamAdoptionService;
+        this.proAdoptionService = proAdoptionService;
         this.churnMetricsService = churnMetricsService;
         this.atRiskRetentionService = atRiskRetentionService;
         this.backfillService = backfillService;
@@ -55,7 +55,7 @@ class AdminRevenueController {
         FunnelMetrics funnel = funnelService.snapshot();
         TrialEndConversionMetrics trialEnd = trialEndMetricsService.snapshot();
         OnboardingFunnelMetrics onboardingFunnel = onboardingFunnelService.snapshot();
-        TeamAdoptionMetrics teamAdoption = teamAdoptionService.snapshot();
+        ProAdoptionMetrics proAdoption = proAdoptionService.snapshot();
         ChurnMetrics churn = churnMetricsService.snapshot();
         AtRiskRetentionMetrics atRiskRetention = atRiskRetentionService.snapshot();
         WinBackConversionMetrics winBackConversion = winBackConversionService.snapshot();
@@ -63,7 +63,7 @@ class AdminRevenueController {
         model.addAttribute("funnel", funnel);
         model.addAttribute("trialEnd", trialEnd);
         model.addAttribute("onboardingFunnel", onboardingFunnel);
-        model.addAttribute("teamAdoption", teamAdoption);
+        model.addAttribute("proAdoption", proAdoption);
         model.addAttribute("churn", churn);
         model.addAttribute("atRiskRetention", atRiskRetention);
         model.addAttribute("winBackConversion", winBackConversion);

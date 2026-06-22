@@ -88,9 +88,9 @@ class AdminRevenueControllerTest {
 
         User payer = userService.register("payer@example.com", "password1", null);
         Subscription sub = new Subscription(payer, "cus_payer", "active");
-        sub.setPlan(Plan.PERSONAL);
+        sub.setPlan(Plan.PRO);
         sub.setBillingPeriod(BillingPeriod.MONTHLY);
-        sub.setStripePriceId("price_personal_monthly");
+        sub.setStripePriceId("price_pro_monthly");
         subscriptions.save(sub);
 
         mockMvc.perform(get("/admin/revenue"))
@@ -98,7 +98,7 @@ class AdminRevenueControllerTest {
                 .andExpect(view().name("admin/revenue"))
                 .andExpect(model().attributeExists("metrics"))
                 .andExpect(content().string(containsString("Revenue")))
-                .andExpect(content().string(containsString("$9")))
+                .andExpect(content().string(containsString("$6.99")))
                 .andExpect(content().string(containsString("payer@example.com")));
     }
 
@@ -117,17 +117,17 @@ class AdminRevenueControllerTest {
     void adminCanTriggerReconcileAndIsRedirectedBackWithFlashSummary() throws Exception {
         userService.register("operator@example.com", "password1", null);
         adminProperties.setEmails(List.of("operator@example.com"));
-        billingProperties.setPersonalAnnualPriceId("price_personal_annual");
+        billingProperties.setProAnnualPriceId("price_pro_annual");
 
         User payer = userService.register("payer@example.com", "password1", null);
         Subscription sub = new Subscription(payer, "cus_payer", "active");
-        sub.setPlan(Plan.PERSONAL);
+        sub.setPlan(Plan.PRO);
         sub.setStripeSubscriptionId("sub_payer");
         // billingPeriod is intentionally left null to simulate pre-V17 state.
         subscriptions.save(sub);
 
         when(stripeSubscriptionGateway.currentPriceId("sub_payer"))
-                .thenReturn(Optional.of("price_personal_annual"));
+                .thenReturn(Optional.of("price_pro_annual"));
 
         mockMvc.perform(post("/admin/revenue/reconcile-billing-period").with(csrf()))
                 .andExpect(status().is3xxRedirection())
@@ -183,9 +183,9 @@ class AdminRevenueControllerTest {
         userService.register("recent@example.com", "password1", null, "producthunt");
         User payer = userService.register("payer@example.com", "password1", null, "producthunt");
         Subscription sub = new Subscription(payer, "cus_payer", "active");
-        sub.setPlan(Plan.PERSONAL);
+        sub.setPlan(Plan.PRO);
         sub.setBillingPeriod(BillingPeriod.MONTHLY);
-        sub.setStripePriceId("price_personal_monthly");
+        sub.setStripePriceId("price_pro_monthly");
         subscriptions.save(sub);
 
         mockMvc.perform(get("/admin/revenue"))
@@ -221,17 +221,16 @@ class AdminRevenueControllerTest {
 
     @Test
     @WithMockUser(username = "operator@example.com")
-    void revenuePageRendersTeamAdoptionCardWithEngagementAndConversionLabels() throws Exception {
+    void revenuePageRendersProAdoptionCardWithEngagementAndConversionLabels() throws Exception {
         userService.register("operator@example.com", "password1", null);
         adminProperties.setEmails(List.of("operator@example.com"));
 
         mockMvc.perform(get("/admin/revenue"))
                 .andExpect(status().isOk())
-                .andExpect(model().attributeExists("teamAdoption"))
-                .andExpect(content().string(containsString("Team-plan adoption")))
-                .andExpect(content().string(containsString("Entitled Team subs")))
-                .andExpect(content().string(containsString("Free → Team")))
-                .andExpect(content().string(containsString("Personal → Team")))
+                .andExpect(model().attributeExists("proAdoption"))
+                .andExpect(content().string(containsString("Pro-plan adoption")))
+                .andExpect(content().string(containsString("Entitled Pro subs")))
+                .andExpect(content().string(containsString("Free → Pro")))
                 // Prior-window comparison labels must render so the
                 // operator can see the EPIC-16 conversion lift instead
                 // of a single 30-day number with no baseline.
@@ -247,13 +246,13 @@ class AdminRevenueControllerTest {
 
         User survivor = userService.register("keep@example.com", "password1", null);
         Subscription kept = new Subscription(survivor, "cus_keep", "active");
-        kept.setPlan(Plan.TEAM);
+        kept.setPlan(Plan.BUSINESS);
         kept.setBillingPeriod(BillingPeriod.MONTHLY);
         subscriptions.save(kept);
 
         User gone = userService.register("gone@example.com", "password1", null);
         Subscription canceled = new Subscription(gone, "cus_gone", "canceled");
-        canceled.setPlan(Plan.PERSONAL);
+        canceled.setPlan(Plan.PRO);
         canceled.setBillingPeriod(BillingPeriod.MONTHLY);
         subscriptions.save(canceled);
 
@@ -276,7 +275,7 @@ class AdminRevenueControllerTest {
 
         User gone = userService.register("gone@example.com", "password1", null, "producthunt");
         Subscription canceled = new Subscription(gone, "cus_gone", "canceled");
-        canceled.setPlan(Plan.TEAM);
+        canceled.setPlan(Plan.BUSINESS);
         canceled.setBillingPeriod(BillingPeriod.MONTHLY);
         canceled.setCancellationReason(com.emailmessenger.domain.CancellationReason.TOO_EXPENSIVE);
         canceled.setCancellationReasonAt(java.time.LocalDateTime.now().minusHours(1));
@@ -300,14 +299,14 @@ class AdminRevenueControllerTest {
 
         User payer = userService.register("paid-after-nudge@example.com", "password1", null);
         Subscription paid = new Subscription(payer, "cus_paid", "active");
-        paid.setPlan(Plan.PERSONAL);
+        paid.setPlan(Plan.PRO);
         paid.setBillingPeriod(BillingPeriod.MONTHLY);
         paid.setLastTrialEndEmailSentAt(java.time.LocalDateTime.now().minusHours(6));
         subscriptions.save(paid);
 
         User lapsed = userService.register("lapsed-after-nudge@example.com", "password1", null);
         Subscription gone = new Subscription(lapsed, "cus_lapsed", "canceled");
-        gone.setPlan(Plan.PERSONAL);
+        gone.setPlan(Plan.PRO);
         gone.setBillingPeriod(BillingPeriod.MONTHLY);
         gone.setLastTrialEndEmailSentAt(java.time.LocalDateTime.now().minusHours(6));
         subscriptions.save(gone);
@@ -328,7 +327,7 @@ class AdminRevenueControllerTest {
 
         User gone = userService.register("walked@example.com", "password1", null);
         Subscription canceled = new Subscription(gone, "cus_walked", "canceled");
-        canceled.setPlan(Plan.PERSONAL);
+        canceled.setPlan(Plan.PRO);
         canceled.setBillingPeriod(BillingPeriod.MONTHLY);
         canceled.setCancellationReason(com.emailmessenger.domain.CancellationReason.TOO_EXPENSIVE);
         canceled.setCancellationReasonAt(java.time.LocalDateTime.now().minusHours(1));
@@ -366,7 +365,7 @@ class AdminRevenueControllerTest {
 
         User gone = userService.register("renderbutton@example.com", "password1", null);
         Subscription canceled = new Subscription(gone, "cus_render", "canceled");
-        canceled.setPlan(Plan.TEAM);
+        canceled.setPlan(Plan.BUSINESS);
         canceled.setBillingPeriod(BillingPeriod.MONTHLY);
         canceled.setCancellationReason(com.emailmessenger.domain.CancellationReason.OTHER);
         Subscription saved = subscriptions.save(canceled);
@@ -397,7 +396,7 @@ class AdminRevenueControllerTest {
 
         User comeback = userService.register("comeback@example.com", "password1", null);
         Subscription reactivated = new Subscription(comeback, "cus_comeback", "active");
-        reactivated.setPlan(Plan.PERSONAL);
+        reactivated.setPlan(Plan.PRO);
         reactivated.setBillingPeriod(BillingPeriod.MONTHLY);
         Subscription saved = subscriptions.save(reactivated);
         subscriptions.touchWinBackEmailSent(saved.getId(),

@@ -6,15 +6,15 @@ import java.util.List;
  * Rolling-30-day cancellation + MRR-churn snapshot for {@code /admin/revenue}.
  *
  * <p>Pairs raw cancellation counts with the monthly-equivalent revenue that
- * walked out — a Team-plan cancel costs ~3× a Personal-plan cancel, so the
- * count alone hides the dollar impact. {@code grossRevenueChurnRatePercent}
+ * walked out — counts alone hide the dollar impact when plans are priced
+ * differently. {@code grossRevenueChurnRatePercent}
  * follows the standard SaaS convention: lost MRR in the window divided by
  * the MRR that was active at the start of the window
  * ({@code currentMrr + lostMrr}).
  *
  * <p>"Prior-window" counterparts mirror each metric over the 30 days before
  * the current window so the operator can read churn momentum directly off
- * the card (a falling churn rate is the signal that Team-plan retention
+ * the card (a falling churn rate is the signal that retention
  * fixes are landing).
  */
 public record ChurnMetrics(

@@ -38,15 +38,13 @@ class BillingWebhookHandlingTest {
 
     @BeforeEach
     void seedIncompleteSubscription() {
-        properties.setPersonalPriceId("price_personal_test");
-        properties.setPersonalAnnualPriceId("price_personal_annual_test");
-        properties.setTeamPriceId("price_team_test");
-        properties.setTeamAnnualPriceId("price_team_annual_test");
+        properties.setProPriceId("price_pro_test");
+        properties.setProAnnualPriceId("price_pro_annual_test");
         userService.register("payer@example.com", "password1", "Payer");
         user = users.findByEmail("payer@example.com").orElseThrow();
         pending = new Subscription(user, "cus_test_payer", "incomplete");
-        pending.setPlan(Plan.PERSONAL);
-        pending.setStripePriceId("price_personal_test");
+        pending.setPlan(Plan.PRO);
+        pending.setStripePriceId("price_pro_test");
         subscriptions.save(pending);
     }
 
@@ -75,7 +73,7 @@ class BillingWebhookHandlingTest {
         StripeEvent event = new StripeEvent(
                 "evt_2", "customer.subscription.updated",
                 "cus_test_payer", "sub_test_abc",
-                "active", "price_personal_test", trialEnd, periodEnd);
+                "active", "price_pro_test", trialEnd, periodEnd);
 
         billingService.applyStripeEvent(event);
 
@@ -83,7 +81,7 @@ class BillingWebhookHandlingTest {
         assertThat(sub.getStatus()).isEqualTo("active");
         assertThat(sub.getTrialEndsAt()).isEqualTo(LocalDateTime.ofInstant(trialEnd, ZoneOffset.UTC));
         assertThat(sub.getCurrentPeriodEnd()).isEqualTo(LocalDateTime.ofInstant(periodEnd, ZoneOffset.UTC));
-        assertThat(sub.getStripePriceId()).isEqualTo("price_personal_test");
+        assertThat(sub.getStripePriceId()).isEqualTo("price_pro_test");
     }
 
     @Test
@@ -91,7 +89,7 @@ class BillingWebhookHandlingTest {
         StripeEvent event = new StripeEvent(
                 "evt_3", "customer.subscription.created",
                 "cus_test_payer", "sub_test_new",
-                "trialing", "price_personal_test", null, null);
+                "trialing", "price_pro_test", null, null);
 
         billingService.applyStripeEvent(event);
 
@@ -135,7 +133,7 @@ class BillingWebhookHandlingTest {
         StripeEvent first = new StripeEvent(
                 "evt_6", "customer.subscription.updated",
                 "cus_test_payer", "sub_test_replay",
-                "active", "price_personal_test", null, null);
+                "active", "price_pro_test", null, null);
 
         billingService.applyStripeEvent(first);
         billingService.applyStripeEvent(first);
@@ -156,12 +154,12 @@ class BillingWebhookHandlingTest {
         StripeEvent event = new StripeEvent(
                 "evt_period", "customer.subscription.updated",
                 "cus_test_payer", "sub_test_ann",
-                "active", "price_personal_annual_test", null, null);
+                "active", "price_pro_annual_test", null, null);
 
         billingService.applyStripeEvent(event);
 
         Subscription sub = subscriptions.findByUser(user).orElseThrow();
-        assertThat(sub.getStripePriceId()).isEqualTo("price_personal_annual_test");
+        assertThat(sub.getStripePriceId()).isEqualTo("price_pro_annual_test");
         assertThat(sub.getBillingPeriod()).isEqualTo(BillingPeriod.ANNUAL);
     }
 

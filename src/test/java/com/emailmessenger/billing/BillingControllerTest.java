@@ -48,7 +48,7 @@ class BillingControllerTest {
     void checkoutWithoutAuthRedirectsToLogin() throws Exception {
         mockMvc.perform(post("/billing/checkout")
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .param("plan", "personal"))
+                        .param("plan", "pro"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrlPattern("**/login"));
     }
@@ -56,34 +56,34 @@ class BillingControllerTest {
     @Test
     void authenticatedCheckoutRedirectsToStripeUrl() throws Exception {
         User registered = userService.register("buyer@example.com", "password1", null);
-        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.MONTHLY)))
+        when(billingService.startCheckout(any(User.class), eq(Plan.PRO), eq(BillingPeriod.MONTHLY)))
                 .thenReturn("https://checkout.stripe.com/c/pay/cs_test_xyz");
 
         mockMvc.perform(post("/billing/checkout")
                         .with(user(registered.getEmail()))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .param("plan", "personal"))
+                        .param("plan", "pro"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("https://checkout.stripe.com/c/pay/cs_test_xyz"));
 
-        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.MONTHLY));
+        verify(billingService).startCheckout(any(User.class), eq(Plan.PRO), eq(BillingPeriod.MONTHLY));
     }
 
     @Test
     void checkoutWithBillingAnnualParamPassesAnnualPeriodToService() throws Exception {
         User registered = userService.register("annualbuyer@example.com", "password1", null);
-        when(billingService.startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.ANNUAL)))
+        when(billingService.startCheckout(any(User.class), eq(Plan.PRO), eq(BillingPeriod.ANNUAL)))
                 .thenReturn("https://checkout.stripe.com/c/pay/cs_annual");
 
         mockMvc.perform(post("/billing/checkout")
                         .with(user(registered.getEmail()))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .param("plan", "personal")
+                        .param("plan", "pro")
                         .param("billing", "annual"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("https://checkout.stripe.com/c/pay/cs_annual"));
 
-        verify(billingService).startCheckout(any(User.class), eq(Plan.PERSONAL), eq(BillingPeriod.ANNUAL));
+        verify(billingService).startCheckout(any(User.class), eq(Plan.PRO), eq(BillingPeriod.ANNUAL));
     }
 
     @Test

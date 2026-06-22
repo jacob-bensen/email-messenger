@@ -17,9 +17,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
- * ConexusMail unlocks every paid feature for every account, so entitlements are
- * always the top tier and the per-plan caps never bite. These tests pin that
- * behavior (the old free-tier paywall assertions were removed with the paywall).
+ * Entitlements come off the user's Stripe subscription: an active/trialing
+ * Pro or Business subscription unlocks that tier, while everyone else (no
+ * subscription, or an incomplete/canceled one) falls back to Free and its
+ * mailbox + history caps.
  */
 @SpringBootTest
 @Transactional
@@ -40,37 +41,77 @@ class PlanLimitServiceTest {
     }
 
     @Test
-    void accountWithoutSubscriptionIsEnterprise() {
+    void accountWithoutSubscriptionIsFree() {
         User user = newUser("nosub@test.com");
-        assertThat(planLimitService.currentPlan(user)).isEqualTo(Plan.ENTERPRISE);
+        assertThat(planLimitService.currentPlan(user)).isEqualTo(Plan.FREE);
     }
 
     @Test
-    void canceledSubscriptionStillGetsEverything() {
-        User user = newUser("canceled@test.com");
-        Subscription sub = new Subscription(user, "cus_x", "canceled");
-        sub.setPlan(Plan.PERSONAL);
+    void activeProSubscriptionEntitlesToPro() {
+        User user = newUser("pro@test.com");
+        Subscription sub = new Subscription(user, "cus_pro", "active");
+        sub.setPlan(Plan.PRO);
         subscriptions.save(sub);
 
-        assertThat(planLimitService.currentPlan(user)).isEqualTo(Plan.ENTERPRISE);
+        assertThat(planLimitService.currentPlan(user)).isEqualTo(Plan.PRO);
     }
 
     @Test
-    void limitsAreUnlimitedForEveryone() {
+    void trialingProSubscriptionEntitlesToPro() {
+        User user = newUser("trial@test.com");
+        Subscription sub = new Subscription(user, "cus_trial", "trialing");
+        sub.setPlan(Plan.PRO);
+        subscriptions.save(sub);
+
+        assertThat(planLimitService.currentPlan(user)).isEqualTo(Plan.PRO);
+    }
+
+    @Test
+    void canceledSubscriptionFallsBackToFree() {
+        User user = newUser("canceled@test.com");
+        Subscription sub = new Subscription(user, "cus_x", "canceled");
+        sub.setPlan(Plan.PRO);
+        subscriptions.save(sub);
+
+        assertThat(planLimitService.currentPlan(user)).isEqualTo(Plan.FREE);
+    }
+
+    @Test
+    void incompleteSubscriptionFallsBackToFree() {
+        User user = newUser("incomplete@test.com");
+        Subscription sub = new Subscription(user, "cus_i", "incomplete");
+        sub.setPlan(Plan.PRO);
+        subscriptions.save(sub);
+
+        assertThat(planLimitService.currentPlan(user)).isEqualTo(Plan.FREE);
+    }
+
+    @Test
+    void freeUserGetsFreeTierCaps() {
         User user = newUser("limits@test.com");
         PlanLimits caps = planLimitService.limitsFor(user);
-        assertThat(caps.threads()).isEqualTo(PlanLimits.UNLIMITED);
-        assertThat(caps.mailboxes()).isEqualTo(PlanLimits.UNLIMITED);
+        assertThat(caps.threads()).isEqualTo(500);
+        assertThat(caps.mailboxes()).isEqualTo(3);
         assertThat(caps.savedSearches()).isEqualTo(PlanLimits.UNLIMITED);
     }
 
     @Test
-    void enforceMethodsNeverThrow() {
+    void proUserGetsProTierCaps() {
+        User user = newUser("prolimits@test.com");
+        Subscription sub = new Subscription(user, "cus_prol", "active");
+        sub.setPlan(Plan.PRO);
+        subscriptions.save(sub);
+
+        PlanLimits caps = planLimitService.limitsFor(user);
+        assertThat(caps.threads()).isEqualTo(PlanLimits.UNLIMITED);
+        assertThat(caps.mailboxes()).isEqualTo(5);
+        assertThat(caps.savedSearches()).isEqualTo(PlanLimits.UNLIMITED);
+    }
+
+    @Test
+    void savedSearchGuardNeverThrowsBecauseSavedSearchesAreUnlimited() {
         User user = newUser("enforce@test.com");
-        assertThatCode(() -> {
-            planLimitService.enforceCanCreateThread(user);
-            planLimitService.enforceCanCreateMailbox(user);
-            planLimitService.enforceCanCreateSavedSearch(user);
-        }).doesNotThrowAnyException();
+        assertThatCode(() -> planLimitService.enforceCanCreateSavedSearch(user))
+                .doesNotThrowAnyException();
     }
 }

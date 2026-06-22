@@ -80,7 +80,7 @@ class AdminWeeklyDigestServiceTest {
         adminProperties.setEmails(List.of("op@example.com"));
         User payer = userService.register("payer@example.com", "password1", null);
         Subscription sub = new Subscription(payer, "cus_payer", "active");
-        sub.setPlan(Plan.PERSONAL);
+        sub.setPlan(Plan.PRO);
         sub.setBillingPeriod(BillingPeriod.MONTHLY);
         subscriptions.save(sub);
 
@@ -91,11 +91,12 @@ class AdminWeeklyDigestServiceTest {
         MimeMessage mime = captor.getValue();
         String body = (String) mime.getContent();
         assertThat(mime.getSubject()).contains("ConexusMail weekly:");
-        assertThat(mime.getSubject()).contains("$9 MRR");
+        assertThat(mime.getSubject()).contains("$6.99 MRR");
         assertThat(body).contains("MRR:");
-        assertThat(body).contains("$9");
+        assertThat(body).contains("$6.99");
         assertThat(body).contains("ARR:");
-        assertThat(body).contains("$108");
+        // Pro monthly 699c × 12 = 8388c = $83.88
+        assertThat(body).contains("$83.88");
         assertThat(body).contains("Active subscribers:  1");
         assertThat(body).contains("/admin/revenue");
     }
@@ -106,13 +107,13 @@ class AdminWeeklyDigestServiceTest {
 
         User newPayer = userService.register("new@example.com", "password1", null);
         Subscription fresh = new Subscription(newPayer, "cus_new", "active");
-        fresh.setPlan(Plan.PERSONAL);
+        fresh.setPlan(Plan.PRO);
         fresh.setBillingPeriod(BillingPeriod.MONTHLY);
         subscriptions.save(fresh);
 
         User churned = userService.register("churn@example.com", "password1", null);
         Subscription cancelled = new Subscription(churned, "cus_churn", "canceled");
-        cancelled.setPlan(Plan.PERSONAL);
+        cancelled.setPlan(Plan.PRO);
         cancelled.setBillingPeriod(BillingPeriod.MONTHLY);
         subscriptions.save(cancelled);
 
@@ -131,13 +132,13 @@ class AdminWeeklyDigestServiceTest {
 
         User personalChurn = userService.register("p-churn@example.com", "password1", null);
         Subscription pSub = new Subscription(personalChurn, "cus_p_churn", "canceled");
-        pSub.setPlan(Plan.PERSONAL);
+        pSub.setPlan(Plan.PRO);
         pSub.setBillingPeriod(BillingPeriod.MONTHLY);
         subscriptions.save(pSub);
 
         User teamChurn = userService.register("t-churn@example.com", "password1", null);
         Subscription tSub = new Subscription(teamChurn, "cus_t_churn", "canceled");
-        tSub.setPlan(Plan.TEAM);
+        tSub.setPlan(Plan.BUSINESS);
         tSub.setBillingPeriod(BillingPeriod.ANNUAL);
         subscriptions.save(tSub);
 
@@ -146,9 +147,10 @@ class AdminWeeklyDigestServiceTest {
         ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
         verify(mailSender).send(captor.capture());
         String body = (String) captor.getValue().getContent();
-        assertThat(body).contains("Personal:       1 canceled (-$9 MRR)");
-        assertThat(body).contains("Team:           1 canceled (-$24 MRR)");
-        assertThat(body).contains("Enterprise:     0 canceled (-$0 MRR)");
+        // PAID_PLANS = (PRO, BUSINESS); labels left-padded to 16 via "%-16s".
+        // Pro monthly 699c → -$6.99; Business is custom/contact-sales → -$0.00.
+        assertThat(body).contains("Pro:            1 canceled (-$6.99 MRR)");
+        assertThat(body).contains("Business:       1 canceled (-$0.00 MRR)");
     }
 
     @Test

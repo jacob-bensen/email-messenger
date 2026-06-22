@@ -30,12 +30,8 @@ class BillingPeriodBackfillServiceTest {
 
     @BeforeEach
     void setUp() {
-        properties.setPersonalPriceId("price_personal_monthly");
-        properties.setTeamPriceId("price_team_monthly");
-        properties.setEnterprisePriceId("price_enterprise_monthly");
-        properties.setPersonalAnnualPriceId("price_personal_annual");
-        properties.setTeamAnnualPriceId("price_team_annual");
-        properties.setEnterpriseAnnualPriceId("price_enterprise_annual");
+        properties.setProPriceId("price_pro_monthly");
+        properties.setProAnnualPriceId("price_pro_annual");
         service = new BillingPeriodBackfillService(subscriptions, gateway, properties);
     }
 
@@ -54,13 +50,13 @@ class BillingPeriodBackfillServiceTest {
         Subscription sub = nullPeriodSub("payer@example.com", "sub_123");
         when(subscriptions.findByBillingPeriodIsNull()).thenReturn(List.of(sub));
         when(gateway.currentPriceId("sub_123"))
-                .thenReturn(Optional.of("price_personal_monthly"));
+                .thenReturn(Optional.of("price_pro_monthly"));
 
         BillingPeriodBackfillResult result = service.reconcile();
         assertThat(result.scanned()).isEqualTo(1);
         assertThat(result.updated()).isEqualTo(1);
         assertThat(sub.getBillingPeriod()).isEqualTo(BillingPeriod.MONTHLY);
-        assertThat(sub.getStripePriceId()).isEqualTo("price_personal_monthly");
+        assertThat(sub.getStripePriceId()).isEqualTo("price_pro_monthly");
     }
 
     @Test
@@ -68,7 +64,7 @@ class BillingPeriodBackfillServiceTest {
         Subscription sub = nullPeriodSub("payer@example.com", "sub_456");
         when(subscriptions.findByBillingPeriodIsNull()).thenReturn(List.of(sub));
         when(gateway.currentPriceId("sub_456"))
-                .thenReturn(Optional.of("price_team_annual"));
+                .thenReturn(Optional.of("price_pro_annual"));
 
         BillingPeriodBackfillResult result = service.reconcile();
         assertThat(result.updated()).isEqualTo(1);
@@ -121,7 +117,7 @@ class BillingPeriodBackfillServiceTest {
         when(subscriptions.findByBillingPeriodIsNull())
                 .thenReturn(List.of(happy, missing, unmatched, miss));
         when(gateway.currentPriceId("sub_happy"))
-                .thenReturn(Optional.of("price_enterprise_annual"));
+                .thenReturn(Optional.of("price_pro_annual"));
         when(gateway.currentPriceId("sub_promo"))
                 .thenReturn(Optional.of("price_unknown"));
         when(gateway.currentPriceId("sub_gone")).thenReturn(Optional.empty());
@@ -143,7 +139,7 @@ class BillingPeriodBackfillServiceTest {
                 .thenReturn(List.of(sub))
                 .thenReturn(List.of());
         when(gateway.currentPriceId("sub_99"))
-                .thenReturn(Optional.of("price_personal_monthly"));
+                .thenReturn(Optional.of("price_pro_monthly"));
 
         BillingPeriodBackfillResult first = service.reconcile();
         BillingPeriodBackfillResult second = service.reconcile();
@@ -154,7 +150,7 @@ class BillingPeriodBackfillServiceTest {
     private static Subscription nullPeriodSub(String email, String stripeSubscriptionId) {
         User u = new User(email, "hash", null);
         Subscription s = new Subscription(u, "cus_" + email, "active");
-        s.setPlan(Plan.PERSONAL);
+        s.setPlan(Plan.PRO);
         if (stripeSubscriptionId != null) {
             s.setStripeSubscriptionId(stripeSubscriptionId);
         }

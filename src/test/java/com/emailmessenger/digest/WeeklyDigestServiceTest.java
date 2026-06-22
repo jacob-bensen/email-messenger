@@ -71,7 +71,7 @@ class WeeklyDigestServiceTest {
 
     private void grantPersonal(User user) {
         Subscription sub = new Subscription(user, "cus_" + user.getId(), "active");
-        sub.setPlan(Plan.PERSONAL);
+        sub.setPlan(Plan.PRO);
         subscriptions.save(sub);
     }
 

@@ -50,8 +50,8 @@ public class BillingService {
         if (plan == Plan.FREE) {
             throw new BillingException("Free plan does not require checkout.");
         }
-        if (plan == Plan.ENTERPRISE) {
-            throw new BillingException("Enterprise is sales-assisted; use the contact link.");
+        if (plan == Plan.BUSINESS) {
+            throw new BillingException("Business is sales-assisted; use the contact link.");
         }
         BillingPeriod resolved = period == null ? BillingPeriod.MONTHLY : period;
         String priceId = properties.priceIds(resolved).get(plan);
@@ -94,11 +94,10 @@ public class BillingService {
 
     /**
      * Logs a plan transition the first time the user crosses into a new
-     * tier. Free→Personal and Personal→Team are both transitions; restarting
-     * checkout on the same plan, or re-attempting a failed checkout into
-     * the same plan, is not — those produce no event. Used by the operator
-     * dashboard's Team-plan adoption card to split fresh paid conversions
-     * (Free→Team) from existing-customer upgrades (Personal→Team).
+     * tier. Free→Pro is the transition that matters; restarting checkout on
+     * the same plan, or re-attempting a failed checkout into the same plan,
+     * is not — those produce no event. Used by the operator dashboard's
+     * Pro-plan adoption card to count fresh paid conversions.
      */
     private void recordPlanChangeIfTransitioned(Subscription sub, User user,
                                                 Plan previousPlan, Plan newPlan) {

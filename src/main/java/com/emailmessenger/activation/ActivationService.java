@@ -188,7 +188,7 @@ public class ActivationService {
         return true;
     }
 
-    // Paid intent = the signup picked PERSONAL/TEAM/ENTERPRISE at /pricing
+    // Paid intent = the signup picked a paid plan (Pro) at /pricing
     // and got far enough into Stripe Checkout to materialize a Subscription
     // row (status ranges from "incomplete" through "trialing"/"active").
     // Free-tier signups have no Subscription at all; users who explicitly

@@ -46,39 +46,39 @@ class RevenueMetricsServiceTest {
         assertThat(m.trialingSubscribers()).isZero();
         assertThat(m.canceledSubscribers()).isZero();
         assertThat(m.annualSharePercent()).isZero();
-        assertThat(m.mrrFormatted()).isEqualTo("$0");
+        assertThat(m.mrrFormatted()).isEqualTo("$0.00");
         assertThat(m.recentEvents()).isEmpty();
         assertThat(m.sourceBreakdown()).isEmpty();
-        assertThat(m.planBreakdown()).hasSize(3);
+        assertThat(m.planBreakdown()).hasSize(2);
     }
 
     @Test
     void mrrSumsActivePlanPricingByCadenceAndExcludesTrials() {
         when(subscriptions.findAllWithUserNewestFirst()).thenReturn(List.of(
-                active("a@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY, null),
-                active("b@example.com", Plan.PERSONAL, BillingPeriod.ANNUAL, null),
-                active("c@example.com", Plan.TEAM, BillingPeriod.MONTHLY, null),
-                trialing("d@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY, now.plusDays(10)),
-                canceled("e@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY)));
+                active("a@example.com", Plan.PRO, BillingPeriod.MONTHLY, null),
+                active("b@example.com", Plan.PRO, BillingPeriod.ANNUAL, null),
+                active("c@example.com", Plan.BUSINESS, BillingPeriod.MONTHLY, null),
+                trialing("d@example.com", Plan.PRO, BillingPeriod.MONTHLY, now.plusDays(10)),
+                canceled("e@example.com", Plan.PRO, BillingPeriod.MONTHLY)));
 
         RevenueMetrics m = service.snapshot();
         assertThat(m.activeSubscribers()).isEqualTo(3);
         assertThat(m.trialingSubscribers()).isEqualTo(1);
         assertThat(m.canceledSubscribers()).isEqualTo(1);
-        // 900 + 700 + 2900 = 4500 cents
-        assertThat(m.mrrCents()).isEqualTo(4500L);
-        assertThat(m.arrCents()).isEqualTo(54_000L);
-        assertThat(m.mrrFormatted()).isEqualTo("$45");
-        // Trial pipeline = 900 (Personal monthly)
-        assertThat(m.trialPipelineCents()).isEqualTo(900L);
+        // 699 (Pro monthly) + 599 (Pro annual) + 0 (Business) = 1298 cents
+        assertThat(m.mrrCents()).isEqualTo(1298L);
+        assertThat(m.arrCents()).isEqualTo(15_576L);
+        assertThat(m.mrrFormatted()).isEqualTo("$12.98");
+        // Trial pipeline = 699 (Pro monthly)
+        assertThat(m.trialPipelineCents()).isEqualTo(699L);
     }
 
     @Test
     void annualMixPercentReflectsActiveAnnualVsActiveMonthly() {
         when(subscriptions.findAllWithUserNewestFirst()).thenReturn(List.of(
-                active("m1@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY, null),
-                active("m2@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY, null),
-                active("a1@example.com", Plan.PERSONAL, BillingPeriod.ANNUAL, null)));
+                active("m1@example.com", Plan.PRO, BillingPeriod.MONTHLY, null),
+                active("m2@example.com", Plan.PRO, BillingPeriod.MONTHLY, null),
+                active("a1@example.com", Plan.PRO, BillingPeriod.ANNUAL, null)));
 
         RevenueMetrics m = service.snapshot();
         assertThat(m.monthlyActive()).isEqualTo(2);
@@ -87,45 +87,50 @@ class RevenueMetricsServiceTest {
     }
 
     @Test
-    void planBreakdownAlwaysListsThreePaidPlansInOrderEvenWhenEmpty() {
+    void planBreakdownAlwaysListsBothPaidPlansInOrderEvenWhenEmpty() {
         when(subscriptions.findAllWithUserNewestFirst()).thenReturn(List.of(
-                active("t@example.com", Plan.TEAM, BillingPeriod.ANNUAL, null)));
+                active("b@example.com", Plan.BUSINESS, BillingPeriod.ANNUAL, null)));
 
         RevenueMetrics m = service.snapshot();
-        assertThat(m.planBreakdown()).hasSize(3);
-        assertThat(m.planBreakdown().get(0).planLabel()).isEqualTo("Personal");
+        assertThat(m.planBreakdown()).hasSize(2);
+        assertThat(m.planBreakdown().get(0).planLabel()).isEqualTo("Pro");
         assertThat(m.planBreakdown().get(0).monthlyActive()).isZero();
         assertThat(m.planBreakdown().get(0).annualActive()).isZero();
-        assertThat(m.planBreakdown().get(1).planLabel()).isEqualTo("Team");
+        assertThat(m.planBreakdown().get(1).planLabel()).isEqualTo("Business");
         assertThat(m.planBreakdown().get(1).annualActive()).isEqualTo(1);
-        assertThat(m.planBreakdown().get(1).mrrCents()).isEqualTo(2400L);
-        assertThat(m.planBreakdown().get(2).planLabel()).isEqualTo("Enterprise");
+        // Business is custom/contact-sales — contributes 0c to MRR.
+        assertThat(m.planBreakdown().get(1).mrrCents()).isEqualTo(0L);
     }
 
     @Test
     void sourceBreakdownGroupsActiveSubsByAcquisitionSourceAndSortsByMrr() {
         when(subscriptions.findAllWithUserNewestFirst()).thenReturn(List.of(
-                active("p1@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY, "producthunt"),
-                active("p2@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY, "producthunt"),
-                active("t1@example.com", Plan.TEAM, BillingPeriod.MONTHLY, "twitter"),
-                active("direct@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY, null)));
+                active("p1@example.com", Plan.PRO, BillingPeriod.MONTHLY, "producthunt"),
+                active("p2@example.com", Plan.PRO, BillingPeriod.MONTHLY, "producthunt"),
+                active("t1@example.com", Plan.PRO, BillingPeriod.MONTHLY, "twitter"),
+                active("direct@example.com", Plan.PRO, BillingPeriod.ANNUAL, null)));
 
         RevenueMetrics m = service.snapshot();
         assertThat(m.sourceBreakdown()).hasSize(3);
-        // twitter (Team monthly = $29) beats producthunt (2 × Personal = $18) beats direct ($9)
-        assertThat(m.sourceBreakdown().get(0).sourceLabel()).isEqualTo("twitter");
-        assertThat(m.sourceBreakdown().get(0).mrrCents()).isEqualTo(2900L);
-        assertThat(m.sourceBreakdown().get(1).sourceLabel()).isEqualTo("producthunt");
-        assertThat(m.sourceBreakdown().get(1).activeSubscribers()).isEqualTo(2);
+        // Business contributes 0c, so ordering is driven by the count and
+        // cadence of Pro subs per source:
+        // producthunt (2 × Pro monthly = 1398c) beats twitter (1 × Pro monthly
+        // = 699c) beats direct (1 × Pro annual = 599c).
+        assertThat(m.sourceBreakdown().get(0).sourceLabel()).isEqualTo("producthunt");
+        assertThat(m.sourceBreakdown().get(0).mrrCents()).isEqualTo(1398L);
+        assertThat(m.sourceBreakdown().get(0).activeSubscribers()).isEqualTo(2);
+        assertThat(m.sourceBreakdown().get(1).sourceLabel()).isEqualTo("twitter");
+        assertThat(m.sourceBreakdown().get(1).mrrCents()).isEqualTo(699L);
         assertThat(m.sourceBreakdown().get(2).sourceLabel()).isEqualTo("Direct / unknown");
+        assertThat(m.sourceBreakdown().get(2).mrrCents()).isEqualTo(599L);
     }
 
     @Test
     void trialsEndingSoonCountsTrialingInsideSevenDayWindow() {
         when(subscriptions.findAllWithUserNewestFirst()).thenReturn(List.of(
-                trialing("a@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY, now.plusDays(2)),
-                trialing("b@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY, now.plusDays(6)),
-                trialing("c@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY, now.plusDays(10))));
+                trialing("a@example.com", Plan.PRO, BillingPeriod.MONTHLY, now.plusDays(2)),
+                trialing("b@example.com", Plan.PRO, BillingPeriod.MONTHLY, now.plusDays(6)),
+                trialing("c@example.com", Plan.PRO, BillingPeriod.MONTHLY, now.plusDays(10))));
 
         RevenueMetrics m = service.snapshot();
         assertThat(m.trialingSubscribers()).isEqualTo(3);
@@ -136,7 +141,7 @@ class RevenueMetricsServiceTest {
     void recentEventsCappedAtTenAndOrderedByRepositoryOrder() {
         Subscription[] subs = new Subscription[12];
         for (int i = 0; i < 12; i++) {
-            subs[i] = active("u" + i + "@example.com", Plan.PERSONAL, BillingPeriod.MONTHLY, null);
+            subs[i] = active("u" + i + "@example.com", Plan.PRO, BillingPeriod.MONTHLY, null);
             setUpdatedAt(subs[i], now.minusHours(i));
         }
         when(subscriptions.findAllWithUserNewestFirst()).thenReturn(List.of(subs));
@@ -149,17 +154,17 @@ class RevenueMetricsServiceTest {
 
     @Test
     void formatsLargeMrrWithThousandsSeparators() {
-        Subscription[] many = new Subscription[150];
-        for (int i = 0; i < 150; i++) {
-            many[i] = active("u" + i + "@example.com", Plan.TEAM, BillingPeriod.MONTHLY, null);
+        Subscription[] many = new Subscription[250];
+        for (int i = 0; i < 250; i++) {
+            many[i] = active("u" + i + "@example.com", Plan.PRO, BillingPeriod.MONTHLY, null);
         }
         when(subscriptions.findAllWithUserNewestFirst()).thenReturn(List.of(many));
 
         RevenueMetrics m = service.snapshot();
-        // 150 × $29 = $4,350
-        assertThat(m.mrrFormatted()).isEqualTo("$4,350");
-        // ARR = $52,200
-        assertThat(m.arrFormatted()).isEqualTo("$52,200");
+        // 250 × Pro monthly $6.99 = 174,750c = $1,747.50
+        assertThat(m.mrrFormatted()).isEqualTo("$1,747.50");
+        // ARR = 174,750c × 12 = 2,097,000c = $20,970.00
+        assertThat(m.arrFormatted()).isEqualTo("$20,970.00");
     }
 
     private Subscription active(String email, Plan plan, BillingPeriod period, String source) {

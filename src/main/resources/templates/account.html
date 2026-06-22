@@ -42,7 +42,7 @@
     <h2 class="acct-section-title">Subscription</h2>
     <div class="acct-row">
       <div class="acct-label">Plan</div>
-      <div class="acct-value" th:text="${billing.label()}">Personal · Monthly</div>
+      <div class="acct-value" th:text="${billing.label()}">Pro · Monthly</div>
     </div>
     <div class="acct-row" th:if="${billing.renewsOn() != null and !billing.canceled()}">
       <div class="acct-label">

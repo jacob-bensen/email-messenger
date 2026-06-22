@@ -29,7 +29,7 @@ public interface PlanChangeEventRepository extends JpaRepository<PlanChangeEvent
     /**
      * Distinct users who transitioned {@code fromPlan -> toPlan} strictly
      * inside [start, end). Powers the prior-window baseline on the
-     * Team-plan adoption card so the operator can compare last-30d
+     * Pro-plan adoption card so the operator can compare last-30d
      * conversions to the 30d before that without writing SQL.
      */
     @Query("""

@@ -68,7 +68,7 @@ class WinBackOutreachServiceTest {
 
     @Test
     void canceledPaidSubscriberGetsEmailAndStampIsPersisted() throws Exception {
-        Subscription sub = seedCanceled("walked@example.com", Plan.PERSONAL,
+        Subscription sub = seedCanceled("walked@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, CancellationReason.TOO_EXPENSIVE);
 
         WinBackOutreachService.Outcome outcome = winBack.sendWinBackFor(sub.getId());
@@ -79,7 +79,7 @@ class WinBackOutreachServiceTest {
         MimeMessage mime = captor.getValue();
         assertThat(mime.getAllRecipients()).hasSize(1);
         assertThat(mime.getAllRecipients()[0].toString()).isEqualTo("walked@example.com");
-        assertThat(mime.getSubject()).contains("ConexusMail").contains("Personal");
+        assertThat(mime.getSubject()).contains("ConexusMail").contains("Pro");
         String body = (String) mime.getContent();
         DigestEmailPreference prefs = preferences.findByUser(sub.getUser()).orElseThrow();
         assertThat(body).contains("/pricing");
@@ -91,7 +91,7 @@ class WinBackOutreachServiceTest {
 
     @Test
     void teamReasonChoicesProduceReasonSpecificCopy() throws Exception {
-        Subscription sub = seedCanceled("featuregap@example.com", Plan.TEAM,
+        Subscription sub = seedCanceled("featuregap@example.com", Plan.BUSINESS,
                 BillingPeriod.ANNUAL, CancellationReason.MISSING_FEATURE);
 
         winBack.sendWinBackFor(sub.getId());
@@ -99,13 +99,13 @@ class WinBackOutreachServiceTest {
         ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
         verify(mailSender).send(captor.capture());
         String body = (String) captor.getValue().getContent();
-        assertThat(body).contains("Team").contains("annual");
+        assertThat(body).contains("Business").contains("annual");
         assertThat(body).contains("missing feature");
     }
 
     @Test
     void alreadyStampedSubscriptionIsSkipped() {
-        Subscription sub = seedCanceled("repeat@example.com", Plan.PERSONAL,
+        Subscription sub = seedCanceled("repeat@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, CancellationReason.OTHER);
         subscriptions.touchWinBackEmailSent(sub.getId(), LocalDateTime.now().minusHours(1));
 
@@ -117,7 +117,7 @@ class WinBackOutreachServiceTest {
 
     @Test
     void optedOutUserIsSkippedAndStampNotWritten() {
-        Subscription sub = seedCanceled("optout@example.com", Plan.PERSONAL,
+        Subscription sub = seedCanceled("optout@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, CancellationReason.TEMPORARY);
         DigestEmailPreference prefs = preferences.save(
                 new DigestEmailPreference(sub.getUser(), "preset-winback-optout"));
@@ -136,7 +136,7 @@ class WinBackOutreachServiceTest {
     void activeSubscriptionIsNotAValidTargetBecauseTheyAreAlreadyBack() {
         User user = userService.register("active@example.com", "password1", null);
         Subscription sub = new Subscription(user, "cus_active", "active");
-        sub.setPlan(Plan.PERSONAL);
+        sub.setPlan(Plan.PRO);
         sub.setBillingPeriod(BillingPeriod.MONTHLY);
         subscriptions.save(sub);
 
@@ -170,7 +170,7 @@ class WinBackOutreachServiceTest {
 
     @Test
     void mailFailureLeavesStampNullSoOperatorCanRetry() {
-        Subscription sub = seedCanceled("flaky@example.com", Plan.TEAM,
+        Subscription sub = seedCanceled("flaky@example.com", Plan.BUSINESS,
                 BillingPeriod.MONTHLY, CancellationReason.SWITCHING);
         doThrow(new MailSendException("smtp down")).when(mailSender).send(any(MimeMessage.class));
 
@@ -183,7 +183,7 @@ class WinBackOutreachServiceTest {
 
     @Test
     void nullCancellationReasonStillSendsWithGenericOtherCopy() throws Exception {
-        Subscription sub = seedCanceled("noreason@example.com", Plan.PERSONAL,
+        Subscription sub = seedCanceled("noreason@example.com", Plan.PRO,
                 BillingPeriod.MONTHLY, null);
 
         WinBackOutreachService.Outcome outcome = winBack.sendWinBackFor(sub.getId());

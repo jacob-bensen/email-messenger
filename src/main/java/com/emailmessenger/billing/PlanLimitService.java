@@ -1,6 +1,7 @@
 package com.emailmessenger.billing;
 
 import com.emailmessenger.domain.Plan;
+import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.repository.MailAccountRepository;
@@ -10,11 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Resolves entitlements. ConexusMail unlocks every feature for every account,
- * so {@link #currentPlan} is the top tier and the {@code enforceCan*} caps are
- * effectively no-ops. The class is kept (rather than ripped out) so callers and
- * the upgrade-modal plumbing still compile and can be re-enabled if pricing
- * ever returns.
+ * Resolves entitlements. The user's effective plan is read off their Stripe
+ * {@link Subscription}: an active or trialing Pro/Business subscription
+ * entitles them to that tier; everyone else is on Free and subject to its
+ * mailbox + history caps via the {@code enforceCan*} guards.
  */
 @Service
 public class PlanLimitService {
@@ -35,15 +35,23 @@ public class PlanLimitService {
     }
 
     /**
-     * The user's effective plan for entitlement purposes. ConexusMail (Bensen
-     * LLC) ships every feature to every account, so this is unconditionally the
-     * top tier — paid features are unlocked for all accounts regardless of any
-     * Stripe subscription state. Billing/checkout and admin analytics read the
-     * raw {@link Subscription} directly and are unaffected by this.
+     * The user's effective plan for entitlement purposes. A Pro/Business
+     * subscription that is currently {@code active} or {@code trialing}
+     * entitles the user to that tier; an {@code incomplete} or {@code canceled}
+     * subscription (or none at all) falls back to {@link Plan#FREE}.
      */
     @Transactional(readOnly = true)
     public Plan currentPlan(User user) {
-        return Plan.ENTERPRISE;
+        return subscriptions.findByUser(user)
+                .filter(PlanLimitService::isEntitled)
+                .map(Subscription::getPlan)
+                .filter(plan -> plan != null && plan != Plan.FREE)
+                .orElse(Plan.FREE);
+    }
+
+    private static boolean isEntitled(Subscription sub) {
+        String status = sub.getStatus();
+        return "active".equalsIgnoreCase(status) || "trialing".equalsIgnoreCase(status);
     }
 
     @Transactional(readOnly = true)
@@ -72,8 +80,8 @@ public class PlanLimitService {
     /**
      * Throws {@link PlanLimitExceededException} when the user is already at
      * their plan's mailbox cap. Call this just before persisting a new
-     * {@code MailAccount}. The Free plan caps at 1 mailbox, so a free user
-     * who tries to wire up a second mailbox gets the upgrade modal.
+     * {@code MailAccount}. Free caps at 3 mailboxes, so a free user wiring up
+     * a 4th gets the upgrade modal; Pro lifts the cap to 5.
      */
     @Transactional(readOnly = true)
     public void enforceCanCreateMailbox(User user) {
@@ -90,8 +98,8 @@ public class PlanLimitService {
 
     /**
      * Throws {@link PlanLimitExceededException} when the user is already at
-     * their plan's saved-search cap. Free is capped at 1 so the second save
-     * lands the upgrade modal; paid plans are unlimited.
+     * their plan's saved-search cap. Saved searches are unlimited on every
+     * plan today, so this is a no-op kept for symmetry with the other guards.
      */
     @Transactional(readOnly = true)
     public void enforceCanCreateSavedSearch(User user) {

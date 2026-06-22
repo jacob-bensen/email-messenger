@@ -1,9 +1,7 @@
 package com.emailmessenger.digest;
 
-import com.emailmessenger.billing.PlanLimitService;
 import com.emailmessenger.domain.DigestEmailPreference;
 import com.emailmessenger.domain.EmailThread;
-import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.SavedSearch;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.DigestEmailPreferenceRepository;
@@ -32,12 +30,11 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Weekly "what's new in your saved searches" digest. Iterates paid users
- * who have at least one saved search, builds a per-saved-search list of
+ * Weekly "what's new in your saved searches" digest. Iterates every user
+ * who has at least one saved search, builds a per-saved-search list of
  * threads updated since the previous digest (floored at seven days), and
- * sends one plain-text email per user. Free users are intentionally
- * skipped — the digest is the upgrade hook for engaged users hitting the
- * 1-saved-search Free cap.
+ * sends one plain-text email per user. Available on every plan — the digest
+ * is not a paid-tier feature.
  *
  * <p>Lazily provisions a {@link DigestEmailPreference} row with a UUID
  * opt-out token on the first send. The token is surfaced in the footer
@@ -60,7 +57,6 @@ public class WeeklyDigestService {
     private final SavedSearchRepository savedSearches;
     private final EmailThreadRepository threads;
     private final DigestEmailPreferenceRepository preferences;
-    private final PlanLimitService planLimits;
     private final JavaMailSender mailSender;
     private final SiteProperties site;
     private final Clock clock;
@@ -71,14 +67,12 @@ public class WeeklyDigestService {
     WeeklyDigestService(SavedSearchRepository savedSearches,
                         EmailThreadRepository threads,
                         DigestEmailPreferenceRepository preferences,
-                        PlanLimitService planLimits,
                         JavaMailSender mailSender,
                         SiteProperties site,
                         Clock clock) {
         this.savedSearches = savedSearches;
         this.threads = threads;
         this.preferences = preferences;
-        this.planLimits = planLimits;
         this.mailSender = mailSender;
         this.site = site;
         this.clock = clock;
@@ -104,15 +98,12 @@ public class WeeklyDigestService {
 
     /**
      * Compose and send the digest for one user. Returns true if mail
-     * actually went out, false on any skip (free plan, opted out, no new
-     * matches, …). Updates {@code last_sent_at} when sending succeeds.
+     * actually went out, false on any skip (opted out, no new matches, …).
+     * Updates {@code last_sent_at} when sending succeeds. Available on every
+     * plan — the digest is not a paid-tier feature.
      */
     @Transactional
     public boolean sendDigestFor(User user) {
-        Plan plan = planLimits.currentPlan(user);
-        if (plan == Plan.FREE) {
-            return false;
-        }
         DigestEmailPreference prefs = preferences.findByUser(user)
                 .orElseGet(() -> preferences.save(new DigestEmailPreference(user, newToken())));
         if (prefs.isOptedOut()) {
@@ -124,7 +115,7 @@ public class WeeklyDigestService {
         List<SavedSearch> searches = savedSearches.findByOwnerOrderByCreatedAtAsc(user);
         List<DigestSection> sections = new ArrayList<>();
         for (SavedSearch s : searches) {
-            List<EmailThread> matches = findNewMatches(user, plan, s, cutoff);
+            List<EmailThread> matches = findNewMatches(user, s, cutoff);
             if (!matches.isEmpty()) {
                 sections.add(new DigestSection(s.getName(), matches));
             }
@@ -195,7 +186,7 @@ public class WeeklyDigestService {
         return subject.replaceAll("\\s+", " ").trim();
     }
 
-    private List<EmailThread> findNewMatches(User owner, Plan plan, SavedSearch s, LocalDateTime cutoff) {
+    private List<EmailThread> findNewMatches(User owner, SavedSearch s, LocalDateTime cutoff) {
         LocalDateTime since = sinceForPreset(s.getSincePreset());
         since = (since == null || cutoff.isAfter(since)) ? cutoff : since;
         boolean unread = s.isRequireUnread();
@@ -210,10 +201,7 @@ public class WeeklyDigestService {
             }
             return threads.findByOwnerAndSender(owner, sender, since, unread, att, SECTION_PAGE).getContent();
         }
-        if (plan != Plan.FREE) {
-            return threads.searchIncludingBody(owner, q, sender, since, unread, att, SECTION_PAGE).getContent();
-        }
-        return threads.search(owner, q, sender, since, unread, att, SECTION_PAGE).getContent();
+        return threads.searchIncludingBody(owner, q, sender, since, unread, att, SECTION_PAGE).getContent();
     }
 
     private LocalDateTime sinceForPreset(String preset) {

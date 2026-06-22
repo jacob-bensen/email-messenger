@@ -267,12 +267,12 @@ class MailboxPollingServiceTest {
 
         MailAccount reloaded = accountRepository.findById(account.getId()).orElseThrow();
         assertThat(reloaded.getNextPollAt()).isNotNull();
-        // Paid cadence applies to all accounts (every account is entitled to the
-        // top tier) → next poll ~5 minutes out, ±30s jitter.
+        // The account's owner has no paid subscription → Free cadence → next
+        // poll ~15 minutes out, ±30s jitter.
         java.time.LocalDateTime earliest = java.time.LocalDateTime.now(clock)
-                .plusMinutes(4).plusSeconds(20);
+                .plusMinutes(14).plusSeconds(20);
         java.time.LocalDateTime latest = java.time.LocalDateTime.now(clock)
-                .plusMinutes(5).plusSeconds(40);
+                .plusMinutes(15).plusSeconds(40);
         assertThat(reloaded.getNextPollAt()).isAfter(earliest).isBefore(latest);
     }
 

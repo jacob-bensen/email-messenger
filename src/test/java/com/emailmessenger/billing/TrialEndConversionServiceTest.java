@@ -60,7 +60,7 @@ class TrialEndConversionServiceTest {
 
     @Test
     void trialingPaidPlanWithinT1WindowGetsEmailAndStampIsPersisted() throws Exception {
-        Subscription sub = seedTrialing("expiring@example.com", Plan.PERSONAL,
+        Subscription sub = seedTrialing("expiring@example.com", Plan.PRO,
                 LocalDateTime.now().plusHours(12));
 
         int sent = trialEndService.runTrialEndCycle();
@@ -71,7 +71,7 @@ class TrialEndConversionServiceTest {
         MimeMessage mime = captor.getValue();
         assertThat(mime.getAllRecipients()).hasSize(1);
         assertThat(mime.getAllRecipients()[0].toString()).isEqualTo("expiring@example.com");
-        assertThat(mime.getSubject()).contains("Personal").contains("trial");
+        assertThat(mime.getSubject()).contains("Pro").contains("trial");
         String body = (String) mime.getContent();
         DigestEmailPreference prefs = preferences.findByUser(sub.getUser()).orElseThrow();
         assertThat(body).contains("/pricing");
@@ -84,7 +84,7 @@ class TrialEndConversionServiceTest {
 
     @Test
     void trialEndingBeyondTheWindowIsNotInCohort() {
-        seedTrialing("future@example.com", Plan.PERSONAL,
+        seedTrialing("future@example.com", Plan.PRO,
                 LocalDateTime.now().plusDays(7));
 
         int sent = trialEndService.runTrialEndCycle();
@@ -95,7 +95,7 @@ class TrialEndConversionServiceTest {
 
     @Test
     void alreadyEmailedSubscriptionIsSkippedEvenIfStillTrialing() {
-        Subscription sub = seedTrialing("repeat@example.com", Plan.PERSONAL,
+        Subscription sub = seedTrialing("repeat@example.com", Plan.PRO,
                 LocalDateTime.now().plusHours(6));
         subscriptions.touchTrialEndEmailSent(sub.getId(), LocalDateTime.now().minusHours(2));
 
@@ -107,7 +107,7 @@ class TrialEndConversionServiceTest {
 
     @Test
     void optedOutUserIsSkippedEvenIfOtherwiseEligible() {
-        Subscription sub = seedTrialing("optout@example.com", Plan.PERSONAL,
+        Subscription sub = seedTrialing("optout@example.com", Plan.PRO,
                 LocalDateTime.now().plusHours(6));
         DigestEmailPreference prefs = preferences.save(
                 new DigestEmailPreference(sub.getUser(), "preset-trial-end-optout"));
@@ -126,7 +126,7 @@ class TrialEndConversionServiceTest {
     void activeStatusIsNotInCohortBecauseTheUserAlreadyConverted() {
         User user = userService.register("paid@example.com", "password1", null);
         Subscription sub = new Subscription(user, "cus_paid@example.com", "active");
-        sub.setPlan(Plan.PERSONAL);
+        sub.setPlan(Plan.PRO);
         sub.setBillingPeriod(BillingPeriod.MONTHLY);
         sub.setTrialEndsAt(LocalDateTime.now().plusHours(6));
         subscriptions.save(sub);
@@ -138,8 +138,8 @@ class TrialEndConversionServiceTest {
     }
 
     @Test
-    void enterprisePlanIsExcludedFromCohort() {
-        seedTrialing("enterprise@example.com", Plan.ENTERPRISE,
+    void businessPlanIsExcludedFromCohort() {
+        seedTrialing("business@example.com", Plan.BUSINESS,
                 LocalDateTime.now().plusHours(6));
 
         int sent = trialEndService.runTrialEndCycle();
@@ -150,7 +150,7 @@ class TrialEndConversionServiceTest {
 
     @Test
     void trialEndCycleIsIdempotentOncePerSubscription() {
-        seedTrialing("dupe@example.com", Plan.TEAM,
+        seedTrialing("dupe@example.com", Plan.PRO,
                 LocalDateTime.now().plusHours(12));
 
         int first = trialEndService.runTrialEndCycle();
@@ -163,11 +163,11 @@ class TrialEndConversionServiceTest {
 
     @Test
     void cohortReturnsOnlySubsInsideTheWindow() {
-        seedTrialing("eligible@example.com", Plan.PERSONAL,
+        seedTrialing("eligible@example.com", Plan.PRO,
                 LocalDateTime.now().plusHours(20));
-        seedTrialing("too-far@example.com", Plan.PERSONAL,
+        seedTrialing("too-far@example.com", Plan.PRO,
                 LocalDateTime.now().plusDays(5));
-        seedTrialing("enterprise@example.com", Plan.ENTERPRISE,
+        seedTrialing("business@example.com", Plan.BUSINESS,
                 LocalDateTime.now().plusHours(12));
 
         int sent = trialEndService.runTrialEndCycle();
@@ -177,8 +177,8 @@ class TrialEndConversionServiceTest {
     }
 
     @Test
-    void teamPlanBodyMentionsTeamLabelInSubject() throws Exception {
-        seedTrialing("team@example.com", Plan.TEAM,
+    void proPlanMentionsProLabelInSubject() throws Exception {
+        seedTrialing("pro@example.com", Plan.PRO,
                 LocalDateTime.now().plusHours(18));
 
         int sent = trialEndService.runTrialEndCycle();
@@ -186,6 +186,6 @@ class TrialEndConversionServiceTest {
 
         ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
         verify(mailSender).send(captor.capture());
-        assertThat(captor.getValue().getSubject()).contains("Team");
+        assertThat(captor.getValue().getSubject()).contains("Pro");
     }
 }

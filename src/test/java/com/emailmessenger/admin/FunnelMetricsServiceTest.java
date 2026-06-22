@@ -217,7 +217,7 @@ class FunnelMetricsServiceTest {
     private static Subscription sub(String email, String source, String status) {
         User u = user(email, source);
         Subscription s = new Subscription(u, "cus_" + email, status);
-        s.setPlan(Plan.PERSONAL);
+        s.setPlan(Plan.PRO);
         s.setBillingPeriod(BillingPeriod.MONTHLY);
         return s;
     }

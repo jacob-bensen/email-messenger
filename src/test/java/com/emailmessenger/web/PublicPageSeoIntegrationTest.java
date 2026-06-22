@@ -65,7 +65,7 @@ class PublicPageSeoIntegrationTest {
     void pricingPageRendersUniqueSeoTags() throws Exception {
         String body = render("/pricing");
         assertThat(body).contains("<title>Pricing — ConexusMail</title>");
-        assertThat(body).contains("<meta name=\"description\" content=\"ConexusMail is free");
+        assertThat(body).contains("<meta name=\"description\" content=\"Start free with every feature");
         assertThat(body).contains("<link rel=\"canonical\" href=\"https://test.conexusmail.com/pricing\"");
         assertThat(body).contains("<meta property=\"og:url\" content=\"https://test.conexusmail.com/pricing\"");
         assertThat(body).contains("<meta property=\"og:title\" content=\"Pricing — ConexusMail\"");
@@ -309,7 +309,7 @@ class PublicPageSeoIntegrationTest {
         // months-free terms, which is a stronger anchor for the Free →
         // Personal decision. Each paid plan card also has to surface the
         // cash-amount the user will actually be charged today, so they
-        // don't click through expecting $7 and see $84 on the Stripe page.
+        // don't click through expecting $5.99 and see $71.88 on the Stripe page.
         String body = render("/pricing");
         assertThat(body).contains("2 months free");
         assertThat(body).doesNotContain("Save 16%");
@@ -317,9 +317,9 @@ class PublicPageSeoIntegrationTest {
         // data attribute so the toggle JS can fill it in only when the
         // Annual tab is active — but the markup itself must already ship
         // the dollar amount so the value frame survives JS being blocked.
-        assertThat(body).contains("data-annual-cash=\"Billed annually as $84\"");
-        assertThat(body).contains("data-annual-cash=\"Billed annually as $288\"");
-        assertThat(body).contains("data-annual-cash=\"Billed annually as $996\"");
+        // Pro is the only paid tier with a displayed price; Business is
+        // contact-sales, so the Pro annual-cash line is the only one.
+        assertThat(body).contains("data-annual-cash=\"Billed annually as $71.88\"");
         // The toggle JS keys on this class to swap the cash line on/off.
         assertThat(body).contains("class=\"plan-annual-cash\"");
     }
@@ -330,14 +330,14 @@ class PublicPageSeoIntegrationTest {
         // choice picked on /pricing so a user doesn't lose context across
         // the page transition — without it, the signup form gives the user
         // no cue that their pricing pick was actually carried through.
-        String body = render("/register?plan=personal&billing=annual");
+        String body = render("/register?plan=pro&billing=annual");
         assertThat(body).contains("class=\"auth-billing-badge\"");
         assertThat(body).contains("Annual billing");
         assertThat(body).contains("2 months free");
         // The hidden form fields must round-trip both plan + billing into
         // the POST so the redirect into Stripe Checkout uses the annual
         // price ID.
-        assertThat(body).contains("name=\"plan\"").contains("value=\"personal\"");
+        assertThat(body).contains("name=\"plan\"").contains("value=\"pro\"");
         assertThat(body).contains("name=\"billing\"").contains("value=\"annual\"");
     }
 
@@ -347,7 +347,7 @@ class PublicPageSeoIntegrationTest {
         // it would mis-frame the price the user is about to commit to.
         String defaultBody = render("/register");
         assertThat(defaultBody).doesNotContain("class=\"auth-billing-badge\"");
-        String monthlyBody = render("/register?plan=personal&billing=monthly");
+        String monthlyBody = render("/register?plan=pro&billing=monthly");
         assertThat(monthlyBody).doesNotContain("class=\"auth-billing-badge\"");
     }
 

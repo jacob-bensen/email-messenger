@@ -102,7 +102,7 @@ class GlobalExceptionHandlerTest {
         assertThat(modal.kind()).isEqualTo(PlanLimitKind.THREAD_COUNT);
         assertThat(modal.limit()).isEqualTo(500);
         assertThat(modal.current()).isEqualTo(500);
-        assertThat(modal.upgradeTarget()).isEqualTo(Plan.PERSONAL);
-        assertThat(modal.upgradeTargetParam()).isEqualTo("personal");
+        assertThat(modal.upgradeTarget()).isEqualTo(Plan.PRO);
+        assertThat(modal.upgradeTargetParam()).isEqualTo("pro");
     }
 }

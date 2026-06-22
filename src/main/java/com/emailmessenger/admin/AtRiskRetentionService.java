@@ -106,9 +106,8 @@ public class AtRiskRetentionService {
 
     private static String planLabel(Plan plan) {
         return switch (plan) {
-            case PERSONAL -> "Personal";
-            case TEAM -> "Team";
-            case ENTERPRISE -> "Enterprise";
+            case PRO -> "Pro";
+            case BUSINESS -> "Business";
             case FREE -> "Free";
         };
     }

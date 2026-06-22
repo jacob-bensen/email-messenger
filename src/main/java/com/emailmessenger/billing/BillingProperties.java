@@ -11,12 +11,8 @@ public class BillingProperties {
 
     private String secretKey = "";
     private String webhookSecret = "";
-    private String personalPriceId = "";
-    private String teamPriceId = "";
-    private String enterprisePriceId = "";
-    private String personalAnnualPriceId = "";
-    private String teamAnnualPriceId = "";
-    private String enterpriseAnnualPriceId = "";
+    private String proPriceId = "";
+    private String proAnnualPriceId = "";
     private String successUrl = "";
     private String cancelUrl = "";
     private String portalReturnUrl = "";
@@ -28,23 +24,11 @@ public class BillingProperties {
     public String getWebhookSecret() { return webhookSecret; }
     public void setWebhookSecret(String v) { this.webhookSecret = v; }
 
-    public String getPersonalPriceId() { return personalPriceId; }
-    public void setPersonalPriceId(String v) { this.personalPriceId = v; }
+    public String getProPriceId() { return proPriceId; }
+    public void setProPriceId(String v) { this.proPriceId = v; }
 
-    public String getTeamPriceId() { return teamPriceId; }
-    public void setTeamPriceId(String v) { this.teamPriceId = v; }
-
-    public String getEnterprisePriceId() { return enterprisePriceId; }
-    public void setEnterprisePriceId(String v) { this.enterprisePriceId = v; }
-
-    public String getPersonalAnnualPriceId() { return personalAnnualPriceId; }
-    public void setPersonalAnnualPriceId(String v) { this.personalAnnualPriceId = v; }
-
-    public String getTeamAnnualPriceId() { return teamAnnualPriceId; }
-    public void setTeamAnnualPriceId(String v) { this.teamAnnualPriceId = v; }
-
-    public String getEnterpriseAnnualPriceId() { return enterpriseAnnualPriceId; }
-    public void setEnterpriseAnnualPriceId(String v) { this.enterpriseAnnualPriceId = v; }
+    public String getProAnnualPriceId() { return proAnnualPriceId; }
+    public void setProAnnualPriceId(String v) { this.proAnnualPriceId = v; }
 
     public String getSuccessUrl() { return successUrl; }
     public void setSuccessUrl(String v) { this.successUrl = v; }
@@ -60,15 +44,9 @@ public class BillingProperties {
 
     public Map<Plan, String> priceIds(BillingPeriod period) {
         EnumMap<Plan, String> map = new EnumMap<>(Plan.class);
-        if (period == BillingPeriod.ANNUAL) {
-            map.put(Plan.PERSONAL, personalAnnualPriceId);
-            map.put(Plan.TEAM, teamAnnualPriceId);
-            map.put(Plan.ENTERPRISE, enterpriseAnnualPriceId);
-        } else {
-            map.put(Plan.PERSONAL, personalPriceId);
-            map.put(Plan.TEAM, teamPriceId);
-            map.put(Plan.ENTERPRISE, enterprisePriceId);
-        }
+        // Pro is the only self-serve checkout plan; Business is sales-assisted
+        // and never flows through Stripe Checkout from the app.
+        map.put(Plan.PRO, period == BillingPeriod.ANNUAL ? proAnnualPriceId : proPriceId);
         return map;
     }
 
@@ -83,14 +61,10 @@ public class BillingProperties {
         if (priceId == null || priceId.isEmpty()) {
             return null;
         }
-        if (priceId.equals(personalAnnualPriceId)
-                || priceId.equals(teamAnnualPriceId)
-                || priceId.equals(enterpriseAnnualPriceId)) {
+        if (priceId.equals(proAnnualPriceId)) {
             return BillingPeriod.ANNUAL;
         }
-        if (priceId.equals(personalPriceId)
-                || priceId.equals(teamPriceId)
-                || priceId.equals(enterprisePriceId)) {
+        if (priceId.equals(proPriceId)) {
             return BillingPeriod.MONTHLY;
         }
         return null;

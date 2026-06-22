@@ -18,19 +18,17 @@ final class PlanPricing {
         if (plan == null) {
             return 0;
         }
+        // Business is custom / contact-sales — no fixed price, so it
+        // contributes nothing to the dashboard's MRR roll-up.
         if (period == BillingPeriod.ANNUAL) {
             return switch (plan) {
-                case PERSONAL -> 700;
-                case TEAM -> 2400;
-                case ENTERPRISE -> 8300;
-                case FREE -> 0;
+                case PRO -> 599;
+                case BUSINESS, FREE -> 0;
             };
         }
         return switch (plan) {
-            case PERSONAL -> 900;
-            case TEAM -> 2900;
-            case ENTERPRISE -> 9900;
-            case FREE -> 0;
+            case PRO -> 699;
+            case BUSINESS, FREE -> 0;
         };
     }
 }

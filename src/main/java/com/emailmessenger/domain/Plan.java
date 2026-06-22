@@ -4,9 +4,8 @@ import java.util.Locale;
 
 public enum Plan {
     FREE,
-    PERSONAL,
-    TEAM,
-    ENTERPRISE;
+    PRO,
+    BUSINESS;
 
     public static Plan parse(String raw) {
         if (raw == null) {

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <th:block th:replace="~{fragments/seo :: meta(
       pageTitle='Pricing — ConexusMail',
-      pageDescription='ConexusMail is free — every feature is currently unlocked on every account, no credit card required.',
+      pageDescription='Start free with every feature. Pro unlocks 5 mailboxes and full history for $5/mo. Business plans are custom — talk to sales.',
       pagePath='/pricing')}"></th:block>
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
@@ -22,11 +22,10 @@
 <main class="marketing">
 
   <section class="hero-narrow">
-    <h1>Every feature, free — for a limited time</h1>
+    <h1>Simple pricing</h1>
     <p class="hero-sub">
-      While we launch, every feature on every plan below is unlocked on all
-      accounts at no cost — no credit card required. The paid plans below are
-      where pricing is headed; for now, you get full access.
+      Start free with every feature. Upgrade to Pro when you need more
+      mailboxes and your full history — or talk to us about a Business plan.
     </p>
 
     <div class="billing-toggle" role="group" aria-label="Billing period">
@@ -40,81 +39,56 @@
   <section class="plan-grid">
 
     <article class="plan-card">
-      <span class="plan-tag plan-tag-free">Full access · limited time</span>
+      <span class="plan-tag plan-tag-free">Free forever</span>
       <h2 class="plan-name">Free</h2>
       <p class="plan-price">
         <span class="price-amount">$0</span>
-        <span class="price-period">/ right now</span>
+        <span class="price-period">/ forever</span>
       </p>
-      <p class="plan-blurb">Today, Free unlocks everything — every paid feature
-        included, no credit card.</p>
+      <p class="plan-blurb">Every feature, no credit card — for getting started
+        and light use.</p>
       <ul class="plan-features">
-        <li>Everything in every plan, unlocked</li>
-        <li>Unlimited mailboxes &amp; threads</li>
+        <li>Up to 3 mailboxes</li>
+        <li>Recent thread history (last 500)</li>
         <li>Full-text search</li>
         <li>IM-style conversation view</li>
         <li>Dark mode</li>
       </ul>
       <a th:href="${utmSource != null} ? @{/register(utm_source=${utmSource})} : @{/register}"
-         class="btn btn-primary plan-cta">Get started — free</a>
+         class="btn btn-secondary plan-cta">Get started — free</a>
     </article>
 
     <article class="plan-card plan-card-featured">
       <span class="plan-tag">Most popular</span>
-      <h2 class="plan-name">Personal</h2>
+      <h2 class="plan-name">Pro</h2>
       <p class="plan-price">
-        <span class="price-amount" data-monthly="$9" data-annual="$7">$9</span>
+        <span class="price-amount" data-monthly="$6.99" data-annual="$5.99">$6.99</span>
         <span class="price-period">/ month</span>
       </p>
-      <p class="plan-annual-cash" data-annual-cash="Billed annually as $84"></p>
-      <p class="plan-blurb">For freelancers and individual professionals.</p>
+      <p class="plan-annual-cash" data-annual-cash="Billed annually as $71.88"></p>
+      <p class="plan-blurb">For power users who live in their inbox.</p>
       <ul class="plan-features">
-        <li>3 mailboxes</li>
-        <li>Unlimited thread history</li>
-        <li>Full-text search</li>
-        <li>Custom from-address &amp; signature</li>
-        <li>Reply send-later scheduling</li>
+        <li>Up to 5 mailboxes</li>
+        <li>Full, unlimited thread history</li>
+        <li>Everything in Free</li>
         <li>Priority email support</li>
       </ul>
-      <a th:href="${utmSource != null} ? @{/register(plan='personal',utm_source=${utmSource})} : @{/register(plan='personal')}"
+      <a th:href="${utmSource != null} ? @{/register(plan='pro',utm_source=${utmSource})} : @{/register(plan='pro')}"
          class="btn btn-primary plan-cta">Start 14-day free trial</a>
     </article>
 
     <article class="plan-card">
-      <h2 class="plan-name">Team</h2>
+      <h2 class="plan-name">Business</h2>
       <p class="plan-price">
-        <span class="price-amount" data-monthly="$29" data-annual="$24">$29</span>
-        <span class="price-period">/ month</span>
+        <span class="price-amount">Let's talk</span>
       </p>
-      <p class="plan-annual-cash" data-annual-cash="Billed annually as $288"></p>
-      <p class="plan-blurb">For support and sales teams that share an inbox.</p>
+      <p class="plan-blurb">For teams and organizations with custom needs.</p>
       <ul class="plan-features">
-        <li>10 mailboxes</li>
-        <li>Shared team inbox view</li>
-        <li>Slack &amp; Discord webhooks</li>
-        <li>Thread labels &amp; pinning</li>
-        <li>REST API access</li>
-        <li>Priority chat support</li>
-      </ul>
-      <a th:href="${utmSource != null} ? @{/register(plan='team',utm_source=${utmSource})} : @{/register(plan='team')}"
-         class="btn btn-secondary plan-cta">Start 14-day free trial</a>
-    </article>
-
-    <article class="plan-card">
-      <h2 class="plan-name">Enterprise</h2>
-      <p class="plan-price">
-        <span class="price-amount" data-monthly="$99" data-annual="$83">$99</span>
-        <span class="price-period">/ month</span>
-      </p>
-      <p class="plan-annual-cash" data-annual-cash="Billed annually as $996"></p>
-      <p class="plan-blurb">For organizations with strict security needs.</p>
-      <ul class="plan-features">
-        <li>Unlimited mailboxes</li>
-        <li>SSO (Google, SAML)</li>
-        <li>Audit logs</li>
-        <li>Dedicated onboarding</li>
-        <li>99.9% uptime SLA</li>
-        <li>Annual invoicing available</li>
+        <li>Everything in Pro</li>
+        <li>Group &amp; volume rates</li>
+        <li>Custom mailbox limits</li>
+        <li>Tailored onboarding &amp; support</li>
+        <li>Invoiced billing available</li>
       </ul>
       <a href="mailto:sales@conexusmail.com" class="btn btn-secondary plan-cta">Contact sales</a>
     </article>
@@ -124,21 +98,27 @@
   <section class="faq">
     <h2>Frequently asked questions</h2>
     <details class="faq-item">
+      <summary>What's the difference between Free and Pro?</summary>
+      <p>Free gives you every feature with up to 3 mailboxes and your most
+         recent 500 threads. Pro lifts that to 5 mailboxes and your full,
+         unlimited thread history for $5/mo.</p>
+    </details>
+    <details class="faq-item">
       <summary>Can I switch plans later?</summary>
       <p>Yes — upgrade, downgrade, or cancel anytime from your account settings.
          Annual subscribers get a prorated refund on downgrade.</p>
     </details>
     <details class="faq-item">
-      <summary>Is there a free trial on paid plans?</summary>
-      <p>Personal and Team plans include a 14-day free trial. No credit card
-         is required to start the trial.</p>
+      <summary>Is there a free trial on Pro?</summary>
+      <p>Yes — Pro includes a 14-day free trial. No credit card is required to
+         start it, and you can stay on Free as long as you like.</p>
     </details>
     <details class="faq-item">
-      <summary>Are there any limits right now?</summary>
-      <p>No. For a limited time every account has full access — all features and
-         no mailbox, thread, or search caps. The paid plans above show how
-         pricing will be structured later; we'll give plenty of notice before
-         anything changes.</p>
+      <summary>What's a Business plan?</summary>
+      <p>Business is for teams and organizations that need group rates, higher
+         mailbox limits, or custom terms. Pricing is tailored to your needs —
+         <a href="mailto:sales@conexusmail.com">get in touch</a> and we'll put
+         together a quote.</p>
     </details>
     <details class="faq-item">
       <summary>How is my email data handled?</summary>

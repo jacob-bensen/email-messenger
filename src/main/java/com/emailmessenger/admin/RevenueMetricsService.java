@@ -102,7 +102,7 @@ public class RevenueMetricsService {
         int annualSharePercent = totalActive == 0 ? 0 : (int) Math.round(100.0 * annualActive / totalActive);
 
         List<PlanBreakdown> planBreakdown = new ArrayList<>();
-        for (Plan plan : List.of(Plan.PERSONAL, Plan.TEAM, Plan.ENTERPRISE)) {
+        for (Plan plan : List.of(Plan.PRO, Plan.BUSINESS)) {
             int[] pma = planMonthlyAnnual.getOrDefault(plan, new int[2]);
             long planMrrCents = planMrr.getOrDefault(plan, new long[1])[0];
             planBreakdown.add(new PlanBreakdown(planLabel(plan), pma[0], pma[1],
@@ -153,9 +153,8 @@ public class RevenueMetricsService {
 
     private static String planLabel(Plan plan) {
         return switch (plan) {
-            case PERSONAL -> "Personal";
-            case TEAM -> "Team";
-            case ENTERPRISE -> "Enterprise";
+            case PRO -> "Pro";
+            case BUSINESS -> "Business";
             case FREE -> "Free";
         };
     }
@@ -166,6 +165,7 @@ public class RevenueMetricsService {
 
     static String formatCents(long cents) {
         long dollars = cents / 100;
+        long remainder = cents % 100;
         StringBuilder sb = new StringBuilder().append('$');
         String digits = Long.toString(dollars);
         int firstGroup = digits.length() % 3;
@@ -176,6 +176,11 @@ public class RevenueMetricsService {
         for (int i = firstGroup; i < digits.length(); i += 3) {
             sb.append(',').append(digits, i, i + 3);
         }
+        sb.append('.');
+        if (remainder < 10) {
+            sb.append('0');
+        }
+        sb.append(remainder);
         return sb.toString();
     }
 }

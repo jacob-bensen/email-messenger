@@ -18,17 +18,25 @@ class PlanLimitsTest {
     }
 
     @Test
-    void freeTierThreadAndSavedSearchCapsUnchanged() {
+    void freeTierCapsThreadsButAllowsUnlimitedSavedSearches() {
         PlanLimits free = PlanLimits.forPlan(Plan.FREE);
         assertThat(free.threads()).isEqualTo(500);
-        assertThat(free.savedSearches()).isEqualTo(1);
+        assertThat(free.savedSearches()).isEqualTo(PlanLimits.UNLIMITED);
     }
 
     @Test
-    void enterpriseIsUnlimited() {
-        PlanLimits ent = PlanLimits.forPlan(Plan.ENTERPRISE);
-        assertThat(ent.mailboxes()).isEqualTo(PlanLimits.UNLIMITED);
-        assertThat(ent.threads()).isEqualTo(PlanLimits.UNLIMITED);
-        assertThat(ent.savedSearches()).isEqualTo(PlanLimits.UNLIMITED);
+    void proLiftsMailboxAndThreadCaps() {
+        PlanLimits pro = PlanLimits.forPlan(Plan.PRO);
+        assertThat(pro.mailboxes()).isEqualTo(5);
+        assertThat(pro.threads()).isEqualTo(PlanLimits.UNLIMITED);
+        assertThat(pro.savedSearches()).isEqualTo(PlanLimits.UNLIMITED);
+    }
+
+    @Test
+    void businessIsUnlimited() {
+        PlanLimits biz = PlanLimits.forPlan(Plan.BUSINESS);
+        assertThat(biz.mailboxes()).isEqualTo(PlanLimits.UNLIMITED);
+        assertThat(biz.threads()).isEqualTo(PlanLimits.UNLIMITED);
+        assertThat(biz.savedSearches()).isEqualTo(PlanLimits.UNLIMITED);
     }
 }
