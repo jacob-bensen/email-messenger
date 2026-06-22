@@ -18,7 +18,7 @@ public final class AppearanceSettings {
     public static final String DEFAULT_ACCENT = "green";
 
     public static final Set<String> THEMES = Set.of("system", "light", "dark");
-    public static final Set<String> ACCENTS = Set.of("green", "blue", "purple", "rose");
+    public static final Set<String> ACCENTS = Set.of("green", "blue", "teal", "purple", "rose", "orange");
 
     private AppearanceSettings() {}
 

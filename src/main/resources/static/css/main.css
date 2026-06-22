@@ -4178,8 +4178,10 @@ body {
 .swatch:has(input:focus-visible) { outline: 2px solid var(--swatch); outline-offset: 2px; }
 .swatch-green  { --swatch: #2f7d57; }
 .swatch-blue   { --swatch: #2f7fe8; }
+.swatch-teal   { --swatch: #1f9e8f; }
 .swatch-purple { --swatch: #8a63e8; }
 .swatch-rose   { --swatch: #db3f80; }
+.swatch-orange { --swatch: #e0742e; }
 .appearance-actions { margin-top: 6px; }
 
 @media (prefers-color-scheme: dark) {
@@ -4345,5 +4347,7 @@ body {
    :root[data-theme] blocks, AND the dark-mode media block (all equal
    specificity) in every theme. Only retints the brand. */
 :root[data-accent="blue"]   { --brand: #2f7fe8; --brand-dark: #2568cc; --on-brand: #ffffff; }
+:root[data-accent="teal"]   { --brand: #1f9e8f; --brand-dark: #178479; --on-brand: #ffffff; }
 :root[data-accent="purple"] { --brand: #8a63e8; --brand-dark: #7445d8; --on-brand: #ffffff; }
 :root[data-accent="rose"]   { --brand: #db3f80; --brand-dark: #c22e6c; --on-brand: #ffffff; }
+:root[data-accent="orange"] { --brand: #e0742e; --brand-dark: #c25f1f; --on-brand: #ffffff; }
