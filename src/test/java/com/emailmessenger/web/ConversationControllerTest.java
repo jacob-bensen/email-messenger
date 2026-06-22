@@ -2,12 +2,14 @@ package com.emailmessenger.web;
 
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.domain.EmailThread;
+import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.Participant;
 import com.emailmessenger.domain.RecipientType;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.OwnerAddressService;
 import com.emailmessenger.repository.EmailThreadRepository;
+import com.emailmessenger.repository.MailAccountRepository;
 import com.emailmessenger.repository.MessageRepository;
 import com.emailmessenger.repository.ParticipantRepository;
 import com.emailmessenger.service.ConversationKeyService;
@@ -60,6 +62,7 @@ class ConversationControllerTest {
     @Autowired EmailThreadRepository threads;
     @Autowired MessageRepository messages;
     @Autowired ParticipantRepository participants;
+    @Autowired MailAccountRepository mailAccounts;
 
     @MockitoBean ReplyService replyService;
 
@@ -205,6 +208,24 @@ class ConversationControllerTest {
         mockMvc.perform(get("/chats/{key}", "deadbeefdeadbeefdeadbeefdeadbeef"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/chats"));
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void singleAccountViewShowsEveryConversationLikeTheHub() throws Exception {
+        // One connected mailbox whose address is NOT a participant in the seeded
+        // chats (they were delivered to chat-user@example.com). With a single
+        // account, scoping it must still show all conversations, not just the
+        // ones whose headers carry the mailbox address.
+        MailAccount account = mailAccounts.save(new MailAccount(
+                owner, "imap.solo.com", 993, true, "solo@solo.com", "ciphertext"));
+
+        String scoped = mockMvc.perform(get("/chats").param("mailbox", account.getId().toString()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(scoped).contains("Ada Lovelace");
+        assertThat(scoped).contains("Bob Stone");
     }
 
     @Test

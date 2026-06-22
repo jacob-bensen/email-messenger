@@ -109,7 +109,7 @@ class ConversationController {
     /** The conversation list + dashboard model shared by the list and open-chat views. */
     private void populateList(User owner, List<MailAccount> accounts, MailAccount selected,
                               String query, ConversationListService.ChatFilter filter, int page, Model model) {
-        String scope = selected != null ? address(selected) : null;
+        String scope = scopeAddress(selected, accounts);
         String trimmedQuery = query == null ? "" : query.trim();
         PageRequest pageable = PageRequest.of(Math.max(0, page), PAGE_SIZE);
         model.addAttribute("conversations",
@@ -261,10 +261,11 @@ class ConversationController {
         mailboxPollingService.refreshDueForUserAsync(owner.getId());
         List<MailAccount> accounts = mailAccountService.list(owner);
         MailAccount selected = selectMailbox(accounts, mailboxParam);
+        String scope = scopeAddress(selected, accounts);
         // Opening a conversation marks it read (committed before the list/dashboard
         // below re-read unread state).
-        chatService.markRead(owner, selected != null ? address(selected) : null, key);
-        ChatConversation conversation = chatFor(owner, selected, key);
+        chatService.markRead(owner, scope, key);
+        ChatConversation conversation = chatFor(owner, scope, key);
         if (conversation == null) {
             return "redirect:/chats" + mailboxQuery(selected);
         }
@@ -287,9 +288,11 @@ class ConversationController {
                     @RequestParam(name = "mailbox", required = false) String mailboxParam,
                     Principal principal, Model model) {
         User owner = userService.requireByEmail(principal.getName());
-        MailAccount selected = selectMailbox(mailAccountService.list(owner), mailboxParam);
-        chatService.markRead(owner, selected != null ? address(selected) : null, key);
-        ChatConversation conversation = chatFor(owner, selected, key);
+        List<MailAccount> accounts = mailAccountService.list(owner);
+        MailAccount selected = selectMailbox(accounts, mailboxParam);
+        String scope = scopeAddress(selected, accounts);
+        chatService.markRead(owner, scope, key);
+        ChatConversation conversation = chatFor(owner, scope, key);
         if (conversation == null) {
             return "fragments/chat-pane :: missing";
         }
@@ -333,7 +336,7 @@ class ConversationController {
             return "chat";
         }
 
-        ChatConversation conversation = chatFor(owner, selected, key);
+        ChatConversation conversation = chatFor(owner, scopeAddress(selected, accounts), key);
         if (conversation == null) {
             return "redirect:/chats" + mailboxQuery(selected);
         }
@@ -367,7 +370,7 @@ class ConversationController {
 
     private boolean populateChat(User owner, List<MailAccount> accounts, MailAccount selected,
                                  String key, Model model) {
-        ChatConversation conversation = chatFor(owner, selected, key);
+        ChatConversation conversation = chatFor(owner, scopeAddress(selected, accounts), key);
         if (conversation == null) {
             return false;
         }
@@ -377,10 +380,21 @@ class ConversationController {
         return true;
     }
 
-    private ChatConversation chatFor(User owner, MailAccount selected, String key) {
-        return selected != null
-                ? chatService.buildFor(owner, address(selected), key)
+    private ChatConversation chatFor(User owner, String scope, String key) {
+        return scope != null
+                ? chatService.buildFor(owner, scope, key)
                 : chatService.buildFor(owner, key);
+    }
+
+    /**
+     * The address to scope conversation queries to, or {@code null} for the
+     * unscoped (all-conversations) view. Scoping only matters to SEPARATE
+     * multiple accounts — with a single connected mailbox every conversation
+     * belongs to it, so we don't scope. That also avoids dropping list/alias-
+     * delivered mail whose headers don't carry the mailbox address.
+     */
+    private static String scopeAddress(MailAccount selected, List<MailAccount> accounts) {
+        return (selected != null && accounts.size() > 1) ? address(selected) : null;
     }
 
     /**
