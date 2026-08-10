@@ -1,5 +1,6 @@
 package com.emailmessenger.web;
 
+import com.emailmessenger.domain.AuthType;
 import com.emailmessenger.domain.MailAccount;
 
 import java.time.Duration;
@@ -22,7 +23,9 @@ public record MailboxView(
         String lastSyncError,
         String errorHint,
         boolean pollingSuspended,
-        int consecutiveFailureCount) {
+        int consecutiveFailureCount,
+        boolean oauth,
+        String signature) {
 
     private static final DateTimeFormatter ABSOLUTE_DATE =
             DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
@@ -37,7 +40,9 @@ public record MailboxView(
                 account.getLastSyncError(),
                 errorHint(account.getLastSyncError()),
                 account.isPollingSuspended(),
-                account.getConsecutiveFailureCount());
+                account.getConsecutiveFailureCount(),
+                account.getAuthType() == AuthType.XOAUTH2,
+                account.getSignature());
     }
 
     static String formatRelative(LocalDateTime ts, LocalDateTime now) {
@@ -60,7 +65,7 @@ public record MailboxView(
         if (error == null) return null;
         String lower = error.toLowerCase(Locale.ROOT);
         if (lower.contains("google") || lower.contains("reconnect")) {
-            return "Your Google authorization expired. Reconnect the mailbox with Google.";
+            return "Your Google authorization expired. Use Reconnect to sign in with Google again.";
         }
         // Decryption failures are NOT a rejected sign-in — the stored secret
         // couldn't be unlocked (e.g. the encryption key changed). Re-saving it

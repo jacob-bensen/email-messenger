@@ -213,12 +213,14 @@ class ConversationController {
         }
 
         List<OutgoingAttachment> outgoing = toOutgoingAttachments(attachments);
-        String from = selected != null ? selected.getUsername() : owner.getEmail();
+        MailAccount sender = sendingAccount(owner, mailAccountService.list(owner), selected);
+        String from = sender != null ? sender.getUsername() : owner.getEmail();
         String subj = (subject == null || subject.isBlank()) ? "(no subject)" : subject.trim();
         String key = conversationKeyService.keyFor(recipients, ownerAddressService.addressesFor(owner));
+        String outgoingBody = withSignature(messageBody, sender);
 
-        replyService.sendNewEmail(subj, messageBody, outgoing, recipients, from);
-        outboundMessageService.recordNewEmail(owner, key, subj, messageBody, recipients, outgoing);
+        replyService.sendNewEmail(subj, outgoingBody, outgoing, recipients, from);
+        outboundMessageService.recordNewEmail(owner, key, subj, outgoingBody, recipients, outgoing);
         redirectAttributes.addFlashAttribute("successMessage", "Message sent.");
         return "redirect:/chats/" + key + mailboxQuery(selected);
     }
@@ -347,21 +349,24 @@ class ConversationController {
             return "redirect:/chats/" + key + mailboxQuery(selected);
         }
         List<OutgoingAttachment> outgoing = toOutgoingAttachments(attachments);
-        // Send as the selected account so the message comes from that address.
-        String from = selected != null ? selected.getUsername() : owner.getEmail();
+        // Send as the selected account so the message comes from that address;
+        // on the unscoped Hub view, fall back to the user's default sending account.
+        MailAccount sender = sendingAccount(owner, accounts, selected);
+        String from = sender != null ? sender.getUsername() : owner.getEmail();
+        String outgoingBody = withSignature(replyForm.getBody(), sender);
         List<EmailThread> threads = threadRepository.findThreadsByConversationKey(owner, key);
 
         if (asReply && !threads.isEmpty()) {
             // Continue the most recently active thread so the email keeps its subject.
             EmailThread target = threads.get(0);
-            replyService.sendReply(target.getId(), target.getSubject(), replyForm.getBody(),
+            replyService.sendReply(target.getId(), target.getSubject(), outgoingBody,
                     outgoing, recipients, from);
-            outboundMessageService.recordReply(target.getId(), owner, replyForm.getBody(), outgoing);
+            outboundMessageService.recordReply(target.getId(), owner, outgoingBody, outgoing);
             redirectAttributes.addFlashAttribute("successMessage", "Reply sent.");
         } else {
             String subj = (subject == null || subject.isBlank()) ? "(no subject)" : subject.trim();
-            replyService.sendNewEmail(subj, replyForm.getBody(), outgoing, recipients, from);
-            outboundMessageService.recordNewEmail(owner, key, subj, replyForm.getBody(),
+            replyService.sendNewEmail(subj, outgoingBody, outgoing, recipients, from);
+            outboundMessageService.recordNewEmail(owner, key, subj, outgoingBody,
                     recipients, outgoing);
             redirectAttributes.addFlashAttribute("successMessage", "Message sent.");
         }
@@ -395,6 +400,40 @@ class ConversationController {
      */
     private static String scopeAddress(MailAccount selected, List<MailAccount> accounts) {
         return (selected != null && accounts.size() > 1) ? address(selected) : null;
+    }
+
+    /**
+     * The account an outgoing message is sent from. A mailbox-scoped view wins;
+     * otherwise the user's default sending account (if it still exists), then
+     * the sole connected mailbox. {@code null} means no account could be
+     * attributed and the From falls back to the login email.
+     */
+    private static MailAccount sendingAccount(User owner, List<MailAccount> accounts,
+                                              MailAccount selected) {
+        if (selected != null) {
+            return selected;
+        }
+        MailAccount preferred = owner.getDefaultMailAccount();
+        if (preferred != null) {
+            for (MailAccount account : accounts) {
+                if (account.getId().equals(preferred.getId())) {
+                    return account;
+                }
+            }
+        }
+        return accounts.size() == 1 ? accounts.get(0) : null;
+    }
+
+    /**
+     * Appends the sending account's signature under a standard "-- " delimiter.
+     * Applied before both the SMTP send and the recorded outbound copy, so the
+     * chat bubble matches what the recipient received.
+     */
+    private static String withSignature(String body, MailAccount sender) {
+        if (sender == null || sender.getSignature() == null || sender.getSignature().isBlank()) {
+            return body;
+        }
+        return (body == null ? "" : body) + "\n\n-- \n" + sender.getSignature().strip();
     }
 
     /**

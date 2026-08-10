@@ -5,6 +5,7 @@ import com.emailmessenger.domain.AuthType;
 import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.MailAccountRepository;
+import com.emailmessenger.repository.UserRepository;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 
 /**
  * Connect-a-mailbox flow: validate the IMAP credentials by opening a
@@ -32,17 +35,20 @@ public class MailAccountService {
     static final int GMAIL_IMAP_PORT = 993;
 
     private final MailAccountRepository repository;
+    private final UserRepository userRepository;
     private final ImapClient imapClient;
     private final CredentialEncryptor encryptor;
     private final PlanLimitService planLimitService;
     private final EmailImportService importService;
 
     MailAccountService(MailAccountRepository repository,
+                       UserRepository userRepository,
                        ImapClient imapClient,
                        CredentialEncryptor encryptor,
                        PlanLimitService planLimitService,
                        EmailImportService importService) {
         this.repository = repository;
+        this.userRepository = userRepository;
         this.imapClient = imapClient;
         this.encryptor = encryptor;
         this.planLimitService = planLimitService;
@@ -116,6 +122,64 @@ public class MailAccountService {
 
         runInitialSync(saved, credentials);
         return repository.save(saved);
+    }
+
+    /**
+     * Re-authorizes an existing Gmail mailbox after its refresh token was
+     * revoked or expired: verifies the new tokens over IMAP, replaces the
+     * stored secret in place (no new row, no plan-cap check) and clears the
+     * sync error + polling circuit breaker so the account is immediately due.
+     *
+     * @throws java.util.NoSuchElementException if the id isn't one of the user's mailboxes
+     * @throws ImapConnectionException          if the IMAP login with the new token fails
+     */
+    @Transactional
+    public MailAccount reconnectGmailOAuth(User user, Long accountId,
+                                           String refreshToken, String accessToken) {
+        MailAccount account = repository.findByIdAndUser(accountId, user)
+                .orElseThrow(java.util.NoSuchElementException::new);
+        ImapCredentials credentials = ImapCredentials.xoauth2(
+                GMAIL_IMAP_HOST, GMAIL_IMAP_PORT, true, account.getUsername(), accessToken);
+        imapClient.verifyConnection(credentials);
+
+        account.replaceCredentials(encryptor.encrypt(refreshToken), AuthType.XOAUTH2);
+        return repository.save(account);
+    }
+
+    /**
+     * Saves the user's mail preferences. {@code syncFrequencyMinutes} null means
+     * plan default; the caller validates the value against the plan floor.
+     * {@code defaultAccountId} null clears the default sending account; a
+     * non-owned id 404s like the other per-mailbox endpoints.
+     */
+    @Transactional
+    public void updateMailPreferences(User user, Integer syncFrequencyMinutes, Long defaultAccountId) {
+        MailAccount defaultAccount = defaultAccountId == null ? null
+                : repository.findByIdAndUser(defaultAccountId, user)
+                        .orElseThrow(NoSuchElementException::new);
+        boolean frequencyChanged =
+                !Objects.equals(user.getSyncFrequencyMinutes(), syncFrequencyMinutes);
+        user.setSyncFrequencyMinutes(syncFrequencyMinutes);
+        user.setDefaultMailAccount(defaultAccount);
+        userRepository.save(user);
+        if (frequencyChanged) {
+            // Apply the new cadence now rather than after the next poll:
+            // a null next_poll_at marks the account immediately due, and the
+            // poll that follows schedules with the new interval.
+            for (MailAccount account : repository.findByUserOrderByCreatedAtAsc(user)) {
+                account.setNextPollAt(null);
+                repository.save(account);
+            }
+        }
+    }
+
+    /** Sets (or clears, when blank) the plain-text signature for an owned mailbox. */
+    @Transactional
+    public void updateSignature(User user, Long accountId, String signature) {
+        MailAccount account = repository.findByIdAndUser(accountId, user)
+                .orElseThrow(NoSuchElementException::new);
+        account.setSignature(signature == null || signature.isBlank() ? null : signature.strip());
+        repository.save(account);
     }
 
     private void runInitialSync(MailAccount account, ImapCredentials credentials) {

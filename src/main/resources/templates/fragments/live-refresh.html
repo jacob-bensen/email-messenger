@@ -1,11 +1,16 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <!--
-  Foreground "page is open" heartbeat. While the tab is visible, POSTs to
-  /chats/refresh roughly every minute so connected mailboxes sync on a
-  ~1-minute cadence in active use (the background scheduler is far slower).
-  Reloads only when new mail actually arrived, and never while a reply draft
-  is being typed. Include once per page via:
+  Live-delivery client. Two signals feed it:
+    1. An SSE stream (/chats/events) that fires the instant a poll or IMAP
+       IDLE wake imports mail — this is the fast path.
+    2. A foreground heartbeat that POSTs /chats/refresh roughly every minute
+       while the tab is visible, which actively syncs mailboxes that have no
+       IDLE connection (free tier) and doubles as a fallback when SSE is down.
+  Both converge on update(): the chats page registers window.ConexusLive
+  with an in-place refresh (rail + open-pane morph, draft and scroll kept);
+  pages without it fall back to a reload guarded by the draft check.
+  Include once per page via:
     <th:block th:replace="~{fragments/live-refresh :: script}"></th:block>
   The page must also expose the CSRF token as meta tags in its <head>:
     <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}">
@@ -14,15 +19,29 @@
 <script th:fragment="script">
 (function () {
   var INTERVAL_MS = 60000;
+  var MIN_UPDATE_GAP_MS = 4000;
   var tokenMeta = document.querySelector('meta[name="_csrf"]');
   var headerMeta = document.querySelector('meta[name="_csrf_header"]');
   var token = tokenMeta ? tokenMeta.getAttribute('content') : '';
   var header = headerMeta ? headerMeta.getAttribute('content') : '';
   var inFlight = false;
+  var lastUpdate = 0;
 
   function hasDraft() {
     var box = document.querySelector('.reply-form textarea');
     return !!(box && box.value.trim() !== '');
+  }
+
+  // SSE and the heartbeat can both report the same import; the gap check
+  // collapses them into one refresh.
+  function update() {
+    if (Date.now() - lastUpdate < MIN_UPDATE_GAP_MS) return;
+    lastUpdate = Date.now();
+    if (window.ConexusLive && window.ConexusLive.refresh) {
+      window.ConexusLive.refresh();
+    } else if (!hasDraft()) {
+      window.location.reload();
+    }
   }
 
   function tick() {
@@ -37,15 +56,19 @@
     })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
-        if (data && data.imported > 0 && !hasDraft()) {
-          window.location.reload();
-        }
+        if (data && data.imported > 0) update();
       })
       .catch(function () { /* transient; next tick retries */ })
       .then(function () { inFlight = false; });
   }
 
   setInterval(tick, INTERVAL_MS);
+
+  if (window.EventSource) {
+    // EventSource reconnects on its own after drops and server timeouts.
+    var source = new EventSource('/chats/events');
+    source.addEventListener('new-mail', function () { update(); });
+  }
 }());
 </script>
 </html>

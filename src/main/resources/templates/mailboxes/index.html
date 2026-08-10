@@ -55,6 +55,10 @@
           </div>
         </div>
         <div class="mailbox-actions">
+          <a th:if="${mb.oauth()}"
+             th:href="@{/mailboxes/gmail/reconnect/{id}(id=${mb.id()})}"
+             class="btn btn-secondary mailbox-reconnect-btn"
+             title="Sign in with Google again to refresh this mailbox's authorization">Reconnect</a>
           <form th:action="@{/mailboxes/{id}/sync(id=${mb.id()})}"
                 method="post"
                 class="mailbox-sync-form">
@@ -81,31 +85,59 @@
   <section class="acct-section">
     <h2 class="acct-section-title">Mail preferences</h2>
     <p class="acct-section-sub">How your accounts send and sync.</p>
-    <div class="acct-row acct-row-soon">
-      <div class="acct-soon-main">
-        <div class="acct-soon-title">Default sending account <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="acct-soon-desc">Pick which account new messages are sent from by default.</div>
+    <form method="post" th:action="@{/mailboxes/preferences}">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <div class="acct-row acct-row-pref">
+        <div class="acct-pref-main">
+          <div class="acct-pref-title"><label for="pref-default-account">Default sending account</label></div>
+          <div class="acct-pref-desc">Messages sent from the all-accounts view go out from this account. Viewing a single mailbox always sends from that mailbox.</div>
+        </div>
+        <select class="acct-select" id="pref-default-account" name="defaultAccountId">
+          <option value="" th:selected="${defaultAccountId == null}">Automatic</option>
+          <option th:each="mb : ${mailboxes}"
+                  th:value="${mb.id()}"
+                  th:text="${mb.username()}"
+                  th:selected="${defaultAccountId == mb.id()}">user@host</option>
+        </select>
       </div>
-      <select class="settings-select" disabled>
-        <option>Most recent</option>
-      </select>
-    </div>
-    <div class="acct-row acct-row-soon">
-      <div class="acct-soon-main">
-        <div class="acct-soon-title">Email signatures <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="acct-soon-desc">Add a per-account signature appended to outgoing messages.</div>
+      <div class="acct-row acct-row-pref">
+        <div class="acct-pref-main">
+          <div class="acct-pref-title"><label for="pref-sync-frequency">Sync frequency</label></div>
+          <div class="acct-pref-desc">How often we check your mailboxes in the background. While the app is open they refresh about every minute regardless.</div>
+        </div>
+        <select class="acct-select" id="pref-sync-frequency" name="syncFrequency">
+          <option value="" th:selected="${syncFrequency == null}"
+                  th:text="|Plan default (every ${planFloorMinutes} min)|">Plan default</option>
+          <option th:each="choice : ${syncFrequencyChoices}"
+                  th:value="${choice}"
+                  th:disabled="${choice < planFloorMinutes}"
+                  th:text="${choice < planFloorMinutes} ? |Every ${choice} min — paid plans| : |Every ${choice} min|"
+                  th:selected="${syncFrequency == choice}">Every 15 min</option>
+        </select>
       </div>
-      <button type="button" class="btn btn-secondary btn-compact" disabled>Edit</button>
-    </div>
-    <div class="acct-row acct-row-soon">
-      <div class="acct-soon-main">
-        <div class="acct-soon-title">Sync frequency <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="acct-soon-desc">Control how often we check your mailboxes for new messages.</div>
+      <div class="acct-row-foot acct-pref-foot">
+        <button type="submit" class="btn btn-primary btn-compact">Save preferences</button>
       </div>
-      <select class="settings-select" disabled>
-        <option>Every minute</option>
-      </select>
-    </div>
+    </form>
+  </section>
+
+  <section class="acct-section" th:if="${mailboxes != null and !mailboxes.isEmpty()}">
+    <h2 class="acct-section-title">Email signatures</h2>
+    <p class="acct-section-sub">Plain-text signature appended to messages you send from each account.</p>
+    <form th:each="mb : ${mailboxes}" method="post"
+          th:action="@{/mailboxes/{id}/signature(id=${mb.id()})}"
+          class="signature-form">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <label class="signature-label" th:for="|signature-${mb.id()}|" th:text="${mb.username()}">user@host</label>
+      <textarea class="signature-input" th:id="|signature-${mb.id()}|" name="signature"
+                rows="3" maxlength="2000" placeholder="No signature"
+                th:text="${mb.signature()}"></textarea>
+      <div class="signature-foot">
+        <button type="submit" class="btn btn-secondary btn-compact">Save signature</button>
+      </div>
+    </form>
   </section>
 </div>
 </main>

@@ -7,6 +7,7 @@ import com.emailmessenger.repository.MailAccountRepository;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +51,7 @@ public class MailboxPollingService {
     private final PlanLimitService planLimitService;
     private final PollingPolicy pollingPolicy;
     private final Clock clock;
+    private final ApplicationEventPublisher eventPublisher;
 
     MailboxPollingService(MailAccountRepository accounts,
                           ImapClient imapClient,
@@ -57,7 +59,8 @@ public class MailboxPollingService {
                           EmailImportService importService,
                           PlanLimitService planLimitService,
                           PollingPolicy pollingPolicy,
-                          Clock clock) {
+                          Clock clock,
+                          ApplicationEventPublisher eventPublisher) {
         this.accounts = accounts;
         this.imapClient = imapClient;
         this.credentialsResolver = credentialsResolver;
@@ -65,6 +68,7 @@ public class MailboxPollingService {
         this.planLimitService = planLimitService;
         this.pollingPolicy = pollingPolicy;
         this.clock = clock;
+        this.eventPublisher = eventPublisher;
     }
 
     public void pollAll() {
@@ -198,6 +202,11 @@ public class MailboxPollingService {
         }
         scheduleNextPoll(account);
         accounts.save(account);
+        if (imported + sentImported > 0) {
+            // getId() on the lazy user proxy doesn't trigger initialization.
+            eventPublisher.publishEvent(
+                    new NewMailEvent(account.getUser().getId(), imported + sentImported));
+        }
         return imported + sentImported;
     }
 
@@ -213,6 +222,7 @@ public class MailboxPollingService {
 
     private void scheduleNextPoll(MailAccount account) {
         Plan plan = planLimitService.currentPlan(account.getUser());
-        account.setNextPollAt(pollingPolicy.nextPollAt(plan, LocalDateTime.now(clock)));
+        account.setNextPollAt(pollingPolicy.nextPollAt(plan,
+                account.getUser().getSyncFrequencyMinutes(), LocalDateTime.now(clock)));
     }
 }

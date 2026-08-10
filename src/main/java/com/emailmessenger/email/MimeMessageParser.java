@@ -10,7 +10,7 @@ import jakarta.mail.internet.MimeMessage;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -100,8 +100,13 @@ class MimeMessageParser {
         }
     }
 
+    // sent-at is stored as a UTC wall-clock LocalDateTime (matching the
+    // systemUTC clock used everywhere else); the view layer converts it to the
+    // viewer's local time in the browser. Anchoring to UTC here — rather than
+    // the import host's default zone — keeps stored times consistent no matter
+    // where the import runs.
     private LocalDateTime toLocalDateTime(Date date) {
-        if (date == null) return LocalDateTime.now();
-        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+        if (date == null) return LocalDateTime.now(ZoneOffset.UTC);
+        return LocalDateTime.ofInstant(date.toInstant(), ZoneOffset.UTC);
     }
 }

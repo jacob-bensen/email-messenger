@@ -70,6 +70,10 @@ public class MailAccount {
     @Column(name = "next_poll_at")
     private LocalDateTime nextPollAt;
 
+    // Optional plain-text signature appended to messages sent from this account.
+    @Column(length = 2000)
+    private String signature;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -124,6 +128,9 @@ public class MailAccount {
     public boolean isPollingSuspended() { return pollingSuspended; }
     public LocalDateTime getNextPollAt() { return nextPollAt; }
     public void setNextPollAt(LocalDateTime nextPollAt) { this.nextPollAt = nextPollAt; }
+    public String getSignature() { return signature; }
+    public void setSignature(String signature) { this.signature = signature; }
+    public void setPasswordCiphertext(String passwordCiphertext) { this.passwordCiphertext = passwordCiphertext; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
@@ -137,6 +144,20 @@ public class MailAccount {
     public void markSyncError(String message) {
         this.lastSyncError = message == null ? null
                 : (message.length() > 500 ? message.substring(0, 500) : message);
+    }
+
+    /**
+     * Fresh credentials were verified for this account (reconnect): store the
+     * new secret and clear the error/circuit-breaker state so polling resumes.
+     * {@code nextPollAt = null} makes the account immediately due.
+     */
+    public void replaceCredentials(String passwordCiphertext, AuthType authType) {
+        this.passwordCiphertext = passwordCiphertext;
+        this.authType = authType;
+        this.lastSyncError = null;
+        this.consecutiveFailureCount = 0;
+        this.pollingSuspended = false;
+        this.nextPollAt = null;
     }
 
     // Increment failure counter and flip the circuit breaker once it

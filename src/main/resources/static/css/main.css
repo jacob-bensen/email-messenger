@@ -4037,10 +4037,10 @@ body {
   justify-content: flex-end;
 }
 .acct-foot .auth-hint { margin-right: auto; }
-/* Coming-soon rows: title + desc on the left, the (disabled) control on the right. */
-.acct-row-soon { align-items: center; justify-content: space-between; padding: 8px 0; }
-.acct-soon-main { flex: 1; min-width: 0; }
-.acct-soon-title {
+/* Coming-soon and preference rows: title + desc on the left, the control on the right. */
+.acct-row-soon, .acct-row-pref { align-items: center; justify-content: space-between; padding: 8px 0; }
+.acct-soon-main, .acct-pref-main { flex: 1; min-width: 0; }
+.acct-soon-title, .acct-pref-title {
   font-size: 13.5px;
   font-weight: 600;
   display: flex;
@@ -4048,8 +4048,48 @@ body {
   gap: 8px;
   flex-wrap: wrap;
 }
-.acct-soon-desc { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
-.acct-row-soon > :last-child { flex-shrink: 0; }
+.acct-soon-desc, .acct-pref-desc { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+.acct-row-soon > :last-child, .acct-row-pref > :last-child { flex-shrink: 0; }
+
+/* Live (enabled) select for the mail-preferences form; the disabled-look
+   .settings-select mock stays for coming-soon rows elsewhere. */
+.acct-select {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  max-width: 240px;
+}
+.acct-select:focus { outline: 2px solid var(--brand); outline-offset: -1px; border-color: var(--brand); }
+.acct-pref-foot { display: flex; justify-content: flex-end; }
+
+/* Per-account signature editors. */
+.signature-form { padding: 8px 0; }
+.signature-form + .signature-form { border-top: 1px solid var(--border); }
+.signature-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.signature-input {
+  display: block;
+  width: 100%;
+  font: inherit;
+  font-size: 13.5px;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+}
+.signature-input:focus { outline: 2px solid var(--brand); outline-offset: -1px; border-color: var(--brand); }
+.signature-foot { display: flex; justify-content: flex-end; margin-top: 6px; }
 @media (max-width: 640px) {
   .acct-row { flex-direction: column; align-items: stretch; gap: 4px; }
   .acct-label { flex-basis: auto; }

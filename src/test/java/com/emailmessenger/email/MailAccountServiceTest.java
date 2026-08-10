@@ -169,6 +169,87 @@ class MailAccountServiceTest {
         assertThat(messageRepository.findByMessageIdHeaderAndOwner("<g1@test>", owner)).isPresent();
     }
 
+    @Test
+    void reconnectGmailOAuthReplacesSecretAndClearsTheCircuitBreaker() {
+        MailAccount account = new MailAccount(owner, "imap.gmail.com", 993, true,
+                "mailbox-owner@example.com", encryptor.encrypt("dead-rt"),
+                com.emailmessenger.domain.AuthType.XOAUTH2);
+        account.markSyncError("Google sign-in expired; reconnect the mailbox with Google.");
+        for (int i = 0; i < 5; i++) {
+            account.recordPollFailure(5);
+        }
+        account.setNextPollAt(java.time.LocalDateTime.now().plusMinutes(10));
+        account = mailAccountRepository.save(account);
+        assertThat(account.isPollingSuspended()).isTrue();
+
+        MailAccount updated = mailAccountService.reconnectGmailOAuth(
+                owner, account.getId(), "fresh-rt", "fresh-at");
+
+        verify(imapClient).verifyConnection(ImapCredentials.xoauth2(
+                "imap.gmail.com", 993, true, "mailbox-owner@example.com", "fresh-at"));
+        assertThat(updated.getId()).isEqualTo(account.getId());
+        assertThat(encryptor.decrypt(updated.getPasswordCiphertext())).isEqualTo("fresh-rt");
+        assertThat(updated.getLastSyncError()).isNull();
+        assertThat(updated.getConsecutiveFailureCount()).isZero();
+        assertThat(updated.isPollingSuspended()).isFalse();
+        // Immediately due, so the next poll (or Sync now) runs at once.
+        assertThat(updated.getNextPollAt()).isNull();
+        assertThat(mailAccountRepository.countByUser(owner)).isEqualTo(1L);
+    }
+
+    @Test
+    void reconnectGmailOAuthOfForeignOrUnknownMailboxThrows() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> mailAccountService.reconnectGmailOAuth(owner, 999_999L, "rt", "at"))
+                .isInstanceOf(java.util.NoSuchElementException.class);
+    }
+
+    @Test
+    void updateSignatureSetsStripsAndClears() {
+        when(imapClient.fetchRecentInbox(any(ImapCredentials.class), anyInt())).thenReturn(List.of());
+        MailAccount saved = mailAccountService.connect(owner, "imap.example.com", 993, true,
+                "user@example.com", "pw");
+
+        mailAccountService.updateSignature(owner, saved.getId(), "  Best,\nOwner  ");
+        assertThat(mailAccountRepository.findById(saved.getId()).orElseThrow().getSignature())
+                .isEqualTo("Best,\nOwner");
+
+        mailAccountService.updateSignature(owner, saved.getId(), "   ");
+        assertThat(mailAccountRepository.findById(saved.getId()).orElseThrow().getSignature())
+                .isNull();
+    }
+
+    @Test
+    void updateMailPreferencesPersistsSettingsAndMarksAccountsImmediatelyDue() {
+        when(imapClient.fetchRecentInbox(any(ImapCredentials.class), anyInt())).thenReturn(List.of());
+        MailAccount first = mailAccountService.connect(owner, "imap.example.com", 993, true,
+                "first@example.com", "pw1");
+        first.setNextPollAt(java.time.LocalDateTime.now().plusMinutes(10));
+        mailAccountRepository.save(first);
+
+        mailAccountService.updateMailPreferences(owner, 30, first.getId());
+
+        User reloaded = userRepository.findById(owner.getId()).orElseThrow();
+        assertThat(reloaded.getSyncFrequencyMinutes()).isEqualTo(30);
+        assertThat(reloaded.getDefaultMailAccount().getId()).isEqualTo(first.getId());
+        // The changed cadence applies now, not after the previously scheduled poll.
+        assertThat(mailAccountRepository.findById(first.getId()).orElseThrow().getNextPollAt())
+                .isNull();
+    }
+
+    @Test
+    void updateMailPreferencesRejectsAForeignDefaultAccount() {
+        userService.register("other-owner@example.com", "password1", "Other");
+        User other = userRepository.findByEmail("other-owner@example.com").orElseThrow();
+        when(imapClient.fetchRecentInbox(any(ImapCredentials.class), anyInt())).thenReturn(List.of());
+        MailAccount foreign = mailAccountService.connect(other, "imap.example.com", 993, true,
+                "foreign@example.com", "pw");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> mailAccountService.updateMailPreferences(owner, null, foreign.getId()))
+                .isInstanceOf(java.util.NoSuchElementException.class);
+    }
+
     private MimeMessage plainMessage(String messageId, String subject, String from, String body)
             throws Exception {
         Session session = Session.getInstance(new Properties());

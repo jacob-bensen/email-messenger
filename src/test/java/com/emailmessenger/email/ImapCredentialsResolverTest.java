@@ -37,12 +37,31 @@ class ImapCredentialsResolverTest {
         MailAccount account = new MailAccount(null, "imap.gmail.com", 993, true,
                 "user@gmail.com", "cipher-rt", AuthType.XOAUTH2);
         when(encryptor.decrypt("cipher-rt")).thenReturn("refresh-token");
-        when(gmailOAuthClient.refreshAccessToken("refresh-token")).thenReturn("fresh-access-token");
+        when(gmailOAuthClient.refreshAccessToken("refresh-token"))
+                .thenReturn(new GmailOAuthClient.RefreshResult("fresh-access-token", null));
 
         ImapCredentials creds = resolver.resolve(account);
 
         assertThat(creds).isEqualTo(ImapCredentials.xoauth2(
                 "imap.gmail.com", 993, true, "user@gmail.com", "fresh-access-token"));
+        // No rotation — the stored ciphertext must be left untouched.
+        assertThat(account.getPasswordCiphertext()).isEqualTo("cipher-rt");
+    }
+
+    @Test
+    void rotatedRefreshTokenIsReencryptedOntoTheAccount() {
+        MailAccount account = new MailAccount(null, "imap.gmail.com", 993, true,
+                "user@gmail.com", "cipher-rt", AuthType.XOAUTH2);
+        when(encryptor.decrypt("cipher-rt")).thenReturn("refresh-token");
+        when(gmailOAuthClient.refreshAccessToken("refresh-token"))
+                .thenReturn(new GmailOAuthClient.RefreshResult("fresh-access-token", "rotated-rt"));
+        when(encryptor.encrypt("rotated-rt")).thenReturn("cipher-rotated");
+
+        resolver.resolve(account);
+
+        // Callers persist the account after a poll, so the write-back on the
+        // entity is what keeps the rotated token from being lost.
+        assertThat(account.getPasswordCiphertext()).isEqualTo("cipher-rotated");
     }
 
     @Test

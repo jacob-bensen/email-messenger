@@ -101,6 +101,7 @@
                 </span>
               </span>
               <span class="chat-list-time" th:if="${c.lastActivity() != null}"
+                    th:attr="data-ts=${c.lastActivityEpochMilli()}"
                     th:text="${#temporals.format(c.lastActivity(), 'MMM d, h:mm a')}">Jan 1, 7:39 PM</span>
             </span>
             <span class="chat-list-preview" th:text="${c.preview()}">Last message…</span>
@@ -139,7 +140,9 @@
 (function () {
   var workspace = document.querySelector('.chat-workspace');
   var paneWrap = document.getElementById('chatPane');
-  var railList = workspace ? workspace.querySelector('.chat-rail-list') : null;
+  // Handlers hang off the rail itself (not the list inside it) so the live
+  // refresh can swap the rail's contents without losing them.
+  var rail = workspace ? workspace.querySelector('.chat-rail') : null;
   if (!workspace || !paneWrap) return;
 
   var EMPTY_PANE =
@@ -147,29 +150,50 @@
     '<div class="chat-empty-icon" aria-hidden="true">💬</div>' +
     '<p>Select a conversation to read it here.</p></div></div>';
 
-  function formatDateLabel(iso) {
-    var parts = iso.split('-');
-    var d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+  // Server-rendered times are UTC; convert the epoch-millis carried in data-*
+  // attributes to the viewer's local time here so each user sees their own zone.
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function localDayKey(d) {
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function formatDateLabel(d) {
+    var day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     var today = new Date(); today.setHours(0, 0, 0, 0);
     var yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
-    if (d.getTime() === today.getTime())     return 'Today';
-    if (d.getTime() === yesterday.getTime()) return 'Yesterday';
-    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    if (day.getTime() === today.getTime())     return 'Today';
+    if (day.getTime() === yesterday.getTime()) return 'Yesterday';
+    return day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+
+  function localizeTimes(root) {
+    var nodes = (root || document).querySelectorAll('[data-ts]');
+    Array.prototype.forEach.call(nodes, function (el) {
+      var d = new Date(Number(el.getAttribute('data-ts')));
+      if (isNaN(d.getTime())) return;
+      el.textContent = d.toLocaleString('en-US',
+        { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+    });
   }
 
   function decorateMessages() {
     var msgs = document.getElementById('messages');
     if (!msgs) return;
     var runs = Array.prototype.slice.call(msgs.querySelectorAll('.bubble-run'));
-    var lastDate = null;
+    var lastKey = null;
     runs.forEach(function (run) {
-      var date = run.dataset.date;
-      if (!date || date === lastDate) { lastDate = date || lastDate; return; }
+      var ms = run.dataset.dayTs;
+      if (!ms) return;
+      var d = new Date(Number(ms));
+      if (isNaN(d.getTime())) return;
+      var key = localDayKey(d);
+      if (key === lastKey) return;
       var sep = document.createElement('div');
       sep.className = 'day-separator';
-      sep.innerHTML = '<span>' + formatDateLabel(date) + '</span>';
+      sep.innerHTML = '<span>' + formatDateLabel(d) + '</span>';
       msgs.insertBefore(sep, run);
-      lastDate = date;
+      lastKey = key;
     });
     msgs.scrollTop = msgs.scrollHeight;
   }
@@ -200,7 +224,7 @@
     }
   }
 
-  function initPane() { decorateMessages(); wirePane(); }
+  function initPane() { localizeTimes(paneWrap); decorateMessages(); wirePane(); }
 
   function paneUrl(href) {
     var u = new URL(href, location.origin);
@@ -208,8 +232,8 @@
   }
 
   function setActive(key) {
-    if (!railList) return;
-    Array.prototype.forEach.call(railList.querySelectorAll('.chat-list-row'), function (row) {
+    if (!rail) return;
+    Array.prototype.forEach.call(rail.querySelectorAll('.chat-list-row'), function (row) {
       var active = key && row.getAttribute('data-key') === key;
       row.classList.toggle('chat-list-row-active', !!active);
       if (active) row.classList.remove('chat-list-unread');
@@ -258,8 +282,8 @@
       .catch(function () { window.location = href; });
   }
 
-  if (railList) {
-    railList.addEventListener('click', function (e) {
+  if (rail) {
+    rail.addEventListener('click', function (e) {
       var row = e.target.closest ? e.target.closest('.chat-list-row') : null;
       if (!row) return;
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
@@ -316,6 +340,53 @@
     setTimeout(function () { target.classList.remove('bubble-flash'); }, 1200);
   });
 
+  // In-place refresh for live delivery: re-fetch the current view and morph
+  // the rail and the open timeline without touching the reply draft or losing
+  // scroll position. Called by fragments/live-refresh on SSE / heartbeat hits.
+  function refreshInPlace() {
+    fetch(location.pathname + location.search, {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'fetch' }
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error('refresh');
+        return r.text();
+      })
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+
+        var newRail = doc.querySelector('.chat-rail');
+        var searchBox = rail ? rail.querySelector('.rail-search input[type="search"]') : null;
+        var searchBusy = searchBox && document.activeElement === searchBox;
+        if (rail && newRail && !searchBusy) {
+          rail.innerHTML = newRail.innerHTML;
+          localizeTimes(rail);
+          setActive(currentKey());
+        }
+
+        var curMsgs = paneWrap.querySelector('#messages');
+        var newMsgs = doc.querySelector('#chatPane #messages');
+        if (curMsgs && newMsgs && curMsgs.innerHTML !== newMsgs.innerHTML) {
+          var nearBottom =
+            curMsgs.scrollHeight - curMsgs.scrollTop - curMsgs.clientHeight < 150;
+          var prevScroll = curMsgs.scrollTop;
+          curMsgs.innerHTML = newMsgs.innerHTML;
+          localizeTimes(curMsgs);
+          decorateMessages(); // re-adds day separators; scrolls to bottom
+          if (!nearBottom) curMsgs.scrollTop = prevScroll;
+        }
+      })
+      .catch(function () { /* transient; the next signal retries */ });
+  }
+
+  function currentKey() {
+    var m = location.pathname.match(/^\/chats\/([^\/]+)$/);
+    return m && m[1] !== 'new' ? m[1] : null;
+  }
+
+  window.ConexusLive = { refresh: refreshInPlace };
+
+  localizeTimes(document);
   if (paneWrap.classList.contains('has-chat')) initPane();
 }());
 </script>

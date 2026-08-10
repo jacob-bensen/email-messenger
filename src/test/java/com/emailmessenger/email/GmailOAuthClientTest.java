@@ -77,8 +77,35 @@ class GmailOAuthClientTest {
                 .andRespond(withSuccess(
                         "{\"access_token\":\"at-2\",\"expires_in\":3599}", MediaType.APPLICATION_JSON));
 
-        assertThat(client.refreshAccessToken("stored-rt")).isEqualTo("at-2");
+        GmailOAuthClient.RefreshResult result = client.refreshAccessToken("stored-rt");
+
+        assertThat(result.accessToken()).isEqualTo("at-2");
+        // No refresh_token in the response means no rotation to persist.
+        assertThat(result.rotatedRefreshToken()).isNull();
         server.verify();
+    }
+
+    @Test
+    void refreshAccessTokenSurfacesARotatedRefreshToken() {
+        server.expect(requestTo(GmailOAuthClient.TOKEN_ENDPOINT))
+                .andRespond(withSuccess(
+                        "{\"access_token\":\"at-3\",\"refresh_token\":\"rt-rotated\",\"expires_in\":3599}",
+                        MediaType.APPLICATION_JSON));
+
+        GmailOAuthClient.RefreshResult result = client.refreshAccessToken("stored-rt");
+
+        assertThat(result.accessToken()).isEqualTo("at-3");
+        assertThat(result.rotatedRefreshToken()).isEqualTo("rt-rotated");
+    }
+
+    @Test
+    void refreshAccessTokenTreatsEchoedSameTokenAsNoRotation() {
+        server.expect(requestTo(GmailOAuthClient.TOKEN_ENDPOINT))
+                .andRespond(withSuccess(
+                        "{\"access_token\":\"at-4\",\"refresh_token\":\"stored-rt\",\"expires_in\":3599}",
+                        MediaType.APPLICATION_JSON));
+
+        assertThat(client.refreshAccessToken("stored-rt").rotatedRefreshToken()).isNull();
     }
 
     @Test

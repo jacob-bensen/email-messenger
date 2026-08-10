@@ -75,7 +75,7 @@
     -->
     <div class="bubble-run" th:each="run : ${conversation.runs()}"
          th:classappend="${run.outbound()} ? ' bubble-run-me' : ''"
-         th:attr="data-date=${run.date() != null ? #temporals.format(run.date(), 'yyyy-MM-dd') : ''}"
+         th:attr="data-day-ts=${run.startEpochMilli()}"
     >
       <div class="avatar"
            th:text="${run.sender().initials()}"
@@ -103,7 +103,7 @@
               </li>
             </ul>
           </div>
-          <div class="bubble-time"
+          <div class="bubble-time" th:attr="data-ts=${bubble.sentAtEpochMilli()}"
                th:text="${#temporals.format(bubble.sentAt(), 'MMM d, h:mm a')}">Jan 1, 12:00 PM</div>
         </div>
       </div>
@@ -169,17 +169,24 @@
   const msgs = document.getElementById('messages');
   if (!msgs) return;
 
-  // Insert day separators between bubble runs whose dates differ
+  // Server-rendered times are UTC; render them in the viewer's local zone.
+  localizeTimes(msgs);
+
+  // Insert day separators between bubble runs whose local dates differ
   const runs = Array.from(msgs.querySelectorAll('.bubble-run'));
-  let lastDate = null;
+  let lastKey = null;
   runs.forEach(function (run) {
-    const date = run.dataset.date;
-    if (!date || date === lastDate) { lastDate = date || lastDate; return; }
+    const ms = run.dataset.dayTs;
+    if (!ms) return;
+    const d = new Date(Number(ms));
+    if (isNaN(d.getTime())) return;
+    const key = localDayKey(d);
+    if (key === lastKey) return;
     const sep = document.createElement('div');
     sep.className = 'day-separator';
-    sep.innerHTML = '<span>' + formatDateLabel(date) + '</span>';
+    sep.innerHTML = '<span>' + formatDateLabel(d) + '</span>';
     msgs.insertBefore(sep, run);
-    lastDate = date;
+    lastKey = key;
   });
 
   // Scroll to bottom so newest messages are visible
@@ -219,14 +226,30 @@ document.addEventListener('keydown', function (e) {
 });
 /*[/]*/
 
-function formatDateLabel(iso) {
-  var parts = iso.split('-');
-  var d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+function localDayKey(d) {
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+
+function formatDateLabel(d) {
+  var day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   var today = new Date(); today.setHours(0, 0, 0, 0);
   var yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
-  if (d.getTime() === today.getTime())     return 'Today';
-  if (d.getTime() === yesterday.getTime()) return 'Yesterday';
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  if (day.getTime() === today.getTime())     return 'Today';
+  if (day.getTime() === yesterday.getTime()) return 'Yesterday';
+  return day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+// Convert UTC epoch-millis in [data-ts] elements to the viewer's local time.
+function localizeTimes(root) {
+  var nodes = (root || document).querySelectorAll('[data-ts]');
+  Array.prototype.forEach.call(nodes, function (el) {
+    var d = new Date(Number(el.getAttribute('data-ts')));
+    if (isNaN(d.getTime())) return;
+    el.textContent = d.toLocaleString('en-US',
+      { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+  });
 }
 
 // Show the names of attachments the user picked for their reply.

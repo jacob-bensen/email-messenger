@@ -15,6 +15,9 @@ public interface MailAccountRepository extends JpaRepository<MailAccount, Long> 
 
     List<MailAccount> findByUserOrderByCreatedAtAsc(User user);
 
+    /** All accounts the IDLE reconciler may hold connections for. */
+    List<MailAccount> findByPollingSuspendedFalse();
+
     long countByUser(User user);
 
     Optional<MailAccount> findByUserAndHostAndUsername(User user, String host, String username);

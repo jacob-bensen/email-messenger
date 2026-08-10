@@ -79,7 +79,28 @@ class MailboxControllerTest {
         mockMvc.perform(get("/mailboxes").with(user("mailbox@example.com")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("mailboxes/index"))
-                .andExpect(model().attributeExists("mailboxes"));
+                .andExpect(model().attributeExists("mailboxes"))
+                .andExpect(model().attributeExists("syncFrequencyChoices"))
+                .andExpect(model().attribute("planFloorMinutes", 15L));
+    }
+
+    @Test
+    void oauthMailboxWithExpiredAuthorizationRendersReconnect() throws Exception {
+        MailAccount account = new MailAccount(owner, "imap.gmail.com", 993, true,
+                "mbox@gmail.com", "cipher", com.emailmessenger.domain.AuthType.XOAUTH2);
+        account.markSyncError("Google sign-in expired; reconnect the mailbox with Google.");
+        MailAccount saved = mailAccountRepository.save(account);
+        when(mailAccountService.list(any(User.class))).thenReturn(java.util.List.of(saved));
+
+        String body = mockMvc.perform(get("/mailboxes").with(user("mailbox@example.com")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(body)
+                .contains("/mailboxes/gmail/reconnect/" + saved.getId())
+                .contains("Use Reconnect to sign in with Google again")
+                // Signature editor renders for the connected account too.
+                .contains("/mailboxes/" + saved.getId() + "/signature");
     }
 
     @Test
@@ -302,6 +323,92 @@ class MailboxControllerTest {
                 .andExpect(status().isNotFound());
 
         Mockito.verifyNoInteractions(pollingService);
+    }
+
+    @Test
+    void preferencesSaveFrequencyAndDefaultAccount() throws Exception {
+        MailAccount saved = mailAccountRepository.save(new MailAccount(
+                owner, "imap.example.com", 993, true,
+                "owner@example.com", "ciphertext"));
+
+        mockMvc.perform(post("/mailboxes/preferences")
+                        .with(user("mailbox@example.com"))
+                        .with(csrf())
+                        .param("syncFrequency", "30")
+                        .param("defaultAccountId", saved.getId().toString()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/mailboxes"))
+                .andExpect(flash().attribute("syncMessage", "Preferences saved."));
+
+        verify(mailAccountService).updateMailPreferences(any(User.class), eq(30), eq(saved.getId()));
+    }
+
+    @Test
+    void preferencesWithEmptyValuesClearBothSettings() throws Exception {
+        mockMvc.perform(post("/mailboxes/preferences")
+                        .with(user("mailbox@example.com"))
+                        .with(csrf())
+                        .param("syncFrequency", "")
+                        .param("defaultAccountId", ""))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("syncMessage", "Preferences saved."));
+
+        verify(mailAccountService).updateMailPreferences(any(User.class), eq(null), eq(null));
+    }
+
+    @Test
+    void preferencesRejectFrequencyBelowThePlanFloor() throws Exception {
+        // The test user has no subscription → Free plan → 15-minute floor.
+        mockMvc.perform(post("/mailboxes/preferences")
+                        .with(user("mailbox@example.com"))
+                        .with(csrf())
+                        .param("syncFrequency", "5"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/mailboxes"))
+                .andExpect(flash().attributeExists("syncError"));
+
+        verify(mailAccountService, never())
+                .updateMailPreferences(any(User.class), any(), any());
+    }
+
+    @Test
+    void preferencesRejectAFrequencyOutsideTheOfferedChoices() throws Exception {
+        mockMvc.perform(post("/mailboxes/preferences")
+                        .with(user("mailbox@example.com"))
+                        .with(csrf())
+                        .param("syncFrequency", "7"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attributeExists("syncError"));
+
+        verify(mailAccountService, never())
+                .updateMailPreferences(any(User.class), any(), any());
+    }
+
+    @Test
+    void signatureSaveDelegatesToTheService() throws Exception {
+        mockMvc.perform(post("/mailboxes/9/signature")
+                        .with(user("mailbox@example.com"))
+                        .with(csrf())
+                        .param("signature", "Cheers,\nThe Mailbox User"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/mailboxes"))
+                .andExpect(flash().attribute("syncMessage", "Signature saved."));
+
+        verify(mailAccountService).updateSignature(any(User.class), eq(9L),
+                eq("Cheers,\nThe Mailbox User"));
+    }
+
+    @Test
+    void signatureOverTwoThousandCharactersIsRejected() throws Exception {
+        mockMvc.perform(post("/mailboxes/9/signature")
+                        .with(user("mailbox@example.com"))
+                        .with(csrf())
+                        .param("signature", "x".repeat(2001)))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attributeExists("syncError"));
+
+        verify(mailAccountService, never())
+                .updateSignature(any(User.class), any(), anyString());
     }
 
     @Test

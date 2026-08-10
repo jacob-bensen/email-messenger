@@ -16,6 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
@@ -41,6 +43,7 @@ import static org.mockito.Mockito.when;
         "mailbox.polling.interval-ms=600000"
 })
 @Transactional
+@RecordApplicationEvents
 class MailboxPollingServiceTest {
 
     @Autowired MailboxPollingService polling;
@@ -296,6 +299,37 @@ class MailboxPollingServiceTest {
         MailAccount reloadedSecond = accountRepository.findById(second.getId()).orElseThrow();
         assertThat(reloadedSecond.getLastSeenUid()).isEqualTo(7L);
         assertThat(reloadedSecond.getLastSyncedAt()).isNotNull();
+    }
+
+    @Test
+    void pollThatImportsMessagesPublishesNewMailEvent(ApplicationEvents events) throws Exception {
+        account.setLastSeenUid(100L);
+        accountRepository.save(account);
+        MimeMessage m1 = plainMessage("<event-1@test>", "Hello", "a@example.com", "Body");
+        when(imapClient.fetchSinceUid(any(ImapCredentials.class), eq(100L)))
+                .thenReturn(new ImapClient.IncrementalFetch(List.of(m1), 101L));
+        when(importService.importMessage(any(MimeMessage.class), any(User.class)))
+                .thenReturn(Optional.of(Mockito.mock(Message.class)));
+        User owner = userRepository.findByEmail("polling-owner@example.com").orElseThrow();
+
+        polling.pollOne(account.getId());
+
+        assertThat(events.stream(NewMailEvent.class))
+                .singleElement()
+                .satisfies(e -> {
+                    assertThat(e.userId()).isEqualTo(owner.getId());
+                    assertThat(e.importedCount()).isEqualTo(1);
+                });
+    }
+
+    @Test
+    void pollThatImportsNothingPublishesNoEvent(ApplicationEvents events) {
+        when(imapClient.fetchSinceUid(any(ImapCredentials.class), eq(null)))
+                .thenReturn(new ImapClient.IncrementalFetch(List.of(), 1042L));
+
+        polling.pollOne(account.getId());
+
+        assertThat(events.stream(NewMailEvent.class)).isEmpty();
     }
 
     private MimeMessage plainMessage(String messageId, String subject, String from, String body)

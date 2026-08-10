@@ -41,6 +41,13 @@ public class GmailOAuthClient {
     public record TokenResult(String accessToken, String refreshToken) {}
 
     /**
+     * A minted access token plus the rotated refresh token, when Google chose
+     * to rotate it ({@code rotatedRefreshToken} is null otherwise). Callers
+     * must persist a rotation or the stored token goes stale.
+     */
+    public record RefreshResult(String accessToken, String rotatedRefreshToken) {}
+
+    /**
      * Google's consent-screen URL. {@code prompt=consent} + {@code access_type=offline}
      * force a refresh token even on a re-authorization, so a reconnect always
      * yields a token we can persist.
@@ -73,7 +80,7 @@ public class GmailOAuthClient {
     }
 
     /** Mints a fresh access token from a stored refresh token. */
-    public String refreshAccessToken(String refreshToken) {
+    public RefreshResult refreshAccessToken(String refreshToken) {
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("refresh_token", refreshToken);
         form.add("client_id", props.getClientId());
@@ -83,7 +90,11 @@ public class GmailOAuthClient {
         if (body.access_token() == null || body.access_token().isBlank()) {
             throw new GmailOAuthException("Google returned no access token on refresh", null);
         }
-        return body.access_token();
+        String rotated = body.refresh_token();
+        if (rotated == null || rotated.isBlank() || rotated.equals(refreshToken)) {
+            rotated = null;
+        }
+        return new RefreshResult(body.access_token(), rotated);
     }
 
     /** Resolves the email address an access token is scoped to. */

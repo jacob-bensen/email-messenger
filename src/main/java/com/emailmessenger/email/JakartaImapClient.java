@@ -206,13 +206,23 @@ class JakartaImapClient implements ImapClient {
     }
 
     private Store openStore(ImapCredentials credentials) throws MessagingException {
+        return openStore(credentials, 15000);
+    }
+
+    /**
+     * Opens a connected IMAP store. {@code readTimeoutMs} is the socket read
+     * timeout — 15s for the fetch paths; the IDLE client passes a much longer
+     * one since IDLE blocks on a read for minutes at a time.
+     */
+    static Store openStore(ImapCredentials credentials, long readTimeoutMs)
+            throws MessagingException {
         Properties props = new Properties();
         String protocol = credentials.ssl() ? "imaps" : "imap";
         props.put("mail.store.protocol", protocol);
         props.put("mail." + protocol + ".host", credentials.host());
         props.put("mail." + protocol + ".port", String.valueOf(credentials.port()));
         props.put("mail." + protocol + ".connectiontimeout", "10000");
-        props.put("mail." + protocol + ".timeout", "15000");
+        props.put("mail." + protocol + ".timeout", String.valueOf(readTimeoutMs));
         if (!credentials.ssl()) {
             props.put("mail.imap.starttls.enable", "true");
         }

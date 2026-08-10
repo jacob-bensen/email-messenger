@@ -2,6 +2,7 @@ package com.emailmessenger.service;
 
 import java.util.List;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 /**
  * One row in the chats list: a person or group, the time and a one-line preview
@@ -27,4 +28,9 @@ public record ConversationListItem(
     long threadCount,
     List<String> accounts,
     String senderEmail
-) {}
+) {
+    /** UTC epoch millis for the view; the browser renders it in local time. */
+    public Long lastActivityEpochMilli() {
+        return lastActivity == null ? null : lastActivity.toInstant(ZoneOffset.UTC).toEpochMilli();
+    }
+}

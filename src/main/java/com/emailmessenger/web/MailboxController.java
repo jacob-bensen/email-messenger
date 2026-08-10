@@ -2,11 +2,13 @@ package com.emailmessenger.web;
 
 import com.emailmessenger.auth.GoogleOAuthProperties;
 import com.emailmessenger.auth.UserService;
+import com.emailmessenger.billing.PlanLimitService;
 import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.ImapConnectionException;
 import com.emailmessenger.email.MailAccountService;
 import com.emailmessenger.email.MailboxPollingService;
+import com.emailmessenger.email.PollingPolicy;
 import com.emailmessenger.repository.MailAccountRepository;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
@@ -30,22 +32,31 @@ import java.util.Optional;
 @RequestMapping("/mailboxes")
 class MailboxController {
 
+    /** Sync-frequency choices offered in the preferences select, in minutes. */
+    static final List<Integer> SYNC_FREQUENCY_CHOICES = List.of(5, 15, 30, 60);
+
     private final MailAccountService mailAccountService;
     private final MailAccountRepository mailAccountRepository;
     private final MailboxPollingService pollingService;
     private final UserService userService;
     private final GoogleOAuthProperties googleOAuthProperties;
+    private final PlanLimitService planLimitService;
+    private final PollingPolicy pollingPolicy;
 
     MailboxController(MailAccountService mailAccountService,
                       MailAccountRepository mailAccountRepository,
                       MailboxPollingService pollingService,
                       UserService userService,
-                      GoogleOAuthProperties googleOAuthProperties) {
+                      GoogleOAuthProperties googleOAuthProperties,
+                      PlanLimitService planLimitService,
+                      PollingPolicy pollingPolicy) {
         this.mailAccountService = mailAccountService;
         this.mailAccountRepository = mailAccountRepository;
         this.pollingService = pollingService;
         this.userService = userService;
         this.googleOAuthProperties = googleOAuthProperties;
+        this.planLimitService = planLimitService;
+        this.pollingPolicy = pollingPolicy;
     }
 
     @GetMapping
@@ -56,6 +67,13 @@ class MailboxController {
                 .map(a -> MailboxView.from(a, now))
                 .toList();
         model.addAttribute("mailboxes", mailboxes);
+        model.addAttribute("syncFrequencyChoices", SYNC_FREQUENCY_CHOICES);
+        model.addAttribute("syncFrequency", owner.getSyncFrequencyMinutes());
+        model.addAttribute("planFloorMinutes",
+                pollingPolicy.intervalFor(planLimitService.currentPlan(owner)).toMinutes());
+        // getId() on the lazy proxy doesn't need the row loaded.
+        model.addAttribute("defaultAccountId", owner.getDefaultMailAccount() == null
+                ? null : owner.getDefaultMailAccount().getId());
         return "mailboxes/index";
     }
 
@@ -135,6 +153,67 @@ class MailboxController {
                     "Mailbox synced.");
         }
         return "redirect:/mailboxes";
+    }
+
+    @PostMapping("/preferences")
+    String updatePreferences(@RequestParam(value = "syncFrequency", required = false) String syncFrequencyRaw,
+                             @RequestParam(value = "defaultAccountId", required = false) String defaultAccountRaw,
+                             Principal principal,
+                             RedirectAttributes redirectAttributes) {
+        User owner = userService.requireByEmail(principal.getName());
+        Integer minutes = parseOptionalInt(syncFrequencyRaw);
+        if (syncFrequencyRaw != null && !syncFrequencyRaw.isBlank()
+                && (minutes == null || !SYNC_FREQUENCY_CHOICES.contains(minutes))) {
+            redirectAttributes.addFlashAttribute("syncError", "Pick a valid sync frequency.");
+            return "redirect:/mailboxes";
+        }
+        long floor = pollingPolicy.intervalFor(planLimitService.currentPlan(owner)).toMinutes();
+        if (minutes != null && minutes < floor) {
+            redirectAttributes.addFlashAttribute("syncError",
+                    "Checking every " + minutes + " minutes needs a paid plan — your plan syncs every "
+                            + floor + " minutes at the fastest.");
+            return "redirect:/mailboxes";
+        }
+        Long defaultAccountId = parseOptionalLong(defaultAccountRaw);
+        // A foreign/unknown default account id 404s inside the service.
+        mailAccountService.updateMailPreferences(owner, minutes, defaultAccountId);
+        redirectAttributes.addFlashAttribute("syncMessage", "Preferences saved.");
+        return "redirect:/mailboxes";
+    }
+
+    @PostMapping("/{id}/signature")
+    String saveSignature(@PathVariable Long id,
+                         @RequestParam(value = "signature", required = false) String signature,
+                         Principal principal,
+                         RedirectAttributes redirectAttributes) {
+        User owner = userService.requireByEmail(principal.getName());
+        if (signature != null && signature.length() > 2000) {
+            redirectAttributes.addFlashAttribute("syncError",
+                    "Signatures are limited to 2000 characters.");
+            return "redirect:/mailboxes";
+        }
+        // A foreign or unknown id 404s inside the service, same posture as sync/delete.
+        mailAccountService.updateSignature(owner, id, signature);
+        redirectAttributes.addFlashAttribute("syncMessage", "Signature saved.");
+        return "redirect:/mailboxes";
+    }
+
+    private static Integer parseOptionalInt(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return Integer.valueOf(raw.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static Long parseOptionalLong(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return Long.valueOf(raw.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     @PostMapping("/{id}/delete")

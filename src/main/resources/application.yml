@@ -67,6 +67,10 @@ mailbox:
   # knobs fall back to the @Scheduled defaults in MailboxPollingScheduler.
   polling:
     enabled: ${MAILBOX_POLLING_ENABLED:true}
+  # Live delivery: holds an IMAP IDLE connection per paid-tier mailbox so new
+  # mail lands in seconds. Free-tier accounts stay on the polling cadence.
+  idle:
+    enabled: ${MAILBOX_IDLE_ENABLED:true}
 
 # Operator allowlist gating /admin/**. Hardcoded to the sole operator, so no
 # env var is needed; comma-separate to add more. A non-admin hitting /admin/**

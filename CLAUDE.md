@@ -5,9 +5,12 @@ conversation view.
 
 ## Current status
 
-Greenfield. The repo contains only `README.md`, `.gitignore`, and this file.
-No `pom.xml`, source code, or build configuration exists yet — the next
-session has to scaffold the project before anything else compiles or runs.
+Working SaaS ("ConexusMail"): auth (form + Google OIDC), Stripe billing
+(Free/Pro/Business), multi-account mailbox connect (IMAP password + Gmail
+OAuth), polling import with sent-folder sync, the texting-style /chats
+workspace keyed by participant-set conversationKey, teams, saved searches,
+digests, admin metrics, and a PWA shell. See the roadmap below for what's
+next.
 
 ## Tech stack (target)
 
@@ -92,6 +95,47 @@ commit. Add follow-ups as they emerge.
 - [ ] Set up the support email (a real mailbox/address users can write to, and
       wire it into the app — e.g. footer/contact links and any "need help?"
       copy). Decide the address and where outbound support mail is sent from.
+- [ ] Publish the Google OAuth consent screen to production. It is still in
+      Testing mode, where Google expires Gmail refresh tokens 7 days after
+      issuance, so every OAuth mailbox needs a weekly "Reconnect" until the
+      app is published (added 2026-07-14; reconnect flow exists at
+      `/mailboxes/gmail/reconnect/{id}`).
+- [x] Live delivery, part 1 (added 2026-08-09, done 2026-08-10): IMAP IDLE
+      for paid-tier accounts (`ImapIdleService`, `mailbox.idle.enabled`
+      flag) + SSE stream at `/chats/events` (`ChatEventStream`,
+      `NewMailEvent` published by `MailboxPollingService`) + in-place chat
+      updates (rail + open-pane morph in `chat.html`, wired through
+      `fragments/live-refresh.html`) replacing the reload-on-new-mail
+      behavior. Not yet verified against a real IMAP server that supports
+      IDLE — do that when next running locally with a connected mailbox.
+- [ ] Live delivery, part 2: Web Push through the existing PWA service
+      worker — VAPID keys, push-subscription storage, notification opt-in on
+      /account/notifications, per-conversation "Ada: message preview"
+      notifications when no tab is open.
+- [ ] Delivery states for outbound bubbles, iMessage-style: Sending/Sent from
+      the SMTP path; Delivered when the Sent-folder import (V31 cursor) sees
+      the message's Message-ID come back; Not Delivered by parsing
+      mailer-daemon DSNs (multipart/report) and matching
+      them to the original outbound message — render status + retry on the
+      bubble, and suppress MAILER-DAEMON pseudo-conversations from the chats
+      list.
+- [ ] Signature → living contact card: parse the signatures
+      `EmailBodyCleaner` already lifts into structured fields (phone → tel:
+      link, title, company, sites) shown in the signature rail; record
+      signature changes over time and surface diffs ("phone number changed")
+      as subtle timeline events; backfill missing display names from parsed
+      signatures.
+- [ ] Per-person shared files & links: store attachment bytes (blob store;
+      plan-capped via `PlanLimitKind`), download endpoint for the 📎 chips
+      (today `blob_ref` is always null — attachments aren't downloadable),
+      then Media/Files/Links tabs in the signature rail scoped to the
+      conversationKey, with links harvested from bubble HTML at import time.
+- [ ] Reply-to-a-specific-bubble: quote-reply UI targeting one message that
+      uses that message's Message-ID for In-Reply-To/References
+      (`ReplyService` currently always threads onto the thread's last
+      message, which mis-threads replies to older bubbles); make the #thread
+      badges clickable filter chips that dim the merged timeline to one
+      thread.
 
 ## Conventions
 

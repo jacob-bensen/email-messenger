@@ -47,6 +47,12 @@ class MailboxViewTest {
     }
 
     @Test
+    void errorHintForExpiredGoogleAuthorizationPointsAtReconnect() {
+        assertThat(MailboxView.errorHint("Google sign-in expired; reconnect the mailbox with Google."))
+                .contains("Use Reconnect");
+    }
+
+    @Test
     void errorHintCallsOutAuthenticationFailures() {
         assertThat(MailboxView.errorHint("AUTHENTICATE failed"))
                 .contains("app password");

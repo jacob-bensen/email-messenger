@@ -12,6 +12,7 @@ import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.repository.MailAccountRepository;
 import com.emailmessenger.repository.MessageRepository;
 import com.emailmessenger.repository.ParticipantRepository;
+import com.emailmessenger.repository.UserRepository;
 import com.emailmessenger.service.ConversationKeyService;
 import com.emailmessenger.service.ReplyService;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,6 +64,7 @@ class ConversationControllerTest {
     @Autowired MessageRepository messages;
     @Autowired ParticipantRepository participants;
     @Autowired MailAccountRepository mailAccounts;
+    @Autowired UserRepository users;
 
     @MockitoBean ReplyService replyService;
 
@@ -149,6 +151,49 @@ class ConversationControllerTest {
         verify(replyService).sendNewEmail(eq("Quick question"), eq("Are we still on for Friday?"),
                 anyList(), anyList(), anyString());
         assertThat(messages.count()).isEqualTo(before + 1);
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void sendAppendsTheSendingAccountsSignature() throws Exception {
+        MailAccount account = new MailAccount(owner, "imap.example.com", 993, true,
+                "chat-user@example.com", "cipher");
+        account.setSignature("Owner\nAcme Corp");
+        mailAccounts.save(account);
+
+        mockMvc.perform(post("/chats/{key}/send", adaKey)
+                        .param("subject", "Quick question")
+                        .param("body", "Are we still on for Friday?")
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().is3xxRedirection());
+
+        // The sole connected mailbox is the sending account; its signature goes
+        // out under the standard "-- " delimiter.
+        verify(replyService).sendNewEmail(eq("Quick question"),
+                eq("Are we still on for Friday?\n\n-- \nOwner\nAcme Corp"),
+                anyList(), anyList(), eq("chat-user@example.com"));
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void hubSendUsesTheDefaultSendingAccount() throws Exception {
+        mailAccounts.save(new MailAccount(owner, "imap.example.com", 993, true,
+                "first@example.com", "cipher"));
+        MailAccount second = mailAccounts.save(new MailAccount(owner, "imap.example.com", 993, true,
+                "second@example.com", "cipher"));
+        owner.setDefaultMailAccount(second);
+        users.save(owner);
+
+        mockMvc.perform(post("/chats/{key}/send", adaKey)
+                        .param("subject", "From the hub")
+                        .param("body", "Which account sends this?")
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().is3xxRedirection());
+
+        // No ?mailbox= scope and two accounts: the preferred default wins over
+        // the login-email fallback.
+        verify(replyService).sendNewEmail(eq("From the hub"), eq("Which account sends this?"),
+                anyList(), anyList(), eq("second@example.com"));
     }
 
     @Test

@@ -2,9 +2,12 @@ package com.emailmessenger.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -67,6 +70,17 @@ public class User {
     @Column(name = "email_verified_at")
     private LocalDateTime emailVerifiedAt;
 
+    // Poll cadence in minutes; null means the plan default. The effective
+    // interval is floored by the plan tier at read time (PollingPolicy).
+    @Column(name = "sync_frequency_minutes")
+    private Integer syncFrequencyMinutes;
+
+    // Account new messages are sent from when the view isn't scoped to one
+    // mailbox; null keeps the automatic choice (sole account, else login email).
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "default_mail_account_id")
+    private MailAccount defaultMailAccount;
+
     protected User() {}
 
     public User(String email, String passwordHash, String displayName) {
@@ -106,6 +120,8 @@ public class User {
     public LocalDateTime getLastActivationLastChanceSentAt() { return lastActivationLastChanceSentAt; }
     public LocalDateTime getEmailVerifiedAt() { return emailVerifiedAt; }
     public boolean isEmailVerified() { return emailVerifiedAt != null; }
+    public Integer getSyncFrequencyMinutes() { return syncFrequencyMinutes; }
+    public MailAccount getDefaultMailAccount() { return defaultMailAccount; }
 
     public void setEmail(String email) { this.email = email; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
@@ -121,4 +137,6 @@ public class User {
     public void setLastActivationFollowupSentAt(LocalDateTime ts) { this.lastActivationFollowupSentAt = ts; }
     public void setLastActivationLastChanceSentAt(LocalDateTime ts) { this.lastActivationLastChanceSentAt = ts; }
     public void setEmailVerifiedAt(LocalDateTime ts) { this.emailVerifiedAt = ts; }
+    public void setSyncFrequencyMinutes(Integer minutes) { this.syncFrequencyMinutes = minutes; }
+    public void setDefaultMailAccount(MailAccount account) { this.defaultMailAccount = account; }
 }

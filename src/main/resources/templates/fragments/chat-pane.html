@@ -40,7 +40,7 @@
       <!-- th:utext renders pre-sanitized HTML (jsoup, in ConversationService). -->
       <div class="bubble-run" th:each="run : ${chat.runs()}"
            th:classappend="${run.outbound()} ? ' bubble-run-me' : ''"
-           th:attr="data-date=${run.date() != null ? #temporals.format(run.date(), 'yyyy-MM-dd') : ''}">
+           th:attr="data-day-ts=${run.startEpochMilli()}">
         <div class="avatar"
              th:text="${run.sender().initials()}"
              th:title="${run.sender().displayName() != null ? run.sender().displayName() : run.sender().email()}">AB</div>
@@ -67,7 +67,7 @@
                 </li>
               </ul>
             </div>
-            <div class="bubble-time"
+            <div class="bubble-time" th:attr="data-ts=${bubble.sentAtEpochMilli()}"
                  th:text="${#temporals.format(bubble.sentAt(), 'MMM d, h:mm a')}">Jan 1, 12:00 PM</div>
           </div>
         </div>

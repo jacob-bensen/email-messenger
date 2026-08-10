@@ -34,15 +34,21 @@ class ImapCredentialsResolver {
             throw new ImapConnectionException("Could not decrypt stored credentials", e);
         }
         if (account.getAuthType() == AuthType.XOAUTH2) {
-            String accessToken;
+            GmailOAuthClient.RefreshResult refreshed;
             try {
-                accessToken = gmailOAuthClient.refreshAccessToken(secret);
+                refreshed = gmailOAuthClient.refreshAccessToken(secret);
             } catch (GmailOAuthException e) {
                 throw new ImapConnectionException(
                         "Google sign-in expired; reconnect the mailbox with Google.", e);
             }
+            // Google occasionally rotates the refresh token; write it back onto
+            // the entity (callers persist the account after a poll) or the
+            // stored one dies and every later refresh fails.
+            if (refreshed.rotatedRefreshToken() != null) {
+                account.setPasswordCiphertext(encryptor.encrypt(refreshed.rotatedRefreshToken()));
+            }
             return ImapCredentials.xoauth2(account.getHost(), account.getPort(),
-                    account.isSsl(), account.getUsername(), accessToken);
+                    account.isSsl(), account.getUsername(), refreshed.accessToken());
         }
         return ImapCredentials.password(account.getHost(), account.getPort(),
                 account.isSsl(), account.getUsername(), secret);
