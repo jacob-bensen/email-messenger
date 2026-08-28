@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 
@@ -33,6 +34,13 @@ import java.util.List;
  * for the seven-day deltas. The digest is the operator's "is this thing
  * making money?" answer delivered to where they already read mail, so
  * they don't have to remember to open {@code /admin/revenue}.
+ *
+ * <p>EPIC-18 M4 adds two win-back lines: the un-emailed paid-cancel queue
+ * count (rows waiting for a "Send win-back" click on {@code /admin/revenue})
+ * and the count + MRR of subscriptions that got a win-back email this week
+ * and have since flipped back to {@code active}. Pushes both the action and
+ * the proof-of-return into the same email, so the loop closes without
+ * needing a dashboard visit.
  */
 @Service
 public class AdminWeeklyDigestService {
@@ -82,8 +90,10 @@ public class AdminWeeklyDigestService {
         RevenueMetrics metrics = metricsService.snapshot();
         long newPaying = subscriptions.countByStatusAndUpdatedAtAfter("active", weekAgo);
         long churn = subscriptions.countByStatusAndUpdatedAtAfter("canceled", weekAgo);
-        EnumMap<Plan, long[]> perPlanChurn = perPlanChurn(weekAgo, now);
-        String body = renderBody(metrics, newPaying, churn, perPlanChurn, now);
+        List<Subscription> paidCanceledThisWeek = paidCanceledBetween(weekAgo, now);
+        EnumMap<Plan, long[]> perPlanChurn = perPlanChurn(paidCanceledThisWeek);
+        WinBackWeeklySummary winBack = winBackSummary(paidCanceledThisWeek, weekAgo);
+        String body = renderBody(metrics, newPaying, churn, perPlanChurn, winBack, now);
         String subject = buildSubject(metrics, newPaying, churn);
 
         int sent = 0;
@@ -121,6 +131,7 @@ public class AdminWeeklyDigestService {
                               long newPaying,
                               long churn,
                               EnumMap<Plan, long[]> perPlanChurn,
+                              WinBackWeeklySummary winBack,
                               LocalDateTime now) {
         LocalDate weekEnd = now.atZone(ZoneOffset.UTC).toLocalDate();
         String base = site.getBaseUrl();
@@ -143,18 +154,32 @@ public class AdminWeeklyDigestService {
             sb.append(String.format("    %-16s%d canceled (-%s MRR)%n",
                     label, row[0], RevenueMetricsService.formatCents(row[1])));
         }
+        sb.append("  Win-back queue:       ").append(winBack.unemailed())
+          .append(" un-emailed paid cancels\n");
+        sb.append("  Recovered:            ").append(winBack.recoveredCount())
+          .append(" (+").append(RevenueMetricsService.formatCents(winBack.recoveredMrrCents()))
+          .append(" MRR)\n");
         sb.append('\n');
         sb.append("Full dashboard: ").append(base).append("/admin/revenue\n");
         return sb.toString();
     }
 
-    private EnumMap<Plan, long[]> perPlanChurn(LocalDateTime from, LocalDateTime to) {
-        EnumMap<Plan, long[]> perPlan = new EnumMap<>(Plan.class);
-        for (Subscription sub : subscriptions.findCanceledBetween(from, to)) {
+    private List<Subscription> paidCanceledBetween(LocalDateTime from, LocalDateTime to) {
+        List<Subscription> all = subscriptions.findCanceledBetween(from, to);
+        List<Subscription> paid = new ArrayList<>(all.size());
+        for (Subscription sub : all) {
             Plan plan = sub.getPlan();
-            if (plan == null || plan == Plan.FREE) {
-                continue;
+            if (plan != null && plan != Plan.FREE) {
+                paid.add(sub);
             }
+        }
+        return paid;
+    }
+
+    private EnumMap<Plan, long[]> perPlanChurn(List<Subscription> paidCanceledThisWeek) {
+        EnumMap<Plan, long[]> perPlan = new EnumMap<>(Plan.class);
+        for (Subscription sub : paidCanceledThisWeek) {
+            Plan plan = sub.getPlan();
             BillingPeriod period = sub.getBillingPeriod() == null
                     ? BillingPeriod.MONTHLY
                     : sub.getBillingPeriod();
@@ -164,6 +189,42 @@ public class AdminWeeklyDigestService {
         }
         return perPlan;
     }
+
+    /**
+     * Combines the two win-back lines the digest surfaces. The un-emailed
+     * count is the subset of this week's paid cancels still eligible for a
+     * "Send win-back" click (no send stamp yet), so it doubles as the
+     * operator's inbox-side view of what waits on {@code /admin/revenue}.
+     * Recovered is the paid cohort whose win-back stamp landed inside the
+     * same 7-day window and whose subscription is now {@code active} again
+     * — the tight signal that this week's outreach paid off. MRR is summed
+     * from {@link PlanPricing#monthlyCents} against each recovered row.
+     */
+    private WinBackWeeklySummary winBackSummary(List<Subscription> paidCanceledThisWeek,
+                                                LocalDateTime weekAgo) {
+        long unemailed = 0;
+        for (Subscription sub : paidCanceledThisWeek) {
+            if (sub.getLastWinBackEmailSentAt() == null) {
+                unemailed++;
+            }
+        }
+        long recoveredCount = 0;
+        long recoveredMrrCents = 0;
+        for (Subscription sub : subscriptions.findRecoveredByWinBackSince(weekAgo)) {
+            Plan plan = sub.getPlan();
+            if (plan == null || plan == Plan.FREE) {
+                continue;
+            }
+            BillingPeriod period = sub.getBillingPeriod() == null
+                    ? BillingPeriod.MONTHLY
+                    : sub.getBillingPeriod();
+            recoveredCount++;
+            recoveredMrrCents += PlanPricing.monthlyCents(plan, period);
+        }
+        return new WinBackWeeklySummary(unemailed, recoveredCount, recoveredMrrCents);
+    }
+
+    private record WinBackWeeklySummary(long unemailed, long recoveredCount, long recoveredMrrCents) {}
 
     private static String planLabel(Plan plan) {
         return switch (plan) {

@@ -21,6 +21,8 @@ import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -151,6 +153,77 @@ class AdminWeeklyDigestServiceTest {
         // Pro monthly 699c → -$6.99; Business is custom/contact-sales → -$0.00.
         assertThat(body).contains("Pro:            1 canceled (-$6.99 MRR)");
         assertThat(body).contains("Business:       1 canceled (-$0.00 MRR)");
+    }
+
+    @Test
+    void winBackQueueLineCountsPaidCancelsWithoutASendStampAndSkipsAlreadyEmailedAndFreeRows() throws Exception {
+        adminProperties.setEmails(List.of("op@example.com"));
+
+        User waiting = userService.register("waiting@example.com", "password1", null);
+        Subscription waitingSub = new Subscription(waiting, "cus_waiting", "canceled");
+        waitingSub.setPlan(Plan.PRO);
+        waitingSub.setBillingPeriod(BillingPeriod.MONTHLY);
+        subscriptions.save(waitingSub);
+
+        User alreadySent = userService.register("sent@example.com", "password1", null);
+        Subscription sentSub = new Subscription(alreadySent, "cus_sent", "canceled");
+        sentSub.setPlan(Plan.PRO);
+        sentSub.setBillingPeriod(BillingPeriod.MONTHLY);
+        sentSub.setLastWinBackEmailSentAt(LocalDateTime.now(Clock.systemUTC()).minusDays(1));
+        subscriptions.save(sentSub);
+
+        User freeTier = userService.register("free@example.com", "password1", null);
+        Subscription freeSub = new Subscription(freeTier, "cus_free", "canceled");
+        freeSub.setPlan(Plan.FREE);
+        freeSub.setBillingPeriod(BillingPeriod.MONTHLY);
+        subscriptions.save(freeSub);
+
+        digestService.sendDigest();
+
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(captor.capture());
+        String body = (String) captor.getValue().getContent();
+        assertThat(body).contains("Win-back queue:       1 un-emailed paid cancels");
+    }
+
+    @Test
+    void recoveredLineCountsPaidReactivationsAfterAWinBackStampAndSumsMonthlyMrr() throws Exception {
+        adminProperties.setEmails(List.of("op@example.com"));
+
+        User revived = userService.register("revived@example.com", "password1", null);
+        Subscription revivedSub = new Subscription(revived, "cus_revived", "active");
+        revivedSub.setPlan(Plan.PRO);
+        revivedSub.setBillingPeriod(BillingPeriod.MONTHLY);
+        revivedSub.setLastWinBackEmailSentAt(LocalDateTime.now(Clock.systemUTC()).minusDays(3));
+        subscriptions.save(revivedSub);
+
+        User stillOut = userService.register("stillout@example.com", "password1", null);
+        Subscription stillOutSub = new Subscription(stillOut, "cus_stillout", "canceled");
+        stillOutSub.setPlan(Plan.PRO);
+        stillOutSub.setBillingPeriod(BillingPeriod.MONTHLY);
+        stillOutSub.setLastWinBackEmailSentAt(LocalDateTime.now(Clock.systemUTC()).minusDays(2));
+        subscriptions.save(stillOutSub);
+
+        digestService.sendDigest();
+
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(captor.capture());
+        String body = (String) captor.getValue().getContent();
+        // Pro monthly = 699c → +$6.99.
+        assertThat(body).contains("Recovered:            1 (+$6.99 MRR)");
+    }
+
+    @Test
+    void winBackLinesRenderZeroesWhenNoCandidatesExist() throws Exception {
+        adminProperties.setEmails(List.of("op@example.com"));
+
+        digestService.sendDigest();
+
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(captor.capture());
+        String body = (String) captor.getValue().getContent();
+        assertThat(body).contains("Win-back queue:       0 un-emailed paid cancels");
+        assertThat(body).contains("Recovered:            0 (+$0.00 MRR)");
     }
 
     @Test

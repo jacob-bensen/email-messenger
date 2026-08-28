@@ -3,14 +3,18 @@
 Items genuinely waiting on a human — credentials, accounts, legal, or
 asset delivery — that the agent cannot complete in code. Group by area.
 
-- [ ] [PLAN-REVIEW] EPIC-17 churn telemetry is code-complete
-      (per-plan churn card, cancellation reason picker, at-risk queue,
-      per-plan churn line in the Monday digest). PLAN.md has rolled
-      forward to **EPIC-18 operator-initiated win-back outreach**
-      (per-row "Send win-back" CTA shipped 2026-06-12; win-back
-      conversion card, recovered-row badge, and digest queue-line still
-      open). Confirm the new Objective once a live operator has fired
-      at least one win-back and a reactivation has been observed.
+- [ ] [PLAN-REVIEW] EPIC-18 operator-initiated win-back outreach is
+      code-complete across all four milestones (per-row "Send win-back"
+      CTA + templated send + one-shot stamp, win-back conversion card
+      on `/admin/revenue`, auto-suppressed recovered rows with the
+      Recovered badge, and — landed 2026-08-28 — the win-back-queue +
+      recovered lines on the Monday operator digest). The reclaim loop
+      the Objective calls for now closes on the same dashboard the
+      operator already reads. Confirm the Objective once a live
+      operator has fired at least one win-back, observed the row flip
+      to "Recovered", and read the reactivation tally in the Monday
+      digest end-to-end; seed the next Primary Objective from that
+      confirmation.
 
 - [ ] Set `ACTIVATION_ENABLED=true` on the deploy once `ADMIN_EMAILS` is
       wired and at least one live mail send has been verified end-to-end
