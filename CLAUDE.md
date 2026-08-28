@@ -167,3 +167,28 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories
+
+This backend is the server half of a two-repo product; the mobile
+client is `jacob-bensen/conexus-mail-mobile` (Flutter). The two repos
+are kept in sync by the full-stack sync routine, which reads and
+writes the following docs:
+
+- [`docs/BACKEND.md`](docs/BACKEND.md) — this repo's architecture.
+- [`docs/API.md`](docs/API.md) — **canonical JSON API contract** —
+  the single source of truth shared with the mobile client. Design
+  contract changes here **before** implementing them in either repo.
+- [`docs/WEB.md`](docs/WEB.md) — page inventory for the Thymeleaf
+  website (unchanged by the sync routine except as a reference).
+- [`CHANGELOG.md`](CHANGELOG.md) — repo-level change log, one entry
+  per sync-routine run. (The `master/CHANGELOG.md` under `master/` is
+  a separate, older dev log for the pre-launch product-strategy
+  work driven by `master/PLAN.md`.)
+- [`INTERNAL_TODO.md`](INTERNAL_TODO.md) — running punch list of
+  sync gaps and tech debt in severity order.
+
+The mobile repo carries `docs/DESIGN.md` (product/app design + its
+own roadmap) and `docs/MOBILE.md` (client architecture). Any change
+to the API contract on this side lands in the same run as the
+matching change on the mobile side.
