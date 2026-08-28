@@ -167,6 +167,17 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <executions>
+          <!-- Emits META-INF/build-info.properties so Spring Boot
+               auto-registers a BuildProperties bean. PublicApiController
+               reads it to serve /api/v1/version. -->
+          <execution>
+            <id>build-info</id>
+            <goals>
+              <goal>build-info</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

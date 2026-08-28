@@ -72,7 +72,12 @@ class SecurityConfig {
                                 "/sw.js", "/offline",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/error", "/h2-console/**",
-                                "/actuator/health", "/actuator/health/**")
+                                "/actuator/health", "/actuator/health/**",
+                                // Anonymous JSON endpoints for the mobile client
+                                // (health + version). Auth-bearing /api/v1/**
+                                // paths will opt back into authentication as
+                                // they land — see docs/API.md.
+                                "/api/v1/health", "/api/v1/version")
                         .permitAll()
                         .anyRequest().authenticated()
                 )

@@ -137,6 +137,24 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- **`../conexus-mail-mobile`** — Flutter mobile client for ConexusMail.
+  Consumes the REST API defined in `docs/API.md` and mirrors selected
+  pure-logic rules in its `lib/domain/`.
+
+## Docs
+
+- `docs/BACKEND.md` — architecture, package layout, auth model,
+  website / API relationship.
+- `docs/API.md` — **canonical** REST contract shared with the mobile
+  client. Change here first, then both implementations.
+- `docs/WEB.md` — the Thymeleaf website: templates, routes, and which
+  services each page uses.
+- `CHANGELOG.md` — dated per-run entries from the full-stack sync
+  routine.
+- `INTERNAL_TODO.md` — running list of gaps and deferred work.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
