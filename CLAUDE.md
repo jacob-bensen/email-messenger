@@ -150,6 +150,20 @@ commit. Add follow-ups as they emerge.
 - No backwards-compatibility shims while the project is pre-1.0; change
   call sites directly.
 
+## Related repositories
+
+- **`conexus-mail-mobile`** — the Flutter mobile client for ConexusMail.
+  Currently a stub (README + `.gitignore`); no Flutter scaffold yet.
+- **Shared docs:**
+  - `docs/BACKEND.md` (here) — backend architecture.
+  - `docs/API.md` (here) — the canonical REST contract with the mobile
+    client. Change this file **before** implementing on either side.
+    Today it documents intent only — no JSON REST endpoints exist yet.
+  - `docs/WEB.md` (here) — Thymeleaf page inventory.
+  - `docs/DESIGN.md` (mobile) — product / app design source of truth.
+  - `docs/MOBILE.md` (mobile) — client architecture.
+- `INTERNAL_TODO.md` in each repo tracks cross-repo gaps.
+
 ## Working agreement for the routine
 
 - Always work on the branch the session started on. Do not push to `main`.
