@@ -12,6 +12,21 @@ workspace keyed by participant-set conversationKey, teams, saved searches,
 digests, admin metrics, and a PWA shell. See the roadmap below for what's
 next.
 
+## Related repositories
+
+- **Mobile client:** `jacob-bensen/conexus-mail-mobile` — Flutter app
+  that consumes this backend over the JSON API.
+  - `docs/DESIGN.md` in that repo — product / UX truth for the mobile
+    client, and its roadmap.
+  - `docs/MOBILE.md` in that repo — client architecture.
+- **This repo — canonical docs:**
+  - `docs/API.md` — canonical JSON contract for `/api/v1/**`.
+    Update it BEFORE changing either side.
+  - `docs/BACKEND.md` — server architecture.
+  - `docs/WEB.md` — Thymeleaf website route inventory.
+  - `INTERNAL_TODO.md` — running gaps + tech-debt log.
+  - `CHANGELOG.md` — dated history.
+
 ## Tech stack (target)
 
 - Java 21 (LTS)
@@ -130,6 +145,14 @@ commit. Add follow-ups as they emerge.
       (today `blob_ref` is always null — attachments aren't downloadable),
       then Media/Files/Links tabs in the signature rail scoped to the
       conversationKey, with links harvested from bubble HTML at import time.
+- [x] Mobile JSON API v1 bootstrap (added 2026-08-28): new
+      `com.emailmessenger.web.api` package + `V36__api_tokens.sql` gives
+      the Flutter client `POST /api/v1/auth/login`, `GET /api/v1/auth/me`,
+      `POST /api/v1/auth/logout` behind a bearer-token filter chain
+      (`ApiSecurityConfig`, `@Order(1)`, stateless, CSRF-off, JSON error
+      entry point). Chats / mailboxes / events endpoints are stubbed out
+      in `docs/API.md` for the next milestone. Contract lives in
+      `docs/API.md`.
 - [ ] Reply-to-a-specific-bubble: quote-reply UI targeting one message that
       uses that message's Message-ID for In-Reply-To/References
       (`ReplyService` currently always threads onto the thread's last
