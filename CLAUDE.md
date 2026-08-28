@@ -167,3 +167,23 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories
+
+- **`../conexus-mail-mobile`** — Flutter mobile client that renders the
+  same conversations. Consumes the REST API defined below and MUST stay
+  in sync with it.
+
+Docs owned by the full-stack sync routine (separate from the
+`master/` backend-only routine's PLAN/BACKLOG/CHANGELOG/MASTER_ACTIONS):
+
+- `docs/BACKEND.md` — architecture, package layout, persistence, auth,
+  mailbox pipeline, web ↔ API sharing rule.
+- `docs/API.md` — CANONICAL REST CONTRACT (`/api/v1/**`) shared with
+  the mobile client. Any change here MUST land in the same run as the
+  matching server + client code.
+- `docs/WEB.md` — Thymeleaf page inventory.
+- `INTERNAL_TODO.md` — sync-routine gaps and deferred work (distinct
+  from `master/BACKLOG.md`).
+- `CHANGELOG.md` — sync-routine run log (distinct from
+  `master/CHANGELOG.md`).
