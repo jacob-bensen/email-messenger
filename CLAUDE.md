@@ -3,6 +3,20 @@
 Spring Boot web app that transforms emails into a modern instant-message-style
 conversation view.
 
+## Related repositories
+
+- **Sibling**: `conexus-mail-mobile` — Flutter mobile client for
+  ConexusMail. Consumes the REST API defined in this repo's
+  `docs/API.md`.
+- **Shared docs in this repo**:
+  - `docs/BACKEND.md` — architecture, packages, auth model.
+  - `docs/API.md` — canonical mobile-client contract (single source of
+    truth for both repos).
+  - `docs/WEB.md` — Thymeleaf website page inventory.
+- **Shared docs in the sibling repo**: `docs/DESIGN.md` (product +
+  roadmap), `docs/MOBILE.md` (client architecture).
+- **Housekeeping**: `INTERNAL_TODO.md` + `CHANGELOG.md` in each repo.
+
 ## Current status
 
 Working SaaS ("ConexusMail"): auth (form + Google OIDC), Stripe billing
