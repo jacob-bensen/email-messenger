@@ -72,7 +72,10 @@ class SecurityConfig {
                                 "/sw.js", "/offline",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/error", "/h2-console/**",
-                                "/actuator/health", "/actuator/health/**")
+                                "/actuator/health", "/actuator/health/**",
+                                // Public JSON probe for the ConexusMail mobile client.
+                                // See docs/API.md.
+                                "/api/v1/health")
                         .permitAll()
                         .anyRequest().authenticated()
                 )

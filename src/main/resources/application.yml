@@ -2,6 +2,12 @@ spring:
   application:
     name: email-messenger
 
+# Version reported by GET /api/v1/health. Filtered from pom.xml at build time
+# by spring-boot-starter-parent's default @...@ resource filtering, so it
+# always tracks the Maven artifact version of the running build.
+app:
+  version: @project.version@
+
   # Reply attachment upload caps; oversized uploads surface a friendly 413
   # via GlobalExceptionHandler.
   servlet:
