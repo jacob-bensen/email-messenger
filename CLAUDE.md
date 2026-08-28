@@ -167,3 +167,27 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories
+
+This backend is one half of a two-repo product. The other half is the
+Flutter mobile client at
+[jacob-bensen/conexus-mail-mobile](https://github.com/jacob-bensen/conexus-mail-mobile).
+This backend owns all persistence, business rules, and the REST API the
+mobile client consumes.
+
+Cross-repo docs (checked in):
+
+- `docs/BACKEND.md` — this repo's architecture (packages, entities,
+  live delivery, security, config).
+- `docs/API.md` — **canonical REST/JSON contract** consumed by the
+  mobile client. Update this before touching either side.
+- `docs/WEB.md` — Thymeleaf website inventory (pages, templates,
+  forms). Web pages and REST endpoints must share the same service
+  layer — never fork business logic across them.
+- `docs/DESIGN.md` (in the mobile repo) — product/app design source
+  of truth, including the mobile roadmap.
+- `docs/MOBILE.md` (in the mobile repo) — client architecture.
+- `INTERNAL_TODO.md` — running gap list, consumed and updated by the
+  sync routine each run. Contract mismatches at the top.
+- `CHANGELOG.md` — dated per-run summary.
