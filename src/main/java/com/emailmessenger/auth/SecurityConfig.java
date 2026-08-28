@@ -72,7 +72,11 @@ class SecurityConfig {
                                 "/sw.js", "/offline",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/error", "/h2-console/**",
-                                "/actuator/health", "/actuator/health/**")
+                                "/actuator/health", "/actuator/health/**",
+                                // Unauthenticated smoke-test endpoint for the mobile
+                                // client (docs/API.md). Keep only endpoints that carry
+                                // no user data on this list.
+                                "/api/v1/version")
                         .permitAll()
                         .anyRequest().authenticated()
                 )
@@ -102,7 +106,10 @@ class SecurityConfig {
                 // Spring Security enables CSRF by default; we keep it on. The H2 console
                 // ships its own forms and would 403 with our CsrfToken, so exempt it.
                 // Stripe webhooks POST raw JSON with a signature header, not a CSRF token.
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/billing/webhook"))
+                // Mobile clients under /api/** don't have CSRF tokens; the plan
+                // is per-request bearer tokens (docs/API.md) — not cookies —
+                // so CSRF doesn't apply. Web (Thymeleaf) traffic stays protected.
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/billing/webhook", "/api/**"))
                 // Throttle has to run before the form-login filter so a locked
                 // email never reaches credentials check.
                 .addFilterBefore(loginThrottleFilter, UsernamePasswordAuthenticationFilter.class);
