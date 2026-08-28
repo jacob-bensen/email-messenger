@@ -1,6 +1,10 @@
 spring:
   application:
     name: email-messenger
+    # Exposed by /api/v1/health so the mobile client can detect version drift.
+    # Kept in sync with pom.xml <version> by hand for now; small enough burden
+    # while there's one place to update.
+    version: 0.1.0-SNAPSHOT
 
   # Reply attachment upload caps; oversized uploads surface a friendly 413
   # via GlobalExceptionHandler.
