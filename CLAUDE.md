@@ -161,6 +161,18 @@ commit. Add follow-ups as they emerge.
   move on to the next independent item.
 - Run `./mvnw test` before committing once the project compiles.
 
+## Related repositories
+
+- `conexus-mail-mobile` — Flutter phone client. Consumes the JSON REST
+  API served here.
+  - `docs/API.md` (in this repo) — canonical REST contract shared by
+    both repos.
+  - `docs/BACKEND.md`, `docs/WEB.md` (in this repo) — server-side
+    architecture references.
+  - `../conexus-mail-mobile/docs/DESIGN.md` — product design + mobile
+    roadmap.
+  - `../conexus-mail-mobile/docs/MOBILE.md` — client architecture.
+
 ## Definition of done for the MVP
 
 A user can connect a mailbox, see imported threads rendered as IM-style

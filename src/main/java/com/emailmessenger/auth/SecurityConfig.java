@@ -72,7 +72,12 @@ class SecurityConfig {
                                 "/sw.js", "/offline",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/error", "/h2-console/**",
-                                "/actuator/health", "/actuator/health/**")
+                                "/actuator/health", "/actuator/health/**",
+                                // JSON REST surface consumed by the conexus-mail-mobile
+                                // client. Today only public read endpoints (health,
+                                // version, plans). User-scoped endpoints will land with
+                                // their own auth mechanism — see docs/API.md.
+                                "/api/v1/**")
                         .permitAll()
                         .anyRequest().authenticated()
                 )

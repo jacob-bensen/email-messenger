@@ -2,6 +2,12 @@ spring:
   application:
     name: email-messenger
 
+# Exposed by GET /api/v1/version. Maven resource filtering replaces
+# @project.version@ at package time (spring-boot-starter-parent turns
+# filtering on for application.yml).
+app:
+  version: @project.version@
+
   # Reply attachment upload caps; oversized uploads surface a friendly 413
   # via GlobalExceptionHandler.
   servlet:
