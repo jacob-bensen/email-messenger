@@ -77,7 +77,8 @@
     <a href="/demo" class="demo-link">Try the demo →</a>
   </div>
   <p style="margin-top:16px;font-size:13px;color:#888;">
-    Still stuck? <a href="mailto:support@conexusmail.com" style="color:#2f855a;">Contact support</a>
+    Still stuck? <a th:href="'mailto:' + ${supportEmail}"
+                   href="mailto:support@conexusmail.com" style="color:#2f855a;">Contact support</a>
   </p>
 </div>
 </body>

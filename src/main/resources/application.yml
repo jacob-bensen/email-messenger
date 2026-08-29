@@ -34,6 +34,14 @@ spring:
           starttls:
             enable: true
 
+# Public-facing site knobs: the base URL is used for canonical / og:url links
+# and the sitemap; the support email backs the "Contact support" links in the
+# marketing footers, the error page, and the account settings help line.
+# Overridable in prod via MARKETING_BASE_URL / MARKETING_SUPPORT_EMAIL.
+marketing:
+  base-url: ${MARKETING_BASE_URL:https://conexusmail.com}
+  support-email: ${MARKETING_SUPPORT_EMAIL:support@conexusmail.com}
+
 # Google "Continue with Google" sign-in. Activated only when the client-id is
 # non-blank — SecurityConfig keys off the ClientRegistrationRepository bean,
 # which is only built when both id and secret are present.

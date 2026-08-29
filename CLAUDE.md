@@ -92,9 +92,16 @@ commit. Add follow-ups as they emerge.
       2026-06-11 — not deploying via Docker; run locally instead.
 - [x] ~~GitHub Actions CI: build, test, cache Maven deps.~~ Removed
       2026-06-11 — tests run locally with `./mvnw test`; do not re-add CI.
-- [ ] Set up the support email (a real mailbox/address users can write to, and
-      wire it into the app — e.g. footer/contact links and any "need help?"
-      copy). Decide the address and where outbound support mail is sent from.
+- [x] Set up the support email (added 2026-08-29): configurable
+      `marketing.support-email` (env `MARKETING_SUPPORT_EMAIL`) exposed to
+      every template via `SiteModelAdvice` as `${supportEmail}` and wired
+      into the marketing landing + pricing footers, the error page's
+      "Still stuck?" copy, and a new "Need help?" section on
+      `/account`. Default `support@conexusmail.com`; setter tolerates a
+      leading `mailto:` and blank/null → default. Follow-up (not blocking
+      this checkbox): decide the actual sending mailbox and how replies
+      route (shared inbox vs. forward to jbensen92@gmail.com), and hook
+      any dedicated ticketing/help-desk provider if we adopt one.
 - [ ] Publish the Google OAuth consent screen to production. It is still in
       Testing mode, where Google expires Gmail refresh tokens 7 days after
       issuance, so every OAuth mailbox needs a weekly "Reconnect" until the

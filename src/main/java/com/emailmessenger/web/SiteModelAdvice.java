@@ -8,9 +8,10 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
 /**
- * Adds {@code siteBaseUrl} to every model so Thymeleaf templates can
- * build absolute canonical / og:url / twitter:url values from any page
- * without each controller re-injecting it. Also exposes
+ * Adds {@code siteBaseUrl} + {@code supportEmail} to every model so
+ * Thymeleaf templates can build absolute canonical / og:url /
+ * twitter:url values and a "Contact support" mailto from any page
+ * without each controller re-injecting them. Also exposes
  * {@code oauthGoogleEnabled} so the login / register templates can
  * conditionally render the "Continue with Google" button only when the
  * Google client credentials are configured on the deploy.
@@ -30,6 +31,11 @@ class SiteModelAdvice {
     @ModelAttribute("siteBaseUrl")
     String siteBaseUrl() {
         return siteProperties.getBaseUrl();
+    }
+
+    @ModelAttribute("supportEmail")
+    String supportEmail() {
+        return siteProperties.getSupportEmail();
     }
 
     @ModelAttribute("oauthGoogleEnabled")
