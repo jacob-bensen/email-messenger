@@ -4413,3 +4413,16 @@ body {
 :root[data-accent="purple"] { --brand: #8a63e8; --brand-dark: #7445d8; --on-brand: #ffffff; }
 :root[data-accent="rose"]   { --brand: #db3f80; --brand-dark: #c22e6c; --on-brand: #ffffff; }
 :root[data-accent="orange"] { --brand: #e0742e; --brand-dark: #c25f1f; --on-brand: #ffffff; }
+
+/* Interactive variant of .settings-switch, used by /account/notifications
+   for the browser-push toggle. Keeps the same 38x22 track dimensions so
+   it sits inline with the read-only mock switches on the same page, and
+   picks up the brand tint when checked. */
+.settings-switch-interactive { opacity: 1; cursor: pointer; padding: 0; border: none; background: transparent; display: inline-flex; align-items: center; }
+.settings-switch-interactive input[type="checkbox"] { position: absolute; opacity: 0; pointer-events: none; }
+.settings-switch-track { position: relative; display: inline-block; width: 38px; height: 22px; border-radius: 999px; background: var(--border); transition: background 120ms ease; }
+.settings-switch-track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); transition: transform 120ms ease; }
+.settings-switch-interactive input[type="checkbox"]:checked + .settings-switch-track { background: var(--brand); }
+.settings-switch-interactive input[type="checkbox"]:checked + .settings-switch-track::after { transform: translateX(16px); }
+.settings-switch-interactive input[type="checkbox"]:focus-visible + .settings-switch-track { outline: 2px solid var(--brand); outline-offset: 2px; }
+.settings-switch-interactive input[type="checkbox"]:disabled + .settings-switch-track { opacity: 0.55; cursor: wait; }

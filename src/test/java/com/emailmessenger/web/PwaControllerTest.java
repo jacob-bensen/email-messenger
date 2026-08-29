@@ -90,6 +90,9 @@ class PwaControllerTest {
                 .contains("addEventListener('install'")
                 .contains("addEventListener('activate'")
                 .contains("addEventListener('fetch'")
+                .contains("addEventListener('push'")
+                .contains("addEventListener('notificationclick'")
+                .contains("self.registration.showNotification")
                 .contains("caches.match('/offline')");
 
         // Shell assets must all be present in the pre-cache list so opening

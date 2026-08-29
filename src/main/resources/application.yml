@@ -72,6 +72,16 @@ mailbox:
   idle:
     enabled: ${MAILBOX_IDLE_ENABLED:true}
 
+# Web Push (RFC 8292) identity for browser push notifications. Blank keys
+# leave the whole feature inert — the /account/notifications page falls back
+# to "coming soon" and the endpoints return 404. Generate a matched EC P-256
+# pair (url-safe base64, no padding) for real deploys.
+push:
+  vapid:
+    public-key: ${PUSH_VAPID_PUBLIC_KEY:}
+    private-key: ${PUSH_VAPID_PRIVATE_KEY:}
+    subject: ${PUSH_VAPID_SUBJECT:mailto:support@conexusmail.com}
+
 # Operator allowlist gating /admin/**. Hardcoded to the sole operator, so no
 # env var is needed; comma-separate to add more. A non-admin hitting /admin/**
 # gets a 404. Cron schedulers (digest, reengagement, activation, trial-end,

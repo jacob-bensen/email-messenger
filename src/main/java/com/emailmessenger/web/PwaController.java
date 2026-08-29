@@ -98,6 +98,44 @@ class PwaController {
                 );
               }
             });
+
+            self.addEventListener('push', (event) => {
+              // A push arriving with no payload still deserves a nudge — the OS
+              // banner is the point; the empty state just means "look at the app".
+              let data = {};
+              if (event.data) {
+                try { data = event.data.json(); } catch (_) { data = { body: event.data.text() }; }
+              }
+              const title = data.title || 'ConexusMail';
+              const options = {
+                body: data.body || 'New message',
+                icon: '/icons/icon-192.png',
+                badge: '/icons/icon-192.png',
+                tag: data.tag || 'conexusmail-message',
+                renotify: true,
+                data: { url: data.url || '/chats' }
+              };
+              event.waitUntil(self.registration.showNotification(title, options));
+            });
+
+            self.addEventListener('notificationclick', (event) => {
+              event.notification.close();
+              const target = (event.notification.data && event.notification.data.url) || '/chats';
+              event.waitUntil((async () => {
+                const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+                for (const client of clientsList) {
+                  const clientUrl = new URL(client.url);
+                  if (clientUrl.origin === self.location.origin) {
+                    await client.focus();
+                    if ('navigate' in client) {
+                      try { await client.navigate(target); } catch (_) { /* cross-origin or unsupported */ }
+                    }
+                    return;
+                  }
+                }
+                await self.clients.openWindow(target);
+              })());
+            });
             """;
 
     private final String swBody = renderServiceWorker();

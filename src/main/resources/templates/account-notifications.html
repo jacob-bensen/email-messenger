@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Notifications — ConexusMail</title>
+  <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
+  <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
   <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 <body>
@@ -53,15 +55,21 @@
     </div>
   </section>
 
-  <section class="acct-section">
+  <section class="acct-section" id="push-section" data-push-state="unknown">
     <h2 class="acct-section-title">Push</h2>
     <p class="acct-section-sub">Notifications on your devices.</p>
-    <div class="acct-row acct-row-soon">
+    <div class="acct-row">
       <div class="acct-soon-main">
-        <div class="acct-soon-title">Browser &amp; mobile push <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="acct-soon-desc">Real-time alerts when the app is closed.</div>
+        <div class="acct-soon-title">Browser &amp; mobile push
+          <span class="settings-coming-soon" data-push-badge hidden>Coming soon</span>
+        </div>
+        <div class="acct-soon-desc" data-push-desc>Real-time alerts when the app is closed.</div>
       </div>
-      <span class="settings-switch" aria-hidden="true"></span>
+      <label class="settings-switch settings-switch-interactive" data-push-toggle-label hidden>
+        <input type="checkbox" data-push-toggle aria-label="Enable browser and mobile push notifications">
+        <span class="settings-switch-track" aria-hidden="true"></span>
+      </label>
+      <span class="settings-switch" aria-hidden="true" data-push-switch-placeholder></span>
     </div>
     <div class="acct-row acct-row-soon">
       <div class="acct-soon-main">
@@ -71,6 +79,8 @@
       <button type="button" class="btn btn-secondary btn-compact" disabled>Set hours</button>
     </div>
   </section>
+
+  <script th:src="@{/js/notifications-push.js}" defer></script>
 
 </main>
 </div>

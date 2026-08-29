@@ -95,11 +95,16 @@ commit. Add follow-ups as they emerge.
 - [ ] Set up the support email (a real mailbox/address users can write to, and
       wire it into the app — e.g. footer/contact links and any "need help?"
       copy). Decide the address and where outbound support mail is sent from.
+      > blocked: needs an owner decision on the actual address + upstream MX
+      > (the codebase currently hard-codes `support@conexusmail.com` in a few
+      > placeholders, but no mailbox is provisioned).
 - [ ] Publish the Google OAuth consent screen to production. It is still in
       Testing mode, where Google expires Gmail refresh tokens 7 days after
       issuance, so every OAuth mailbox needs a weekly "Reconnect" until the
       app is published (added 2026-07-14; reconnect flow exists at
       `/mailboxes/gmail/reconnect/{id}`).
+      > blocked: external step in Google Cloud Console — requires the owner
+      > to submit + shepherd the verification. No code change.
 - [x] Live delivery, part 1 (added 2026-08-09, done 2026-08-10): IMAP IDLE
       for paid-tier accounts (`ImapIdleService`, `mailbox.idle.enabled`
       flag) + SSE stream at `/chats/events` (`ChatEventStream`,
@@ -108,10 +113,26 @@ commit. Add follow-ups as they emerge.
       `fragments/live-refresh.html`) replacing the reload-on-new-mail
       behavior. Not yet verified against a real IMAP server that supports
       IDLE — do that when next running locally with a connected mailbox.
-- [ ] Live delivery, part 2: Web Push through the existing PWA service
-      worker — VAPID keys, push-subscription storage, notification opt-in on
-      /account/notifications, per-conversation "Ada: message preview"
-      notifications when no tab is open.
+- [x] Live delivery, part 2a (done 2026-08-29): Web Push subscription
+      infrastructure. `push_subscriptions` table (V36), `PushSubscription`
+      entity + repository, `VapidProperties` (`push.vapid.*`, inert when
+      keys are blank so dev boxes stay in "coming soon" mode),
+      `PushSubscriptionController` at `/account/notifications/push/*`
+      (JSON: `GET /vapid-public-key`, `POST /subscribe`,
+      `DELETE /subscribe`), the `/account/notifications` "Browser &
+      mobile push" row wired to an interactive toggle backed by
+      `static/js/notifications-push.js`, and `push`/`notificationclick`
+      handlers baked into the `PwaController` service-worker template so
+      an installed PWA can render the notification and focus a chat tab
+      when it's tapped. Server-side send is 2b, below.
+- [ ] Live delivery, part 2b: server-side Web Push send. Add a JVM
+      web-push library, wire `NewMailEvent` (from `MailboxPollingService`
+      / `ImapIdleService`) to fan-out to the user's `PushSubscription`s
+      only when they have no active `ChatEventStream` SSE session, render
+      an "Ada: message preview" payload with a conversationKey deep-link,
+      prune subscriptions on 404/410 responses from the push service, and
+      generate a real EC P-256 VAPID pair for the deploy (env vars
+      `PUSH_VAPID_PUBLIC_KEY` / `PUSH_VAPID_PRIVATE_KEY`).
 - [ ] Delivery states for outbound bubbles, iMessage-style: Sending/Sent from
       the SMTP path; Delivered when the Sent-folder import (V31 cursor) sees
       the message's Message-ID come back; Not Delivered by parsing
