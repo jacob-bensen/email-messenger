@@ -167,3 +167,22 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories & docs
+
+- Sibling repo: `conexus-mail-mobile` — intended Flutter mobile client
+  for ConexusMail. **Currently empty** (README + `.gitignore` only); no
+  product design or API contract has been agreed. See that repo's
+  `INTERNAL_TODO.md`. Do not treat it as an implementation target
+  without a product decision.
+- `docs/BACKEND.md` — architecture snapshot (packages, domain, real-time
+  delivery). Prefer this over the "Target package layout" section above
+  when they drift.
+- `docs/API.md` — HTTP surface inventory. Update this file BEFORE
+  changing any endpoint shape.
+- `docs/WEB.md` — Thymeleaf page inventory. Web pages and any future
+  API endpoints share the same services in `com.emailmessenger.service`
+  and the domain sub-packages — never fork logic between them.
+- `INTERNAL_TODO.md` — cross-cutting gaps and product decisions the
+  routine cannot make.
+- `CHANGELOG.md` — dated entries from routine runs.
