@@ -3,6 +3,22 @@
 Spring Boot web app that transforms emails into a modern instant-message-style
 conversation view.
 
+## Related repositories
+
+Two-repo product. This is the **backend + website**; the mobile client
+lives in the sibling repo `conexus-mail-mobile` (Flutter/Dart). See:
+
+| Repo                    | Role         | Key docs                                                              |
+| ----------------------- | ------------ | --------------------------------------------------------------------- |
+| `email-messenger`       | Backend      | `docs/BACKEND.md`, `docs/WEB.md`, `docs/API.md` (canonical contract)  |
+| `conexus-mail-mobile`   | Mobile app   | `docs/MOBILE.md`, `docs/DESIGN.md` (product roadmap)                  |
+
+The server is authoritative for all state; the mobile client's
+`lib/domain/` mirrors server rules but never invents state. `docs/API.md`
+in THIS repo is the single source of truth for the JSON contract — both
+sides must match it. See also `CHANGELOG.md` and `INTERNAL_TODO.md` at
+the repo root for per-run change notes and cross-repo sync gaps.
+
 ## Current status
 
 Working SaaS ("ConexusMail"): auth (form + Google OIDC), Stripe billing
