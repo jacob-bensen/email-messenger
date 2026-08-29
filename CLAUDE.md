@@ -3,6 +3,39 @@
 Spring Boot web app that transforms emails into a modern instant-message-style
 conversation view.
 
+## Related repositories
+
+This backend serves two clients that MUST stay in sync via a shared
+contract:
+
+- **Website** (this repo, Thymeleaf under `src/main/resources/templates/`) —
+  see [`docs/WEB.md`](docs/WEB.md) for the page inventory.
+- **Mobile client** at [`../conexus-mail-mobile`](../conexus-mail-mobile) —
+  Flutter app. Its product design + roadmap lives in
+  [`../conexus-mail-mobile/docs/DESIGN.md`](../conexus-mail-mobile/docs/DESIGN.md);
+  architecture in
+  [`../conexus-mail-mobile/docs/MOBILE.md`](../conexus-mail-mobile/docs/MOBILE.md).
+
+The canonical HTTP contract between them is [`docs/API.md`](docs/API.md).
+Backend architecture overview is [`docs/BACKEND.md`](docs/BACKEND.md).
+Website and mobile REST controllers MUST share the service layer — no
+duplicated business logic in a template or controller.
+
+Two separate routines edit this repo:
+
+- The **operator routine** works from `master/PLAN.md` +
+  `master/BACKLOG.md` and writes to `master/CHANGELOG.md`. It is about
+  the SaaS as a product (retention, digests, admin metrics, roadmap
+  items in this file below).
+- The **full-stack sync routine** works from `INTERNAL_TODO.md` and the
+  §ROADMAP in `../conexus-mail-mobile/docs/DESIGN.md`, updates
+  `docs/API.md` as its source of truth, and appends to the top-level
+  `CHANGELOG.md`. It only touches things that keep the mobile client
+  and the backend in sync (contract, service-layer sharing, new
+  `/api/mobile/v1/**` endpoints).
+
+Do NOT merge the two changelogs or the two backlogs.
+
 ## Current status
 
 Working SaaS ("ConexusMail"): auth (form + Google OIDC), Stripe billing
