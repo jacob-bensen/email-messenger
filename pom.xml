@@ -167,6 +167,16 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <!-- Writes META-INF/build-info.properties so the app can
+                 read the Maven project version at runtime (surfaced by
+                 GET /api/v1/health under `info.build.version`). -->
+            <goals>
+              <goal>build-info</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

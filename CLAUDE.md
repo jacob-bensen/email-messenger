@@ -12,6 +12,21 @@ workspace keyed by participant-set conversationKey, teams, saved searches,
 digests, admin metrics, and a PWA shell. See the roadmap below for what's
 next.
 
+## Related repositories
+
+- `jacob-bensen/conexus-mail-mobile` — Flutter mobile client that
+  consumes this backend's REST API. Pure business rules live under
+  `lib/domain/` and mirror the server's authoritative rules.
+- Canonical docs in THIS repo:
+  - `docs/BACKEND.md` — backend architecture and module layout.
+  - `docs/API.md` — the REST contract; both repos depend on it.
+  - `docs/WEB.md` — the Thymeleaf website inventory.
+  - `CHANGELOG.md` — dated entry per full-stack-sync run.
+  - `INTERNAL_TODO.md` — running list of gaps and deferred work.
+- Canonical docs in the mobile repo:
+  - `docs/DESIGN.md` — product/app design + `§ROADMAP` checklist.
+  - `docs/MOBILE.md` — client architecture.
+
 ## Tech stack (target)
 
 - Java 21 (LTS)
