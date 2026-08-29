@@ -167,3 +167,25 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories
+
+This backend is one half of the ConexusMail product. The mobile client
+lives in a sibling repo.
+
+- **Sibling:** `jacob-bensen/conexus-mail-mobile` — Flutter iOS/Android
+  client. Talks to this backend over the REST API defined in
+  [`docs/API.md`](docs/API.md). Its own docs mirror the design at
+  `docs/DESIGN.md` (single source of truth for product/app design +
+  §ROADMAP) and `docs/MOBILE.md` (client architecture).
+
+- **This repo's docs:**
+  - [`docs/BACKEND.md`](docs/BACKEND.md) — architecture, service
+    layer, domain model, auth, live-delivery pipeline.
+  - [`docs/API.md`](docs/API.md) — canonical REST contract, cross-repo
+    source of truth.
+  - [`docs/WEB.md`](docs/WEB.md) — Thymeleaf page inventory. Web pages
+    and REST endpoints must share the same service layer.
+  - [`INTERNAL_TODO.md`](INTERNAL_TODO.md) — cross-repo gaps and
+    deferred work.
+  - [`CHANGELOG.md`](CHANGELOG.md) — full-stack sync routine's run log.
