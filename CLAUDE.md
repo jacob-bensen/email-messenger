@@ -3,6 +3,28 @@
 Spring Boot web app that transforms emails into a modern instant-message-style
 conversation view.
 
+## Related repositories
+
+This backend is one half of a two-repo product.
+
+- **Backend (this repo, `jacob-bensen/email-messenger`)** — Spring Boot 3
+  server. Owns the Thymeleaf public website, all persistence
+  (PostgreSQL + Flyway), and all authoritative business rules. Will also
+  serve the mobile REST API under `/api/v1/*` (none implemented yet).
+  - `docs/BACKEND.md` — module + storage + auth overview.
+  - `docs/API.md` — canonical REST contract for the mobile client
+    (currently a DRAFT — no endpoints implemented).
+  - `docs/WEB.md` — Thymeleaf route inventory.
+  - `CHANGELOG.md`, `INTERNAL_TODO.md` — running notes.
+- **Mobile client (`jacob-bensen/conexus-mail-mobile`)** — Flutter app.
+  Mirrors server rules under `lib/domain/`; consumes `docs/API.md`.
+  - `docs/DESIGN.md` — product design + roadmap (§ROADMAP).
+  - `docs/MOBILE.md` — client architecture.
+
+Both repos update `docs/API.md` together — never one without the other.
+Web pages and the mobile API must share the backend service layer; do
+not fork business rules into a controller or template.
+
 ## Current status
 
 Working SaaS ("ConexusMail"): auth (form + Google OIDC), Stripe billing
