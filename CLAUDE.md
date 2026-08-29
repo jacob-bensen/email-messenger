@@ -3,6 +3,29 @@
 Spring Boot web app that transforms emails into a modern instant-message-style
 conversation view.
 
+## Related repositories
+
+- **`conexus-mail-mobile`** — sibling Flutter mobile client (currently
+  skeleton only, no `pubspec.yaml` yet). Depends on this backend for
+  auth and all data.
+
+## Related docs (this repo)
+
+- `docs/BACKEND.md` — architecture, module map, stack, data model,
+  auth model.
+- `docs/API.md` — canonical REST contract with the mobile client. All
+  endpoints are TBD today; the backend serves only Thymeleaf HTML +
+  the Stripe webhook.
+- `docs/WEB.md` — inventory of Thymeleaf routes, so REST endpoints —
+  when they land — reuse the same services rather than fork logic.
+- `INTERNAL_TODO.md` — cross-repo sync gaps and the ordered list of
+  prerequisites for the mobile client (top item: bearer-token auth).
+- `CHANGELOG.md` (top-level) — per-run notes from the shared full-stack
+  sync routine.
+- `master/PLAN.md`, `master/BACKLOG.md`, `master/MASTER_ACTIONS.md`,
+  `master/CHANGELOG.md` — the pre-existing single-repo product roadmap
+  and its history.
+
 ## Current status
 
 Working SaaS ("ConexusMail"): auth (form + Google OIDC), Stripe billing
