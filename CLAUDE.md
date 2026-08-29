@@ -137,6 +137,25 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- **Frontend / mobile client:** `jacob-bensen/conexus-mail-mobile`
+  (Flutter, mirror of the server rules under `lib/domain/`). It is
+  currently only a scaffold — no features yet.
+- **Shared contract:** `docs/API.md` in this repo is the single source
+  of truth for anything both sides need to agree on. Update it before
+  writing code in either repo.
+- **This repo's other docs:**
+  - `docs/BACKEND.md` — architecture map.
+  - `docs/WEB.md` — inventory of the Thymeleaf website's routes.
+  - `INTERNAL_TODO.md` — sync gaps for the full-stack routine.
+  - `CHANGELOG.md` — full-stack sync log (distinct from the operator
+    log at `master/CHANGELOG.md`).
+
+The routine in this file (below) is the backend's own feature roadmap.
+The full-stack sync routine runs across both repos and takes items
+from `INTERNAL_TODO.md` / the mobile `docs/DESIGN.md` roadmap first.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
