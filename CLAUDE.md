@@ -167,3 +167,28 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories
+
+This repo is the BACKEND half of a two-repo full-stack app. The FRONTEND
+(Flutter mobile client) lives in `jacob-bensen/conexus-mail-mobile`.
+The full-stack-sync routine works both together and expects these files
+to stay in sync:
+
+- `docs/BACKEND.md` (here) — backend architecture overview.
+- `docs/API.md` (here) — CANONICAL REST contract for the mobile
+  client. Change it here and update both implementations in the
+  same run; never break the contract silently.
+- `docs/WEB.md` (here) — Thymeleaf website page inventory. Mobile
+  endpoints must go through the SAME service layer these pages use.
+- `docs/DESIGN.md` (mobile repo) — product/app design + roadmap.
+- `docs/MOBILE.md` (mobile repo) — client architecture.
+- `CHANGELOG.md` (root, here and mobile) — one dated entry per
+  full-stack sync run.
+- `INTERNAL_TODO.md` (root, here and mobile) — severity-ordered
+  running list of gaps.
+
+The backend's own per-ship changelog + roadmap continues to live
+under `master/CHANGELOG.md` / `master/PLAN.md` / `master/BACKLOG.md`
+/ `master/MASTER_ACTIONS.md` — do not delete or migrate those; the
+backend routine still writes them.
