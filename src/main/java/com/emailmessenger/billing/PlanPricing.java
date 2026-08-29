@@ -1,6 +1,5 @@
-package com.emailmessenger.admin;
+package com.emailmessenger.billing;
 
-import com.emailmessenger.billing.BillingPeriod;
 import com.emailmessenger.domain.Plan;
 
 /**
@@ -9,12 +8,15 @@ import com.emailmessenger.domain.Plan;
  * annually (~17% lower), not the annual cash total — the dashboard
  * computes MRR, so it always sums in monthly-equivalent cents and then
  * multiplies by 12 for ARR.
+ *
+ * Public so both the admin MRR calc and the public /api/v1/plans REST
+ * endpoint read the same source of truth for pricing figures.
  */
-final class PlanPricing {
+public final class PlanPricing {
 
     private PlanPricing() {}
 
-    static int monthlyCents(Plan plan, BillingPeriod period) {
+    public static int monthlyCents(Plan plan, BillingPeriod period) {
         if (plan == null) {
             return 0;
         }

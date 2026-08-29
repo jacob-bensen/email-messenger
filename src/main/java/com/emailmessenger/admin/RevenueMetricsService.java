@@ -4,6 +4,7 @@ import com.emailmessenger.admin.RevenueMetrics.PlanBreakdown;
 import com.emailmessenger.admin.RevenueMetrics.RecentSubscriptionEvent;
 import com.emailmessenger.admin.RevenueMetrics.SourceBreakdown;
 import com.emailmessenger.billing.BillingPeriod;
+import com.emailmessenger.billing.PlanPricing;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.repository.SubscriptionRepository;

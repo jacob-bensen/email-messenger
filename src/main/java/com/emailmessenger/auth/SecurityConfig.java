@@ -72,7 +72,12 @@ class SecurityConfig {
                                 "/sw.js", "/offline",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/error", "/h2-console/**",
-                                "/actuator/health", "/actuator/health/**")
+                                "/actuator/health", "/actuator/health/**",
+                                // Public REST catalog for the mobile client
+                                // (docs/API.md). Authenticated endpoints will
+                                // live under /api/v1/me/** and add their own
+                                // matchers.
+                                "/api/v1/plans")
                         .permitAll()
                         .anyRequest().authenticated()
                 )

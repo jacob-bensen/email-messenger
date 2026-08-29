@@ -161,6 +161,29 @@ commit. Add follow-ups as they emerge.
   move on to the next independent item.
 - Run `./mvnw test` before committing once the project compiles.
 
+## Related repositories
+
+This backend has a Flutter mobile companion, **conexus-mail-mobile**.
+The two are kept in sync by a separate scheduled routine. That routine
+owns these files across the pair:
+
+- `docs/API.md` (this repo) — canonical REST contract; mobile DTOs must
+  match it exactly.
+- `docs/BACKEND.md` (this repo) — service/module map for the backend.
+- `docs/WEB.md` (this repo) — Thymeleaf route inventory + which service
+  each page uses.
+- `docs/DESIGN.md` (mobile) — product/app design + mobile feature
+  roadmap.
+- `docs/MOBILE.md` (mobile) — client architecture; how `lib/domain/`
+  mirrors this backend.
+- Root `CHANGELOG.md` + `INTERNAL_TODO.md` in both repos — dated sync
+  entries and the running list of contract gaps.
+
+The single-repo product routine (this file's roadmap, plus
+`master/PLAN.md`, `master/BACKLOG.md`, `master/CHANGELOG.md`,
+`master/MASTER_ACTIONS.md`) remains the source of truth for the SaaS
+itself.
+
 ## Definition of done for the MVP
 
 A user can connect a mailbox, see imported threads rendered as IM-style

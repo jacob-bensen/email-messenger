@@ -2,6 +2,7 @@ package com.emailmessenger.admin;
 
 import com.emailmessenger.admin.ChurnMetrics.PlanChurnBreakdown;
 import com.emailmessenger.billing.BillingPeriod;
+import com.emailmessenger.billing.PlanPricing;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.repository.SubscriptionRepository;

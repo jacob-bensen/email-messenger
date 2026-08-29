@@ -2,6 +2,7 @@ package com.emailmessenger.admin;
 
 import com.emailmessenger.admin.AtRiskRetentionMetrics.Entry;
 import com.emailmessenger.billing.BillingPeriod;
+import com.emailmessenger.billing.PlanPricing;
 import com.emailmessenger.domain.CancellationReason;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.Subscription;
