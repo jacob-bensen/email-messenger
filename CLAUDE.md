@@ -150,6 +150,23 @@ commit. Add follow-ups as they emerge.
 - No backwards-compatibility shims while the project is pre-1.0; change
   call sites directly.
 
+## Related repositories
+
+The full ConexusMail product ships as two repos:
+
+| Repo | Role | Docs |
+| --- | --- | --- |
+| `email-messenger` (this repo) | Spring Boot backend serving both the Thymeleaf website AND the mobile REST API | `docs/BACKEND.md`, `docs/WEB.md`, `docs/API.md` |
+| `conexus-mail-mobile` | Flutter mobile client | `docs/DESIGN.md` (design + roadmap), `docs/MOBILE.md` (architecture) |
+
+`docs/API.md` in THIS repo is the shared source of truth for REST
+endpoints and DTOs the mobile client consumes. Any change to a `/api/v1`
+endpoint MUST update `docs/API.md` and mirror in
+`conexus-mail-mobile/lib/domain/**` and `conexus-mail-mobile/lib/data/**`
+in the same commit. Backend and Thymeleaf website MUST share the service
+layer — no logic fork between the REST controllers under `web/api/` and
+the MVC controllers under `web/`.
+
 ## Working agreement for the routine
 
 - Always work on the branch the session started on. Do not push to `main`.
