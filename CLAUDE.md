@@ -167,3 +167,24 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories
+
+Part of a two-repo application. When making changes that affect the
+public API surface or shared product design, update the sibling repo in
+the same routine run.
+
+- `jacob-bensen/conexus-mail-mobile` — mobile client (planned; today a
+  stub scaffold). Its `docs/DESIGN.md` owns product / UX design and the
+  roadmap; its `docs/MOBILE.md` describes client architecture.
+
+Cross-repo docs (this repo):
+
+- `docs/API.md` — canonical HTTP contract shared with any client.
+- `docs/BACKEND.md` — server architecture snapshot.
+- `docs/WEB.md` — Thymeleaf website inventory.
+- `CHANGELOG.md` — dated routine-run summary.
+- `INTERNAL_TODO.md` — cross-repo backlog and blocking questions.
+
+The website (Thymeleaf pages) and any future REST/JSON endpoints MUST go
+through the same service layer — never fork business logic between them.
