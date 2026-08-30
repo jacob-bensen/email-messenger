@@ -137,6 +137,29 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+This is one of two repos in the ConexusMail product:
+
+- **`email-messenger`** (this repo) — Spring Boot backend + Thymeleaf
+  website. Owns all persistence, business logic, the public site, and
+  the REST API consumed by the mobile client.
+- **`conexus-mail-mobile`** — Flutter mobile client. Mirrors backend
+  rules in pure Dart under `lib/domain/`. Empty as of 2026-08-30 —
+  Phase 0 doc bootstrap only.
+
+Docs shared with the mobile side:
+
+- `docs/BACKEND.md` — architecture snapshot.
+- `docs/API.md` — **canonical REST contract**. Update this file
+  BEFORE implementing either side of a new endpoint.
+- `docs/WEB.md` — Thymeleaf page inventory. Website and API MUST call
+  the same service layer.
+- `../conexus-mail-mobile/docs/DESIGN.md` — mobile roadmap and design
+  source of truth.
+- `../conexus-mail-mobile/docs/MOBILE.md` — mobile architecture.
+- `INTERNAL_TODO.md`, `CHANGELOG.md` — updated every sync run.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
