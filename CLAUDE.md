@@ -137,6 +137,29 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- **`conexus-mail-mobile`** — sibling repo intended as a Flutter mobile
+  client for ConexusMail. Currently only a README; scaffolding is a
+  scope decision (see `INTERNAL_TODO.md`). Any endpoint added for that
+  client MUST reuse the service beans that the Thymeleaf controllers
+  use — never fork business logic between web and API paths.
+
+## Cross-repo docs
+
+- `docs/BACKEND.md` — module layout, domain model, auth model, Flyway
+  inventory, live-delivery pipeline, build/run.
+- `docs/API.md` — canonical API contract. What exists today
+  (SSE, one JSON heartbeat, Stripe webhook, PWA/SEO) and the sketch of
+  the future `/api/v1/**` surface. Update BEFORE implementing an
+  endpoint change so the client and server stay in sync.
+- `docs/WEB.md` — Thymeleaf page inventory.
+- `INTERNAL_TODO.md` — cross-repo gap list.
+- `CHANGELOG.md` — routine-scoped changelog (product/epic history stays
+  in `master/CHANGELOG.md`).
+- `master/PLAN.md`, `master/BACKLOG.md`, `master/MASTER_ACTIONS.md` —
+  business/epic planning tree; authoritative on priorities.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
