@@ -72,7 +72,8 @@ class SecurityConfig {
                                 "/sw.js", "/offline",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/error", "/h2-console/**",
-                                "/actuator/health", "/actuator/health/**")
+                                "/actuator/health", "/actuator/health/**",
+                                "/api/v1/health")
                         .permitAll()
                         .anyRequest().authenticated()
                 )

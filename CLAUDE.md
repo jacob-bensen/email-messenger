@@ -1,7 +1,32 @@
 # email-messenger
 
 Spring Boot web app that transforms emails into a modern instant-message-style
-conversation view.
+conversation view. It also owns the REST API consumed by the
+`conexus-mail-mobile` Flutter client.
+
+## Related repositories
+
+This backend is one half of a two-repo full-stack app. The sibling repo is
+the Flutter mobile client. On the full-stack sync routine, both are worked
+in the same run.
+
+- **`jacob-bensen/email-messenger`** (this repo) — Spring Boot backend +
+  Thymeleaf website. See:
+  - `docs/BACKEND.md` — architecture, packages, persistence, auth.
+  - `docs/API.md` — REST contract consumed by the mobile client. **Single
+    source of truth for cross-repo endpoint shapes** — edit before
+    implementing on either side.
+  - `docs/WEB.md` — Thymeleaf page inventory + shared service contract.
+  - `CHANGELOG.md`, `INTERNAL_TODO.md` — running notes.
+- **`jacob-bensen/conexus-mail-mobile`** — Flutter mobile client. Pure
+  business logic lives in `lib/domain/` (no Flutter imports) and MIRRORS
+  the server's rules — the server is always authoritative. See its
+  `docs/DESIGN.md` (product + roadmap) and `docs/MOBILE.md` (client
+  architecture).
+
+The two repos share `docs/API.md` (owned by this repo) as their contract.
+Any endpoint change lands here + on the mobile client in the same run,
+with matching CHANGELOG entries.
 
 ## Current status
 
