@@ -167,3 +167,21 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories
+
+This repo is one half of a two-repo product; the sibling is
+`jacob-bensen/conexus-mail-mobile` (the mobile client). Documentation
+that spans both repos:
+
+- `docs/BACKEND.md` — architecture of this backend (package layout,
+  domain, live delivery, auth).
+- `docs/API.md` — canonical REST API contract for the mobile client.
+  **Status: not yet defined** — no mobile-facing endpoints exist here
+  today. Any mobile endpoint must be added to this file first.
+- `docs/WEB.md` — Thymeleaf page inventory for the website/SaaS UI.
+- `INTERNAL_TODO.md` — cross-repo sync gaps and tech debt.
+- `CHANGELOG.md` — dated summary of each sync-routine run.
+
+In the sibling repo look for `docs/DESIGN.md` (product design source of
+truth, incl. roadmap) and `docs/MOBILE.md` (client architecture).
