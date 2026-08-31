@@ -167,3 +167,44 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories
+
+The full-stack sync routine spans two repos:
+
+- **`jacob-bensen/email-messenger`** (this repo) — Spring Boot 3 backend.
+  Owns persistence, all authoritative business logic, the ConexusMail
+  website (Thymeleaf), and (planned) the REST/JSON API for the mobile
+  client.
+- **`jacob-bensen/conexus-mail-mobile`** — Flutter mobile client. Pure
+  business logic lives in `lib/domain/` and mirrors this backend's rules;
+  the server always wins on conflict.
+
+### Docs cross-referenced by both repos
+
+Backend (this repo):
+
+- [`docs/BACKEND.md`](docs/BACKEND.md) — architecture, package layout,
+  domain model, auth model, live delivery.
+- [`docs/API.md`](docs/API.md) — **canonical JSON API contract.** Both
+  repos consult this file. Currently: no endpoints implemented.
+- [`docs/WEB.md`](docs/WEB.md) — Thymeleaf page inventory. Web pages and
+  the (planned) API MUST share the service layer.
+
+Mobile (`../conexus-mail-mobile`):
+
+- `docs/DESIGN.md` — product/app design + roadmap.
+- `docs/MOBILE.md` — client architecture (state, networking,
+  reconciliation).
+
+Both repos also carry `CHANGELOG.md` (dated per-run entries) and
+`INTERNAL_TODO.md` (running list of gaps).
+
+### Working agreement addendum for the sync routine
+
+- If the sync routine says "commit to master" but the harness session
+  assigns a branch, always follow the harness branch. As of 2026-08-31
+  the harness assigns `claude/relaxed-newton-ahk5io` here.
+- Any new feature that has both website and mobile aspects: update
+  `docs/API.md` FIRST, then implement backend + mobile in the same run
+  through the shared service layer.
