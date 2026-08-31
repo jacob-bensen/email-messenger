@@ -12,6 +12,33 @@ workspace keyed by participant-set conversationKey, teams, saved searches,
 digests, admin metrics, and a PWA shell. See the roadmap below for what's
 next.
 
+Mobile client work is now underway in the sibling repo — the first
+`/api/v1/*` endpoint landed 2026-08-31.
+
+## Related repositories
+
+This repo is the BACKEND of a two-repo application. It owns persistence,
+business logic, the website, and the JSON API. The FRONTEND is:
+
+- **`conexus-mail-mobile`** — Flutter mobile client for ConexusMail.
+  Consumes the JSON API defined in [`docs/API.md`](docs/API.md); its own
+  design/architecture docs live at `docs/DESIGN.md` (product) and
+  `docs/MOBILE.md` (client architecture). Work in progress; scaffolded
+  2026-08-31.
+
+Doc map for THIS repo (kept current by the full-stack-sync routine):
+
+- [`docs/API.md`](docs/API.md) — canonical wire contract shared with the
+  mobile client. Update BEFORE implementing on either side.
+- [`docs/BACKEND.md`](docs/BACKEND.md) — modules, persistence, auth,
+  live delivery, billing, what's authoritative.
+- [`docs/WEB.md`](docs/WEB.md) — Thymeleaf page inventory + which
+  services each page uses. Web pages and API endpoints must share the
+  same service beans — no forked logic in a controller.
+- [`CHANGELOG.md`](CHANGELOG.md) — dated per-run entries.
+- [`INTERNAL_TODO.md`](INTERNAL_TODO.md) — running gaps/debt list;
+  consume from and append to every run.
+
 ## Tech stack (target)
 
 - Java 21 (LTS)
