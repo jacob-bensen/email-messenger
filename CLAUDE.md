@@ -137,6 +137,27 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- **`conexus-mail-mobile`** — Flutter mobile client for ConexusMail. Talks
+  to this backend's `/api/v1/**` REST surface, defined by `docs/API.md`
+  in THIS repo (the canonical contract). Product design and mobile
+  roadmap live in `conexus-mail-mobile/docs/DESIGN.md`; client
+  architecture in `conexus-mail-mobile/docs/MOBILE.md`.
+
+Docs in this repo:
+- `docs/API.md` — canonical REST contract shared with the mobile client.
+- `docs/BACKEND.md` — architecture, packages, data flow.
+- `docs/WEB.md` — Thymeleaf page inventory.
+- `CHANGELOG.md`, `INTERNAL_TODO.md` — rolling logs.
+
+Guardrails for the two-repo setup:
+- Any change to a request/response shape lands in `docs/API.md` FIRST,
+  in the same commit as the server change, with the mobile client updated
+  in the same run.
+- Website pages and REST endpoints share the `service/` layer. Never fork
+  business logic between `web/` and `api/` — extract a service instead.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
