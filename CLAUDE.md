@@ -167,3 +167,29 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories
+
+This is the BACKEND for a two-repo full-stack product:
+
+- **`jacob-bensen/email-messenger`** (this repo) — Java 21 + Spring Boot 3
+  app. Owns persistence, business logic, the marketing site + web app
+  (Thymeleaf), and (when built) the REST API for the mobile client.
+- **`jacob-bensen/conexus-mail-mobile`** — Flutter mobile client for
+  ConexusMail. Mirrors this backend's rules in `lib/domain/` and talks to
+  the REST API defined in `docs/API.md`.
+
+Documents that MUST be kept in sync across both repos:
+
+- `docs/API.md` (this repo) — canonical REST contract; the mobile client
+  matches it exactly. Update this file BEFORE touching either
+  implementation.
+- `docs/BACKEND.md` (this repo) — server architecture.
+- `docs/WEB.md` (this repo) — Thymeleaf page inventory.
+- `docs/DESIGN.md` (mobile repo) — product design + roadmap.
+- `docs/MOBILE.md` (mobile repo) — client architecture.
+- `CHANGELOG.md` and `INTERNAL_TODO.md` in both repos.
+
+When adding a REST endpoint, reuse the existing service beans that the
+Thymeleaf controllers call — never fork business logic between the web and
+API paths.
