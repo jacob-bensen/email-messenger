@@ -72,7 +72,11 @@ class SecurityConfig {
                                 "/sw.js", "/offline",
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/error", "/h2-console/**",
-                                "/actuator/health", "/actuator/health/**")
+                                "/actuator/health", "/actuator/health/**",
+                                // Mobile-facing REST surface. Only the public reachability
+                                // ping is exposed today; authenticated endpoints will opt
+                                // out of permitAll individually once the token flow lands.
+                                "/api/v1/status")
                         .permitAll()
                         .anyRequest().authenticated()
                 )
