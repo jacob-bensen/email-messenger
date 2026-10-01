@@ -15,7 +15,7 @@ Product roadmap lives in `CLAUDE.md`; operator/human actions in `master/MASTER_A
    a REST layer must reuse services, not copy this.
 
 ## Missing tests
-5. Not run this session: `./mvnw test` (see CHANGELOG.md for what was run).
+5. `mvn -q -B test` passed (exit 0) on 2026-10-01; Testcontainers-based tests skip without Docker.
 
 ## Style / process
 6. Routine template assumes jOOQ + master-branch workflow; repo uses JPA and the session-designated
