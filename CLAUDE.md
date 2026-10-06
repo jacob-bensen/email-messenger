@@ -137,6 +137,14 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- Sibling: `conexus-mail-mobile` (Flutter client; currently an empty scaffold).
+- `docs/API.md` — canonical server↔mobile contract (planned; no REST API yet).
+- `docs/BACKEND.md` — architecture; `docs/WEB.md` — Thymeleaf page inventory.
+- `INTERNAL_TODO.md` — known gaps; `CHANGELOG.md` — per-run log.
+- Persistence is JPA + Flyway (not jOOQ).
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
