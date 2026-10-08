@@ -137,6 +137,14 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- `jacob-bensen/conexus-mail-mobile` — Flutter mobile client (currently scaffold-less).
+  Its `docs/DESIGN.md` is the product source of truth; its `lib/domain/` mirrors rules from here.
+- In this repo: `docs/API.md` is the shared API contract (currently: no REST API implemented,
+  v1 proposed), `docs/BACKEND.md` architecture, `docs/WEB.md` Thymeleaf pages,
+  `INTERNAL_TODO.md` gaps, `CHANGELOG.md` run log.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
