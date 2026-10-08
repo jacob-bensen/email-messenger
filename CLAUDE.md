@@ -137,6 +137,15 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- Sibling: `conexus-mail-mobile` (Flutter client; currently an empty scaffold). Its `docs/DESIGN.md` is the product
+  source of truth and `docs/MOBILE.md` its architecture.
+- This repo is the BACKEND and owns persistence, business rules, the website, and the API contract.
+- Docs here: `docs/BACKEND.md` (architecture), `docs/API.md` (canonical API contract — currently no mobile API, see file),
+  `docs/WEB.md` (Thymeleaf routes), `INTERNAL_TODO.md` (gaps), `CHANGELOG.md`.
+- Note: persistence is JPA (not jOOQ).
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
