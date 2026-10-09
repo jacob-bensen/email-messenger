@@ -1,0 +1,1 @@
+- `mvn -q -B verify`: passed (exit 0).
