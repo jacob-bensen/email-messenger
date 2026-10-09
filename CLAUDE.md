@@ -137,6 +137,15 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- `jacob-bensen/conexus-mail-mobile` — Flutter mobile client (FRONTEND). Currently an empty scaffold.
+- Docs here: `docs/BACKEND.md` (architecture), `docs/API.md` (canonical API contract; no
+  mobile REST API implemented yet), `docs/WEB.md` (Thymeleaf pages), `INTERNAL_TODO.md` (gaps).
+- The client's `docs/DESIGN.md` is the product source of truth; its `lib/domain/` must mirror
+  rules implemented in the services here.
+- Note: persistence is JPA (not jOOQ); no codegen step.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
