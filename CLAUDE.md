@@ -167,3 +167,14 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories
+
+- **conexus-mail-mobile** (sibling, FRONTEND, Flutter) — mobile client. Currently an empty scaffold;
+  it depends on this repo's `docs/API.md` (canonical contract; today no `/api/v1` exists).
+- Docs here: `docs/BACKEND.md` (architecture), `docs/API.md` (contract), `docs/WEB.md` (Thymeleaf
+  pages). `INTERNAL_TODO.md` = gaps/sync audit; `CHANGELOG.md` = sync-routine log (`master/CHANGELOG.md`
+  is the older operator routine's log).
+- Stack note: persistence is JPA, not jOOQ — no codegen. Full gate: `mvn -q -B verify`.
+- Sync-routine runs commit to the session's designated branch (the repo's no-push-to-main rule wins
+  over the routine's "master" wording).
