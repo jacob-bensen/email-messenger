@@ -137,6 +137,16 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- Sibling: `jacob-bensen/conexus-mail-mobile` (Flutter client; currently an
+  empty scaffold). Its `docs/DESIGN.md` is the product source of truth.
+- Docs here: `docs/API.md` (client⇄server contract — no `/api/v1` exists yet),
+  `docs/BACKEND.md` (architecture), `docs/WEB.md` (Thymeleaf pages),
+  `INTERNAL_TODO.md` (gaps), `CHANGELOG.md`.
+- Persistence is JPA, not jOOQ (no codegen). Sync-routine runs commit to the
+  designated session branch, not `master`.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
