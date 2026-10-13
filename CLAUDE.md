@@ -137,6 +137,14 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- `../conexus-mail-mobile` — Flutter client (FRONTEND). Currently an empty scaffold.
+- This repo is the BACKEND + website. Docs: `docs/BACKEND.md` (architecture),
+  `docs/API.md` (canonical API contract shared with the client — currently only
+  a planned `/api/v1`), `docs/WEB.md` (Thymeleaf pages), `INTERNAL_TODO.md`
+  (gaps), `CHANGELOG.md`. Persistence is JPA, not jOOQ.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
