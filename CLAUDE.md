@@ -167,3 +167,12 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories
+
+- Sibling: `jacob-bensen/conexus-mail-mobile` (Flutter client; currently an
+  empty shell). This repo is the BACKEND and also serves the website.
+- `docs/API.md` — canonical API contract (mobile API not yet defined).
+  `docs/BACKEND.md` — architecture; `docs/WEB.md` — Thymeleaf pages.
+- `INTERNAL_TODO.md` — known gaps; `CHANGELOG.md` — dated run log.
+- Note: persistence is JPA (not jOOQ); no codegen step.
