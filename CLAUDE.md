@@ -137,6 +137,17 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- Sibling FRONTEND: `jacob-bensen/conexus-mail-mobile` (Flutter client; branch
+  `claude/trusting-cori-2vo4t9` for routine work). It mirrors rules in its
+  `lib/domain/` and must match `docs/API.md` here.
+- Docs in this repo: `docs/BACKEND.md` (architecture), `docs/API.md` (canonical
+  API contract; no mobile API implemented yet), `docs/WEB.md` (Thymeleaf pages).
+  Also `CHANGELOG.md` and `INTERNAL_TODO.md` (known gaps; consume each run).
+- Note: persistence is JPA, not jOOQ. The sync routine's "master only" rule is
+  overridden by the session's designated feature branch.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
