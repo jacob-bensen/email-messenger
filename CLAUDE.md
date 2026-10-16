@@ -137,6 +137,14 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- Sibling: `jacob-bensen/conexus-mail-mobile` (Flutter client, FRONTEND; currently
+  empty scaffold). This repo is the BACKEND and owns the contract.
+- `docs/API.md` — canonical API contract (no mobile API yet); `docs/BACKEND.md` —
+  architecture; `docs/WEB.md` — Thymeleaf pages; `INTERNAL_TODO.md` — cross-repo gaps;
+  `CHANGELOG.md` — dated run log. Persistence is JPA (not jOOQ).
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
