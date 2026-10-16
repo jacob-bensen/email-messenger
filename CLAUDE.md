@@ -137,6 +137,14 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- **conexus-mail-mobile** (FRONTEND, Flutter; currently an empty scaffold). Consumes the
+  contract in `docs/API.md` (here). Its design source of truth is its `docs/DESIGN.md`.
+- Docs here: `docs/BACKEND.md` (architecture), `docs/API.md` (canonical API contract),
+  `docs/WEB.md` (Thymeleaf pages). Also `CHANGELOG.md`, `INTERNAL_TODO.md`.
+- Note: persistence is Spring Data JPA, not jOOQ.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
