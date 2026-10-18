@@ -167,3 +167,16 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories
+
+This repo is the **BACKEND** of a two-repo app. The sibling is
+`jacob-bensen/conexus-mail-mobile` (Flutter client, currently scaffold-only).
+Note: the backend uses Spring Data JPA, not jOOQ — there is no codegen step.
+
+Docs map:
+- `docs/API.md` — canonical API contract (implemented endpoints + PLANNED `/api/v1`). Update it BEFORE changing endpoints.
+- `docs/BACKEND.md` — architecture, schema, auth. `docs/WEB.md` — Thymeleaf page inventory.
+- Sibling: `docs/DESIGN.md` (product + roadmap), `docs/MOBILE.md` (client architecture).
+- `INTERNAL_TODO.md` — known gaps/mismatches, severity ordered. `CHANGELOG.md` — dated run log.
+- Web controllers and any REST controller must share the service layer; do not put business logic in controllers.
