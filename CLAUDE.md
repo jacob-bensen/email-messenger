@@ -137,6 +137,11 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- **Sibling (FRONTEND):** `jacob-bensen/conexus-mail-mobile` — Flutter client, currently only scaffolded docs (`docs/DESIGN.md` is the product source of truth, `docs/MOBILE.md` the client architecture).
+- This repo is the BACKEND. `docs/API.md` is the canonical client/server contract (no mobile API implemented yet), `docs/BACKEND.md` architecture, `docs/WEB.md` website inventory. Log gaps in `INTERNAL_TODO.md` and runs in `CHANGELOG.md`.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
