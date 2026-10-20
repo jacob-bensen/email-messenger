@@ -4,7 +4,7 @@ Templates: `src/main/resources/templates`; shared fragments in `templates/fragme
 
 | Area | Routes | Controller | Main services |
 |---|---|---|---|
-| Public | `/`, `/pricing`, `/demo`, `/privacy`, `/terms`, `/refund`, `/robots.txt`, `/sitemap.xml` | `LandingController`/`PricingController`/`DemoController`/`LegalController`/`SeoController` | `DemoConversationService`, `SiteProperties` |
+| Public | `/`, `/pricing`, `/demo`, `/privacy`, `/terms`, `/refund`, `/robots.txt`, `/sitemap.xml` | `PricingController` (also serves `/`)/`DemoController`/`LegalController`/`SeoController` | `DemoConversationService`, `SiteProperties` |
 | Auth | `/login`, `/register`, `/auth/google/start`, `/password/forgot`, `/password/reset`, `/verify-email`, `/verify-email/resend` | `AuthController`, `OAuthStartController`, `PasswordResetController`, `EmailVerificationController` | `UserService`, `PasswordResetService`, `EmailVerificationService` |
 | Chats | `/chats`, `/chats/new`, `/chats/{key}`, `/chats/{key}/pane`, `/chats/{key}/send`, `/chats/refresh`, `/chats/events` | `ConversationController`, `ChatEventsController` | `ChatService`, `ConversationListService`, `OutboundMessageService`, `MailboxPollingService` |
 | Mailboxes | `/mailboxes`, `/mailboxes/new`, `/mailboxes/{id}/sync|delete|signature`, `/mailboxes/gmail/connect|callback|reconnect/{id}` | `MailboxController`, `GmailConnectController` | `MailAccountService` |
