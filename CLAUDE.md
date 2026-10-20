@@ -12,6 +12,14 @@ workspace keyed by participant-set conversationKey, teams, saved searches,
 digests, admin metrics, and a PWA shell. See the roadmap below for what's
 next.
 
+## Related repositories
+
+- Sibling: `conexus-mail-mobile` (FRONTEND, Flutter; currently an unscaffolded stub).
+- This repo is the BACKEND and owns persistence, business rules, the website, and `docs/API.md` (canonical contract).
+- Docs: `docs/BACKEND.md` (architecture), `docs/API.md` (contract), `docs/WEB.md` (Thymeleaf pages),
+  `INTERNAL_TODO.md` (gaps), `CHANGELOG.md` (dated log; older history in `master/CHANGELOG.md`).
+- Note: persistence is JPA, not jOOQ.
+
 ## Tech stack (target)
 
 - Java 21 (LTS)
