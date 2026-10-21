@@ -10,7 +10,7 @@ Ordered by severity. Audit date 2026-10-21.
 3. Attachments are not downloadable (`blob_ref` null) — mobile will need this (see CLAUDE.md roadmap).
 
 ## Missing tests
-4. Baseline `./mvnw test` result not established in the sandbox on 2026-10-21 (see CHANGELOG).
+4. Baseline `mvn -q -B test` passed (exit 0) on 2026-10-21 before doc changes.
 
 ## Housekeeping
 5. `DEPLOY.md`/`Dockerfile`/`docker-compose.yml` still exist though CLAUDE.md says Docker was removed.
