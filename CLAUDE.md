@@ -137,6 +137,18 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- **Backend (this repo)** — `email-messenger`: Spring Boot 3, Java 21, JPA + Flyway,
+  Thymeleaf website, owns all state and business rules.
+- **Frontend** — `conexus-mail-mobile`: Flutter client (currently an empty scaffold).
+  Its `docs/DESIGN.md` is the product source of truth; it mirrors server rules in
+  `lib/domain/`.
+- Docs here: `docs/API.md` (canonical client/server contract — currently draft/planned),
+  `docs/BACKEND.md` (architecture), `docs/WEB.md` (Thymeleaf pages),
+  `INTERNAL_TODO.md` (gaps), `CHANGELOG.md`.
+- No jOOQ here (JPA); no codegen step.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
