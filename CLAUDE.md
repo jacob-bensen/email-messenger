@@ -137,6 +137,12 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- Sibling mobile client: `jacob-bensen/conexus-mail-mobile` (Flutter; currently only a README, nothing implemented).
+- Docs in this repo: `docs/BACKEND.md` (architecture), `docs/API.md` (canonical API contract — both repos depend on it; no `/api/v1` implemented yet), `docs/WEB.md` (Thymeleaf pages), `INTERNAL_TODO.md` (known gaps), `CHANGELOG.md`.
+- Sync routine note: this repo is the BACKEND. It uses JPA, not jOOQ. In cloud sessions `./mvnw` may fail to download Maven; plain `mvn` works.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
