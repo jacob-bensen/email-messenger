@@ -137,6 +137,13 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- Sibling: `conexus-mail-mobile` (Flutter client, currently an empty scaffold).
+- `docs/API.md` is the shared contract (no mobile REST API exists yet);
+  `docs/BACKEND.md` architecture; `docs/WEB.md` Thymeleaf pages;
+  `INTERNAL_TODO.md` known gaps; `CHANGELOG.md` per-run log.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
