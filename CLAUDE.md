@@ -65,6 +65,15 @@ src/main/resources/
 - View model `Conversation` — messages sorted, quoted-reply text stripped,
   consecutive same-sender messages grouped into IM-style bubble runs.
 
+## Related repositories
+
+- Sibling: `jacob-bensen/conexus-mail-mobile` (Flutter client, currently an empty
+  scaffold). It must follow `docs/API.md` here; its design source of truth is its
+  `docs/DESIGN.md`.
+- Docs here: `docs/BACKEND.md` (architecture), `docs/API.md` (canonical contract),
+  `docs/WEB.md` (Thymeleaf pages), `INTERNAL_TODO.md` (gaps), `CHANGELOG.md`.
+- Persistence is JPA/Hibernate (not jOOQ); there is no codegen step.
+
 ## Roadmap
 
 The routine should work the first unchecked item, then check it off in a
