@@ -137,6 +137,17 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- Sibling FRONTEND repo: `jacob-bensen/conexus-mail-mobile` (Flutter; currently
+  README only — see its `docs/DESIGN.md` §ROADMAP).
+- Docs here: `docs/BACKEND.md` (architecture), `docs/API.md` (canonical API
+  contract — mobile depends on it; no `/api/v1` implemented yet),
+  `docs/WEB.md` (Thymeleaf routes). Known gaps: `INTERNAL_TODO.md`; history:
+  `CHANGELOG.md`.
+- Persistence is Spring Data JPA (no jOOQ codegen). Web controllers and any
+  future API must share the service layer.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
