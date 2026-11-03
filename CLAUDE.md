@@ -167,3 +167,15 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories
+
+- Sibling FRONTEND repo: `jacob-bensen/conexus-mail-mobile` (Flutter, currently
+  scaffolding only). It depends on `docs/API.md` here as the shared contract.
+- Docs in this repo: `docs/BACKEND.md` (architecture), `docs/API.md` (canonical
+  API contract — currently no mobile REST API exists, proposal only),
+  `docs/WEB.md` (Thymeleaf pages), `INTERNAL_TODO.md` (gaps/tech debt),
+  `CHANGELOG.md`.
+- Note: the stack is Spring Data JPA, not jOOQ — there is no codegen step.
+- Scheduled sync-routine sessions work on the designated `claude/*` branch
+  (platform requirement), not `master`.
