@@ -137,6 +137,15 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- **conexus-mail-mobile** (FRONTEND, Flutter; currently an empty scaffold). Sibling repo.
+  - This repo's `docs/API.md` is the canonical API contract both repos follow (contract first).
+  - Mobile `docs/DESIGN.md` = product source of truth + roadmap; `docs/MOBILE.md` = client architecture.
+- This repo is the BACKEND: Java 21 / Spring Boot 3.5 / **JPA + Flyway (not jOOQ)** / Thymeleaf website.
+- Docs: `docs/BACKEND.md`, `docs/API.md`, `docs/WEB.md`, `INTERNAL_TODO.md`, `CHANGELOG.md`.
+- Sync-routine note: the routine says "master"; sessions are pinned to their designated feature branch, which wins.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
