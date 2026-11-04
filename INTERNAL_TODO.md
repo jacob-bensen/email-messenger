@@ -9,7 +9,7 @@
 - `ConversationController` builds view models inline (`populateList`, `scopeAddress`, `selectMailbox`); extract to a service before an API controller needs the same mailbox-scope logic.
 
 ## Missing tests / unknowns
-- Backend test baseline not verified in this environment (see CHANGELOG 2026-11-04).
+- Backend baseline verified 2026-11-04: `./mvnw -q -B test` exit 0, 794 tests, 0 failures, 0 errors, 1 skipped.
 - `/chats/events` SSE payload shape undocumented (TBD in API.md).
 
 ## Process
