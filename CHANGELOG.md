@@ -1,0 +1,1 @@
+- Backend `./mvnw -q -B test`: exit 0; 794 run, 0 failures, 0 errors, 1 skipped. Frontend gates not run (no Flutter project or SDK).
