@@ -167,3 +167,16 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories
+
+- **Backend (this repo)** — `jacob-bensen/email-messenger`. Owns persistence, business
+  rules, the website and (future) REST API.
+- **Mobile client** — `jacob-bensen/conexus-mail-mobile` (Flutter, currently an empty
+  stub). Its `docs/DESIGN.md` is the product source of truth; `docs/MOBILE.md` is the
+  client architecture.
+- Doc roles here: `docs/API.md` = shared contract (currently: no mobile API exists),
+  `docs/BACKEND.md` = architecture, `docs/WEB.md` = Thymeleaf page inventory,
+  `INTERNAL_TODO.md` = gaps/tech debt, `CHANGELOG.md` = per-run log.
+- Note: persistence is Spring Data JPA, not jOOQ. Sync routine runs commit to the
+  session's designated branch, not `master`.
