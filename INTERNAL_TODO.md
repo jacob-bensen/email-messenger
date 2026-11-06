@@ -12,7 +12,7 @@
 
 ## Tech debt / deviations
 - Persistence is JPA, not jOOQ as the generic routine assumes. Do not migrate; update routine.
-- Repo contains a stray directory `master/` at the root (empty/unknown purpose) — investigate.
+- Root dir `master/` holds BACKLOG.md, CHANGELOG.md, MASTER_ACTIONS.md, PLAN.md (not reviewed this run); decide whether it overlaps with docs/ and CHANGELOG.md.
 - Dockerfile/docker-compose.yml/.github exist although CLAUDE.md says Docker/CI were removed.
 - Routine says commit to `master`; sessions are pinned to `claude/*` branches. Reconcile.
 
