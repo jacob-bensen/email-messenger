@@ -137,6 +137,11 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- Sibling FRONTEND: `conexus-mail-mobile` (Flutter, early stage). Its `docs/DESIGN.md` is the product source of truth; `docs/MOBILE.md` is the client architecture.
+- This repo's docs: `docs/API.md` (canonical API contract — currently a TBD proposal, no REST API yet), `docs/BACKEND.md` (architecture), `docs/WEB.md` (Thymeleaf page inventory), `INTERNAL_TODO.md` (gaps), `CHANGELOG.md`.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
