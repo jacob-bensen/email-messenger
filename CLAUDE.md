@@ -137,6 +137,29 @@ commit. Add follow-ups as they emerge.
       badges clickable filter chips that dim the merged timeline to one
       thread.
 
+## Related repositories
+
+- **`jacob-bensen/conexus-mail-mobile`** — the Flutter mobile client
+  (FRONTEND). It owns `docs/DESIGN.md` (product design + §ROADMAP for the
+  mobile app) and `docs/MOBILE.md` (client architecture). Its `lib/domain/`
+  mirrors rules that are authoritative here.
+- This repo is the BACKEND: REST API (planned), the Thymeleaf website, all
+  persistence and business rules.
+
+Docs in this repo:
+
+- `docs/API.md` — **canonical API contract** shared by both repos. Update it
+  before changing any endpoint, and change both implementations in the same
+  run.
+- `docs/BACKEND.md` — architecture, schema overview, auth model.
+- `docs/WEB.md` — Thymeleaf page inventory.
+- `CHANGELOG.md` — dated entries from the full-stack sync routine (older
+  history: `master/CHANGELOG.md`).
+- `INTERNAL_TODO.md` — severity-ordered gaps and deferred work.
+
+Note: persistence is Spring Data JPA (not jOOQ); there is no codegen step.
+Web pages and any future REST endpoints must share the same service methods.
+
 ## Conventions
 
 - Constructor injection only; no field `@Autowired`.
