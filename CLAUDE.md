@@ -167,3 +167,10 @@ A user can connect a mailbox, see imported threads rendered as IM-style
 conversations, and reply inline. Tests pass via `./mvnw test` and the app
 boots locally via `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 against a local PostgreSQL 16 instance (bootstrap it with `db/init.sql`).
+
+## Related repositories
+
+- `jacob-bensen/conexus-mail-mobile` — Flutter client (FRONTEND). It mirrors rules from this repo in `lib/domain/`.
+- `docs/API.md` (here) is the canonical API contract both repos follow; `docs/BACKEND.md` and `docs/WEB.md` describe
+  architecture and the Thymeleaf site. The client's `docs/DESIGN.md` is the product source of truth; `docs/MOBILE.md` its architecture.
+- Known gap: no `/api/v1` exists yet — see `INTERNAL_TODO.md`.
