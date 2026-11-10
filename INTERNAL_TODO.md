@@ -3,7 +3,6 @@
 ## Contract breakage
 - No mobile-facing JSON API or bearer-token auth exists; mobile repo has no code. First feature run should add
   `/api/v1/auth/login` + `GET /api/v1/chats` (read-only) over existing services. (Needs decision: token model.)
-- SSE event name/payload at `/chats/events` is undocumented.
 
 ## Logic drift
 - Mailbox selection / scope resolution (`selectMailbox`, `scopeAddress`) lives in `ConversationController`;

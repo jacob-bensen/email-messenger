@@ -7,7 +7,7 @@ a client could call, and (2) the planned `/api/v1` surface, marked TBD. Update t
 | Method/Path | Auth | Request | Response |
 |---|---|---|---|
 | `POST /chats/refresh` | session + CSRF | none | `200 {"imported": <int>}` |
-| `GET /chats/events` | session | – | `text/event-stream` (SSE) fed by `NewMailEvent(userId, importedCount)`; exact event name/payload: TBD (see `ChatEventStream`) |
+| `GET /chats/events` | session | – | `text/event-stream` (SSE) fed by `NewMailEvent(userId, importedCount)`; event `new-mail`, data `{"imported":<int>}` |
 | `POST /billing/webhook` | Stripe signature header | Stripe event JSON | 2xx; no CSRF |
 | `GET /actuator/health` | public | – | Spring health JSON |
 
