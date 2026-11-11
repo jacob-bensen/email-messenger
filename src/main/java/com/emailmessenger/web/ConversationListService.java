@@ -35,7 +35,21 @@ public class ConversationListService {
     private static final int PREVIEW_MAX = 120;
 
     /** Triage lenses for the Dashboard. */
-    public enum ChatFilter { ALL, UNREAD, AWAITING, ATTACHMENTS }
+    public enum ChatFilter {
+        ALL, UNREAD, AWAITING, ATTACHMENTS;
+
+        /** Case-insensitive; anything unrecognized (or absent) is {@link #ALL}. */
+        public static ChatFilter parse(String raw) {
+            if (raw != null) {
+                for (ChatFilter f : values()) {
+                    if (f.name().equalsIgnoreCase(raw.trim())) {
+                        return f;
+                    }
+                }
+            }
+            return ALL;
+        }
+    }
 
     /** Per-tile conversation counts for the current scope, shown on the Dashboard. */
     public record ChatCounts(long all, long unread, long awaiting, long attachments) {}
