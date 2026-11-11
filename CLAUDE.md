@@ -12,6 +12,36 @@ workspace keyed by participant-set conversationKey, teams, saved searches,
 digests, admin metrics, and a PWA shell. See the roadmap below for what's
 next.
 
+## Related repositories
+
+This is the **backend** of a two-repo application.
+
+- **`conexus-mail-mobile`** (sibling repo) — the Flutter mobile client. It
+  talks only to the REST API under `/api/v1`. Its `lib/domain/` mirrors the
+  server's rules; the server stays authoritative.
+
+Docs and their roles:
+
+| File | Role |
+|------|------|
+| `docs/API.md` | **Canonical API contract** for both repos. Update it *before* changing any `/api/**` endpoint, then change the server and the client in the same run. |
+| `docs/BACKEND.md` | Architecture: packages, auth model, schema overview, how web pages and the API share services. |
+| `docs/WEB.md` | Thymeleaf page inventory: routes, templates, services, fragments. |
+| `CHANGELOG.md` | Dated entry per run. (`master/CHANGELOG.md` is the older history.) |
+| `INTERNAL_TODO.md` | Known gaps and deferred work, by severity. |
+| `conexus-mail-mobile/docs/DESIGN.md` | Product design + mobile §ROADMAP (source of truth for what the app should do). |
+| `conexus-mail-mobile/docs/MOBILE.md` | Client architecture. |
+
+Rules for API work:
+
+- REST controllers live in `com.emailmessenger.api` and only translate HTTP
+  to service calls. Web controllers and REST controllers must call the
+  **same services** — never copy logic from a web controller into an API
+  controller; extract it into a service first.
+- Every `/api/**` error uses the JSON envelope in `docs/API.md`.
+- `MobileApiIntegrationTest` pins the contract; extend it with every
+  endpoint.
+
 ## Tech stack (target)
 
 - Java 21 (LTS)
@@ -23,26 +53,29 @@ next.
   `application-local.yml` (`local` profile) points at
   `localhost:5432/email_messenger`, and `db/init.sql` bootstraps the
   database + app user. Tests use H2 via `src/test/resources/application.yml`.
-- Thymeleaf for server-rendered views
+- Persistence is Spring Data JPA (Hibernate). There is no jOOQ and no
+  codegen step.
+- Thymeleaf for server-rendered views; JSON REST API under `/api/v1` for the
+  mobile client
 - Maven (with wrapper) for build
 - JUnit 5 + Spring Boot Test, Testcontainers for integration tests
 - Flyway for schema migrations
 
 ## Commands
 
-These will work once the Maven project is scaffolded; until then they fail.
-
 - Build: `./mvnw clean package`
 - Run locally (needs local Postgres, see `db/init.sql`):
   `JDBC_DATABASE_PASSWORD=... ./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 - Test: `./mvnw test`
 - Single test: `./mvnw test -Dtest=ClassName#method`
+- Full gate: `./mvnw -q -B verify`
 
 ## Target package layout
 
 ```
 com.emailmessenger
 ├── EmailMessengerApplication.java
+├── api/          # REST controllers + DTO records for /api/v1 (mobile)
 ├── web/          # Thymeleaf controllers, form objects
 ├── service/      # email parsing, IM transform, threading
 ├── domain/       # JPA entities
