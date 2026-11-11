@@ -27,6 +27,21 @@ next.
 - Maven (with wrapper) for build
 - JUnit 5 + Spring Boot Test, Testcontainers for integration tests
 - Flyway for schema migrations
+- Persistence is Spring Data JPA (no jOOQ, no codegen step)
+
+## Related repositories
+
+- **`conexus-mail-mobile`** — the Flutter mobile client (sibling repo).
+  Currently a stub; its `docs/DESIGN.md` §ROADMAP is the product roadmap for
+  the mobile app and `docs/MOBILE.md` its architecture.
+- Docs in this repo:
+  - `docs/API.md` — **canonical API contract** shared with the mobile repo.
+    Update it before changing any endpoint the client uses.
+  - `docs/BACKEND.md` — architecture, schema overview, auth model.
+  - `docs/WEB.md` — Thymeleaf page/route/fragment inventory.
+  - `CHANGELOG.md` — dated entry per run. `INTERNAL_TODO.md` — known gaps,
+    severity-ordered.
+- REST endpoints and Thymeleaf pages must share the same service layer.
 
 ## Commands
 
