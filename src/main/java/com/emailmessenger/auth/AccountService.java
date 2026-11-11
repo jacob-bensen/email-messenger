@@ -2,6 +2,7 @@ package com.emailmessenger.auth;
 
 import com.emailmessenger.domain.AuthEventType;
 import com.emailmessenger.domain.User;
+import com.emailmessenger.repository.ApiTokenRepository;
 import com.emailmessenger.repository.EmailVerificationTokenRepository;
 import com.emailmessenger.repository.PasswordResetTokenRepository;
 import com.emailmessenger.repository.UserRepository;
@@ -42,6 +43,7 @@ public class AccountService {
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetTokenRepository passwordResetTokens;
     private final EmailVerificationTokenRepository emailVerificationTokens;
+    private final ApiTokenRepository apiTokens;
     private final EmailVerificationService emailVerificationService;
     private final AuthEventService authEvents;
     private final Clock clock;
@@ -50,6 +52,7 @@ public class AccountService {
                    PasswordEncoder passwordEncoder,
                    PasswordResetTokenRepository passwordResetTokens,
                    EmailVerificationTokenRepository emailVerificationTokens,
+                   ApiTokenRepository apiTokens,
                    EmailVerificationService emailVerificationService,
                    AuthEventService authEvents,
                    Clock clock) {
@@ -57,6 +60,7 @@ public class AccountService {
         this.passwordEncoder = passwordEncoder;
         this.passwordResetTokens = passwordResetTokens;
         this.emailVerificationTokens = emailVerificationTokens;
+        this.apiTokens = apiTokens;
         this.emailVerificationService = emailVerificationService;
         this.authEvents = authEvents;
         this.clock = clock;
@@ -78,6 +82,8 @@ public class AccountService {
         LocalDateTime now = LocalDateTime.now(clock);
         passwordResetTokens.markAllUsedFor(user, now);
         emailVerificationTokens.markAllUsedFor(user, now);
+        // A new password signs the mobile app out everywhere.
+        apiTokens.revokeAllFor(user, now);
         authEvents.record(user, user.getEmail(), AuthEventType.PASSWORD_CHANGED,
                 ClientIp.fromCurrentRequest());
         return PasswordChangeOutcome.OK;

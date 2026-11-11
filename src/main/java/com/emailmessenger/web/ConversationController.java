@@ -101,7 +101,8 @@ class ConversationController {
         // No mailbox param => the cross-account Dashboard (Hub); a param scopes to
         // that one account so its chats stay separate.
         MailAccount selected = selectMailbox(accounts, mailboxParam);
-        populateList(owner, accounts, selected, query, parseFilter(filterParam), page, model);
+        populateList(owner, accounts, selected, query,
+                ConversationListService.ChatFilter.parse(filterParam), page, model);
         // No "chat" attribute => the workspace renders the list with an empty pane.
         return "chat";
     }
@@ -123,17 +124,6 @@ class ConversationController {
         model.addAttribute("billingBanner", billingBannerService.bannerFor(owner).orElse(null));
         model.addAttribute("emailUnverified", !owner.isEmailVerified());
         applyMailboxModel(model, selected);
-    }
-
-    private static ConversationListService.ChatFilter parseFilter(String raw) {
-        if (raw != null) {
-            for (ConversationListService.ChatFilter f : ConversationListService.ChatFilter.values()) {
-                if (f.name().equalsIgnoreCase(raw.trim())) {
-                    return f;
-                }
-            }
-        }
-        return ConversationListService.ChatFilter.ALL;
     }
 
     /**
@@ -386,20 +376,11 @@ class ConversationController {
     }
 
     private ChatConversation chatFor(User owner, String scope, String key) {
-        return scope != null
-                ? chatService.buildFor(owner, scope, key)
-                : chatService.buildFor(owner, key);
+        return chatService.buildFor(owner, scope, key);
     }
 
-    /**
-     * The address to scope conversation queries to, or {@code null} for the
-     * unscoped (all-conversations) view. Scoping only matters to SEPARATE
-     * multiple accounts — with a single connected mailbox every conversation
-     * belongs to it, so we don't scope. That also avoids dropping list/alias-
-     * delivered mail whose headers don't carry the mailbox address.
-     */
     private static String scopeAddress(MailAccount selected, List<MailAccount> accounts) {
-        return (selected != null && accounts.size() > 1) ? address(selected) : null;
+        return MailboxScope.address(selected, accounts);
     }
 
     /**
@@ -436,38 +417,8 @@ class ConversationController {
         return (body == null ? "" : body) + "\n\n-- \n" + sender.getSignature().strip();
     }
 
-    /**
-     * The account a view is scoped to: the one whose id matches
-     * {@code mailboxParam}, or {@code null} when no (valid) mailbox is specified —
-     * the cross-account Dashboard for the list, or the owner-wide timeline for a
-     * single chat opened from it.
-     */
     private static MailAccount selectMailbox(List<MailAccount> accounts, String mailboxParam) {
-        Long id = parseId(mailboxParam);
-        if (id == null) {
-            return null;
-        }
-        for (MailAccount account : accounts) {
-            if (account.getId().equals(id)) {
-                return account;
-            }
-        }
-        return null;
-    }
-
-    private static Long parseId(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return null;
-        }
-        try {
-            return Long.valueOf(raw.trim());
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
-    private static String address(MailAccount account) {
-        return account.getUsername() == null ? "" : account.getUsername().trim().toLowerCase(Locale.ROOT);
+        return MailboxScope.select(accounts, mailboxParam);
     }
 
     private static String mailboxQuery(MailAccount selected) {

@@ -20,7 +20,7 @@ import java.util.Locale;
  * is handed to the template.
  */
 @Service
-class ChatService {
+public class ChatService {
 
     private final EmailThreadRepository threads;
     private final ConversationService conversationService;
@@ -35,7 +35,7 @@ class ChatService {
     }
 
     @Transactional(readOnly = true)
-    ChatConversation buildFor(User owner, String conversationKey) {
+    public ChatConversation buildFor(User owner, String conversationKey) {
         if (conversationKey == null || conversationKey.isBlank()) {
             return null;
         }
@@ -51,10 +51,14 @@ class ChatService {
      * Same as {@link #buildFor(User, String)} but scoped to a single connected
      * account: only the conversation's threads involving {@code mailboxAddress}
      * are included, so an account's chat history stays separate from the same
-     * correspondent reached through another account.
+     * correspondent reached through another account. A {@code null}
+     * {@code mailboxAddress} is the unscoped, owner-wide timeline.
      */
     @Transactional(readOnly = true)
-    ChatConversation buildFor(User owner, String mailboxAddress, String conversationKey) {
+    public ChatConversation buildFor(User owner, String mailboxAddress, String conversationKey) {
+        if (mailboxAddress == null) {
+            return buildFor(owner, conversationKey);
+        }
         if (conversationKey == null || conversationKey.isBlank()) {
             return null;
         }
@@ -71,12 +75,13 @@ class ChatService {
      * Marks the opened conversation's threads read. Scoped to {@code mailboxAddress}
      * when an account is selected (so the same correspondent reached via another
      * account keeps its own unread state); otherwise marks every thread of the key.
-     * No-op when nothing is unread.
+     * No-op when nothing is unread. Returns whether the conversation exists in
+     * that scope.
      */
     @Transactional
-    void markRead(User owner, String mailboxAddress, String conversationKey) {
+    public boolean markRead(User owner, String mailboxAddress, String conversationKey) {
         if (conversationKey == null || conversationKey.isBlank()) {
-            return;
+            return false;
         }
         List<EmailThread> conversationThreads;
         if (mailboxAddress == null || mailboxAddress.isBlank()) {
@@ -90,5 +95,6 @@ class ChatService {
                 thread.markRead();
             }
         }
+        return !conversationThreads.isEmpty();
     }
 }

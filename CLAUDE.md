@@ -9,10 +9,38 @@ Working SaaS ("ConexusMail"): auth (form + Google OIDC), Stripe billing
 (Free/Pro/Business), multi-account mailbox connect (IMAP password + Gmail
 OAuth), polling import with sent-folder sync, the texting-style /chats
 workspace keyed by participant-set conversationKey, teams, saved searches,
-digests, admin metrics, and a PWA shell. See the roadmap below for what's
-next.
+digests, admin metrics, and a PWA shell. Since 2026-11-11 it also serves a
+bearer-token REST API under `/api/v1` for the Flutter mobile client (sign in,
+chats list, read a conversation). See the roadmap below for what's next.
 
-## Tech stack (target)
+## Related repositories
+
+- **This repo (`email-messenger`) is the BACKEND**: REST API, website, all
+  persistence, all authoritative business logic.
+- **[`conexus-mail-mobile`](https://github.com/jacob-bensen/conexus-mail-mobile)
+  is the FRONTEND**: the Flutter mobile client. Its `lib/domain/` mirrors rules
+  defined here; on any disagreement this repo wins.
+
+Docs and who owns what:
+
+| Doc | Repo | Role |
+|-----|------|------|
+| `docs/API.md` | backend | **Canonical API contract.** Update it before changing an endpoint; both repos must match it exactly. |
+| `docs/BACKEND.md` | backend | Architecture: packages, auth model, schema, how web and API share services. |
+| `docs/WEB.md` | backend | Thymeleaf page inventory and which services each page uses. |
+| `CHANGELOG.md` | both | Dated entry per routine run. |
+| `INTERNAL_TODO.md` | both | Severity-ordered gaps and deferred work. |
+| `docs/DESIGN.md` | mobile | Product/app design and the mobile §ROADMAP. |
+| `docs/MOBILE.md` | mobile | Client architecture. |
+
+Rules that span both repos:
+
+- Web pages and API endpoints call the **same services**. A controller maps
+  and validates input; it doesn't decide anything about data.
+- API DTOs are records in `com.emailmessenger.api`; never serialize entities.
+- Every API failure uses the `{"error":{"code","message"}}` envelope.
+
+## Tech stack
 
 - Java 21 (LTS)
 - Spring Boot 3.x — `spring-boot-starter-web`, `-thymeleaf`, `-data-jpa`,
@@ -30,20 +58,22 @@ next.
 
 ## Commands
 
-These will work once the Maven project is scaffolded; until then they fail.
-
 - Build: `./mvnw clean package`
 - Run locally (needs local Postgres, see `db/init.sql`):
   `JDBC_DATABASE_PASSWORD=... ./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 - Test: `./mvnw test`
 - Single test: `./mvnw test -Dtest=ClassName#method`
+- Full gate (what the sync routine runs): `./mvnw -q -B verify`
+- There is no code generation step (persistence is Spring Data JPA, not jOOQ).
 
 ## Target package layout
 
 ```
 com.emailmessenger
 ├── EmailMessengerApplication.java
-├── web/          # Thymeleaf controllers, form objects
+├── web/          # Thymeleaf controllers, form objects, chat list/timeline services
+├── api/          # REST API for the mobile client (/api/v1): controllers, DTO records
+├── auth/         # login, tokens, both security filter chains
 ├── service/      # email parsing, IM transform, threading
 ├── domain/       # JPA entities
 ├── repository/   # Spring Data repositories
@@ -108,6 +138,13 @@ commit. Add follow-ups as they emerge.
       `fragments/live-refresh.html`) replacing the reload-on-new-mail
       behavior. Not yet verified against a real IMAP server that supports
       IDLE — do that when next running locally with a connected mailbox.
+- [x] Mobile REST API, slice 1 (added and done 2026-11-11): bearer-token
+      auth (`api_tokens`, V36) + `GET /api/v1/conversations`,
+      `GET /api/v1/conversations/{key}`, `POST …/read`, consumed by the
+      Flutter client. Contract in `docs/API.md`.
+- [ ] Mobile REST API, slice 2: extract the send flow out of
+      `ConversationController` into a shared service, then add
+      `POST /api/v1/conversations/{key}/messages` (see `INTERNAL_TODO.md`).
 - [ ] Live delivery, part 2: Web Push through the existing PWA service
       worker — VAPID keys, push-subscription storage, notification opt-in on
       /account/notifications, per-conversation "Ada: message preview"

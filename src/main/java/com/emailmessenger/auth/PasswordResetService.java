@@ -3,6 +3,7 @@ package com.emailmessenger.auth;
 import com.emailmessenger.domain.AuthEventType;
 import com.emailmessenger.domain.PasswordResetToken;
 import com.emailmessenger.domain.User;
+import com.emailmessenger.repository.ApiTokenRepository;
 import com.emailmessenger.repository.PasswordResetTokenRepository;
 import com.emailmessenger.repository.UserRepository;
 import com.emailmessenger.web.SiteProperties;
@@ -63,6 +64,7 @@ public class PasswordResetService {
 
     private final UserRepository users;
     private final PasswordResetTokenRepository tokens;
+    private final ApiTokenRepository apiTokens;
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
     private final SiteProperties site;
@@ -75,6 +77,7 @@ public class PasswordResetService {
 
     PasswordResetService(UserRepository users,
                          PasswordResetTokenRepository tokens,
+                         ApiTokenRepository apiTokens,
                          PasswordEncoder passwordEncoder,
                          JavaMailSender mailSender,
                          SiteProperties site,
@@ -82,6 +85,7 @@ public class PasswordResetService {
                          Clock clock) {
         this.users = users;
         this.tokens = tokens;
+        this.apiTokens = apiTokens;
         this.passwordEncoder = passwordEncoder;
         this.mailSender = mailSender;
         this.site = site;
@@ -193,6 +197,8 @@ public class PasswordResetService {
         user.setPasswordSet(true);
         users.save(user);
         tokens.markAllUsedFor(user, now);
+        // A reset password signs the mobile app out everywhere.
+        apiTokens.revokeAllFor(user, now);
         authEvents.record(user, user.getEmail(), AuthEventType.PASSWORD_RESET_COMPLETED,
                 ClientIp.fromCurrentRequest());
         return Optional.of(user);
