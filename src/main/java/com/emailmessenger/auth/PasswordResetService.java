@@ -67,6 +67,7 @@ public class PasswordResetService {
     private final JavaMailSender mailSender;
     private final SiteProperties site;
     private final AuthEventService authEvents;
+    private final ApiTokenService apiTokens;
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
@@ -79,6 +80,7 @@ public class PasswordResetService {
                          JavaMailSender mailSender,
                          SiteProperties site,
                          AuthEventService authEvents,
+                         ApiTokenService apiTokens,
                          Clock clock) {
         this.users = users;
         this.tokens = tokens;
@@ -86,6 +88,7 @@ public class PasswordResetService {
         this.mailSender = mailSender;
         this.site = site;
         this.authEvents = authEvents;
+        this.apiTokens = apiTokens;
         this.clock = clock;
     }
 
@@ -193,6 +196,7 @@ public class PasswordResetService {
         user.setPasswordSet(true);
         users.save(user);
         tokens.markAllUsedFor(user, now);
+        apiTokens.revokeAllFor(user);
         authEvents.record(user, user.getEmail(), AuthEventType.PASSWORD_RESET_COMPLETED,
                 ClientIp.fromCurrentRequest());
         return Optional.of(user);

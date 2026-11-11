@@ -44,6 +44,7 @@ public class AccountService {
     private final EmailVerificationTokenRepository emailVerificationTokens;
     private final EmailVerificationService emailVerificationService;
     private final AuthEventService authEvents;
+    private final ApiTokenService apiTokens;
     private final Clock clock;
 
     AccountService(UserRepository users,
@@ -52,6 +53,7 @@ public class AccountService {
                    EmailVerificationTokenRepository emailVerificationTokens,
                    EmailVerificationService emailVerificationService,
                    AuthEventService authEvents,
+                   ApiTokenService apiTokens,
                    Clock clock) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
@@ -59,6 +61,7 @@ public class AccountService {
         this.emailVerificationTokens = emailVerificationTokens;
         this.emailVerificationService = emailVerificationService;
         this.authEvents = authEvents;
+        this.apiTokens = apiTokens;
         this.clock = clock;
     }
 
@@ -78,6 +81,7 @@ public class AccountService {
         LocalDateTime now = LocalDateTime.now(clock);
         passwordResetTokens.markAllUsedFor(user, now);
         emailVerificationTokens.markAllUsedFor(user, now);
+        apiTokens.revokeAllFor(user);
         authEvents.record(user, user.getEmail(), AuthEventType.PASSWORD_CHANGED,
                 ClientIp.fromCurrentRequest());
         return PasswordChangeOutcome.OK;

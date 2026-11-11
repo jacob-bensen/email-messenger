@@ -4,8 +4,13 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
@@ -44,7 +49,42 @@ class SecurityConfig {
         return repo;
     }
 
+    /**
+     * The mobile client's REST API. Ordered ahead of the browser chain so
+     * {@code /api/**} never sees form login, sessions, remember-me, or the
+     * login redirect: it is stateless, authenticated only by a bearer token
+     * ({@link ApiTokenAuthenticationFilter}), and answers an unauthenticated
+     * call with a JSON 401. CSRF is off because nothing here is
+     * cookie-authenticated — a cross-site request can't carry the token.
+     */
     @Bean
+    @Order(1)
+    SecurityFilterChain apiSecurityFilterChain(HttpSecurity http,
+                                               ApiTokenService apiTokenService) throws Exception {
+        http
+                .securityMatcher("/api/**")
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/v1/auth/login").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(AbstractHttpConfigurer::disable)
+                .requestCache(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable)
+                .exceptionHandling(e -> e.authenticationEntryPoint((request, response, ex) -> {
+                    response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    response.getWriter().write(
+                            "{\"error\":{\"code\":\"unauthorized\","
+                                    + "\"message\":\"A valid bearer token is required.\"}}");
+                }))
+                .addFilterBefore(new ApiTokenAuthenticationFilter(apiTokenService),
+                        UsernamePasswordAuthenticationFilter.class);
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
     SecurityFilterChain securityFilterChain(HttpSecurity http,
                                             PersistentTokenRepository tokenRepository,
                                             PlanCheckoutSuccessHandler planCheckoutSuccessHandler,
