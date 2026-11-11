@@ -45,6 +45,7 @@ public class AccountService {
     private final EmailVerificationService emailVerificationService;
     private final AuthEventService authEvents;
     private final Clock clock;
+    private final ApiTokenService apiTokens;
 
     AccountService(UserRepository users,
                    PasswordEncoder passwordEncoder,
@@ -52,7 +53,8 @@ public class AccountService {
                    EmailVerificationTokenRepository emailVerificationTokens,
                    EmailVerificationService emailVerificationService,
                    AuthEventService authEvents,
-                   Clock clock) {
+                   Clock clock,
+                   ApiTokenService apiTokens) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.passwordResetTokens = passwordResetTokens;
@@ -60,6 +62,7 @@ public class AccountService {
         this.emailVerificationService = emailVerificationService;
         this.authEvents = authEvents;
         this.clock = clock;
+        this.apiTokens = apiTokens;
     }
 
     @Transactional
@@ -78,6 +81,8 @@ public class AccountService {
         LocalDateTime now = LocalDateTime.now(clock);
         passwordResetTokens.markAllUsedFor(user, now);
         emailVerificationTokens.markAllUsedFor(user, now);
+        // A changed password signs out every mobile device holding an API token.
+        apiTokens.revokeAllFor(user);
         authEvents.record(user, user.getEmail(), AuthEventType.PASSWORD_CHANGED,
                 ClientIp.fromCurrentRequest());
         return PasswordChangeOutcome.OK;

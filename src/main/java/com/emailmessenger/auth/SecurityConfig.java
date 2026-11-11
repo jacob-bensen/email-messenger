@@ -4,7 +4,12 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,7 +19,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 import javax.sql.DataSource;
+import java.io.IOException;
 
 @Configuration
 class SecurityConfig {
@@ -44,7 +52,51 @@ class SecurityConfig {
         return repo;
     }
 
+    /**
+     * The mobile REST API. Stateless and bearer-token only: no session, no
+     * cookies, no redirects to the login page. CSRF protection is off here
+     * because nothing on this chain authenticates from ambient browser
+     * credentials — a cross-site request can't attach the Authorization header.
+     */
     @Bean
+    @Order(1)
+    SecurityFilterChain apiSecurityFilterChain(HttpSecurity http,
+                                               ApiTokenService apiTokenService) throws Exception {
+        http
+                .securityMatcher("/api/**")
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .requestCache(cache -> cache.disable())
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint((request, response, ex) -> writeApiError(
+                                response, HttpStatus.UNAUTHORIZED, "unauthorized",
+                                "Sign in to continue."))
+                        .accessDeniedHandler((request, response, ex) -> writeApiError(
+                                response, HttpStatus.FORBIDDEN, "forbidden",
+                                "You don't have access to that."))
+                )
+                .addFilterBefore(new ApiTokenAuthenticationFilter(apiTokenService),
+                        UsernamePasswordAuthenticationFilter.class);
+        return http.build();
+    }
+
+    // Same envelope as com.emailmessenger.api.ApiError; written by hand because
+    // these failures happen in the filter chain, before any controller advice.
+    private static void writeApiError(HttpServletResponse response, HttpStatus status,
+                                      String code, String message) throws IOException {
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write(
+                "{\"error\":{\"code\":\"" + code + "\",\"message\":\"" + message + "\"}}");
+    }
+
+    @Bean
+    @Order(2)
     SecurityFilterChain securityFilterChain(HttpSecurity http,
                                             PersistentTokenRepository tokenRepository,
                                             PlanCheckoutSuccessHandler planCheckoutSuccessHandler,

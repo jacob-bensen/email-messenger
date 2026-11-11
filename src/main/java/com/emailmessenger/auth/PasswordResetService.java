@@ -68,6 +68,7 @@ public class PasswordResetService {
     private final SiteProperties site;
     private final AuthEventService authEvents;
     private final Clock clock;
+    private final ApiTokenService apiTokens;
     private final SecureRandom random = new SecureRandom();
 
     @Value("${spring.mail.username:noreply@conexusmail.com}")
@@ -79,7 +80,8 @@ public class PasswordResetService {
                          JavaMailSender mailSender,
                          SiteProperties site,
                          AuthEventService authEvents,
-                         Clock clock) {
+                         Clock clock,
+                         ApiTokenService apiTokens) {
         this.users = users;
         this.tokens = tokens;
         this.passwordEncoder = passwordEncoder;
@@ -87,6 +89,7 @@ public class PasswordResetService {
         this.site = site;
         this.authEvents = authEvents;
         this.clock = clock;
+        this.apiTokens = apiTokens;
     }
 
     /**
@@ -193,6 +196,8 @@ public class PasswordResetService {
         user.setPasswordSet(true);
         users.save(user);
         tokens.markAllUsedFor(user, now);
+        // A changed password signs out every mobile device holding an API token.
+        apiTokens.revokeAllFor(user);
         authEvents.record(user, user.getEmail(), AuthEventType.PASSWORD_RESET_COMPLETED,
                 ClientIp.fromCurrentRequest());
         return Optional.of(user);
