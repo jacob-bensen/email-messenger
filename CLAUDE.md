@@ -9,12 +9,39 @@ Working SaaS ("ConexusMail"): auth (form + Google OIDC), Stripe billing
 (Free/Pro/Business), multi-account mailbox connect (IMAP password + Gmail
 OAuth), polling import with sent-folder sync, the texting-style /chats
 workspace keyed by participant-set conversationKey, teams, saved searches,
-digests, admin metrics, and a PWA shell. See the roadmap below for what's
-next.
+digests, admin metrics, and a PWA shell. Since 2026-11-11 it also serves the
+first slice of a JSON REST API under `/api/v1` (bearer-token login, `/me`,
+chats list) for the Flutter client in the sibling `conexus-mail-mobile`
+repo. See the roadmap below for what's next.
+
+## Related repositories
+
+| Repo | Role |
+|---|---|
+| `email-messenger` (this one) | BACKEND. Authoritative for all state and business rules. Serves the Thymeleaf website and the REST API. |
+| `conexus-mail-mobile` | FRONTEND. Flutter mobile client. Calls only `/api/v1/**`; its `lib/domain/` mirrors server rules and never overrides them. |
+
+Docs and who owns what:
+
+| File | Role |
+|---|---|
+| `docs/API.md` (here) | **Canonical API contract.** Both repos must match it. Change it first, then the server (`com.emailmessenger.api`) and the client (`lib/data/` in the mobile repo) in the same run. |
+| `docs/BACKEND.md` (here) | Architecture: packages, auth model, schema overview, how web pages and the API share services. |
+| `docs/WEB.md` (here) | Thymeleaf page inventory: routes, templates, services, fragments. |
+| `docs/DESIGN.md` (mobile repo) | Product/app design and the mobile §ROADMAP. |
+| `docs/MOBILE.md` (mobile repo) | Client architecture. |
+| `CHANGELOG.md`, `INTERNAL_TODO.md` (both repos) | Dated log of changes; running list of gaps and tech debt. |
+
+`master/` at the repo root holds planning files from an earlier automation
+(`PLAN.md`, `BACKLOG.md`, a very large `CHANGELOG.md`). They are historical —
+parts are out of date (product name, pricing) — and are not maintained; use
+the files above.
 
 ## Tech stack (target)
 
 - Java 21 (LTS)
+- Persistence is Spring Data JPA / Hibernate (there is no jOOQ and no
+  codegen step)
 - Spring Boot 3.x — `spring-boot-starter-web`, `-thymeleaf`, `-data-jpa`,
   `-validation`, `-mail`
 - PostgreSQL 16 in production and local dev, H2 for tests. Same setup as
@@ -30,8 +57,11 @@ next.
 
 ## Commands
 
-These will work once the Maven project is scaffolded; until then they fail.
+`./mvnw` needs to download Maven on first use; where that's blocked (e.g.
+sandboxed cloud sessions) use a system `mvn` with the same arguments.
 
+- Full gate: `mvn -q -B verify` (the Testcontainers test is skipped without
+  Docker)
 - Build: `./mvnw clean package`
 - Run locally (needs local Postgres, see `db/init.sql`):
   `JDBC_DATABASE_PASSWORD=... ./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
@@ -47,7 +77,8 @@ com.emailmessenger
 ├── service/      # email parsing, IM transform, threading
 ├── domain/       # JPA entities
 ├── repository/   # Spring Data repositories
-└── email/        # IMAP / mailbox integration
+├── email/        # IMAP / mailbox integration
+└── api/          # REST controllers + DTO records for /api/v1 (no business rules)
 src/main/resources/
 ├── templates/    # Thymeleaf views
 ├── static/       # CSS, JS
@@ -149,6 +180,12 @@ commit. Add follow-ups as they emerge.
   *why*.
 - No backwards-compatibility shims while the project is pre-1.0; change
   call sites directly.
+- REST API: `docs/API.md` is updated before the code. API controllers live
+  in `com.emailmessenger.api`, stay thin, and call the same services the
+  Thymeleaf controllers do — a rule needed by both must live in a service
+  (or a shared helper like `web.MailboxScope`), never in a controller or
+  template. Errors use the JSON envelope from `ApiExceptionHandler`.
+  Timestamps go out as UTC instants via `ApiTime`.
 
 ## Working agreement for the routine
 
