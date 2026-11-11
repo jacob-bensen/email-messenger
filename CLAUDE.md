@@ -12,6 +12,29 @@ workspace keyed by participant-set conversationKey, teams, saved searches,
 digests, admin metrics, and a PWA shell. See the roadmap below for what's
 next.
 
+## Related repositories
+
+- **`jacob-bensen/conexus-mail-mobile`** — the Flutter mobile client. It is a
+  consumer of this backend and currently contains docs only.
+- This repo is the backend: it owns persistence, business rules, the website,
+  and (once built) the REST API the mobile client calls.
+
+Docs and their roles:
+
+| File | Role |
+| --- | --- |
+| `docs/API.md` | The canonical API contract. Both repos depend on it; update it before changing either side. |
+| `docs/BACKEND.md` | Architecture, data model, business rules, auth model. |
+| `docs/WEB.md` | Thymeleaf page inventory: routes, templates, services, fragments. |
+| `INTERNAL_TODO.md` | Sync-audit findings and deferred work, by severity. |
+| `CHANGELOG.md` | One entry per sync run. Older history is in `master/CHANGELOG.md`. |
+| `conexus-mail-mobile/docs/DESIGN.md` | Product design and the mobile roadmap. |
+| `conexus-mail-mobile/docs/MOBILE.md` | Client architecture. |
+
+Persistence is Spring Data JPA, not jOOQ — there is no codegen step. Web pages
+and API endpoints must share the service layer; do not put business logic in
+controllers or templates.
+
 ## Tech stack (target)
 
 - Java 21 (LTS)
