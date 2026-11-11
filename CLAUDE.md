@@ -9,10 +9,32 @@ Working SaaS ("ConexusMail"): auth (form + Google OIDC), Stripe billing
 (Free/Pro/Business), multi-account mailbox connect (IMAP password + Gmail
 OAuth), polling import with sent-folder sync, the texting-style /chats
 workspace keyed by participant-set conversationKey, teams, saved searches,
-digests, admin metrics, and a PWA shell. See the roadmap below for what's
-next.
+digests, admin metrics, a PWA shell, and a first JSON API for the mobile
+client (`/api/v1`: token login + read-only conversations). See the roadmap
+below for what's next.
 
-## Tech stack (target)
+## Related repositories
+
+- **This repo (`email-messenger`) — BACKEND.** Owns the REST API, the
+  Thymeleaf website, persistence, and all authoritative business logic.
+  - `docs/API.md` — **the canonical API contract.** Both repos depend on
+    it. Change it first, then server and client in the same run.
+  - `docs/BACKEND.md` — architecture, schema overview, auth model.
+  - `docs/WEB.md` — Thymeleaf page inventory and fragments.
+  - `CHANGELOG.md` — dated entry per run. `INTERNAL_TODO.md` — known gaps
+    and web↔API drift risks, severity-ordered.
+- **`conexus-mail-mobile` — FRONTEND.** Flutter client (sibling checkout
+  at `../conexus-mail-mobile`). Its `docs/DESIGN.md` is the product/app
+  source of truth (with §ROADMAP); `docs/MOBILE.md` covers client
+  architecture. Its `lib/domain/` mirrors server rules; its `lib/data/`
+  must match `docs/API.md` field for field.
+
+Rules that span both: the server is authoritative; website controllers and
+`com.emailmessenger.api` controllers must call the same services (never
+fork business logic into a controller, DTO, or template); never change an
+endpoint without updating `docs/API.md` and both implementations together.
+
+## Tech stack
 
 - Java 21 (LTS)
 - Spring Boot 3.x — `spring-boot-starter-web`, `-thymeleaf`, `-data-jpa`,
@@ -23,6 +45,10 @@ next.
   `application-local.yml` (`local` profile) points at
   `localhost:5432/email_messenger`, and `db/init.sql` bootstraps the
   database + app user. Tests use H2 via `src/test/resources/application.yml`.
+- Persistence is Spring Data JPA / Hibernate (`ddl-auto: validate` against
+  the Flyway schema). There is no jOOQ and no codegen step.
+- Spring Security: session chain for the website, stateless bearer-token
+  chain for `/api/**` (see `docs/BACKEND.md`)
 - Thymeleaf for server-rendered views
 - Maven (with wrapper) for build
 - JUnit 5 + Spring Boot Test, Testcontainers for integration tests
@@ -30,19 +56,23 @@ next.
 
 ## Commands
 
-These will work once the Maven project is scaffolded; until then they fail.
-
 - Build: `./mvnw clean package`
 - Run locally (needs local Postgres, see `db/init.sql`):
   `JDBC_DATABASE_PASSWORD=... ./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 - Test: `./mvnw test`
 - Single test: `./mvnw test -Dtest=ClassName#method`
+- Full gate: `./mvnw -q -B verify`. Testcontainers tests skip themselves
+  when Docker is unavailable.
 
-## Target package layout
+## Package layout
+
+Core packages (see `docs/BACKEND.md` for the full list):
 
 ```
 com.emailmessenger
 ├── EmailMessengerApplication.java
+├── api/          # /api/v1 REST controllers + DTOs (contract: docs/API.md)
+├── auth/         # users, login, both security filter chains, API tokens
 ├── web/          # Thymeleaf controllers, form objects
 ├── service/      # email parsing, IM transform, threading
 ├── domain/       # JPA entities

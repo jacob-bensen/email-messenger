@@ -20,7 +20,7 @@ import java.util.Locale;
  * is handed to the template.
  */
 @Service
-class ChatService {
+public class ChatService {
 
     private final EmailThreadRepository threads;
     private final ConversationService conversationService;
@@ -35,7 +35,7 @@ class ChatService {
     }
 
     @Transactional(readOnly = true)
-    ChatConversation buildFor(User owner, String conversationKey) {
+    public ChatConversation buildFor(User owner, String conversationKey) {
         if (conversationKey == null || conversationKey.isBlank()) {
             return null;
         }
@@ -54,7 +54,7 @@ class ChatService {
      * correspondent reached through another account.
      */
     @Transactional(readOnly = true)
-    ChatConversation buildFor(User owner, String mailboxAddress, String conversationKey) {
+    public ChatConversation buildFor(User owner, String mailboxAddress, String conversationKey) {
         if (conversationKey == null || conversationKey.isBlank()) {
             return null;
         }
@@ -74,7 +74,7 @@ class ChatService {
      * No-op when nothing is unread.
      */
     @Transactional
-    void markRead(User owner, String mailboxAddress, String conversationKey) {
+    public void markRead(User owner, String mailboxAddress, String conversationKey) {
         if (conversationKey == null || conversationKey.isBlank()) {
             return;
         }

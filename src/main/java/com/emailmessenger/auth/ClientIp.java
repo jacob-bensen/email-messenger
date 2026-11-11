@@ -11,11 +11,11 @@ import org.springframework.web.context.request.ServletRequestAttributes;
  * rather than 127.0.0.1. Falls back to {@code remoteAddr} for direct
  * connections and tests.
  */
-final class ClientIp {
+public final class ClientIp {
 
     private ClientIp() {}
 
-    static String from(HttpServletRequest request) {
+    public static String from(HttpServletRequest request) {
         if (request == null) {
             return null;
         }
