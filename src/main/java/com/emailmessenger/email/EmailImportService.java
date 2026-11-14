@@ -51,6 +51,7 @@ public class EmailImportService {
      * Thread assignment follows RFC 5322: References newest-first, then In-Reply-To, then
      * rootMessageId lookup — all scoped to the owner so threads never cross tenants.
      */
+    @Transactional
     public Optional<Message> importMessage(MimeMessage mimeMessage, User owner) {
         return importMessage(mimeMessage, owner, false);
     }

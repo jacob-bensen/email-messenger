@@ -10,7 +10,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -52,6 +53,7 @@ public class MailboxPollingService {
     private final PollingPolicy pollingPolicy;
     private final Clock clock;
     private final ApplicationEventPublisher eventPublisher;
+    private final TransactionTemplate transactions;
 
     MailboxPollingService(MailAccountRepository accounts,
                           ImapClient imapClient,
@@ -60,7 +62,8 @@ public class MailboxPollingService {
                           PlanLimitService planLimitService,
                           PollingPolicy pollingPolicy,
                           Clock clock,
-                          ApplicationEventPublisher eventPublisher) {
+                          ApplicationEventPublisher eventPublisher,
+                          PlatformTransactionManager transactionManager) {
         this.accounts = accounts;
         this.imapClient = imapClient;
         this.credentialsResolver = credentialsResolver;
@@ -69,6 +72,7 @@ public class MailboxPollingService {
         this.pollingPolicy = pollingPolicy;
         this.clock = clock;
         this.eventPublisher = eventPublisher;
+        this.transactions = new TransactionTemplate(transactionManager);
     }
 
     public void pollAll() {
@@ -134,8 +138,19 @@ public class MailboxPollingService {
         return imported;
     }
 
-    @Transactional
+    /**
+     * Runs through a {@link TransactionTemplate} rather than
+     * {@code @Transactional}: the scheduler, on-open and heartbeat loops in
+     * this class call it on {@code this}, which bypasses the annotation proxy
+     * and left the poll without a session (lazy {@code account.getUser()}
+     * failed and the UID cursor was never saved).
+     */
     public int pollOne(Long accountId) {
+        Integer imported = transactions.execute(status -> pollOneInTransaction(accountId));
+        return imported == null ? 0 : imported;
+    }
+
+    private int pollOneInTransaction(Long accountId) {
         MailAccount account = accounts.findById(accountId).orElse(null);
         if (account == null) return 0;
 

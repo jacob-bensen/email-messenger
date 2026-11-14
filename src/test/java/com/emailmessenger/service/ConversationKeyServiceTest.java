@@ -99,4 +99,20 @@ class ConversationKeyServiceTest {
 
         assertThat(svc.compute(t, OWNER)).isEqualTo(svc.keyFor(List.of(), OWNER)).isNotBlank();
     }
+
+    // Golden vectors shared with the mobile client's
+    // test/domain/conversation_key_test.dart (docs/API.md, "Shared rules").
+    // If one side changes, both must.
+    @Test
+    void goldenVectorsMatchTheMobileClientMirror() {
+        Set<String> me = Set.of("me@example.com");
+
+        assertThat(svc.keyFor(List.of("ada@acme.com"), me))
+                .isEqualTo("154e1e0a1872533ddf397a16e5a65dcf");
+        assertThat(svc.keyFor(
+                List.of(" Bob@Acme.com", "ada@acme.com", "ME@example.com", "ADA@ACME.COM "), me))
+                .isEqualTo("487b97fee6493a379888b62e3969cb14");
+        assertThat(svc.keyFor(List.of("me@example.com", "  "), me))
+                .isEqualTo("95270985d1d4b88724c13887a7794ec3");
+    }
 }
