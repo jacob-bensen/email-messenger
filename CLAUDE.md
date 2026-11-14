@@ -12,25 +12,48 @@ workspace keyed by participant-set conversationKey, teams, saved searches,
 digests, admin metrics, and a PWA shell. See the roadmap below for what's
 next.
 
-## Tech stack (target)
+## Related repositories
+
+- **`email-messenger`** (this repo) — BACKEND: REST API (not built yet),
+  Thymeleaf website, persistence, all authoritative business rules.
+- **`conexus-mail-mobile`** — FRONTEND: Flutter client. Its `lib/domain/`
+  mirrors rules defined here.
+
+Docs and their roles:
+
+| File | Repo | Role |
+|---|---|---|
+| `docs/API.md` | backend | Canonical API contract; both repos follow it. Update it before code. |
+| `docs/BACKEND.md` | backend | Architecture, schema overview, auth model |
+| `docs/WEB.md` | backend | Thymeleaf page inventory and fragments |
+| `docs/DESIGN.md` | mobile | Product design + §ROADMAP for the app |
+| `docs/MOBILE.md` | mobile | Client architecture |
+| `CHANGELOG.md`, `INTERNAL_TODO.md` | both | Dated run log; known gaps by severity |
+
+Rules mirrored in the mobile client (change both sides together, see
+`docs/API.md` §4): conversation key, conversation title/initials, plan limits.
+
+## Tech stack
 
 - Java 21 (LTS)
-- Spring Boot 3.x — `spring-boot-starter-web`, `-thymeleaf`, `-data-jpa`,
-  `-validation`, `-mail`
-- PostgreSQL 16 in production and local dev, H2 for tests. Same setup as
-  tax-tracker: base `application.yml` reads `JDBC_DATABASE_URL` /
+- Spring Boot 3.5 — web, thymeleaf, data-jpa, validation, mail, security,
+  oauth2-client, actuator
+- Persistence is Spring Data JPA / Hibernate (`ddl-auto: validate`); there
+  is no jOOQ and no codegen step.
+- PostgreSQL 16 in production and local dev, H2 for tests. Base
+  `application.yml` reads `JDBC_DATABASE_URL` /
   `JDBC_DATABASE_USERNAME` / `JDBC_DATABASE_PASSWORD` env vars,
-  `application-local.yml` (`local` profile) points at
+  `application-local.yml` (`local` profile, the only profile) points at
   `localhost:5432/email_messenger`, and `db/init.sql` bootstraps the
   database + app user. Tests use H2 via `src/test/resources/application.yml`.
 - Thymeleaf for server-rendered views
 - Maven (with wrapper) for build
-- JUnit 5 + Spring Boot Test, Testcontainers for integration tests
-- Flyway for schema migrations
+- JUnit 5 + Spring Boot Test; one Testcontainers + GreenMail test that needs
+  Docker
+- Flyway for schema migrations (latest: V35)
+- Stripe (`stripe-java`), Jakarta Mail, jsoup
 
 ## Commands
-
-These will work once the Maven project is scaffolded; until then they fail.
 
 - Build: `./mvnw clean package`
 - Run locally (needs local Postgres, see `db/init.sql`):
@@ -38,7 +61,7 @@ These will work once the Maven project is scaffolded; until then they fail.
 - Test: `./mvnw test`
 - Single test: `./mvnw test -Dtest=ClassName#method`
 
-## Target package layout
+## Package layout
 
 ```
 com.emailmessenger
@@ -55,7 +78,7 @@ src/main/resources/
 └── application.yml
 ```
 
-## Domain model (planned)
+## Domain model
 
 - `EmailThread` — groups messages by `Message-ID` / `In-Reply-To` chain.
 - `Message` — one email: sender, recipients, plain + html body, sent-at,
