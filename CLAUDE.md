@@ -3,6 +3,28 @@
 Spring Boot web app that transforms emails into a modern instant-message-style
 conversation view.
 
+## Related repositories
+
+- **`email-messenger`** (this repo) — BACKEND: Spring Boot app that owns the
+  REST API for the mobile client (`/api/v1`), the Thymeleaf website,
+  persistence and all authoritative business rules.
+- **`conexus-mail-mobile`** — FRONTEND: Flutter (Android + iOS) client. Its
+  `lib/domain/` mirrors server rules listed in `docs/API.md` §4.
+
+| File | Repo | Role |
+|---|---|---|
+| `docs/API.md` | backend | Canonical API contract; change it first, then both sides |
+| `docs/BACKEND.md` | backend | Server architecture, packages, schema, auth chains |
+| `docs/WEB.md` | backend | Website page inventory and the services each page uses |
+| `docs/DESIGN.md` | mobile | Product design + §ROADMAP for API/mobile features |
+| `docs/MOBILE.md` | mobile | Client architecture |
+| `CHANGELOG.md`, `INTERNAL_TODO.md` | both | Dated run log; known gaps by severity |
+
+Website and API controllers must go through the same service layer; never
+fork a rule between them. Golden conversation-key vectors are asserted in
+both `ConversationKeyServiceTest` and the mobile
+`test/domain/conversation_key_test.dart`.
+
 ## Current status
 
 Working SaaS ("ConexusMail"): auth (form + Google OIDC), Stripe billing
@@ -14,7 +36,7 @@ next.
 
 ## Tech stack (target)
 
-- Java 21 (LTS)
+- Java 21 (LTS). Persistence is Spring Data JPA (not jOOQ); no codegen step.
 - Spring Boot 3.x — `spring-boot-starter-web`, `-thymeleaf`, `-data-jpa`,
   `-validation`, `-mail`
 - PostgreSQL 16 in production and local dev, H2 for tests. Same setup as
@@ -43,6 +65,7 @@ These will work once the Maven project is scaffolded; until then they fail.
 ```
 com.emailmessenger
 ├── EmailMessengerApplication.java
+├── api/          # mobile REST API (/api/**): bearer-token chain, JSON DTOs
 ├── web/          # Thymeleaf controllers, form objects
 ├── service/      # email parsing, IM transform, threading
 ├── domain/       # JPA entities
@@ -108,6 +131,10 @@ commit. Add follow-ups as they emerge.
       `fragments/live-refresh.html`) replacing the reload-on-new-mail
       behavior. Not yet verified against a real IMAP server that supports
       IDLE — do that when next running locally with a connected mailbox.
+- [x] Mobile API foundation (added + done 2026-11-15): `/api/**` stateless
+      bearer-token chain, `POST /api/v1/auth/login|logout`, `GET /api/v1/me`,
+      JSON error envelope, V36 `api_tokens`. Further API work is tracked in
+      the mobile repo's `docs/DESIGN.md` §ROADMAP; contract in `docs/API.md`.
 - [ ] Live delivery, part 2: Web Push through the existing PWA service
       worker — VAPID keys, push-subscription storage, notification opt-in on
       /account/notifications, per-conversation "Ada: message preview"
