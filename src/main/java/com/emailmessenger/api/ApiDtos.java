@@ -3,13 +3,21 @@ package com.emailmessenger.api;
 import com.emailmessenger.billing.PlanLimits;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
+import com.emailmessenger.domain.Attachment;
+import com.emailmessenger.service.BubbleMessage;
+import com.emailmessenger.service.BubbleText;
+import com.emailmessenger.service.ChatConversation;
+import com.emailmessenger.service.ChatMember;
 import com.emailmessenger.service.ConversationListItem;
+import com.emailmessenger.service.SenderBubbleRun;
+import com.emailmessenger.service.SenderView;
 import com.emailmessenger.web.ConversationListService;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.data.domain.Page;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
@@ -65,11 +73,75 @@ final class ApiDtos {
         static ConversationRow of(ConversationListItem item) {
             return new ConversationRow(item.key(), item.title(), item.initials(), item.group(),
                     item.memberCount(), item.preview() == null ? "" : item.preview(),
-                    item.lastActivity() == null ? null : item.lastActivity().toInstant(ZoneOffset.UTC),
+                    utc(item.lastActivity()),
                     item.unread(), item.threadCount(),
                     item.accounts() == null ? List.of() : item.accounts(), item.senderEmail());
         }
     }
 
     record CountsResponse(long all, long unread, long awaiting, long attachments) {}
+
+    record ConversationDetail(String key, String title, String initials, boolean group, long threadCount,
+                              List<MemberResponse> members, List<RunResponse> runs) {
+
+        static ConversationDetail of(ChatConversation chat) {
+            return new ConversationDetail(chat.key(), chat.title(), chat.initials(), chat.isGroup(),
+                    chat.threadCount(), chat.members().stream().map(MemberResponse::of).toList(),
+                    chat.runs().stream().map(RunResponse::of).toList());
+        }
+    }
+
+    record MemberResponse(String email, String displayName, String initials, String label) {
+
+        static MemberResponse of(ChatMember member) {
+            return new MemberResponse(member.email(), blankToNull(member.displayName()),
+                    member.initials(), member.label());
+        }
+    }
+
+    record RunResponse(boolean outbound, SenderResponse sender, ThreadResponse thread,
+                       List<MessageResponse> messages) {
+
+        static RunResponse of(SenderBubbleRun run) {
+            return new RunResponse(run.outbound(), SenderResponse.of(run.sender()),
+                    new ThreadResponse(run.thread().threadId(), run.thread().subject()),
+                    run.messages().stream().map(MessageResponse::of).toList());
+        }
+    }
+
+    record SenderResponse(String email, String displayName, String initials) {
+
+        static SenderResponse of(SenderView sender) {
+            return new SenderResponse(sender.email(), blankToNull(sender.displayName()), sender.initials());
+        }
+    }
+
+    record ThreadResponse(long id, String subject) {}
+
+    record MessageResponse(long id, Instant sentAt, String bodyHtml, String bodyText, Long replyToId,
+                           List<AttachmentResponse> attachments) {
+
+        static MessageResponse of(BubbleMessage message) {
+            String html = message.bodyHtml() == null ? "" : message.bodyHtml();
+            return new MessageResponse(message.messageId(), utc(message.sentAt()), html, BubbleText.of(html),
+                    message.replyToMessageId(),
+                    message.attachments().stream().map(AttachmentResponse::of).toList());
+        }
+    }
+
+    record AttachmentResponse(String filename, String mimeType, Long sizeBytes) {
+
+        static AttachmentResponse of(Attachment attachment) {
+            return new AttachmentResponse(attachment.getFilename(), attachment.getMimeType(),
+                    attachment.getSizeBytes());
+        }
+    }
+
+    private static Instant utc(LocalDateTime value) {
+        return value == null ? null : value.toInstant(ZoneOffset.UTC);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
+    }
 }

@@ -7,9 +7,9 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **API covers auth + conversation list only.** One conversation,
-      mark read, send and mailboxes are not exposed (`docs/API.md` §6).
-      Next: conversation view (bubble runs + mark read).
+- [ ] **API covers auth, conversation list, one conversation and mark
+      read.** Send and mailboxes are not exposed (`docs/API.md` §6).
+      Next: reply / new message (needs the send-flow extraction below).
 - [ ] **No mailbox list endpoint**, so the app cannot offer the
       `mailboxId` scope that `GET /api/v1/conversations` accepts.
 - [ ] **Stale branches.** Hundreds of unmerged `claude/gifted-carson-*`
@@ -17,17 +17,18 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       (2026-11-16); the others are superseded and can be deleted by the
       owner. Two of them (`xg109u`, `7vfcku`) carry an alternate docs
       bootstrap that was not merged.
-- [ ] **Chat services are not reachable from an API controller.**
-      `ChatService` and `OutboundMessageService` are package-private in
-      `web/`, and the send flow (recipient parsing, sending-account choice,
+- [ ] **Send flow is not reachable from an API controller.**
+      `ChatService` is now public (shared with `/api/v1`), but
+      `OutboundMessageService` is package-private in `web/`, and the send flow (recipient parsing, sending-account choice,
       signature append, reply-vs-new, default subject) is private code in
       `ConversationController`. Extract a public send/conversation service
       and have the web controller call it, so web and API share one path.
 - [ ] **View models leak JPA entities.** `BubbleMessage.attachments` is
-      `List<Attachment>` and `Conversation.thread` is an `EmailThread`;
-      the API needs DTO records.
+      `List<Attachment>` and `Conversation.thread` is an `EmailThread`.
+      The API maps them to DTO records in `ApiDtos` (§5.6), so this is now
+      website-only tech debt.
 - [ ] **Timestamps are zone-less.** `LocalDateTime` values are UTC by
-      convention only; the API must emit explicit UTC instants.
+      convention only; `ApiDtos` converts them with `ZoneOffset.UTC`.
 - [ ] **Live events carry only a count** (`{"imported":N}`), so any client
       must refetch the whole list.
 
@@ -57,6 +58,11 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **Time zones.** Entity `@PrePersist` stamps and
       `MailAccount.markSynced()` use the JVM default zone while `Clock` and
       `sent_at` are UTC; correct only when the JVM runs in UTC.
+- [ ] **Group bubble runs merge senders.** `ConversationService.buildRuns`
+      splits runs on thread or side only, so two different people replying
+      back to back in one group thread share a run labelled with the first
+      sender (website and `GET /api/v1/conversations/{key}` alike). Split on
+      sender too, in both renderers.
 - [ ] `participants` is global across users; display name is first-writer-
       wins, so one user's sender name shows for another.
 - [ ] `Message.messageIdHeader` is annotated `unique = true` but V3 dropped
@@ -85,7 +91,10 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       send or `/chats/refresh`. No Content-Security-Policy.
 - [ ] `ChatEventStream` is in-memory: single instance only.
 - [ ] Search is `LIKE '%q%'` with no full-text index; a conversation loads
-      all its messages with no pagination.
+      all its messages with no pagination (`GET /api/v1/conversations/{key}`
+      returns the whole timeline too).
+- [ ] `GET /api/v1/conversations/{key}` omits the members' signatures
+      (`ChatMember.signatureHtml`) — the app has no signature panel yet.
 
 ## 4. Missing tests
 

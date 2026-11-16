@@ -95,8 +95,11 @@ Global model attributes: `NavModelAdvice` (`navActive`, `htmlTheme`,
 `SiteModelAdvice` (`siteBaseUrl`, `oauthGoogleEnabled`).
 
 ## Relationship to the REST API
-There is no REST API yet (`docs/API.md` §1). When `/api/v1` is built, its
-controllers must call the same services these pages call. Today some rules
-live in web controllers rather than services — most importantly the whole
-send flow in `ConversationController` — and must be extracted before an API
-controller can share them. The list is in `INTERNAL_TODO.md`.
+`/api/v1` (`docs/API.md` §5) calls the same services these pages call:
+`GET /api/v1/conversations` → `ConversationListService` (as `/chats`),
+`GET /api/v1/conversations/{key}` → `ChatService.buildFor` and
+`POST /api/v1/conversations/{key}/read` → `ChatService.markRead` (as
+`/chats/{key}`, which does both in one GET). Some rules still live in web
+controllers rather than services — most importantly the whole send flow in
+`ConversationController` — and must be extracted before an API controller
+can share them. The list is in `INTERNAL_TODO.md`.

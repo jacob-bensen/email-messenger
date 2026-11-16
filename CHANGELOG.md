@@ -3,6 +3,30 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-16 (c) — Conversation view API (M1)
+
+- New `GET /api/v1/conversations/{key}` (`docs/API.md` §5.6): one
+  conversation's members and chronological bubble runs (side, sender,
+  thread, messages with `bodyHtml`, a server-derived `bodyText`,
+  `replyToId` and attachment metadata). Read-only.
+- New `POST /api/v1/conversations/{key}/read` (§5.7): `204`, idempotent.
+  Both accept the same `mailboxId` scope as the list; unknown or another
+  user's key is `404 not_found`.
+- Both go through `web.ChatService` — the same `buildFor` / `markRead` the
+  website's `/chats/{key}` uses. `ChatService` is now public; its scoped
+  `buildFor` treats a null mailbox as unscoped (so `ConversationController`
+  lost its branch), and `markRead` reports whether the conversation exists.
+- New `service.BubbleText`: plain text of a bubble's HTML that keeps line
+  breaks, for clients that do not render HTML.
+- `ApiConversationService`: the user lookup and mailbox-scope resolution
+  are shared by list, get and mark read.
+- Branching: this run committed to the session branch
+  `claude/gifted-carson-wv91t1` (the environment allows pushes only
+  there), not `master`; the branch started from `master`'s head.
+- Tests: `ApiConversationIntegrationTest` +5 (timeline shape, mark read,
+  per-mailbox mark read, foreign/unknown key, auth), `BubbleTextTest` (3).
+  Full `./mvnw -B verify`: 830 run, 0 failures, 1 skipped (Docker-only).
+
 ## 2026-11-16 (b) — Conversation list API (M1) + branch consolidation
 
 - **Landed on `master`.** Every earlier routine run pushed to its own
