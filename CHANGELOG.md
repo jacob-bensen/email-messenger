@@ -3,6 +3,24 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-16 (b) — Conversation list API (M1) + branch consolidation
+
+- **Landed on `master`.** Every earlier routine run pushed to its own
+  `claude/gifted-carson-*` branch, so `master` never had the docs or
+  `/api/v1`. Fast-forwarded `master` to `gifted-carson-saaf8j` (docs, sync
+  audit, polling fix, `/api/v1` auth) after `./mvnw verify` passed (815
+  tests). From now on the routine commits to `master`.
+- New `GET /api/v1/conversations` (`docs/API.md` §5.5): paged
+  conversation list with `q`, `mailboxId`, `filter`, per-filter counts.
+  `ApiConversationService` / `ApiConversationController` call the same
+  `ConversationListService` as `/chats`.
+- Moved the filter parsing (`ChatFilter.parse`) and the "scope only with
+  more than one mailbox" rule (`ConversationListService.scopeAddress`) out
+  of `ConversationController` so web and API share them.
+- `/api` errors: a non-numeric query parameter is now
+  `400 validation_failed` (was `500`).
+- Tests: `ApiConversationIntegrationTest` (7). Full `./mvnw verify`: pass.
+
 ## 2026-11-16 — Mobile API foundation + sign in (M1)
 
 - New `/api/v1` for the mobile client (`com.emailmessenger.api`), contract in

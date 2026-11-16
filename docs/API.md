@@ -12,9 +12,9 @@ section is promoted to Implemented.
 
 ## 1. Current state (2026-11-16)
 
-`/api/v1` exists with its foundation only: bearer-token sign-in, sign-out
-and the current user (§5). Conversations, sending and mailboxes are not
-exposed yet (§6). The website's own machine endpoints (§3) still use the
+`/api/v1` exposes bearer-token sign-in, sign-out, the current user and the
+paged conversation list (§5). A single conversation, sending and mailboxes
+are not exposed yet (§6). The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
 ## 2. Authentication
@@ -175,7 +175,8 @@ the user, and may change. Clients branch on `code` only.
 
 | HTTP | `code` | When |
 |---|---|---|
-| 400 | `validation_failed` | Body missing, not JSON, or a required field blank |
+| 400 | `validation_failed` | Body missing, not JSON, a required field blank, or a query parameter out of range |
+| 404 | `not_found` | A referenced resource (e.g. `mailboxId`) is not the user's |
 | 401 | `unauthorized` | No/invalid/expired/revoked bearer token, or user disabled |
 | 401 | `invalid_credentials` | Login: wrong email or password (same for unknown email) |
 | 403 | `forbidden` | Authenticated but not allowed |
@@ -243,13 +244,79 @@ Bearer token required. The signed-in user.
 
 Errors: `401 unauthorized`.
 
+### 5.5 GET /api/v1/conversations
+Bearer token required. One page of the user's conversations (one row per
+person or group, §4 Conversation key), most recently active first, plus
+the per-filter counts for the same mailbox scope. The same
+`ConversationListService` query the website's `/chats` list uses; like the
+website, the request also kicks off a non-blocking refresh of mailboxes
+that are due for a sync (results show up on a later request).
+
+Query parameters (all optional):
+
+| Name | Type | Default | Rule |
+|---|---|---|---|
+| `page` | integer ≥ 0 | `0` | Zero-based page index |
+| `size` | integer 1–100 | `30` | Page size |
+| `q` | string | — | Free-text search; blank = none. Matches subject, body or a participant's name/address |
+| `mailboxId` | integer | — | Scope to one connected mailbox (an id the user owns). Omitted = all mailboxes merged |
+| `filter` | `all`, `unread`, `awaiting`, `attachments` (case-insensitive) | `all` | `unread`: has an unread thread. `awaiting`: latest message is inbound (you owe a reply). `attachments`: has an attachment |
+
+Scope rule (server-owned, same as the website): a `mailboxId` narrows the
+list only when the user has **more than one** connected mailbox; with a
+single mailbox every conversation belongs to it, so the list is unscoped.
+
+`200`:
+```json
+{
+  "items": [
+    {
+      "key": "154e1e0a1872533ddf397a16e5a65dcf",
+      "title": "Ada Lovelace",
+      "initials": "AL",
+      "group": false,
+      "memberCount": 1,
+      "preview": "You: sounds good, see you then",
+      "lastActivityAt": "2026-11-16T09:30:00Z",
+      "unread": true,
+      "threadCount": 2,
+      "accounts": ["work@acme.com"],
+      "senderEmail": "ada@acme.com"
+    }
+  ],
+  "page": 0,
+  "size": 30,
+  "totalItems": 1,
+  "hasNext": false,
+  "counts": { "all": 1, "unread": 1, "awaiting": 0, "attachments": 0 }
+}
+```
+- `key` (string): the conversation key (§4); stable id for later endpoints.
+- `title`, `initials` (string): §4 Conversation title and initials.
+- `group` (boolean): more than one non-owner member; `memberCount` (integer).
+- `preview` (string): latest message as one line of plain text, ≤ 120
+  chars plus `…`; prefixed `You: ` when you sent it; `""` when empty.
+- `lastActivityAt` (instant or `null`): when the latest message was sent.
+- `unread` (boolean): any thread in it is unread.
+- `threadCount` (integer ≥ 1): email threads merged into this conversation.
+- `accounts` (string[]): the user's own addresses this conversation came in
+  on. Filled only for the unscoped list; `[]` when scoped.
+- `senderEmail` (string or `null`): latest inbound sender, else the first
+  member's address.
+- `totalItems` (integer): rows matching `q` + `filter` in scope.
+- `counts` (object of integers): conversations in scope per filter,
+  ignoring `q` and `filter`.
+
+Errors: `400 validation_failed` (`page` < 0, `size` outside 1–100, a
+non-integer number, or an unknown `filter`); `404 not_found` (`mailboxId`
+is not one of the user's mailboxes); `401 unauthorized`.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Conversations: paged list (query, mailbox, filter
-   `ALL|UNREAD|AWAITING|ATTACHMENTS`, counts), one conversation with its
-   bubble runs, mark read.
+1. Conversations: one conversation with its bubble runs, mark read (the
+   list is §5.5).
 2. Send: reply into a conversation, start a new one.
 3. Mailboxes: list, connect (IMAP password), sync, remove.
 4. Account: device list / revoke other sessions.

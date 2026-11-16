@@ -7,12 +7,16 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **API covers auth only.** Conversations, send and mailboxes are
-      not exposed (`docs/API.md` §6). Next: conversation list.
-- [ ] **Branch sprawl.** Hundreds of unmerged `claude/gifted-carson-*`
-      branches each re-bootstrap docs or the API; work only accumulates if
-      a branch is merged. This run builds on `gifted-carson-h34fwb`
-      (matches the mobile repo's history).
+- [ ] **API covers auth + conversation list only.** One conversation,
+      mark read, send and mailboxes are not exposed (`docs/API.md` §6).
+      Next: conversation view (bubble runs + mark read).
+- [ ] **No mailbox list endpoint**, so the app cannot offer the
+      `mailboxId` scope that `GET /api/v1/conversations` accepts.
+- [ ] **Stale branches.** Hundreds of unmerged `claude/gifted-carson-*`
+      branches on origin. `master` now holds the consolidated work
+      (2026-11-16); the others are superseded and can be deleted by the
+      owner. Two of them (`xg109u`, `7vfcku`) carry an alternate docs
+      bootstrap that was not merged.
 - [ ] **Chat services are not reachable from an API controller.**
       `ChatService` and `OutboundMessageService` are package-private in
       `web/`, and the send flow (recipient parsing, sending-account choice,
@@ -61,6 +65,9 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 3. Security and operations
 
+- [ ] `GET /api/v1/conversations` (like `/chats`) fires an async mailbox
+      refresh on every request; a client polling the list triggers IMAP
+      work each time (bounded by the per-mailbox "due" check).
 - [ ] Expired `api_tokens` rows are never pruned (rejected, but kept).
       Add a cleanup to an existing daily job. No device list / "sign out
       other devices" UI on `/account` yet.

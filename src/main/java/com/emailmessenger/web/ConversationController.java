@@ -101,7 +101,8 @@ class ConversationController {
         // No mailbox param => the cross-account Dashboard (Hub); a param scopes to
         // that one account so its chats stay separate.
         MailAccount selected = selectMailbox(accounts, mailboxParam);
-        populateList(owner, accounts, selected, query, parseFilter(filterParam), page, model);
+        populateList(owner, accounts, selected, query, ConversationListService.ChatFilter.parse(filterParam)
+                .orElse(ConversationListService.ChatFilter.ALL), page, model);
         // No "chat" attribute => the workspace renders the list with an empty pane.
         return "chat";
     }
@@ -109,7 +110,7 @@ class ConversationController {
     /** The conversation list + dashboard model shared by the list and open-chat views. */
     private void populateList(User owner, List<MailAccount> accounts, MailAccount selected,
                               String query, ConversationListService.ChatFilter filter, int page, Model model) {
-        String scope = scopeAddress(selected, accounts);
+        String scope = ConversationListService.scopeAddress(selected, accounts);
         String trimmedQuery = query == null ? "" : query.trim();
         PageRequest pageable = PageRequest.of(Math.max(0, page), PAGE_SIZE);
         model.addAttribute("conversations",
@@ -123,17 +124,6 @@ class ConversationController {
         model.addAttribute("billingBanner", billingBannerService.bannerFor(owner).orElse(null));
         model.addAttribute("emailUnverified", !owner.isEmailVerified());
         applyMailboxModel(model, selected);
-    }
-
-    private static ConversationListService.ChatFilter parseFilter(String raw) {
-        if (raw != null) {
-            for (ConversationListService.ChatFilter f : ConversationListService.ChatFilter.values()) {
-                if (f.name().equalsIgnoreCase(raw.trim())) {
-                    return f;
-                }
-            }
-        }
-        return ConversationListService.ChatFilter.ALL;
     }
 
     /**
@@ -263,7 +253,7 @@ class ConversationController {
         mailboxPollingService.refreshDueForUserAsync(owner.getId());
         List<MailAccount> accounts = mailAccountService.list(owner);
         MailAccount selected = selectMailbox(accounts, mailboxParam);
-        String scope = scopeAddress(selected, accounts);
+        String scope = ConversationListService.scopeAddress(selected, accounts);
         // Opening a conversation marks it read (committed before the list/dashboard
         // below re-read unread state).
         chatService.markRead(owner, scope, key);
@@ -292,7 +282,7 @@ class ConversationController {
         User owner = userService.requireByEmail(principal.getName());
         List<MailAccount> accounts = mailAccountService.list(owner);
         MailAccount selected = selectMailbox(accounts, mailboxParam);
-        String scope = scopeAddress(selected, accounts);
+        String scope = ConversationListService.scopeAddress(selected, accounts);
         chatService.markRead(owner, scope, key);
         ChatConversation conversation = chatFor(owner, scope, key);
         if (conversation == null) {
@@ -338,7 +328,7 @@ class ConversationController {
             return "chat";
         }
 
-        ChatConversation conversation = chatFor(owner, scopeAddress(selected, accounts), key);
+        ChatConversation conversation = chatFor(owner, ConversationListService.scopeAddress(selected, accounts), key);
         if (conversation == null) {
             return "redirect:/chats" + mailboxQuery(selected);
         }
@@ -375,7 +365,7 @@ class ConversationController {
 
     private boolean populateChat(User owner, List<MailAccount> accounts, MailAccount selected,
                                  String key, Model model) {
-        ChatConversation conversation = chatFor(owner, scopeAddress(selected, accounts), key);
+        ChatConversation conversation = chatFor(owner, ConversationListService.scopeAddress(selected, accounts), key);
         if (conversation == null) {
             return false;
         }
@@ -389,17 +379,6 @@ class ConversationController {
         return scope != null
                 ? chatService.buildFor(owner, scope, key)
                 : chatService.buildFor(owner, key);
-    }
-
-    /**
-     * The address to scope conversation queries to, or {@code null} for the
-     * unscoped (all-conversations) view. Scoping only matters to SEPARATE
-     * multiple accounts — with a single connected mailbox every conversation
-     * belongs to it, so we don't scope. That also avoids dropping list/alias-
-     * delivered mail whose headers don't carry the mailbox address.
-     */
-    private static String scopeAddress(MailAccount selected, List<MailAccount> accounts) {
-        return (selected != null && accounts.size() > 1) ? address(selected) : null;
     }
 
     /**
@@ -464,10 +443,6 @@ class ConversationController {
         } catch (NumberFormatException e) {
             return null;
         }
-    }
-
-    private static String address(MailAccount account) {
-        return account.getUsername() == null ? "" : account.getUsername().trim().toLowerCase(Locale.ROOT);
     }
 
     private static String mailboxQuery(MailAccount selected) {

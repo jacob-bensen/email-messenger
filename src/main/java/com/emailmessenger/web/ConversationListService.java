@@ -1,5 +1,6 @@
 package com.emailmessenger.web;
 
+import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.RecipientType;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.OwnerAddressService;
@@ -21,6 +22,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -35,7 +37,21 @@ public class ConversationListService {
     private static final int PREVIEW_MAX = 120;
 
     /** Triage lenses for the Dashboard. */
-    public enum ChatFilter { ALL, UNREAD, AWAITING, ATTACHMENTS }
+    public enum ChatFilter {
+        ALL, UNREAD, AWAITING, ATTACHMENTS;
+
+        /** Case-insensitive name match; empty when {@code raw} names no filter. */
+        public static Optional<ChatFilter> parse(String raw) {
+            if (raw != null) {
+                for (ChatFilter f : values()) {
+                    if (f.name().equalsIgnoreCase(raw.trim())) {
+                        return Optional.of(f);
+                    }
+                }
+            }
+            return Optional.empty();
+        }
+    }
 
     /** Per-tile conversation counts for the current scope, shown on the Dashboard. */
     public record ChatCounts(long all, long unread, long awaiting, long attachments) {}
@@ -107,6 +123,20 @@ public class ConversationListService {
                 threads.countConversationsFiltered(owner, mbox, true, false, false),
                 threads.countConversationsFiltered(owner, mbox, false, false, true),
                 threads.countConversationsFiltered(owner, mbox, false, true, false));
+    }
+
+    /**
+     * The address to scope conversation queries to, or {@code null} for the
+     * unscoped (all-conversations) view. Scoping only matters to SEPARATE
+     * multiple accounts — with a single connected mailbox every conversation
+     * belongs to it, so we don't scope. That also avoids dropping list/alias-
+     * delivered mail whose headers don't carry the mailbox address.
+     */
+    public static String scopeAddress(MailAccount selected, List<MailAccount> accounts) {
+        if (selected == null || accounts.size() <= 1 || selected.getUsername() == null) {
+            return null;
+        }
+        return selected.getUsername().trim().toLowerCase(Locale.ROOT);
     }
 
     private static String blankToNull(String value, boolean lower) {
