@@ -8,6 +8,7 @@ import com.emailmessenger.domain.User;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -98,5 +99,29 @@ class ConversationKeyServiceTest {
         t.addMessage(out);
 
         assertThat(svc.compute(t, OWNER)).isEqualTo(svc.keyFor(List.of(), OWNER)).isNotBlank();
+    }
+
+    // Golden vectors shared with conexus-mail-mobile's
+    // test/domain/conversation_key_test.dart (docs/API.md §4.1). The mobile
+    // client predicts conversation keys with a Dart mirror of this service; if
+    // these values change, both sides and the contract must change together.
+    private static final Set<String> GOLDEN_OWNER = Set.of("me@example.com");
+
+    @Test
+    void goldenVectorOneCorrespondent() {
+        assertThat(svc.keyFor(List.of("ada@acme.com"), GOLDEN_OWNER))
+                .isEqualTo("154e1e0a1872533ddf397a16e5a65dcf");
+    }
+
+    @Test
+    void goldenVectorGroupIsNormalizedDedupedSortedOwnerRemoved() {
+        assertThat(svc.keyFor(List.of(" Bob@Acme.com", "ada@acme.com", "ME@example.com", "ADA@ACME.COM "), GOLDEN_OWNER))
+                .isEqualTo("487b97fee6493a379888b62e3969cb14");
+    }
+
+    @Test
+    void goldenVectorOwnerOnlyUsesSelfSentinel() {
+        assertThat(svc.keyFor(Arrays.asList("me@example.com", "  ", null), GOLDEN_OWNER))
+                .isEqualTo("95270985d1d4b88724c13887a7794ec3");
     }
 }
