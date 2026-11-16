@@ -13,8 +13,8 @@ section is promoted to Implemented.
 ## 1. Current state (2026-11-16)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user and the
-paged conversation list (§5). A single conversation, sending and mailboxes
-are not exposed yet (§6). The website's own machine endpoints (§3) still use the
+paged conversation list, one conversation's timeline and mark-read (§5).
+Sending and mailboxes are not exposed yet (§6). The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
 ## 2. Authentication
@@ -311,14 +311,115 @@ Errors: `400 validation_failed` (`page` < 0, `size` outside 1–100, a
 non-integer number, or an unknown `filter`); `404 not_found` (`mailboxId`
 is not one of the user's mailboxes); `401 unauthorized`.
 
+### 5.6 GET /api/v1/conversations/{key}
+Bearer token required. One conversation (§4 Conversation key) as a
+texting-style timeline: every message with its people, merged across email
+threads, oldest first, grouped into bubble runs. Built by the same
+`ChatService` the website's `/chats/{key}` uses (quoted replies and
+signatures stripped, HTML sanitized). **Read-only**: opening does not mark
+it read; call §5.7 for that. No pagination yet — the whole conversation
+is returned.
+
+Path: `key` — the conversation key from §5.5.
+Query: `mailboxId` (integer, optional) — same meaning and scope rule as
+§5.5: with more than one connected mailbox, only the threads that involve
+that mailbox's address are included.
+
+`200`:
+```json
+{
+  "key": "154e1e0a1872533ddf397a16e5a65dcf",
+  "title": "Ada Lovelace",
+  "initials": "AL",
+  "group": false,
+  "threadCount": 1,
+  "messageCount": 2,
+  "members": [
+    {
+      "email": "ada@acme.com",
+      "displayName": "Ada Lovelace",
+      "initials": "AL",
+      "label": "Ada Lovelace",
+      "signatureHtml": "<p>Ada Lovelace<br>Analyst</p>",
+      "signatureText": "Ada Lovelace\nAnalyst"
+    }
+  ],
+  "runs": [
+    {
+      "outbound": false,
+      "sender": { "email": "ada@acme.com", "displayName": "Ada Lovelace", "initials": "AL" },
+      "thread": { "id": 7, "subject": "Lunch?" },
+      "messages": [
+        {
+          "id": 101,
+          "sentAt": "2026-11-16T09:00:00Z",
+          "html": "<p>Lunch tomorrow?</p>",
+          "text": "Lunch tomorrow?",
+          "replyToId": null,
+          "attachments": [
+            { "id": 5, "filename": "menu.pdf", "mimeType": "application/pdf", "sizeBytes": 20480 }
+          ]
+        }
+      ]
+    },
+    {
+      "outbound": true,
+      "sender": { "email": "me@example.com", "displayName": null, "initials": "M" },
+      "thread": { "id": 7, "subject": "Lunch?" },
+      "messages": [
+        {
+          "id": 102,
+          "sentAt": "2026-11-16T09:30:00Z",
+          "html": "<p>sounds good, see you then</p>",
+          "text": "sounds good, see you then",
+          "replyToId": 101,
+          "attachments": []
+        }
+      ]
+    }
+  ]
+}
+```
+- `key`, `title`, `initials`: as in §5.5.
+- `group` (boolean): more than one member. `threadCount` (integer ≥ 1):
+  distinct email threads. `messageCount` (integer ≥ 1): bubbles in `runs`.
+- `members` (array): the non-owner people, first-seen order. `displayName`
+  (string or `null`); `label` is `displayName` or else `email`;
+  `signatureHtml` / `signatureText`: their most recent detected signature,
+  `""` when none.
+- `runs` (array, chronological): a new run starts whenever the email thread
+  or the direction changes. `outbound` (boolean): the owner sent it.
+  `sender`: the run's first sender (`displayName` may be `null`).
+  `thread`: `id` (integer), `subject` (string or `null`).
+- `messages[]`: `id` (integer, stable); `sentAt` (instant or `null`);
+  `html` (sanitized bubble HTML, same as the website renders); `text` (the
+  same content as plain text: paragraphs, lists, quotes and headings are
+  separated by a blank line; `<div>`, `<li>`, `<tr>` and `<br>` by a line
+  break; never more than one blank line in a row; trimmed); `replyToId` (integer
+  or `null`): the message in **this** response it answers, when present;
+  `attachments[]`: `id`, `filename` (string or `null`), `mimeType`
+  (string or `null`), `sizeBytes` (integer or `null`). Attachment bytes are
+  not downloadable yet.
+
+Errors: `404 not_found` (no conversation with that key for this user in
+this scope, or `mailboxId` is not the user's); `400 validation_failed`
+(non-integer `mailboxId`); `401 unauthorized`.
+
+### 5.7 POST /api/v1/conversations/{key}/read
+Bearer token required. Marks every unread thread of the conversation read
+(the same `ChatService.markRead` the website runs when a conversation is
+opened). Idempotent. Request body: none. Query: `mailboxId` as in §5.6 —
+when it narrows the scope, only that mailbox's threads are marked.
+
+`204`, empty body. Errors: `404 not_found` (no such conversation in this
+scope, or `mailboxId` is not the user's); `401 unauthorized`.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Conversations: one conversation with its bubble runs, mark read (the
-   list is §5.5).
-2. Send: reply into a conversation, start a new one.
-3. Mailboxes: list, connect (IMAP password), sync, remove.
-4. Account: device list / revoke other sessions.
-5. Live updates: SSE (or push) with enough detail to update without a
+1. Send: reply into a conversation, start a new one.
+2. Mailboxes: list, connect (IMAP password), sync, remove.
+3. Account: device list / revoke other sessions.
+4. Live updates: SSE (or push) with enough detail to update without a
    full refetch.

@@ -17,7 +17,7 @@ API response needs must be loaded inside the service transaction.
 | `service` | Conversation model: `ConversationKeyService`, `ConversationService` (bubble runs), `ReplyService` (SMTP send), `EmailBodyCleaner` / `IMTransformService` (quote + signature stripping, markdown), view-model records |
 | `email` | Mailbox integration: `MailAccountService` (connect/list/remove), `EmailImportService` (MIME → threads), `MailboxPollingService` + `PollingPolicy`, `ImapIdleService`, `JakartaImapClient`, `GmailOAuthClient`, `CredentialEncryptor` |
 | `web` | Thymeleaf controllers plus the chat-facing services `ChatService`, `ConversationListService`, `OutboundMessageService`, `SavedSearchService`, `ChatEventStream` (SSE) |
-| `api` | `/api/v1` for the mobile client: `ApiSecurityConfig` (stateless bearer chain), `ApiTokenService`, `ApiAuthService`, `ApiConversationService` (list → `web.ConversationListService`), JSON error envelope (`ApiExceptionHandler`), DTO records in `ApiDtos`. Controllers stay thin and call the same services as the website |
+| `api` | `/api/v1` for the mobile client: `ApiSecurityConfig` (stateless bearer chain), `ApiTokenService`, `ApiAuthService`, `ApiConversationService` (list → `web.ConversationListService`; one conversation and mark-read → `web.ChatService`), JSON error envelope (`ApiExceptionHandler`), DTO records in `ApiDtos`. Controllers stay thin and call the same services as the website |
 | `auth` | `SecurityConfig`, users, registration, Google OIDC, password reset, email verification, login throttle, account settings |
 | `billing` | Stripe checkout/portal/webhook, `PlanLimits` / `PlanLimitService`, trial and banner logic |
 | `team` | Teams and invites (membership only — teams grant no data access yet) |

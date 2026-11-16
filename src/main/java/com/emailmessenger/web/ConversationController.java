@@ -376,9 +376,7 @@ class ConversationController {
     }
 
     private ChatConversation chatFor(User owner, String scope, String key) {
-        return scope != null
-                ? chatService.buildFor(owner, scope, key)
-                : chatService.buildFor(owner, key);
+        return chatService.buildInScope(owner, scope, key);
     }
 
     /**

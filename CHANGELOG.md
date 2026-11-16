@@ -3,6 +3,29 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-16 (c) — Conversation view API (M1)
+
+- `docs/API.md` §5.6 `GET /api/v1/conversations/{key}` (one conversation
+  as chronological bubble runs: members with signatures, runs with sender,
+  thread and messages, attachment metadata) and §5.7
+  `POST /api/v1/conversations/{key}/read` (204). Both take the list's
+  optional `mailboxId` scope; unknown or foreign keys are `404 not_found`.
+  The GET is read-only; marking read is the explicit POST.
+- Shared service layer: `web.ChatService` is now public; the new
+  `buildInScope` (null scope = all mailboxes) replaces the controller's
+  private `chatFor`, and `markRead` reports whether the conversation exists.
+  The website's `/chats/{key}` and the API call the same methods.
+- New `service.HtmlText.toPlainText` renders sanitized bubble HTML as the
+  `text` field for clients without an HTML renderer.
+- Tests: 5 new cases in `ApiConversationIntegrationTest` (timeline shape,
+  read-only GET vs mark-read POST, not-found/foreign keys, mailbox scope,
+  auth), `HtmlTextTest` (4). `./mvnw -B verify`: 831 run, 0 failures,
+  1 skipped (Docker-only end-to-end test).
+- Not pushed to `master`: this session may only push to its routine
+  branch (`claude/gifted-carson-rrym02`). `origin/master` is still at
+  `fcea758`, so the 2026-11-16 (b) note that the work landed on `master`
+  does not hold on origin. The owner needs to merge.
+
 ## 2026-11-16 (b) — Conversation list API (M1) + branch consolidation
 
 - **Landed on `master`.** Every earlier routine run pushed to its own

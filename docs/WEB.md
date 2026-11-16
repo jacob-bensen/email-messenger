@@ -39,7 +39,7 @@ dialect: pages compose shared pieces with `th:replace`. One stylesheet,
 | Route | Auth | Template | Controller → services |
 |---|---|---|---|
 | `GET /chats` | user | `chat` (empty pane) | `ConversationController#list` → `ConversationListService.list` / `counts`, `MailAccountService.list`, `MailboxPollingService.refreshDueForUserAsync`, `BillingBannerService`. Params: `page`, `q`, `mailbox`, `filter`. Page size 30. Filter parsing and the mailbox scope rule live in `ConversationListService` (`ChatFilter.parse`, `scopeAddress`), shared with `GET /api/v1/conversations`. |
-| `GET /chats/{key}` | user | `chat` | `#chat` → `ChatService.markRead` + `buildFor`. Unknown key → `/chats`. |
+| `GET /chats/{key}` | user | `chat` | `#chat` → `ChatService.markRead` + `buildInScope` (shared with `GET`/`POST /api/v1/conversations/{key}[/read]`). Unknown key → `/chats`. |
 | `GET /chats/{key}/pane` | user | fragment `chat-pane :: pane` / `:: missing` | `#chatPane` (same services) |
 | `POST /chats/{key}/send` | user | redirect | `#send` → `ReplyService.sendReply` / `sendNewEmail`, then `OutboundMessageService.recordReply` / `recordNewEmail`. Multipart: `body`, `subject`, `asReply`, `attachments`, `mailbox`. |
 | `GET /chats/new`, `POST /chats/new` | user | `compose` | `#compose`, `#createMessage` → `ConversationKeyService.keyFor`, `ReplyService.sendNewEmail`, `OutboundMessageService.recordNewEmail` |
@@ -95,8 +95,9 @@ Global model attributes: `NavModelAdvice` (`navActive`, `htmlTheme`,
 `SiteModelAdvice` (`siteBaseUrl`, `oauthGoogleEnabled`).
 
 ## Relationship to the REST API
-There is no REST API yet (`docs/API.md` §1). When `/api/v1` is built, its
-controllers must call the same services these pages call. Today some rules
-live in web controllers rather than services — most importantly the whole
-send flow in `ConversationController` — and must be extracted before an API
-controller can share them. The list is in `INTERNAL_TODO.md`.
+`/api/v1` (`docs/API.md` §5) calls the same services these pages call:
+the list goes through `ConversationListService`, one conversation and
+mark-read through `ChatService`. Some rules still live in web controllers
+rather than services — most importantly the whole send flow in
+`ConversationController` — and must be extracted before an API controller
+can share them. The list is in `INTERNAL_TODO.md`.

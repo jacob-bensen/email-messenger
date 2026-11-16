@@ -1,9 +1,16 @@
 package com.emailmessenger.api;
 
 import com.emailmessenger.billing.PlanLimits;
+import com.emailmessenger.domain.Attachment;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
+import com.emailmessenger.service.BubbleMessage;
+import com.emailmessenger.service.ChatConversation;
+import com.emailmessenger.service.ChatMember;
 import com.emailmessenger.service.ConversationListItem;
+import com.emailmessenger.service.HtmlText;
+import com.emailmessenger.service.SenderBubbleRun;
+import com.emailmessenger.service.SenderView;
 import com.emailmessenger.web.ConversationListService;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -72,4 +79,61 @@ final class ApiDtos {
     }
 
     record CountsResponse(long all, long unread, long awaiting, long attachments) {}
+
+    record ConversationDetail(String key, String title, String initials, boolean group, long threadCount,
+                              int messageCount, List<MemberResponse> members, List<RunResponse> runs) {
+
+        static ConversationDetail of(ChatConversation chat) {
+            return new ConversationDetail(chat.key(), chat.title(), chat.initials(), chat.isGroup(),
+                    chat.threadCount(), chat.messageCount(),
+                    chat.members().stream().map(MemberResponse::of).toList(),
+                    chat.runs().stream().map(RunResponse::of).toList());
+        }
+    }
+
+    record MemberResponse(String email, String displayName, String initials, String label,
+                          String signatureHtml, String signatureText) {
+
+        static MemberResponse of(ChatMember member) {
+            String signature = member.signatureHtml() == null ? "" : member.signatureHtml();
+            return new MemberResponse(member.email(), member.displayName(), member.initials(), member.label(),
+                    signature, HtmlText.toPlainText(signature));
+        }
+    }
+
+    record RunResponse(boolean outbound, SenderResponse sender, ThreadResponse thread,
+                       List<MessageResponse> messages) {
+
+        static RunResponse of(SenderBubbleRun run) {
+            SenderView s = run.sender();
+            return new RunResponse(run.outbound(),
+                    new SenderResponse(s.email(), s.displayName(), s.initials()),
+                    new ThreadResponse(run.thread().threadId(), run.thread().subject()),
+                    run.messages().stream().map(MessageResponse::of).toList());
+        }
+    }
+
+    record SenderResponse(String email, String displayName, String initials) {}
+
+    record ThreadResponse(Long id, String subject) {}
+
+    record MessageResponse(Long id, Instant sentAt, String html, String text, Long replyToId,
+                           List<AttachmentResponse> attachments) {
+
+        static MessageResponse of(BubbleMessage bubble) {
+            String html = bubble.bodyHtml() == null ? "" : bubble.bodyHtml();
+            return new MessageResponse(bubble.messageId(),
+                    bubble.sentAt() == null ? null : bubble.sentAt().toInstant(ZoneOffset.UTC),
+                    html, HtmlText.toPlainText(html), bubble.replyToMessageId(),
+                    bubble.attachments().stream().map(AttachmentResponse::of).toList());
+        }
+    }
+
+    record AttachmentResponse(Long id, String filename, String mimeType, Long sizeBytes) {
+
+        static AttachmentResponse of(Attachment attachment) {
+            return new AttachmentResponse(attachment.getId(), attachment.getFilename(),
+                    attachment.getMimeType(), attachment.getSizeBytes());
+        }
+    }
 }

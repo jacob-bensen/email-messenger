@@ -20,7 +20,7 @@ import java.util.Locale;
  * is handed to the template.
  */
 @Service
-class ChatService {
+public class ChatService {
 
     private final EmailThreadRepository threads;
     private final ConversationService conversationService;
@@ -35,7 +35,7 @@ class ChatService {
     }
 
     @Transactional(readOnly = true)
-    ChatConversation buildFor(User owner, String conversationKey) {
+    public ChatConversation buildFor(User owner, String conversationKey) {
         if (conversationKey == null || conversationKey.isBlank()) {
             return null;
         }
@@ -54,7 +54,7 @@ class ChatService {
      * correspondent reached through another account.
      */
     @Transactional(readOnly = true)
-    ChatConversation buildFor(User owner, String mailboxAddress, String conversationKey) {
+    public ChatConversation buildFor(User owner, String mailboxAddress, String conversationKey) {
         if (conversationKey == null || conversationKey.isBlank()) {
             return null;
         }
@@ -72,11 +72,13 @@ class ChatService {
      * when an account is selected (so the same correspondent reached via another
      * account keeps its own unread state); otherwise marks every thread of the key.
      * No-op when nothing is unread.
+     *
+     * @return whether the conversation has any thread in that scope
      */
     @Transactional
-    void markRead(User owner, String mailboxAddress, String conversationKey) {
+    public boolean markRead(User owner, String mailboxAddress, String conversationKey) {
         if (conversationKey == null || conversationKey.isBlank()) {
-            return;
+            return false;
         }
         List<EmailThread> conversationThreads;
         if (mailboxAddress == null || mailboxAddress.isBlank()) {
@@ -90,5 +92,15 @@ class ChatService {
                 thread.markRead();
             }
         }
+        return !conversationThreads.isEmpty();
+    }
+
+    /**
+     * The conversation in a list scope from {@link ConversationListService#scopeAddress}:
+     * {@code null} means every mailbox. Shared by the website and the API.
+     */
+    @Transactional(readOnly = true)
+    public ChatConversation buildInScope(User owner, String scope, String conversationKey) {
+        return scope != null ? buildFor(owner, scope, conversationKey) : buildFor(owner, conversationKey);
     }
 }

@@ -7,9 +7,9 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **API covers auth + conversation list only.** One conversation,
-      mark read, send and mailboxes are not exposed (`docs/API.md` §6).
-      Next: conversation view (bubble runs + mark read).
+- [ ] **API covers auth + reading only.** List, one conversation and mark
+      read are exposed; send and mailboxes are not (`docs/API.md` §6).
+      Next: reply / new message (needs the send-flow extraction below).
 - [ ] **No mailbox list endpoint**, so the app cannot offer the
       `mailboxId` scope that `GET /api/v1/conversations` accepts.
 - [ ] **Stale branches.** Hundreds of unmerged `claude/gifted-carson-*`
@@ -17,17 +17,20 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       (2026-11-16); the others are superseded and can be deleted by the
       owner. Two of them (`xg109u`, `7vfcku`) carry an alternate docs
       bootstrap that was not merged.
-- [ ] **Chat services are not reachable from an API controller.**
-      `ChatService` and `OutboundMessageService` are package-private in
-      `web/`, and the send flow (recipient parsing, sending-account choice,
+- [ ] **Send flow is not reachable from an API controller.**
+      `ChatService` is now public (2026-11-16), but `OutboundMessageService`
+      is package-private in `web/`, and the send flow (recipient parsing, sending-account choice,
       signature append, reply-vs-new, default subject) is private code in
       `ConversationController`. Extract a public send/conversation service
       and have the web controller call it, so web and API share one path.
 - [ ] **View models leak JPA entities.** `BubbleMessage.attachments` is
-      `List<Attachment>` and `Conversation.thread` is an `EmailThread`;
-      the API needs DTO records.
+      `List<Attachment>` and `Conversation.thread` is an `EmailThread`.
+      The API maps them to DTOs inside its own read transaction
+      (`ApiConversationService.get`), which works but couples the DTO
+      mapping to an open session.
 - [ ] **Timestamps are zone-less.** `LocalDateTime` values are UTC by
-      convention only; the API must emit explicit UTC instants.
+      convention only; the API converts them to `Z` instants at the DTO
+      boundary (`toInstant(ZoneOffset.UTC)`).
 - [ ] **Live events carry only a count** (`{"imported":N}`), so any client
       must refetch the whole list.
 
@@ -85,7 +88,12 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       send or `/chats/refresh`. No Content-Security-Policy.
 - [ ] `ChatEventStream` is in-memory: single instance only.
 - [ ] Search is `LIKE '%q%'` with no full-text index; a conversation loads
-      all its messages with no pagination.
+      all its messages with no pagination — on the website and in
+      `GET /api/v1/conversations/{key}`, which returns the whole timeline
+      (and computes `text` for every bubble) in one response.
+- [ ] `GET /api/v1/conversations/{key}` re-runs `EmailBodyCleaner` and the
+      signature scan on every request (same as the website pane). Cache
+      cleaned bodies if large conversations get slow.
 
 ## 4. Missing tests
 
