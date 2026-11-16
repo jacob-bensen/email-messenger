@@ -74,7 +74,8 @@ dialect: pages compose shared pieces with `th:replace`. One stylesheet,
 | `POST /admin/revenue/reconcile-billing-period`, `POST /admin/retention/win-back` | admin | redirect | `BillingPeriodBackfillService.reconcile`, `WinBackOutreachService.sendWinBackFor` |
 
 Errors render `error.html` via `GlobalExceptionHandler` (statuses listed in
-`docs/API.md` §3). `PlanLimitExceededException` instead flashes an
+`docs/API.md` §3); unknown paths (404) and wrong methods (405) via
+`RoutingErrorHandler`, which answers `/api/**` with JSON instead. `PlanLimitExceededException` instead flashes an
 `upgradeModal` and redirects to `/threads`.
 
 ## Shared fragments (`templates/fragments/`)

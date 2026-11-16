@@ -1,8 +1,8 @@
 # ConexusMail backend architecture
 
 Spring Boot **3.5** on Java **21**, Maven wrapper, one deployable jar. It
-serves the website (Thymeleaf, `docs/WEB.md`), will serve the mobile REST API
-(`docs/API.md`), and owns all persistence and business rules.
+serves the website (Thymeleaf, `docs/WEB.md`), the mobile REST API under
+`/api/v1` (`docs/API.md`), and owns all persistence and business rules.
 
 Note for the sync routine: persistence is **Spring Data JPA / Hibernate**,
 not jOOQ. There is no codegen step. Hibernate runs with `ddl-auto: validate`
@@ -17,6 +17,7 @@ API response needs must be loaded inside the service transaction.
 | `service` | Conversation model: `ConversationKeyService`, `ConversationService` (bubble runs), `ReplyService` (SMTP send), `EmailBodyCleaner` / `IMTransformService` (quote + signature stripping, markdown), view-model records |
 | `email` | Mailbox integration: `MailAccountService` (connect/list/remove), `EmailImportService` (MIME → threads), `MailboxPollingService` + `PollingPolicy`, `ImapIdleService`, `JakartaImapClient`, `GmailOAuthClient`, `CredentialEncryptor` |
 | `web` | Thymeleaf controllers plus the chat-facing services `ChatService`, `ConversationListService`, `OutboundMessageService`, `SavedSearchService`, `ChatEventStream` (SSE) |
+| `api` | `/api/v1` for the mobile client: `ApiSecurityConfig` (stateless bearer chain), `ApiTokenService`, `ApiAuthService`, JSON error envelope (`ApiExceptionHandler`), DTO records in `ApiDtos`. Controllers stay thin and call the same services as the website |
 | `auth` | `SecurityConfig`, users, registration, Google OIDC, password reset, email verification, login throttle, account settings |
 | `billing` | Stripe checkout/portal/webhook, `PlanLimits` / `PlanLimitService`, trial and banner logic |
 | `team` | Teams and invites (membership only — teams grant no data access yet) |
@@ -45,14 +46,15 @@ API response needs must be loaded inside the service transaction.
   address, plain text only; a local outbound copy is then recorded. The two
   steps are not atomic.
 
-## Database (Flyway V1–V35, PostgreSQL 16; H2 in tests)
+## Database (Flyway V1–V36, PostgreSQL 16; H2 in tests)
 Ids are identity `BIGINT`; timestamps are zone-less `TIMESTAMP` holding UTC.
-Migrations are immutable — add `V36__…` next.
+Migrations are immutable — add `V37__…` next.
 
 | Table | Entity | Notes |
 |---|---|---|
 | `users` | `User` | unique `email`; `password_hash`, `google_subject`, `email_verified_at`, lifecycle-email stamps, `sync_frequency_minutes`, `default_mail_account_id` |
 | `persistent_logins` | — | Spring Security remember-me |
+| `api_tokens` | `ApiToken` | mobile bearer tokens: SHA-256 hash only, `device_name`, `last_used_at` (written at most every 5 min), `expires_at` (30 days); cascade-deleted with the user |
 | `auth_events` | `AuthEvent` | login/security audit; drives the login throttle |
 | `password_reset_tokens`, `email_verifications` | `PasswordResetToken`, `EmailVerificationToken` | SHA-256 token hashes with expiry |
 | `mail_accounts` | `MailAccount` | per user; encrypted IMAP password or Gmail refresh token; UID cursors, failure counter, `next_poll_at`, `auth_type`, `signature`; unique `(user_id, host, username)` |
@@ -68,13 +70,21 @@ Migrations are immutable — add `V36__…` next.
 | `digest_email_preferences` | `DigestEmailPreference` | opt-out token and flag |
 
 ## Auth model
-Browser sessions only (details in `docs/API.md` §2): form login with BCrypt,
-optional Google OIDC (enabled when the Google client id/secret are set),
-persistent remember-me, CSRF on everything except the Stripe webhook. There
+Two security chains (details in `docs/API.md` §2). `/api/**`: stateless
+bearer tokens, CSRF off, 401 JSON. Everything else: browser sessions with
+form login (BCrypt), optional Google OIDC (enabled when the Google client
+id/secret are set), persistent remember-me, CSRF on everything except the
+Stripe webhook. API password sign-in goes through the same
+`AuthenticationManager` as form login, so the audit listeners and login
+throttle are shared. API controllers get an `ApiPrincipal(userId, email,
+tokenId)` instead of a `Principal` name. There
 are no roles; admin is an email allowlist checked in `AdminAuthorizer`.
 Controllers resolve the user with
 `UserService.requireByEmail(principal.getName())` and pass the `User` into
 services, which scope every query by it. Not-owned resources surface as 404.
+Errors raised before a controller is chosen (unknown path, wrong method)
+are rendered by `web.RoutingErrorHandler`: JSON envelope under `/api/`,
+HTML error page elsewhere.
 
 Two methods take a bare id and rely on the caller to check ownership first:
 `MailboxPollingService.pollOne(accountId)` and
@@ -105,7 +115,7 @@ profile is `local`. Stripe and Google features are inert when their keys are
 blank.
 
 ## Tests
-`./mvnw test` — about 800 tests, mostly `@SpringBootTest` on H2 with the real
+`./mvnw test` — about 815 tests, mostly `@SpringBootTest` on H2 with the real
 Flyway migrations and mocked seams (`ImapClient`, `JavaMailSender`, Stripe
 gateways). One Testcontainers + GreenMail end-to-end test runs only when
 Docker is available.

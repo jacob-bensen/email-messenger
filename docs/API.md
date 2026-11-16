@@ -10,26 +10,41 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-14)
+## 1. Current state (2026-11-16)
 
-There is **no REST API for the mobile client yet**. The backend is a
-server-rendered Thymeleaf site. The only machine-consumable endpoints are the
-ones in §3, and they authenticate with the browser session cookie, which a
-native client cannot use sensibly (see §2). The mobile app therefore makes no
-network calls today. Building `/api/v1` (§5) is the first roadmap item in
-`conexus-mail-mobile/docs/DESIGN.md`.
+`/api/v1` exists with its foundation only: bearer-token sign-in, sign-out
+and the current user (§5). Conversations, sending and mailboxes are not
+exposed yet (§6). The website's own machine endpoints (§3) still use the
+browser session cookie and are not for mobile use.
 
-## 2. Authentication (Implemented: browser session only)
+## 2. Authentication
 
-- Server-side `HttpSession`, cookie `JSESSIONID`. Form login `POST /login`
-  (`email`, `password`, optional `remember-me`) or Google OIDC.
-- An unauthenticated request to a protected path gets **302 → `/login`**,
-  never 401 — including `fetch`/SSE callers.
-- Every non-GET request needs a CSRF token (form field `_csrf`, or header
-  `X-CSRF-TOKEN`), except `POST /billing/webhook`.
-- There is **no** bearer token, API key, JWT, basic auth, or CORS
-  configuration. Login is throttled (5 failures / 15 min per email or IP →
-  redirect `/login?error=locked`).
+Two independent Spring Security chains:
+
+| Paths | Chain | Credential | CSRF | Unauthenticated |
+|---|---|---|---|---|
+| `/api/**` | `ApiSecurityConfig` (order 1, stateless, never creates a session) | `Authorization: Bearer <token>` | off | `401` + JSON error envelope (§5.1) |
+| everything else | `SecurityConfig` (website) | session cookie `JSESSIONID` | on | `302 → /login` |
+
+Website: form login `POST /login` (`email`, `password`, optional
+`remember-me`) or Google OIDC. Every non-GET request needs a CSRF token
+(form field `_csrf`, or header `X-CSRF-TOKEN`), except
+`POST /billing/webhook`. A `fetch`/SSE caller without a session also gets
+the `302`, never `401`.
+
+Both chains share one login throttle: 5 failures within 15 minutes for the
+same email **or** the same client IP locks further attempts (website:
+redirect `/login?error=locked`; API: `429 too_many_attempts`). Failures and
+successes from either path land in the same `auth_events` audit log and
+stamp `users.last_login_at`.
+
+API tokens are opaque (43-char base64url of 32 random bytes), valid for
+**30 days** from issue, one per signed-in device. Only SHA-256(token) is
+stored (`api_tokens`). A token stops working when it expires, when it is
+revoked by `POST /api/v1/auth/logout`, or when the user is disabled. There
+is no refresh endpoint: when a request returns `401`, the client signs in
+again. Google sign-in on mobile is not supported yet. No CORS is configured
+(native clients do not need it).
 
 ## 3. Implemented machine endpoints
 
@@ -89,7 +104,7 @@ PWA manifest (`application/manifest+json`: `name`, `short_name`,
 ### GET /actuator/health
 Spring Boot health, public: `{"status":"UP"}`.
 
-### Errors
+### Errors (website endpoints only)
 Every other failure on these endpoints is rendered as an **HTML** error page
 (`error` template) with the status from `GlobalExceptionHandler`: 400
 (`IllegalArgumentException`), 404 (unknown/not-owned resource), 409 (data
@@ -142,28 +157,101 @@ status is `active` or `trialing`; otherwise the user is FREE.
 | PRO | 5 | unlimited | unlimited |
 | BUSINESS | unlimited | unlimited | unlimited |
 
-## 5. Planned: `/api/v1` for the mobile client (not implemented)
+## 5. `/api/v1` (Implemented)
 
-Nothing below exists. It records the intended direction so the first
-feature run can write the real contract here before coding.
+Base path `/api/v1`. Request and response bodies are `application/json`,
+UTF-8, field names in camelCase. Timestamps are ISO-8601 UTC instants with a
+`Z` suffix (e.g. `2026-12-16T04:20:47.566Z`). Server code:
+`com.emailmessenger.api`. Client code: `lib/data/`.
 
-Open decisions (see `INTERNAL_TODO.md`):
-- **Auth mechanism.** Proposed: opaque bearer tokens issued by
-  `POST /api/v1/auth/login`, stored hashed (same pattern as the existing
-  reset/verification tokens), in a separate stateless `SecurityFilterChain`
-  for `/api/**` that returns 401 JSON instead of redirecting and has CSRF
-  off. Google sign-in on mobile needs its own design.
-- **Error envelope.** Proposed: `{"error": {"code": "...", "message": "..."}}`
-  with stable codes, including `plan_limit_exceeded`.
-- **Timestamps.** The server stores zone-less UTC `LocalDateTime`; the API
-  should emit ISO-8601 UTC instants.
+### 5.1 Error envelope
+Every `/api/**` error, including authentication failures from the security
+chain, is:
+```json
+{ "error": { "code": "invalid_credentials", "message": "Incorrect email or password." } }
+```
+`code` is stable and machine-readable; `message` is English, safe to show to
+the user, and may change. Clients branch on `code` only.
 
-Intended resources, in build order:
-1. Auth: login, logout, current user (`me`).
-2. Conversations: paged list (query, mailbox, filter
+| HTTP | `code` | When |
+|---|---|---|
+| 400 | `validation_failed` | Body missing, not JSON, or a required field blank |
+| 401 | `unauthorized` | No/invalid/expired/revoked bearer token, or user disabled |
+| 401 | `invalid_credentials` | Login: wrong email or password (same for unknown email) |
+| 403 | `forbidden` | Authenticated but not allowed |
+| 404 | `not_found` | Unknown `/api` path (after authentication) |
+| 405 | `method_not_allowed` | Wrong HTTP method on an existing endpoint |
+| 429 | `too_many_attempts` | Login: throttle lock (§2) |
+| 500 | `internal_error` | Anything unexpected |
+
+Clients must treat an unknown `code` like `internal_error` for its status.
+
+### 5.2 POST /api/v1/auth/login
+Public. Exchanges email + password for a bearer token.
+
+Request:
+```json
+{ "email": "ada@example.com", "password": "correct-horse", "deviceName": "Pixel 9" }
+```
+- `email` (string, required, non-blank): case- and surrounding-whitespace-
+  insensitive.
+- `password` (string, required, non-blank).
+- `deviceName` (string, optional, ≤ 100 chars; longer is a
+  `validation_failed`): shown to the user in a future device list. Blank is
+  stored as null.
+
+`200`:
+```json
+{
+  "token": "q1Zr…43 chars…",
+  "tokenType": "Bearer",
+  "expiresAt": "2026-12-16T04:20:47.566Z",
+  "user": { …same object as GET /api/v1/me… }
+}
+```
+Errors: `400 validation_failed`, `401 invalid_credentials`,
+`429 too_many_attempts`. A Google-only account (no password set) gets
+`401 invalid_credentials`. Unverified email addresses may sign in, as on the
+website. No `Set-Cookie` is ever sent.
+
+### 5.3 POST /api/v1/auth/logout
+Bearer token required. Revokes **only the token used for this request**;
+other devices stay signed in. Request body: none. `204`, empty body.
+Errors: `401 unauthorized`.
+
+### 5.4 GET /api/v1/me
+Bearer token required. The signed-in user.
+
+`200`:
+```json
+{
+  "id": 42,
+  "email": "ada@example.com",
+  "displayName": "Ada Lovelace",
+  "emailVerified": false,
+  "plan": "free",
+  "limits": { "mailboxes": 3, "threads": 500, "savedSearches": null }
+}
+```
+- `id` (integer), `email` (string, normalized lowercase).
+- `displayName` (string or `null`).
+- `emailVerified` (boolean).
+- `plan` (string): `free`, `pro` or `business` — the **effective** plan
+  (§4 Plan limits: a lapsed subscription is `free`).
+- `limits` (object): caps of the effective plan per §4; each value is an
+  integer or `null` meaning unlimited.
+
+Errors: `401 unauthorized`.
+
+## 6. Planned (not implemented)
+
+Intended resources, in build order (see the mobile repo's
+`docs/DESIGN.md` §ROADMAP):
+1. Conversations: paged list (query, mailbox, filter
    `ALL|UNREAD|AWAITING|ATTACHMENTS`, counts), one conversation with its
    bubble runs, mark read.
-3. Send: reply into a conversation, start a new one.
-4. Mailboxes: list, connect (IMAP password), sync, remove.
+2. Send: reply into a conversation, start a new one.
+3. Mailboxes: list, connect (IMAP password), sync, remove.
+4. Account: device list / revoke other sessions.
 5. Live updates: SSE (or push) with enough detail to update without a
    full refetch.

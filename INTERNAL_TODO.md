@@ -7,10 +7,12 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **No mobile API exists.** No `/api/**` endpoints, no token auth, no
-      JSON error envelope, no CORS. The mobile app cannot sign in or load
-      anything. First slice: API security chain + bearer-token login +
-      `me` (see `docs/API.md` §5 for the open decisions).
+- [ ] **API covers auth only.** Conversations, send and mailboxes are
+      not exposed (`docs/API.md` §6). Next: conversation list.
+- [ ] **Branch sprawl.** Hundreds of unmerged `claude/gifted-carson-*`
+      branches each re-bootstrap docs or the API; work only accumulates if
+      a branch is merged. This run builds on `gifted-carson-h34fwb`
+      (matches the mobile repo's history).
 - [ ] **Chat services are not reachable from an API controller.**
       `ChatService` and `OutboundMessageService` are package-private in
       `web/`, and the send flow (recipient parsing, sending-account choice,
@@ -58,6 +60,14 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       would throw on duplicates.
 
 ## 3. Security and operations
+
+- [ ] Expired `api_tokens` rows are never pruned (rejected, but kept).
+      Add a cleanup to an existing daily job. No device list / "sign out
+      other devices" UI on `/account` yet.
+- [ ] Changing or resetting the password does not revoke API tokens;
+      disabling the user does. Decide whether a password change should.
+- [ ] Google-only accounts cannot sign in on mobile (no password). Needs a
+      native Google sign-in → token exchange design.
 
 - [ ] `CredentialEncryptor` falls back to a hardcoded dev key (WARN only)
       when `MAILBOX_ENCRYPTION_*` are unset; production should refuse to
