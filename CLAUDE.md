@@ -12,6 +12,27 @@ workspace keyed by participant-set conversationKey, teams, saved searches,
 digests, admin metrics, and a PWA shell. See the roadmap below for what's
 next.
 
+## Related repositories
+
+- **`email-messenger`** (this repo) — BACKEND: Spring Boot app that owns the
+  API, the Thymeleaf website, persistence and all authoritative business
+  rules.
+- **`conexus-mail-mobile`** — FRONTEND: Flutter client (Android + iOS). Its
+  `lib/domain/` mirrors the rules in `docs/API.md` §4.
+
+| File | Repo | Role |
+|---|---|---|
+| `docs/API.md` | backend | Canonical API contract; both repos must match it exactly |
+| `docs/BACKEND.md` | backend | Server architecture, schema overview, auth model |
+| `docs/WEB.md` | backend | Website page inventory and the services each page uses |
+| `docs/DESIGN.md` | mobile | App product design + §ROADMAP (mobile features) |
+| `docs/MOBILE.md` | mobile | Client architecture |
+| `CHANGELOG.md`, `INTERNAL_TODO.md` | both | Dated run log; known gaps by severity |
+
+Changing a rule in `docs/API.md` §4 (conversation key, labels, plan limits)
+means changing the mobile mirror and the shared golden-vector tests in the
+same run.
+
 ## Tech stack (target)
 
 - Java 21 (LTS)
