@@ -12,6 +12,30 @@ workspace keyed by participant-set conversationKey, teams, saved searches,
 digests, admin metrics, and a PWA shell. See the roadmap below for what's
 next.
 
+## Related repositories
+
+- **`email-messenger`** (this repo) — BACKEND: REST API for the mobile
+  client (planned), the Thymeleaf website, persistence, and all
+  authoritative business rules.
+- **`conexus-mail-mobile`** — FRONTEND: Flutter client. Its `lib/domain/`
+  mirrors the rules in `docs/API.md` §4.
+
+| File | Repo | Role |
+|---|---|---|
+| `docs/API.md` | backend | Canonical API contract + shared rules (§4) with golden vectors; both repos must match it |
+| `docs/BACKEND.md` | backend | Server architecture, schema, auth, jobs |
+| `docs/WEB.md` | backend | Website page inventory and shared fragments |
+| `docs/DESIGN.md` | mobile | Product design + cross-repo §ROADMAP |
+| `docs/MOBILE.md` | mobile | Client architecture |
+| `CHANGELOG.md`, `INTERNAL_TODO.md` | both | Dated run log; known gaps by severity |
+
+`master/` holds stale 2026-06 planning docs from an earlier routine; the
+current run log is the root `CHANGELOG.md`.
+
+Changing a rule in `docs/API.md` §4 (conversation key, labels, plan limits)
+requires changing the Dart mirror and the shared golden-vector tests
+(`ConversationKeyServiceTest`) in the same run.
+
 ## Tech stack (target)
 
 - Java 21 (LTS)
