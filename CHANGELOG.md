@@ -3,6 +3,25 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-17 — One conversation + mark read for the mobile app (M1)
+
+- `GET /api/v1/conversations/{key}` (`docs/API.md` §5.6): one
+  conversation's members and bubble runs, the same timeline as the
+  website's `/chats/{key}`. Read-only. Each bubble carries the sanitized
+  `bodyHtml` plus a plain `bodyText` (new `api.HtmlText`, keeps line and
+  paragraph breaks), `replyToId` and attachment metadata.
+- `POST /api/v1/conversations/{key}/read` (§5.7): marks the conversation
+  read in the optional `mailboxId` scope and returns the fresh per-filter
+  counts. Unknown or another user's key → `404 not_found`.
+- Shared service layer: `web.ChatService` is now public with
+  `find(owner, scope, key)` (replacing `ConversationController.chatFor`)
+  and `markRead` returns whether the conversation exists; both the website
+  and `ApiConversationService` call it. `ApiConversationService` factors
+  out the owner + mailbox-scope resolution shared by its three endpoints.
+- Tests: 4 new cases in `ApiConversationIntegrationTest`, new
+  `HtmlTextTest` (3). Full `./mvnw verify`: 829 run, 0 failures,
+  1 skipped (Docker-only end-to-end test).
+
 ## 2026-11-16 (b) — Conversation list API (M1) + branch consolidation
 
 - **Landed on `master`.** Every earlier routine run pushed to its own

@@ -20,7 +20,7 @@ import java.util.Locale;
  * is handed to the template.
  */
 @Service
-class ChatService {
+public class ChatService {
 
     private final EmailThreadRepository threads;
     private final ConversationService conversationService;
@@ -32,6 +32,16 @@ class ChatService {
         this.threads = threads;
         this.conversationService = conversationService;
         this.ownerAddressService = ownerAddressService;
+    }
+
+    /**
+     * The conversation in {@code scope} (a mailbox address from
+     * {@link ConversationListService#scopeAddress}), or across every mailbox when
+     * {@code scope} is null. {@code null} when nothing matches.
+     */
+    @Transactional(readOnly = true)
+    public ChatConversation find(User owner, String scope, String conversationKey) {
+        return scope != null ? buildFor(owner, scope, conversationKey) : buildFor(owner, conversationKey);
     }
 
     @Transactional(readOnly = true)
@@ -71,12 +81,13 @@ class ChatService {
      * Marks the opened conversation's threads read. Scoped to {@code mailboxAddress}
      * when an account is selected (so the same correspondent reached via another
      * account keeps its own unread state); otherwise marks every thread of the key.
-     * No-op when nothing is unread.
+     * No-op when nothing is unread. Returns whether the conversation has any
+     * thread in that scope.
      */
     @Transactional
-    void markRead(User owner, String mailboxAddress, String conversationKey) {
+    public boolean markRead(User owner, String mailboxAddress, String conversationKey) {
         if (conversationKey == null || conversationKey.isBlank()) {
-            return;
+            return false;
         }
         List<EmailThread> conversationThreads;
         if (mailboxAddress == null || mailboxAddress.isBlank()) {
@@ -90,5 +101,6 @@ class ChatService {
                 thread.markRead();
             }
         }
+        return !conversationThreads.isEmpty();
     }
 }

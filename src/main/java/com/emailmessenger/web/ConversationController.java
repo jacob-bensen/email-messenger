@@ -257,7 +257,7 @@ class ConversationController {
         // Opening a conversation marks it read (committed before the list/dashboard
         // below re-read unread state).
         chatService.markRead(owner, scope, key);
-        ChatConversation conversation = chatFor(owner, scope, key);
+        ChatConversation conversation = chatService.find(owner, scope, key);
         if (conversation == null) {
             return "redirect:/chats" + mailboxQuery(selected);
         }
@@ -284,7 +284,7 @@ class ConversationController {
         MailAccount selected = selectMailbox(accounts, mailboxParam);
         String scope = ConversationListService.scopeAddress(selected, accounts);
         chatService.markRead(owner, scope, key);
-        ChatConversation conversation = chatFor(owner, scope, key);
+        ChatConversation conversation = chatService.find(owner, scope, key);
         if (conversation == null) {
             return "fragments/chat-pane :: missing";
         }
@@ -328,7 +328,7 @@ class ConversationController {
             return "chat";
         }
 
-        ChatConversation conversation = chatFor(owner, ConversationListService.scopeAddress(selected, accounts), key);
+        ChatConversation conversation = chatService.find(owner, ConversationListService.scopeAddress(selected, accounts), key);
         if (conversation == null) {
             return "redirect:/chats" + mailboxQuery(selected);
         }
@@ -365,7 +365,7 @@ class ConversationController {
 
     private boolean populateChat(User owner, List<MailAccount> accounts, MailAccount selected,
                                  String key, Model model) {
-        ChatConversation conversation = chatFor(owner, ConversationListService.scopeAddress(selected, accounts), key);
+        ChatConversation conversation = chatService.find(owner, ConversationListService.scopeAddress(selected, accounts), key);
         if (conversation == null) {
             return false;
         }
@@ -373,12 +373,6 @@ class ConversationController {
         model.addAttribute("chat", conversation);
         model.addAttribute("activeKey", key);
         return true;
-    }
-
-    private ChatConversation chatFor(User owner, String scope, String key) {
-        return scope != null
-                ? chatService.buildFor(owner, scope, key)
-                : chatService.buildFor(owner, key);
     }
 
     /**

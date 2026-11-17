@@ -188,8 +188,134 @@ class ApiConversationIntegrationTest {
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
-    private void inbound(String subject, Participant sender, List<Participant> to, String body,
-                         boolean unread, LocalDateTime at) {
+    @Test
+    void returnsOneConversationAsBubbleRunsWithoutMarkingItRead() throws Exception {
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob Builder"));
+        EmailThread thread = inbound("Lunch", bob, List.of(me), "Pizza?\n\nNoon\nworks", true,
+                LocalDateTime.of(2026, 1, 1, 9, 0));
+        Message reply = new Message(em.find(EmailThread.class, thread.getId()), em.merge(me), "Re: Lunch",
+                "yes!", null, LocalDateTime.of(2026, 1, 1, 9, 5));
+        reply.addRecipient(em.merge(bob), RecipientType.TO);
+        reply.setInReplyTo("<lunch-1@x>");
+        reply.markOutbound();
+        messages.saveAndFlush(reply);
+        Message first = messages.findAll().stream().filter(m -> !m.isOutbound()).findFirst().orElseThrow();
+        first.setMessageIdHeader("<lunch-1@x>");
+        first.addAttachment(new com.emailmessenger.domain.Attachment(first, "menu.pdf", "application/pdf", 1234L, null));
+        messages.saveAndFlush(first);
+        em.clear();
+        String key = keyFor("bob@acme.com");
+
+        mockMvc.perform(get("/api/v1/conversations/" + key).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.key").value(key))
+                .andExpect(jsonPath("$.title").value("Bob Builder"))
+                .andExpect(jsonPath("$.initials").value("BB"))
+                .andExpect(jsonPath("$.group").value(false))
+                .andExpect(jsonPath("$.threadCount").value(1))
+                .andExpect(jsonPath("$.messageCount").value(2))
+                .andExpect(jsonPath("$.members", hasSize(1)))
+                .andExpect(jsonPath("$.members[0].email").value("bob@acme.com"))
+                .andExpect(jsonPath("$.members[0].displayName").value("Bob Builder"))
+                .andExpect(jsonPath("$.members[0].label").value("Bob Builder"))
+                .andExpect(jsonPath("$.runs", hasSize(2)))
+                .andExpect(jsonPath("$.runs[0].outbound").value(false))
+                .andExpect(jsonPath("$.runs[0].sender.email").value("bob@acme.com"))
+                .andExpect(jsonPath("$.runs[0].thread.id").value(thread.getId()))
+                .andExpect(jsonPath("$.runs[0].thread.subject").value("Lunch"))
+                .andExpect(jsonPath("$.runs[0].messages[0].id").value(first.getId()))
+                .andExpect(jsonPath("$.runs[0].messages[0].sentAt").value("2026-01-01T09:00:00Z"))
+                .andExpect(jsonPath("$.runs[0].messages[0].bodyText").value("Pizza?\n\nNoon\nworks"))
+                .andExpect(jsonPath("$.runs[0].messages[0].replyToId").doesNotExist())
+                .andExpect(jsonPath("$.runs[0].messages[0].attachments[0].filename").value("menu.pdf"))
+                .andExpect(jsonPath("$.runs[0].messages[0].attachments[0].mimeType").value("application/pdf"))
+                .andExpect(jsonPath("$.runs[0].messages[0].attachments[0].sizeBytes").value(1234))
+                .andExpect(jsonPath("$.runs[1].outbound").value(true))
+                .andExpect(jsonPath("$.runs[1].sender.email").value("ada@example.com"))
+                .andExpect(jsonPath("$.runs[1].messages[0].bodyText").value("yes!"))
+                .andExpect(jsonPath("$.runs[1].messages[0].replyToId").value(first.getId()));
+
+        mockMvc.perform(get("/api/v1/conversations").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.items[0].unread").value(true));
+    }
+
+    @Test
+    void markReadClearsUnreadAndReturnsFreshCounts() throws Exception {
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        Participant cy = participants.save(new Participant("cy@acme.com", "Cy"));
+        inbound("A", bob, List.of(me), "one", true, LocalDateTime.of(2026, 1, 1, 9, 0));
+        inbound("B", cy, List.of(me), "two", true, LocalDateTime.of(2026, 1, 2, 9, 0));
+
+        mockMvc.perform(post("/api/v1/conversations/" + keyFor("bob@acme.com") + "/read")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.counts.all").value(2))
+                .andExpect(jsonPath("$.counts.unread").value(1));
+
+        mockMvc.perform(get("/api/v1/conversations?filter=unread").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andExpect(jsonPath("$.items[0].title").value("Cy"));
+    }
+
+    @Test
+    void anUnknownOrForeignConversationIsNotFound() throws Exception {
+        User other = userService.register("eve@example.com", "correct-horse", "Eve");
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        EmailThread theirs = threads.save(new EmailThread(other, "Secret", "<secret@x>"));
+        Message m = new Message(theirs, bob, "Secret", "hi eve", null, LocalDateTime.of(2026, 1, 1, 9, 0));
+        m.addRecipient(participants.save(new Participant("eve@example.com", "Eve")), RecipientType.TO);
+        theirs.addMessage(messages.save(m), true);
+        theirs.setConversationKey(keyFor("bob@acme.com"));
+        threads.saveAndFlush(theirs);
+
+        for (String key : List.of(keyFor("bob@acme.com"), "nope")) {
+            mockMvc.perform(get("/api/v1/conversations/" + key).header("Authorization", "Bearer " + token))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("not_found"));
+            mockMvc.perform(post("/api/v1/conversations/" + key + "/read").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("not_found"));
+        }
+        em.clear();
+        org.assertj.core.api.Assertions.assertThat(threads.findById(theirs.getId()).orElseThrow().isUnread()).isTrue();
+    }
+
+    @Test
+    void conversationScopesToAMailboxAndRejectsForeignMailboxes() throws Exception {
+        mailAccounts.save(new MailAccount(owner, "imap.example.com", 993, true, "ada@example.com", "ciphertext"));
+        MailAccount work = mailAccounts.save(new MailAccount(owner, "imap.acme.com", 993, true,
+                "work@acme.com", "ciphertext"));
+        Participant workAddress = participants.save(new Participant("work@acme.com", "Work"));
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        inbound("Home", bob, List.of(me), "home", false, LocalDateTime.of(2026, 1, 1, 9, 0));
+        inbound("Work", bob, List.of(workAddress), "work", false, LocalDateTime.of(2026, 1, 2, 9, 0));
+        String key = keyFor("bob@acme.com");
+
+        mockMvc.perform(get("/api/v1/conversations/" + key).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.threadCount").value(2));
+        mockMvc.perform(get("/api/v1/conversations/" + key + "?mailboxId=" + work.getId())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.threadCount").value(1))
+                .andExpect(jsonPath("$.runs[0].messages[0].bodyText").value("work"));
+
+        User other = userService.register("eve@example.com", "correct-horse", "Eve");
+        MailAccount theirs = mailAccounts.save(new MailAccount(other, "imap.example.com", 993, true,
+                "eve@example.com", "ciphertext"));
+        mockMvc.perform(get("/api/v1/conversations/" + key + "?mailboxId=" + theirs.getId())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/api/v1/conversations/" + key + "/read").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/conversations/" + key))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private String keyFor(String... emails) {
+        return keyService.keyFor(List.of(emails), ownerAddressService.addressesFor(owner));
+    }
+
+    private EmailThread inbound(String subject, Participant sender, List<Participant> to, String body,
+                                boolean unread, LocalDateTime at) {
         EmailThread thread = threads.save(new EmailThread(owner, subject, "<" + subject + "@x>"));
         Message m = new Message(thread, sender, subject, body, null, at);
         for (Participant p : to) {
@@ -203,5 +329,6 @@ class ApiConversationIntegrationTest {
         threads.saveAndFlush(thread);
         em.flush();
         em.clear();
+        return thread;
     }
 }

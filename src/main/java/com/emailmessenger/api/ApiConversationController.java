@@ -2,6 +2,8 @@ package com.emailmessenger.api;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,5 +26,19 @@ class ApiConversationController {
                                   @RequestParam(required = false) Long mailboxId,
                                   @RequestParam(required = false) String filter) {
         return conversations.list(principal, page, size, query, mailboxId, filter);
+    }
+
+    @GetMapping("/conversations/{key}")
+    ApiDtos.ConversationDetail detail(@AuthenticationPrincipal ApiPrincipal principal,
+                                      @PathVariable String key,
+                                      @RequestParam(required = false) Long mailboxId) {
+        return conversations.detail(principal, key, mailboxId);
+    }
+
+    @PostMapping("/conversations/{key}/read")
+    ApiDtos.MarkReadResponse markRead(@AuthenticationPrincipal ApiPrincipal principal,
+                                      @PathVariable String key,
+                                      @RequestParam(required = false) Long mailboxId) {
+        return conversations.markRead(principal, key, mailboxId);
     }
 }

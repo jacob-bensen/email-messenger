@@ -7,9 +7,9 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **API covers auth + conversation list only.** One conversation,
-      mark read, send and mailboxes are not exposed (`docs/API.md` §6).
-      Next: conversation view (bubble runs + mark read).
+- [ ] **API covers auth + reading only** (list, one conversation, mark
+      read). Send and mailboxes are not exposed (`docs/API.md` §6). Next:
+      send — needs the extraction below first.
 - [ ] **No mailbox list endpoint**, so the app cannot offer the
       `mailboxId` scope that `GET /api/v1/conversations` accepts.
 - [ ] **Stale branches.** Hundreds of unmerged `claude/gifted-carson-*`
@@ -24,10 +24,13 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       `ConversationController`. Extract a public send/conversation service
       and have the web controller call it, so web and API share one path.
 - [ ] **View models leak JPA entities.** `BubbleMessage.attachments` is
-      `List<Attachment>` and `Conversation.thread` is an `EmailThread`;
-      the API needs DTO records.
+      `List<Attachment>` and `Conversation.thread` is an `EmailThread`.
+      The API maps them to records in `ApiDtos` (2026-11-17), so this now
+      only affects the website's templates.
 - [ ] **Timestamps are zone-less.** `LocalDateTime` values are UTC by
-      convention only; the API must emit explicit UTC instants.
+      convention only; `ApiDtos` converts with `ZoneOffset.UTC` at the edge,
+      which is right only while the stored values really are UTC (§2 Time
+      zones).
 - [ ] **Live events carry only a count** (`{"imported":N}`), so any client
       must refetch the whole list.
 
@@ -85,10 +88,15 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       send or `/chats/refresh`. No Content-Security-Policy.
 - [ ] `ChatEventStream` is in-memory: single instance only.
 - [ ] Search is `LIKE '%q%'` with no full-text index; a conversation loads
-      all its messages with no pagination.
+      all its messages with no pagination — on the website and in
+      `GET /api/v1/conversations/{key}` (§5.6).
+- [ ] `/api/v1/conversations/{key}` (and the website) build each bubble
+      with `EmailBodyCleaner` / jsoup on every request; no caching.
 
 ## 4. Missing tests
 
+- [ ] `HtmlText` (API `bodyText`) is tested on simple markup only; real
+      HTML mail (tables, nested divs, `<pre>`) may produce odd spacing.
 - [ ] Only one test exercises real PostgreSQL, and it needs Docker; the
       large JPQL conversation queries are otherwise checked on H2 only.
 - [ ] The cron `run*Cycle()` jobs call their `@Transactional send*For`

@@ -3,7 +3,12 @@ package com.emailmessenger.api;
 import com.emailmessenger.billing.PlanLimits;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
+import com.emailmessenger.service.BubbleMessage;
+import com.emailmessenger.service.ChatConversation;
+import com.emailmessenger.service.ChatMember;
 import com.emailmessenger.service.ConversationListItem;
+import com.emailmessenger.service.SenderBubbleRun;
+import com.emailmessenger.service.SenderView;
 import com.emailmessenger.web.ConversationListService;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -54,7 +59,7 @@ final class ApiDtos {
         static ConversationPage of(Page<ConversationListItem> rows, ConversationListService.ChatCounts counts) {
             return new ConversationPage(rows.getContent().stream().map(ConversationRow::of).toList(),
                     rows.getNumber(), rows.getSize(), rows.getTotalElements(), rows.hasNext(),
-                    new CountsResponse(counts.all(), counts.unread(), counts.awaiting(), counts.attachments()));
+                    CountsResponse.of(counts));
         }
     }
 
@@ -71,5 +76,66 @@ final class ApiDtos {
         }
     }
 
-    record CountsResponse(long all, long unread, long awaiting, long attachments) {}
+    record CountsResponse(long all, long unread, long awaiting, long attachments) {
+
+        static CountsResponse of(ConversationListService.ChatCounts counts) {
+            return new CountsResponse(counts.all(), counts.unread(), counts.awaiting(), counts.attachments());
+        }
+    }
+
+    record ConversationDetail(String key, String title, String initials, boolean group, long threadCount,
+                              int messageCount, List<MemberResponse> members, List<RunResponse> runs) {
+
+        static ConversationDetail of(ChatConversation chat) {
+            return new ConversationDetail(chat.key(), chat.title(), chat.initials(), chat.isGroup(),
+                    chat.threadCount(), chat.messageCount(),
+                    chat.members().stream().map(MemberResponse::of).toList(),
+                    chat.runs().stream().map(RunResponse::of).toList());
+        }
+    }
+
+    record MemberResponse(String email, String displayName, String initials, String label) {
+
+        static MemberResponse of(ChatMember member) {
+            return new MemberResponse(member.email(), blankToNull(member.displayName()),
+                    member.initials(), member.label());
+        }
+    }
+
+    record RunResponse(SenderResponse sender, boolean outbound, ThreadResponse thread,
+                       List<BubbleResponse> messages) {
+
+        static RunResponse of(SenderBubbleRun run) {
+            SenderView s = run.sender();
+            return new RunResponse(new SenderResponse(s.email(), blankToNull(s.displayName()), s.initials()),
+                    run.outbound(), new ThreadResponse(run.thread().threadId(), run.thread().subject()),
+                    run.messages().stream().map(BubbleResponse::of).toList());
+        }
+    }
+
+    record SenderResponse(String email, String displayName, String initials) {}
+
+    record ThreadResponse(long id, String subject) {}
+
+    record BubbleResponse(long id, Instant sentAt, String bodyHtml, String bodyText, Long replyToId,
+                          List<AttachmentResponse> attachments) {
+
+        static BubbleResponse of(BubbleMessage bubble) {
+            String html = bubble.bodyHtml() == null ? "" : bubble.bodyHtml();
+            return new BubbleResponse(bubble.messageId(),
+                    bubble.sentAt() == null ? null : bubble.sentAt().toInstant(ZoneOffset.UTC),
+                    html, HtmlText.of(html), bubble.replyToMessageId(),
+                    bubble.attachments().stream()
+                            .map(a -> new AttachmentResponse(a.getFilename(), a.getMimeType(), a.getSizeBytes()))
+                            .toList());
+        }
+    }
+
+    record AttachmentResponse(String filename, String mimeType, Long sizeBytes) {}
+
+    record MarkReadResponse(CountsResponse counts) {}
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
+    }
 }
