@@ -10,11 +10,11 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-16)
+## 1. Current state (2026-11-17)
 
-`/api/v1` exposes bearer-token sign-in, sign-out, the current user and the
-paged conversation list (§5). A single conversation, sending and mailboxes
-are not exposed yet (§6). The website's own machine endpoints (§3) still use the
+`/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
+paged conversation list, one conversation's timeline and mark-read (§5).
+Sending and mailboxes are not exposed yet (§6). The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
 ## 2. Authentication
@@ -311,14 +311,102 @@ Errors: `400 validation_failed` (`page` < 0, `size` outside 1–100, a
 non-integer number, or an unknown `filter`); `404 not_found` (`mailboxId`
 is not one of the user's mailboxes); `401 unauthorized`.
 
+### 5.6 GET /api/v1/conversations/{key}
+Bearer token required. One conversation as a texting-style timeline: every
+message of the user's threads that share `key` (§4), merged across email
+threads, oldest first, grouped into bubble runs. The same `ChatService`
+build the website's `/chats/{key}` uses. Reading does **not** mark the
+conversation read (§5.7) and does not trigger a mailbox refresh.
+
+Path: `key` — a conversation key from §5.5. Anything that is not one of the
+user's conversations (including a malformed key) is `404 not_found`.
+
+Query parameter (optional): `mailboxId` (integer) — same meaning and scope
+rule as §5.5: with more than one connected mailbox, only the threads that
+involve that mailbox's address are included.
+
+`200`:
+```json
+{
+  "key": "154e1e0a1872533ddf397a16e5a65dcf",
+  "title": "Ada Lovelace",
+  "initials": "AL",
+  "group": false,
+  "threadCount": 1,
+  "messageCount": 2,
+  "members": [
+    { "email": "ada@acme.com", "displayName": "Ada Lovelace", "initials": "AL", "label": "Ada Lovelace" }
+  ],
+  "runs": [
+    {
+      "outbound": false,
+      "sender": { "email": "ada@acme.com", "displayName": "Ada Lovelace", "initials": "AL" },
+      "thread": { "id": 7, "subject": "Lunch" },
+      "messages": [
+        {
+          "id": 101,
+          "sentAt": "2026-11-16T09:30:00Z",
+          "bodyHtml": "<p>Pizza at noon?</p>",
+          "bodyText": "Pizza at noon?",
+          "replyToId": null,
+          "attachments": [ { "filename": "menu.pdf", "mimeType": "application/pdf", "sizeBytes": 20480 } ]
+        }
+      ]
+    }
+  ]
+}
+```
+- `key`, `title`, `initials`, `group`: as in §5.5. `threadCount`
+  (integer ≥ 1), `messageCount` (integer ≥ 1, total messages over all runs).
+- `members` (array): the non-owner participants in first-seen order.
+  `displayName` is a string or `null`; `label` is the display name, else the
+  email (§4 title input); `initials` per §4.
+- `runs` (array, chronological): consecutive messages from the same side
+  within the same email thread. `outbound` (boolean): sent by the user.
+  `sender` (object): who sent the run's messages (`displayName` may be
+  `null`). `thread` (object): the email thread the run belongs to (`id`
+  integer, `subject` string or `null`).
+- `messages[]`, oldest first within the run:
+  - `id` (integer): message id.
+  - `sentAt` (instant or `null`).
+  - `bodyHtml` (string): the server-sanitized body with quoted replies and
+    the signature removed (jsoup `Safelist.relaxed()`: text formatting,
+    lists, tables, links and `img`; no scripts, styles or event
+    attributes). May be `""`.
+  - `bodyText` (string): the same body as plain text — block elements and
+    `<br>` become line breaks, runs of blank lines collapse to one, trimmed.
+    Clients that do not render HTML show this. May be `""`.
+  - `replyToId` (integer or `null`): the message this one answers, when
+    that message is also in this timeline.
+  - `attachments` (array): `filename` (string), `mimeType` (string or
+    `null`), `sizeBytes` (integer or `null`). Metadata only — attachment
+    bytes are not stored yet, so there is no download endpoint.
+
+Signatures (shown in the website's side panel) are not part of the
+response yet. There is no pagination: the whole conversation is returned.
+
+Errors: `404 not_found` (unknown key, or `mailboxId` not the user's);
+`400 validation_failed` (non-integer `mailboxId`); `401 unauthorized`.
+
+### 5.7 POST /api/v1/conversations/{key}/read
+Bearer token required. Marks every thread of the conversation read — only
+the threads involving `mailboxId`'s address when that query parameter
+scopes it (§5.5 scope rule), so the same person reached through another
+mailbox keeps its unread state. The same `ChatService.markRead` the website
+runs when a conversation is opened. Idempotent. Request body: none.
+
+`204`, empty body. Errors: `404 not_found` (no such conversation in scope,
+or `mailboxId` not the user's); `401 unauthorized`.
+
+Clients may show the row as read immediately (prediction) and must take the
+next `GET /api/v1/conversations` as the truth.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Conversations: one conversation with its bubble runs, mark read (the
-   list is §5.5).
-2. Send: reply into a conversation, start a new one.
-3. Mailboxes: list, connect (IMAP password), sync, remove.
-4. Account: device list / revoke other sessions.
-5. Live updates: SSE (or push) with enough detail to update without a
+1. Send: reply into a conversation, start a new one.
+2. Mailboxes: list, connect (IMAP password), sync, remove.
+3. Account: device list / revoke other sessions.
+4. Live updates: SSE (or push) with enough detail to update without a
    full refetch.

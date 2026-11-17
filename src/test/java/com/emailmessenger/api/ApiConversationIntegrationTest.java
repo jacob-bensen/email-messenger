@@ -188,6 +188,104 @@ class ApiConversationIntegrationTest {
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
+    @Test
+    void returnsOneConversationAsBubbleRunsWithoutMarkingItRead() throws Exception {
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob Builder"));
+        inbound("Lunch", bob, List.of(me), "Pizza at noon?\n\nOr 1pm", true, LocalDateTime.of(2026, 1, 1, 9, 0));
+        String key = keyService.keyFor(List.of("bob@acme.com"), ownerAddressService.addressesFor(owner));
+
+        mockMvc.perform(get("/api/v1/conversations/" + key).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.key").value(key))
+                .andExpect(jsonPath("$.title").value("Bob Builder"))
+                .andExpect(jsonPath("$.initials").value("BB"))
+                .andExpect(jsonPath("$.group").value(false))
+                .andExpect(jsonPath("$.threadCount").value(1))
+                .andExpect(jsonPath("$.messageCount").value(1))
+                .andExpect(jsonPath("$.members", hasSize(1)))
+                .andExpect(jsonPath("$.members[0].email").value("bob@acme.com"))
+                .andExpect(jsonPath("$.members[0].label").value("Bob Builder"))
+                .andExpect(jsonPath("$.runs", hasSize(1)))
+                .andExpect(jsonPath("$.runs[0].outbound").value(false))
+                .andExpect(jsonPath("$.runs[0].sender.email").value("bob@acme.com"))
+                .andExpect(jsonPath("$.runs[0].thread.subject").value("Lunch"))
+                .andExpect(jsonPath("$.runs[0].messages[0].sentAt").value("2026-01-01T09:00:00Z"))
+                .andExpect(jsonPath("$.runs[0].messages[0].bodyText").value("Pizza at noon?\n\nOr 1pm"))
+                .andExpect(jsonPath("$.runs[0].messages[0].replyToId").isEmpty())
+                .andExpect(jsonPath("$.runs[0].messages[0].attachments", hasSize(0)));
+
+        mockMvc.perform(get("/api/v1/conversations?filter=unread").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.items", hasSize(1)));
+    }
+
+    @Test
+    void markReadClearsUnreadAndIsIdempotent() throws Exception {
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        inbound("Lunch", bob, List.of(me), "pizza?", true, LocalDateTime.of(2026, 1, 1, 9, 0));
+        String key = keyService.keyFor(List.of("bob@acme.com"), ownerAddressService.addressesFor(owner));
+
+        for (int i = 0; i < 2; i++) {
+            mockMvc.perform(post("/api/v1/conversations/" + key + "/read").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isNoContent());
+        }
+        em.clear();
+        mockMvc.perform(get("/api/v1/conversations").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.items[0].unread").value(false))
+                .andExpect(jsonPath("$.counts.unread").value(0));
+    }
+
+    @Test
+    void anotherUsersConversationIsNotFound() throws Exception {
+        User other = userService.register("eve@example.com", "correct-horse", "Eve");
+        Participant eve = participants.save(new Participant("eve@example.com", "Eve"));
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        EmailThread thread = threads.save(new EmailThread(other, "Secret", "<secret@x>"));
+        Message m = new Message(thread, bob, "Secret", "for eve only", null, LocalDateTime.of(2026, 1, 1, 9, 0));
+        m.addRecipient(eve, RecipientType.TO);
+        thread.addMessage(messages.save(m), true);
+        String key = keyService.compute(thread, ownerAddressService.addressesFor(other));
+        thread.setConversationKey(key);
+        threads.saveAndFlush(thread);
+
+        for (var request : List.of(get("/api/v1/conversations/" + key),
+                post("/api/v1/conversations/" + key + "/read"),
+                get("/api/v1/conversations/not-a-key"))) {
+            mockMvc.perform(request.header("Authorization", "Bearer " + token))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("not_found"));
+        }
+        em.clear();
+        org.assertj.core.api.Assertions.assertThat(threads.findById(thread.getId()).orElseThrow().isUnread()).isTrue();
+    }
+
+    @Test
+    void conversationScopesToAMailbox() throws Exception {
+        mailAccounts.save(new MailAccount(owner, "imap.example.com", 993, true, "ada@example.com", "ciphertext"));
+        MailAccount work = mailAccounts.save(new MailAccount(owner, "imap.acme.com", 993, true,
+                "work@acme.com", "ciphertext"));
+        Participant workAddress = participants.save(new Participant("work@acme.com", "Work"));
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        inbound("Home", bob, List.of(me), "home", true, LocalDateTime.of(2026, 1, 1, 9, 0));
+        inbound("Work", bob, List.of(workAddress), "work", true, LocalDateTime.of(2026, 1, 2, 9, 0));
+        String key = keyService.keyFor(List.of("bob@acme.com"), ownerAddressService.addressesFor(owner));
+
+        mockMvc.perform(get("/api/v1/conversations/" + key + "?mailboxId=" + work.getId())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.threadCount").value(1))
+                .andExpect(jsonPath("$.runs[0].messages[0].bodyText").value("work"));
+        mockMvc.perform(get("/api/v1/conversations/" + key).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.threadCount").value(2));
+
+        mockMvc.perform(post("/api/v1/conversations/" + key + "/read?mailboxId=" + work.getId())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+        em.clear();
+        mockMvc.perform(get("/api/v1/conversations?filter=unread").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andExpect(jsonPath("$.counts.unread").value(1));
+    }
+
     private void inbound(String subject, Participant sender, List<Participant> to, String body,
                          boolean unread, LocalDateTime at) {
         EmailThread thread = threads.save(new EmailThread(owner, subject, "<" + subject + "@x>"));

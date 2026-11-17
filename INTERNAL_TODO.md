@@ -7,9 +7,9 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **API covers auth + conversation list only.** One conversation,
-      mark read, send and mailboxes are not exposed (`docs/API.md` §6).
-      Next: conversation view (bubble runs + mark read).
+- [ ] **API covers auth, conversation list and one conversation only.**
+      Send and mailboxes are not exposed (`docs/API.md` §6). Next: reply /
+      new message (needs the send-flow extraction below).
 - [ ] **No mailbox list endpoint**, so the app cannot offer the
       `mailboxId` scope that `GET /api/v1/conversations` accepts.
 - [ ] **Stale branches.** Hundreds of unmerged `claude/gifted-carson-*`
@@ -23,11 +23,13 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       signature append, reply-vs-new, default subject) is private code in
       `ConversationController`. Extract a public send/conversation service
       and have the web controller call it, so web and API share one path.
-- [ ] **View models leak JPA entities.** `BubbleMessage.attachments` is
-      `List<Attachment>` and `Conversation.thread` is an `EmailThread`;
-      the API needs DTO records.
+- [ ] **View models still hold JPA entities** (`BubbleMessage.attachments`
+      is `List<Attachment>`, `Conversation.thread` an `EmailThread`). The
+      API maps them to records inside the read transaction, so nothing
+      leaks onto the wire; the view models themselves are unchanged.
 - [ ] **Timestamps are zone-less.** `LocalDateTime` values are UTC by
-      convention only; the API must emit explicit UTC instants.
+      convention only; the API converts them to `Z` instants at the DTO
+      edge (`ApiDtos`), which is right only while stored values are UTC.
 - [ ] **Live events carry only a count** (`{"imported":N}`), so any client
       must refetch the whole list.
 
@@ -85,7 +87,12 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       send or `/chats/refresh`. No Content-Security-Policy.
 - [ ] `ChatEventStream` is in-memory: single instance only.
 - [ ] Search is `LIKE '%q%'` with no full-text index; a conversation loads
-      all its messages with no pagination.
+      all its messages with no pagination — on the website and in
+      `GET /api/v1/conversations/{key}` alike. Long histories need a
+      cursor (`before=<messageId>`) before they get slow.
+- [ ] `GET /api/v1/conversations/{key}` omits member signatures (the
+      website shows them in the side panel); add with the signature →
+      contact card roadmap item.
 
 ## 4. Missing tests
 

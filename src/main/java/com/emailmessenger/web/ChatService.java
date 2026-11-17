@@ -20,7 +20,7 @@ import java.util.Locale;
  * is handed to the template.
  */
 @Service
-class ChatService {
+public class ChatService {
 
     private final EmailThreadRepository threads;
     private final ConversationService conversationService;
@@ -35,7 +35,7 @@ class ChatService {
     }
 
     @Transactional(readOnly = true)
-    ChatConversation buildFor(User owner, String conversationKey) {
+    public ChatConversation buildFor(User owner, String conversationKey) {
         if (conversationKey == null || conversationKey.isBlank()) {
             return null;
         }
@@ -54,7 +54,7 @@ class ChatService {
      * correspondent reached through another account.
      */
     @Transactional(readOnly = true)
-    ChatConversation buildFor(User owner, String mailboxAddress, String conversationKey) {
+    public ChatConversation buildFor(User owner, String mailboxAddress, String conversationKey) {
         if (conversationKey == null || conversationKey.isBlank()) {
             return null;
         }
@@ -71,12 +71,13 @@ class ChatService {
      * Marks the opened conversation's threads read. Scoped to {@code mailboxAddress}
      * when an account is selected (so the same correspondent reached via another
      * account keeps its own unread state); otherwise marks every thread of the key.
-     * No-op when nothing is unread.
+     * No-op when nothing is unread. Returns how many threads the conversation has
+     * in that scope, so 0 means there is no such conversation.
      */
     @Transactional
-    void markRead(User owner, String mailboxAddress, String conversationKey) {
+    public int markRead(User owner, String mailboxAddress, String conversationKey) {
         if (conversationKey == null || conversationKey.isBlank()) {
-            return;
+            return 0;
         }
         List<EmailThread> conversationThreads;
         if (mailboxAddress == null || mailboxAddress.isBlank()) {
@@ -90,5 +91,6 @@ class ChatService {
                 thread.markRead();
             }
         }
+        return conversationThreads.size();
     }
 }

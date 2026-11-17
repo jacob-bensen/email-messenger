@@ -3,6 +3,22 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-17 — Conversation view API (M1)
+
+- New `GET /api/v1/conversations/{key}` (`docs/API.md` §5.6): one
+  conversation's bubble runs (members, runs with sender/thread/outbound,
+  messages with UTC `sentAt`, sanitized `bodyHtml`, plain `bodyText`,
+  `replyToId`, attachment metadata), optional `mailboxId` scope.
+- New `POST /api/v1/conversations/{key}/read` (§5.7): `204`, idempotent,
+  `404` when the key has no threads in scope.
+- `web.ChatService` is now public and shared by `/chats/{key}` and the
+  API; `markRead` returns the number of threads in scope so the API can
+  tell "unknown conversation" from "already read". API DTOs are records
+  in `ApiDtos`; no JPA entity reaches the wire.
+- New `service.HtmlText.toPlainText` (block/`<br>`-aware HTML → text).
+- Tests: `ApiConversationIntegrationTest` +4, `HtmlTextTest` (4). Full
+  `mvn -B verify`: 830 tests, 0 failures, 1 skipped (Docker test).
+
 ## 2026-11-16 (b) — Conversation list API (M1) + branch consolidation
 
 - **Landed on `master`.** Every earlier routine run pushed to its own
