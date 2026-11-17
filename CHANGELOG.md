@@ -3,6 +3,26 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-17 (c) — Mailboxes API (M2)
+
+- New `/api/v1/mailboxes` (`docs/API.md` §5.10–5.14): list (with
+  `isDefault`, sync state, the website's error hint and a server-computed
+  `canConnect`), provider presets, connect over IMAP with a password,
+  sync now, remove. New error codes `403 plan_limit_reached` (any
+  `PlanLimitExceededException` under `/api`) and
+  `422 mailbox_connect_failed`.
+- **Shared service layer.** `ApiMailboxService` calls the same
+  `MailAccountService.list/connect/delete` as `/mailboxes`. "Sync now"
+  moved out of `MailboxController` into `MailAccountService.syncNow`
+  (owner lookup → `pollOne` → reload), now used by both the website and
+  the API. New `PlanLimitService.canCreateMailbox`.
+- Mailbox timestamps go on the wire through the JVM zone (they are stamped
+  with `LocalDateTime.now()`), unlike message times, which are UTC.
+- Tests: `ApiMailboxIntegrationTest` (12), `MailAccountServiceTest` +2
+  (`syncNow` reload and ownership), `MailboxControllerTest` sync tests now
+  stub `syncNow`. Full `mvn -B verify`: 855 tests, 0 failures, 1 skipped
+  (Docker test).
+
 ## 2026-11-17 (b) — Send API: reply and new message (M2)
 
 - **Shared send flow.** New public `web.ChatSendService` owns what was

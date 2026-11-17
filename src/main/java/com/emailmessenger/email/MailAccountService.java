@@ -40,19 +40,43 @@ public class MailAccountService {
     private final CredentialEncryptor encryptor;
     private final PlanLimitService planLimitService;
     private final EmailImportService importService;
+    private final MailboxPollingService pollingService;
 
     MailAccountService(MailAccountRepository repository,
                        UserRepository userRepository,
                        ImapClient imapClient,
                        CredentialEncryptor encryptor,
                        PlanLimitService planLimitService,
-                       EmailImportService importService) {
+                       EmailImportService importService,
+                       MailboxPollingService pollingService) {
         this.repository = repository;
         this.userRepository = userRepository;
         this.imapClient = imapClient;
         this.encryptor = encryptor;
         this.planLimitService = planLimitService;
         this.importService = importService;
+        this.pollingService = pollingService;
+    }
+
+    /** The mailbox after a "Sync now", plus how many messages that sync imported. */
+    public record SyncResult(MailAccount account, int imported) {}
+
+    /**
+     * "Sync now" for one owned mailbox, regardless of schedule or circuit
+     * breaker. A connection failure is not thrown: it is recorded on the
+     * returned account's {@code lastSyncError}. Not {@code @Transactional}:
+     * {@link MailboxPollingService#pollOne} runs its own transaction, and the
+     * reload must see what it committed.
+     *
+     * @throws NoSuchElementException if the id isn't one of the user's mailboxes
+     */
+    public SyncResult syncNow(User user, Long id) {
+        MailAccount account = repository.findByIdAndUser(id, user)
+                .orElseThrow(NoSuchElementException::new);
+        int imported = pollingService.pollOne(account.getId());
+        MailAccount reloaded = repository.findById(account.getId())
+                .orElseThrow(NoSuchElementException::new);
+        return new SyncResult(reloaded, imported);
     }
 
     @Transactional(readOnly = true)

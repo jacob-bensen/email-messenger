@@ -67,6 +67,34 @@ class MailAccountServiceTest {
     }
 
     @Test
+    void syncNowPollsTheOwnedMailboxAndReturnsItReloaded() {
+        MailAccount saved = mailAccountRepository.save(new MailAccount(owner, "imap.example.com", 993, true,
+                "user@example.com", encryptor.encrypt("pw")));
+        when(imapClient.fetchSinceUid(any(ImapCredentials.class), any()))
+                .thenReturn(new ImapClient.IncrementalFetch(List.of(), 9L));
+        when(imapClient.fetchSentSinceUid(any(ImapCredentials.class), any()))
+                .thenReturn(new ImapClient.IncrementalFetch(List.of(), 4L));
+
+        MailAccountService.SyncResult result = mailAccountService.syncNow(owner, saved.getId());
+
+        assertThat(result.imported()).isZero();
+        assertThat(result.account().getLastSyncedAt()).isNotNull();
+        assertThat(result.account().getLastSeenUid()).isEqualTo(9L);
+    }
+
+    @Test
+    void syncNowOfAForeignMailboxThrowsWithoutPolling() {
+        userService.register("someone-else@example.com", "password1", "Else");
+        User other = userRepository.findByEmail("someone-else@example.com").orElseThrow();
+        MailAccount foreign = mailAccountRepository.save(new MailAccount(other, "imap.example.com", 993, true,
+                "else@example.com", encryptor.encrypt("pw")));
+
+        assertThat(catchThrowableOfType(java.util.NoSuchElementException.class,
+                () -> mailAccountService.syncNow(owner, foreign.getId()))).isNotNull();
+        verify(imapClient, never()).fetchSinceUid(any(), any());
+    }
+
+    @Test
     void deleteForeignOrUnknownMailboxReturnsFalse() {
         assertThat(mailAccountService.delete(owner, 999_999L)).isFalse();
     }

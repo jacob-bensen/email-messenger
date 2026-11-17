@@ -298,6 +298,8 @@ class MailboxControllerTest {
         saved.markSynced();
         saved = mailAccountRepository.save(saved);
         Long mailboxId = saved.getId();
+        when(mailAccountService.syncNow(any(User.class), eq(mailboxId)))
+                .thenReturn(new MailAccountService.SyncResult(saved, 0));
 
         mockMvc.perform(post("/mailboxes/" + mailboxId + "/sync")
                         .with(user("mailbox@example.com"))
@@ -306,7 +308,7 @@ class MailboxControllerTest {
                 .andExpect(redirectedUrl("/mailboxes"))
                 .andExpect(flash().attributeExists("syncMessage"));
 
-        verify(pollingService).pollOne(mailboxId);
+        verify(mailAccountService).syncNow(any(User.class), eq(mailboxId));
     }
 
     @Test
@@ -316,13 +318,14 @@ class MailboxControllerTest {
         MailAccount foreign = mailAccountRepository.save(new MailAccount(
                 other, "imap.example.com", 993, true,
                 "other@example.com", "ciphertext"));
+        // Ownership itself is checked in MailAccountServiceTest; this pins the 404 mapping.
+        when(mailAccountService.syncNow(any(User.class), eq(foreign.getId())))
+                .thenThrow(new java.util.NoSuchElementException());
 
         mockMvc.perform(post("/mailboxes/" + foreign.getId() + "/sync")
                         .with(user("mailbox@example.com"))
                         .with(csrf()))
                 .andExpect(status().isNotFound());
-
-        Mockito.verifyNoInteractions(pollingService);
     }
 
     @Test
@@ -418,6 +421,8 @@ class MailboxControllerTest {
                 "owner@example.com", "ciphertext"));
         saved.markSyncError("Login failed");
         saved = mailAccountRepository.save(saved);
+        when(mailAccountService.syncNow(any(User.class), eq(saved.getId())))
+                .thenReturn(new MailAccountService.SyncResult(saved, 0));
 
         mockMvc.perform(post("/mailboxes/" + saved.getId() + "/sync")
                         .with(user("mailbox@example.com"))

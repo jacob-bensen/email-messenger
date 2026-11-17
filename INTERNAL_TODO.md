@@ -7,15 +7,15 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **No mailbox endpoints.** The API covers auth, conversations and
-      sending; mailboxes (list, connect, sync, remove) are next
-      (`docs/API.md` §6).
 - [ ] **API sends are not idempotent and carry no attachments**
       (`docs/API.md` §5.8). A client retry after a timeout can send twice;
       add an `Idempotency-Key` (or client message id) and multipart
       attachments.
-- [ ] **No mailbox list endpoint**, so the app cannot offer the
-      `mailboxId` scope that `GET /api/v1/conversations` accepts.
+- [ ] **Mail preferences and signatures are website-only.** Sync
+      frequency, the default sending mailbox and per-mailbox signatures
+      have no API yet (`docs/API.md` §6.1); `isDefault` is read-only.
+- [ ] **Gmail OAuth mailboxes cannot be connected or reconnected from the
+      API** (§5.10 `authType: google`); the app can only sync/remove them.
 - [ ] **Stale branches.** Hundreds of unmerged `claude/gifted-carson-*`
       branches on origin. `master` now holds the consolidated work
       (2026-11-16); the others are superseded and can be deleted by the
@@ -68,8 +68,18 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       the constraint; `findByMessageIdHeaderAndOwner` returns `Optional` and
       would throw on duplicates.
 
+- [ ] **`MailAccountService.connect` holds a DB transaction across IMAP
+      I/O** (verify + initial import of 30 messages), on the website and
+      `POST /api/v1/mailboxes` alike; a slow server pins a connection for
+      the whole call. Split verify/import out of the transaction.
+- [ ] **Connecting the same mailbox twice creates two rows** (web and
+      API); no unique (user, host, username) check.
+
 ## 3. Security and operations
 
+- [ ] No rate limit on `POST /api/v1/mailboxes` or `…/{id}/sync`: each
+      call opens an IMAP connection to a user-chosen host (also true of the
+      website forms).
 - [ ] `GET /api/v1/conversations` (like `/chats`) fires an async mailbox
       refresh on every request; a client polling the list triggers IMAP
       work each time (bounded by the per-mailbox "due" check).

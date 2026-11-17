@@ -11,13 +11,19 @@ import com.emailmessenger.service.ConversationListItem;
 import com.emailmessenger.service.HtmlText;
 import com.emailmessenger.service.SenderBubbleRun;
 import com.emailmessenger.service.SenderView;
+import com.emailmessenger.domain.AuthType;
+import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.web.ChatSendService;
 import com.emailmessenger.web.ConversationListService;
+import com.emailmessenger.web.MailboxProvider;
+import com.emailmessenger.web.MailboxView;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.data.domain.Page;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
@@ -146,6 +152,43 @@ final class ApiDtos {
             return new SendResponse(result.conversationKey(), result.threadId(), result.messageId());
         }
     }
+
+    record MailboxList(List<MailboxResponse> items, boolean canConnect) {}
+
+    record MailboxResponse(long id, String username, String host, int port, boolean ssl, String authType,
+                           boolean isDefault, Instant createdAt, Instant lastSyncedAt, String syncError,
+                           String syncErrorHint, boolean pollingSuspended) {
+
+        static MailboxResponse of(MailAccount account, Long defaultMailboxId) {
+            MailboxView view = MailboxView.from(account, LocalDateTime.now());
+            return new MailboxResponse(account.getId(), account.getUsername(), account.getHost(),
+                    account.getPort(), account.isSsl(),
+                    account.getAuthType() == AuthType.XOAUTH2 ? "google" : "password",
+                    account.getId().equals(defaultMailboxId),
+                    systemZoneInstant(account.getCreatedAt()), systemZoneInstant(account.getLastSyncedAt()),
+                    view.lastSyncError(), view.errorHint(), account.isPollingSuspended());
+        }
+
+        // MailAccount stamps these with LocalDateTime.now() (JVM zone), unlike sent_at, which is UTC.
+        private static Instant systemZoneInstant(LocalDateTime value) {
+            return value == null ? null : value.atZone(ZoneId.systemDefault()).toInstant();
+        }
+    }
+
+    record ProviderList(List<ProviderResponse> items) {}
+
+    record ProviderResponse(String slug, String name, String host, int port, boolean ssl,
+                            String appPasswordUrl, String help) {
+
+        static ProviderResponse of(MailboxProvider p) {
+            return new ProviderResponse(p.getSlug(), p.getDisplayName(), p.getHost(), p.getPort(), p.isSsl(),
+                    p.getAppPasswordUrl(), p.getAppPasswordHelp());
+        }
+    }
+
+    record ConnectMailboxRequest(String host, Integer port, Boolean ssl, String username, String password) {}
+
+    record SyncResponse(int imported, MailboxResponse mailbox) {}
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;

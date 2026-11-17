@@ -1,5 +1,8 @@
 package com.emailmessenger.api;
 
+import com.emailmessenger.billing.PlanLimitExceededException;
+import com.emailmessenger.billing.PlanLimitKind;
+import com.emailmessenger.domain.Plan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
@@ -11,6 +14,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import java.util.Locale;
 
 /**
  * JSON error envelope for every {@code /api} controller. Ordered ahead of the
@@ -26,6 +31,28 @@ class ApiExceptionHandler {
     @ExceptionHandler(ApiException.class)
     ResponseEntity<ApiError> api(ApiException ex) {
         return ResponseEntity.status(ex.status()).body(ApiError.of(ex.code(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(PlanLimitExceededException.class)
+    ResponseEntity<ApiError> planLimit(PlanLimitExceededException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiError.of("plan_limit_reached", planLimitMessage(ex)));
+    }
+
+    static String planLimitMessage(PlanLimitExceededException ex) {
+        String plan = planName(ex.getCurrentPlan());
+        String what = switch (ex.getKind()) {
+            case MAILBOX_COUNT -> ex.getLimit() == 1 ? "1 mailbox" : ex.getLimit() + " mailboxes";
+            case THREAD_COUNT -> ex.getLimit() + " email threads";
+            case SAVED_SEARCH_COUNT -> ex.getLimit() + " saved searches";
+        };
+        return "Your " + plan + " plan includes " + what + ". Upgrade on the website to "
+                + (ex.getKind() == PlanLimitKind.MAILBOX_COUNT ? "connect more." : "get more.");
+    }
+
+    private static String planName(Plan plan) {
+        String lower = plan.name().toLowerCase(Locale.ROOT);
+        return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
     }
 
     @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})

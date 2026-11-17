@@ -84,6 +84,12 @@ public class PlanLimitService {
      * a 4th gets the upgrade modal; Pro lifts the cap to 5.
      */
     @Transactional(readOnly = true)
+    public boolean canCreateMailbox(User user) {
+        long limit = PlanLimits.forPlan(currentPlan(user)).mailboxes();
+        return limit == PlanLimits.UNLIMITED || mailAccounts.countByUser(user) < limit;
+    }
+
+    @Transactional(readOnly = true)
     public void enforceCanCreateMailbox(User user) {
         Plan plan = currentPlan(user);
         long limit = PlanLimits.forPlan(plan).mailboxes();
