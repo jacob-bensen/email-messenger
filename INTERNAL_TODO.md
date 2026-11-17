@@ -7,9 +7,13 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **API covers auth, conversation list and one conversation only.**
-      Send and mailboxes are not exposed (`docs/API.md` §6). Next: reply /
-      new message (needs the send-flow extraction below).
+- [ ] **No mailbox endpoints.** The API covers auth, conversations and
+      sending; mailboxes (list, connect, sync, remove) are next
+      (`docs/API.md` §6).
+- [ ] **API sends are not idempotent and carry no attachments**
+      (`docs/API.md` §5.8). A client retry after a timeout can send twice;
+      add an `Idempotency-Key` (or client message id) and multipart
+      attachments.
 - [ ] **No mailbox list endpoint**, so the app cannot offer the
       `mailboxId` scope that `GET /api/v1/conversations` accepts.
 - [ ] **Stale branches.** Hundreds of unmerged `claude/gifted-carson-*`
@@ -17,12 +21,6 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       (2026-11-16); the others are superseded and can be deleted by the
       owner. Two of them (`xg109u`, `7vfcku`) carry an alternate docs
       bootstrap that was not merged.
-- [ ] **Chat services are not reachable from an API controller.**
-      `ChatService` and `OutboundMessageService` are package-private in
-      `web/`, and the send flow (recipient parsing, sending-account choice,
-      signature append, reply-vs-new, default subject) is private code in
-      `ConversationController`. Extract a public send/conversation service
-      and have the web controller call it, so web and API share one path.
 - [ ] **View models still hold JPA entities** (`BubbleMessage.attachments`
       is `List<Attachment>`, `Conversation.thread` an `EmailThread`). The
       API maps them to records inside the read transaction, so nothing
@@ -35,6 +33,11 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 2. Logic drift and correctness
 
+- [ ] **Send then record is not atomic.** `ChatSendService` records the
+      outbound copy only after SMTP accepts; a crash or DB error in between
+      leaves a sent email with no bubble (until the Sent-folder import, if
+      the user's mailbox stores it). An outbox table would fix both this and
+      idempotency.
 - [ ] **Sent messages can appear twice.** `recordReply` stores the local
       copy with no Message-ID and `recordNewEmail` with a synthetic one, so
       the Sent-folder import cannot de-duplicate against either.

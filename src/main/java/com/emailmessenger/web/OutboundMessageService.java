@@ -50,11 +50,12 @@ class OutboundMessageService {
         this.clock = clock;
     }
 
+    /** Returns the recorded message, or {@code null} when the thread is not the owner's. */
     @Transactional
-    void recordReply(Long threadId, User owner, String body, List<OutgoingAttachment> attachments) {
+    Message recordReply(Long threadId, User owner, String body, List<OutgoingAttachment> attachments) {
         EmailThread thread = threadRepo.findByIdAndOwner(threadId, owner).orElse(null);
         if (thread == null) {
-            return;
+            return null;
         }
         Participant me = resolveOwnerParticipant(owner);
 
@@ -71,6 +72,7 @@ class OutboundMessageService {
         thread.setConversationKey(
                 conversationKeyService.compute(thread, ownerAddressService.addressesFor(owner)));
         threadRepo.save(thread);
+        return saved;
     }
 
     /**
@@ -79,7 +81,7 @@ class OutboundMessageService {
      * and the message shows in that chat as a "you" bubble.
      */
     @Transactional
-    void recordNewEmail(User owner, String conversationKey, String subject, String body,
+    Message recordNewEmail(User owner, String conversationKey, String subject, String body,
                         List<String> recipientEmails, List<OutgoingAttachment> attachments) {
         Participant me = resolveOwnerParticipant(owner);
         String messageId = "<" + UUID.randomUUID() + "@conexusmail.com>";
@@ -101,6 +103,7 @@ class OutboundMessageService {
         // Pin it to the conversation the user is in, so it appears in that chat.
         thread.setConversationKey(conversationKey);
         threadRepo.save(thread);
+        return saved;
     }
 
     private Participant resolveOwnerParticipant(User owner) {

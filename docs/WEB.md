@@ -41,8 +41,8 @@ dialect: pages compose shared pieces with `th:replace`. One stylesheet,
 | `GET /chats` | user | `chat` (empty pane) | `ConversationController#list` → `ConversationListService.list` / `counts`, `MailAccountService.list`, `MailboxPollingService.refreshDueForUserAsync`, `BillingBannerService`. Params: `page`, `q`, `mailbox`, `filter`. Page size 30. Filter parsing and the mailbox scope rule live in `ConversationListService` (`ChatFilter.parse`, `scopeAddress`), shared with `GET /api/v1/conversations`. |
 | `GET /chats/{key}` | user | `chat` | `#chat` → `ChatService.markRead` + `buildFor` (the same calls back `GET /api/v1/conversations/{key}` and `POST …/read`). Unknown key → `/chats`. |
 | `GET /chats/{key}/pane` | user | fragment `chat-pane :: pane` / `:: missing` | `#chatPane` (same services) |
-| `POST /chats/{key}/send` | user | redirect | `#send` → `ReplyService.sendReply` / `sendNewEmail`, then `OutboundMessageService.recordReply` / `recordNewEmail`. Multipart: `body`, `subject`, `asReply`, `attachments`, `mailbox`. |
-| `GET /chats/new`, `POST /chats/new` | user | `compose` | `#compose`, `#createMessage` → `ConversationKeyService.keyFor`, `ReplyService.sendNewEmail`, `OutboundMessageService.recordNewEmail` |
+| `POST /chats/{key}/send` | user | redirect | `#send` → `ChatSendService.sendToConversation` (shared with `POST /api/v1/conversations/{key}/messages`); an empty body re-renders `chat` with a field error. Multipart: `body`, `subject`, `asReply`, `attachments`, `mailbox`. |
+| `GET /chats/new`, `POST /chats/new` | user | `compose` | `#compose`, `#createMessage` → `ChatSendService.startConversation` (shared with `POST /api/v1/conversations`); a rejection re-renders `compose` with `composeError` |
 | `POST /chats/refresh`, `GET /chats/events` | user | JSON / SSE | see `docs/API.md` §3 |
 | `GET /threads`, `/threads/**`, `/senders` | user | redirect `/chats` | `ChatRedirectController` (legacy URLs) |
 | `POST /searches`, `POST /searches/{id}/delete` | user | redirect `/chats` | `SavedSearchController` → `SavedSearchService` (no page currently posts here) |
@@ -97,7 +97,7 @@ Global model attributes: `NavModelAdvice` (`navActive`, `htmlTheme`,
 ## Relationship to the REST API
 `/api/v1` (`docs/API.md` §5) calls the same services these pages call:
 the conversation list goes through `ConversationListService`, one
-conversation and mark-read through `ChatService`. Today some rules
-live in web controllers rather than services — most importantly the whole
-send flow in `ConversationController` — and must be extracted before an API
-controller can share them. The list is in `INTERNAL_TODO.md`.
+conversation and mark-read through `ChatService`, sending through
+`ChatSendService`. Some rules still live in web controllers rather than
+services (mailbox settings, Gmail OAuth, digests); the list is in
+`INTERNAL_TODO.md`.

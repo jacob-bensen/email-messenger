@@ -3,6 +3,27 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-17 (b) — Send API: reply and new message (M2)
+
+- **Shared send flow.** New public `web.ChatSendService` owns what was
+  private code in `ConversationController`: body/recipient validation,
+  recipient parsing, sending-account choice, signature, default subject,
+  reply-vs-new. `POST /chats/{key}/send` and `POST /chats/new` now call it,
+  as do the new API endpoints, so web and API cannot drift.
+  `OutboundMessageService.record*` return the recorded `Message`.
+- New `POST /api/v1/conversations/{key}/messages` (`docs/API.md` §5.8) and
+  `POST /api/v1/conversations` (§5.9): JSON body, `201
+  {key, threadId, messageId}`. New error codes `409 no_recipients` and
+  `502 send_failed` (mail server refused; nothing recorded). No
+  attachments or idempotency key yet (§6).
+- Website behavior unchanged except: an over-long reply now shows "The
+  message is too long." (was "Reply body is too long"), and the success
+  flash says "Reply sent." only for replies.
+- Tests: `ApiSendIntegrationTest` (10), `ConversationControllerTest` +1
+  (empty send re-renders with the field error), compose rejection asserts
+  the message. Full `mvn -B verify`: 841 tests, 0 failures, 1 skipped
+  (Docker test).
+
 ## 2026-11-17 — Conversation view API (M1)
 
 - New `GET /api/v1/conversations/{key}` (`docs/API.md` §5.6): one

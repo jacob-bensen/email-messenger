@@ -11,6 +11,7 @@ import com.emailmessenger.service.ConversationListItem;
 import com.emailmessenger.service.HtmlText;
 import com.emailmessenger.service.SenderBubbleRun;
 import com.emailmessenger.service.SenderView;
+import com.emailmessenger.web.ChatSendService;
 import com.emailmessenger.web.ConversationListService;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -132,6 +133,17 @@ final class ApiDtos {
         static AttachmentResponse of(Attachment attachment) {
             return new AttachmentResponse(attachment.getFilename(), attachment.getMimeType(),
                     attachment.getSizeBytes());
+        }
+    }
+
+    record SendMessageRequest(String body, String subject, Boolean asReply) {}
+
+    record NewConversationRequest(List<String> to, String subject, String body) {}
+
+    record SendResponse(String key, long threadId, long messageId) {
+
+        static SendResponse of(ChatSendService.SendResult result) {
+            return new SendResponse(result.conversationKey(), result.threadId(), result.messageId());
         }
     }
 

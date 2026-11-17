@@ -35,8 +35,10 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -318,7 +320,22 @@ class ConversationControllerTest {
                         .param("body", "no recipient")
                         .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
                 .andExpect(status().isOk())
-                .andExpect(view().name("compose"));
+                .andExpect(view().name("compose"))
+                .andExpect(model().attribute("composeError", "Add at least one valid recipient email address."));
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void sendingAnEmptyMessageRedisplaysTheChatWithAFieldError() throws Exception {
+        String body = mockMvc.perform(post("/chats/{key}/send", adaKey)
+                        .param("body", "  ")
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(view().name("chat"))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).contains("Add a message or an attachment.");
+        verifyNoInteractions(replyService);
     }
 
     private String seed(String subject, Participant sender, List<Participant> to, String html,

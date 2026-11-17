@@ -1,20 +1,13 @@
 package com.emailmessenger.web;
 
 import com.emailmessenger.auth.UserService;
-import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.MailAccountService;
 import com.emailmessenger.email.MailboxPollingService;
-import com.emailmessenger.repository.EmailThreadRepository;
-import com.emailmessenger.email.OwnerAddressService;
 import com.emailmessenger.service.ChatConversation;
-import com.emailmessenger.service.ChatMember;
-import com.emailmessenger.service.ConversationKeyService;
 import com.emailmessenger.service.OutgoingAttachment;
-import com.emailmessenger.service.ReplyService;
 import com.emailmessenger.billing.BillingBannerService;
-import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Controller;
@@ -34,7 +27,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.security.Principal;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -54,38 +46,26 @@ class ConversationController {
 
     private final ConversationListService conversationListService;
     private final ChatService chatService;
-    private final EmailThreadRepository threadRepository;
-    private final ReplyService replyService;
-    private final OutboundMessageService outboundMessageService;
+    private final ChatSendService chatSendService;
     private final UserService userService;
     private final BillingBannerService billingBannerService;
     private final MailboxPollingService mailboxPollingService;
     private final MailAccountService mailAccountService;
-    private final OwnerAddressService ownerAddressService;
-    private final ConversationKeyService conversationKeyService;
 
     ConversationController(ConversationListService conversationListService,
                            ChatService chatService,
-                           EmailThreadRepository threadRepository,
-                           ReplyService replyService,
-                           OutboundMessageService outboundMessageService,
                            UserService userService,
                            BillingBannerService billingBannerService,
                            MailboxPollingService mailboxPollingService,
                            MailAccountService mailAccountService,
-                           OwnerAddressService ownerAddressService,
-                           ConversationKeyService conversationKeyService) {
+                           ChatSendService chatSendService) {
         this.conversationListService = conversationListService;
         this.chatService = chatService;
-        this.threadRepository = threadRepository;
-        this.replyService = replyService;
-        this.outboundMessageService = outboundMessageService;
+        this.chatSendService = chatSendService;
         this.userService = userService;
         this.billingBannerService = billingBannerService;
         this.mailboxPollingService = mailboxPollingService;
         this.mailAccountService = mailAccountService;
-        this.ownerAddressService = ownerAddressService;
-        this.conversationKeyService = conversationKeyService;
     }
 
     @GetMapping("/chats")
@@ -186,48 +166,20 @@ class ConversationController {
                          RedirectAttributes redirectAttributes) {
         User owner = userService.requireByEmail(principal.getName());
         MailAccount selected = selectMailbox(mailAccountService.list(owner), mailboxParam);
-        List<String> recipients = parseRecipients(to);
-        boolean hasAttachment = attachments != null
-                && Arrays.stream(attachments).anyMatch(f -> f != null && !f.isEmpty());
-        String messageBody = body == null ? "" : body;
-
-        if (recipients.isEmpty() || (messageBody.isBlank() && !hasAttachment)) {
+        ChatSendService.SendResult sent;
+        try {
+            sent = chatSendService.startConversation(owner, selected, to == null ? List.of() : List.of(to),
+                    subject, body, toOutgoingAttachments(attachments));
+        } catch (ChatSendService.SendRejectedException e) {
             applyMailboxModel(model, selected);
-            model.addAttribute("composeError", recipients.isEmpty()
-                    ? "Add at least one valid recipient email address."
-                    : "Add a message or an attachment.");
+            model.addAttribute("composeError", e.getMessage());
             model.addAttribute("toValue", to);
             model.addAttribute("subjectValue", subject);
             model.addAttribute("bodyValue", body);
             return "compose";
         }
-
-        List<OutgoingAttachment> outgoing = toOutgoingAttachments(attachments);
-        MailAccount sender = sendingAccount(owner, mailAccountService.list(owner), selected);
-        String from = sender != null ? sender.getUsername() : owner.getEmail();
-        String subj = (subject == null || subject.isBlank()) ? "(no subject)" : subject.trim();
-        String key = conversationKeyService.keyFor(recipients, ownerAddressService.addressesFor(owner));
-        String outgoingBody = withSignature(messageBody, sender);
-
-        replyService.sendNewEmail(subj, outgoingBody, outgoing, recipients, from);
-        outboundMessageService.recordNewEmail(owner, key, subj, outgoingBody, recipients, outgoing);
         redirectAttributes.addFlashAttribute("successMessage", "Message sent.");
-        return "redirect:/chats/" + key + mailboxQuery(selected);
-    }
-
-    /** Splits a free-text recipient field on commas/semicolons/whitespace, keeping distinct addresses. */
-    private static List<String> parseRecipients(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return List.of();
-        }
-        List<String> out = new ArrayList<>();
-        for (String part : raw.split("[,;\\s]+")) {
-            String email = part.trim();
-            if (!email.isEmpty() && email.contains("@") && !out.contains(email)) {
-                out.add(email);
-            }
-        }
-        return out;
+        return "redirect:/chats/" + sent.conversationKey() + mailboxQuery(selected);
     }
 
     /**
@@ -299,12 +251,11 @@ class ConversationController {
     /**
      * Sends a chat message. By default it goes out as a brand-new email with the
      * given (optional) subject; ticking "reply" instead continues the
-     * conversation's most recent thread, keeping its subject and threading
-     * headers. Either way it goes to the conversation's participants.
+     * conversation's most recent thread. Rules live in {@link ChatSendService}.
      */
     @PostMapping("/chats/{key}/send")
     String send(@PathVariable String key,
-                @Valid @ModelAttribute("replyForm") ReplyForm replyForm,
+                @ModelAttribute("replyForm") ReplyForm replyForm,
                 BindingResult bindingResult,
                 @RequestParam(value = "subject", required = false) String subject,
                 @RequestParam(value = "asReply", defaultValue = "false") boolean asReply,
@@ -316,50 +267,28 @@ class ConversationController {
         User owner = userService.requireByEmail(principal.getName());
         List<MailAccount> accounts = mailAccountService.list(owner);
         MailAccount selected = selectMailbox(accounts, mailboxParam);
-        boolean hasAttachment = attachments != null
-                && Arrays.stream(attachments).anyMatch(f -> f != null && !f.isEmpty());
-        if (replyForm.getBody().isBlank() && !hasAttachment) {
-            bindingResult.rejectValue("body", "reply.empty", "Add a message or an attachment.");
-        }
-        if (bindingResult.hasErrors()) {
-            if (!populateChat(owner, accounts, selected, key, model)) {
-                return "redirect:/chats" + mailboxQuery(selected);
+        try {
+            chatSendService.sendToConversation(owner, selected, key, replyForm.getBody(), subject, asReply,
+                    toOutgoingAttachments(attachments));
+        } catch (ChatSendService.SendRejectedException e) {
+            switch (e.reason()) {
+                case EMPTY_MESSAGE, BODY_TOO_LONG -> {
+                    bindingResult.rejectValue("body", "reply.invalid", e.getMessage());
+                    if (!populateChat(owner, accounts, selected, key, model)) {
+                        return "redirect:/chats" + mailboxQuery(selected);
+                    }
+                    return "chat";
+                }
+                case NO_MEMBERS -> {
+                    redirectAttributes.addFlashAttribute("sendError", e.getMessage());
+                    return "redirect:/chats/" + key + mailboxQuery(selected);
+                }
+                default -> {
+                    return "redirect:/chats" + mailboxQuery(selected);
+                }
             }
-            return "chat";
         }
-
-        ChatConversation conversation = chatFor(owner, ConversationListService.scopeAddress(selected, accounts), key);
-        if (conversation == null) {
-            return "redirect:/chats" + mailboxQuery(selected);
-        }
-        List<String> recipients = conversation.members().stream().map(ChatMember::email).toList();
-        if (recipients.isEmpty()) {
-            redirectAttributes.addFlashAttribute("sendError",
-                    "This conversation has no one to send to.");
-            return "redirect:/chats/" + key + mailboxQuery(selected);
-        }
-        List<OutgoingAttachment> outgoing = toOutgoingAttachments(attachments);
-        // Send as the selected account so the message comes from that address;
-        // on the unscoped Hub view, fall back to the user's default sending account.
-        MailAccount sender = sendingAccount(owner, accounts, selected);
-        String from = sender != null ? sender.getUsername() : owner.getEmail();
-        String outgoingBody = withSignature(replyForm.getBody(), sender);
-        List<EmailThread> threads = threadRepository.findThreadsByConversationKey(owner, key);
-
-        if (asReply && !threads.isEmpty()) {
-            // Continue the most recently active thread so the email keeps its subject.
-            EmailThread target = threads.get(0);
-            replyService.sendReply(target.getId(), target.getSubject(), outgoingBody,
-                    outgoing, recipients, from);
-            outboundMessageService.recordReply(target.getId(), owner, outgoingBody, outgoing);
-            redirectAttributes.addFlashAttribute("successMessage", "Reply sent.");
-        } else {
-            String subj = (subject == null || subject.isBlank()) ? "(no subject)" : subject.trim();
-            replyService.sendNewEmail(subj, outgoingBody, outgoing, recipients, from);
-            outboundMessageService.recordNewEmail(owner, key, subj, outgoingBody,
-                    recipients, outgoing);
-            redirectAttributes.addFlashAttribute("successMessage", "Message sent.");
-        }
+        redirectAttributes.addFlashAttribute("successMessage", asReply ? "Reply sent." : "Message sent.");
         return "redirect:/chats/" + key + mailboxQuery(selected);
     }
 
@@ -379,40 +308,6 @@ class ConversationController {
         return scope != null
                 ? chatService.buildFor(owner, scope, key)
                 : chatService.buildFor(owner, key);
-    }
-
-    /**
-     * The account an outgoing message is sent from. A mailbox-scoped view wins;
-     * otherwise the user's default sending account (if it still exists), then
-     * the sole connected mailbox. {@code null} means no account could be
-     * attributed and the From falls back to the login email.
-     */
-    private static MailAccount sendingAccount(User owner, List<MailAccount> accounts,
-                                              MailAccount selected) {
-        if (selected != null) {
-            return selected;
-        }
-        MailAccount preferred = owner.getDefaultMailAccount();
-        if (preferred != null) {
-            for (MailAccount account : accounts) {
-                if (account.getId().equals(preferred.getId())) {
-                    return account;
-                }
-            }
-        }
-        return accounts.size() == 1 ? accounts.get(0) : null;
-    }
-
-    /**
-     * Appends the sending account's signature under a standard "-- " delimiter.
-     * Applied before both the SMTP send and the recorded outbound copy, so the
-     * chat bubble matches what the recipient received.
-     */
-    private static String withSignature(String body, MailAccount sender) {
-        if (sender == null || sender.getSignature() == null || sender.getSignature().isBlank()) {
-            return body;
-        }
-        return (body == null ? "" : body) + "\n\n-- \n" + sender.getSignature().strip();
     }
 
     /**

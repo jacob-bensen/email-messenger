@@ -1,13 +1,8 @@
 package com.emailmessenger.web;
 
-import jakarta.validation.constraints.Size;
-
+/** The chat reply box. Content rules (empty, length) live in {@link ChatSendService}. */
 class ReplyForm {
 
-    // Not @NotBlank: an attachment-only reply (empty body) is allowed. The
-    // controller rejects only the case where both the body and attachments
-    // are empty.
-    @Size(max = 100_000, message = "Reply body is too long")
     private String body = "";
 
     public String getBody() { return body; }

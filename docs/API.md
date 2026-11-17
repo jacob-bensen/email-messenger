@@ -13,8 +13,9 @@ section is promoted to Implemented.
 ## 1. Current state (2026-11-17)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
-paged conversation list, one conversation's timeline and mark-read (§5).
-Sending and mailboxes are not exposed yet (§6). The website's own machine endpoints (§3) still use the
+paged conversation list, one conversation's timeline, mark-read, sending
+into a conversation and starting a new one (§5). Mailboxes are not exposed
+yet (§6). The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
 ## 2. Authentication
@@ -182,8 +183,10 @@ the user, and may change. Clients branch on `code` only.
 | 403 | `forbidden` | Authenticated but not allowed |
 | 404 | `not_found` | Unknown `/api` path (after authentication) |
 | 405 | `method_not_allowed` | Wrong HTTP method on an existing endpoint |
+| 409 | `no_recipients` | Send: the conversation has nobody but you in it (§5.8) |
 | 429 | `too_many_attempts` | Login: throttle lock (§2) |
 | 500 | `internal_error` | Anything unexpected |
+| 502 | `send_failed` | Send: the mail server refused or could not be reached; nothing was sent or recorded (§5.8, §5.9) |
 
 Clients must treat an unknown `code` like `internal_error` for its status.
 
@@ -401,12 +404,85 @@ or `mailboxId` not the user's); `401 unauthorized`.
 Clients may show the row as read immediately (prediction) and must take the
 next `GET /api/v1/conversations` as the truth.
 
+### 5.8 POST /api/v1/conversations/{key}/messages
+Bearer token required. Sends a message to everyone in the conversation and
+records it as your bubble. The same `ChatSendService` the website's
+reply box (`POST /chats/{key}/send`) uses, so recipients, sending account,
+signature, subject and threading follow one rule set.
+
+Path: `key` — a conversation key (§5.5). Query parameter (optional):
+`mailboxId` — scopes the conversation lookup exactly like §5.6, **and**
+picks the sending account.
+
+Request:
+```json
+{ "body": "Pizza at noon works.", "subject": null, "asReply": true }
+```
+- `body` (string, required): the message text, plain text. Must not be
+  blank; at most 100 000 characters. Attachments cannot be sent through the
+  API yet.
+- `subject` (string, optional): subject of the new email when `asReply` is
+  false. Blank or missing → `(no subject)`. Ignored when `asReply` is true.
+- `asReply` (boolean, optional, default `false`): `true` continues the
+  conversation's most recently active email thread (subject
+  `Re: <thread subject>`, `In-Reply-To`/`References` set to that thread's
+  latest message); `false` sends a new email that the server files under
+  this same conversation.
+
+Server rules (clients must not predict beyond the bubble text):
+- Recipients are the conversation's members (§5.6 `members`), reply-all.
+- Sending account: `mailboxId` if given; else the user's default sending
+  mailbox if it still exists; else the only connected mailbox; else the
+  account email. The account's signature, if set, is appended under a
+  `-- ` line, so the recorded bubble matches what recipients got.
+- The mail is sent first and recorded only after the mail server accepted
+  it. The recorded message is outbound and its thread is marked read.
+
+`201`:
+```json
+{ "key": "154e1e0a1872533ddf397a16e5a65dcf", "threadId": 7, "messageId": 102 }
+```
+- `key` (string): the conversation the message was filed under (equals
+  the path key). `threadId`, `messageId` (integer): the recorded message.
+  Clients refetch §5.6 to show it; the server's timeline replaces any
+  locally predicted bubble.
+
+Errors: `400 validation_failed` (body blank or too long, malformed JSON,
+non-integer `mailboxId`); `404 not_found` (unknown key in scope, or
+`mailboxId` not the user's); `409 no_recipients`; `502 send_failed`;
+`401 unauthorized`. The request is not idempotent: a retry after a
+timeout may send twice.
+
+### 5.9 POST /api/v1/conversations
+Bearer token required. Starts a new conversation — or adds to the existing
+one with the same people — by sending a new email. The same
+`ChatSendService` path as the website's `POST /chats/new`.
+
+Query parameter (optional): `mailboxId` — the sending account (rule as
+§5.8; `404 not_found` if not the user's).
+
+Request:
+```json
+{ "to": ["bob@acme.com", "cy@acme.com"], "subject": "Lunch", "body": "Pizza at noon?" }
+```
+- `to` (string[], required): recipients. Each entry is split on commas,
+  semicolons and whitespace (as the website's To field), parts without `@`
+  are dropped, and duplicates are removed. Nothing left →
+  `400 validation_failed`.
+- `subject` (string, optional): blank or missing → `(no subject)`.
+- `body` (string, required): as §5.8.
+
+`201`: same shape as §5.8. `key` is computed by the server from the
+recipients (§4 Conversation key; your own addresses are excluded) — the
+conversation to open next. Errors: `400 validation_failed`,
+`404 not_found` (`mailboxId`), `502 send_failed`, `401 unauthorized`.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Send: reply into a conversation, start a new one.
-2. Mailboxes: list, connect (IMAP password), sync, remove.
-3. Account: device list / revoke other sessions.
-4. Live updates: SSE (or push) with enough detail to update without a
+1. Mailboxes: list, connect (IMAP password), sync, remove.
+2. Account: device list / revoke other sessions.
+3. Live updates: SSE (or push) with enough detail to update without a
    full refetch.
+4. Attachments on send (multipart), and an idempotency key for sends.
