@@ -7,6 +7,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -28,10 +29,29 @@ class ApiExceptionHandler {
         return ResponseEntity.status(ex.status()).body(ApiError.of(ex.code(), ex.getMessage()));
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})
-    ResponseEntity<ApiError> invalid(Exception ex) {
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ApiError> unreadable(HttpMessageNotReadableException ex) {
         return ResponseEntity.badRequest()
                 .body(ApiError.of("validation_failed", "The request body is missing or malformed."));
+    }
+
+    /**
+     * Our own constraint messages are full sentences ("Port must be between 1
+     * and 65535."), safe to show; Bean Validation's defaults ("must not be
+     * blank") are not, so those name the field instead.
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    ResponseEntity<ApiError> invalid(MethodArgumentNotValidException ex) {
+        FieldError field = ex.getBindingResult().getFieldError();
+        String message;
+        if (field == null) {
+            message = "The request body is missing or malformed.";
+        } else if (field.getDefaultMessage() != null && field.getDefaultMessage().endsWith(".")) {
+            message = field.getDefaultMessage();
+        } else {
+            message = "Invalid value for '" + field.getField() + "'.";
+        }
+        return ResponseEntity.badRequest().body(ApiError.of("validation_failed", message));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)

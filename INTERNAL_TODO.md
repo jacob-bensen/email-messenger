@@ -7,15 +7,10 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **No mailbox endpoints.** The API covers auth, conversations and
-      sending; mailboxes (list, connect, sync, remove) are next
-      (`docs/API.md` §6).
 - [ ] **API sends are not idempotent and carry no attachments**
       (`docs/API.md` §5.8). A client retry after a timeout can send twice;
       add an `Idempotency-Key` (or client message id) and multipart
       attachments.
-- [ ] **No mailbox list endpoint**, so the app cannot offer the
-      `mailboxId` scope that `GET /api/v1/conversations` accepts.
 - [ ] **Stale branches.** Hundreds of unmerged `claude/gifted-carson-*`
       branches on origin. `master` now holds the consolidated work
       (2026-11-16); the others are superseded and can be deleted by the
@@ -53,8 +48,10 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       again to `/chats` and drop flashes, so the plan-limit upgrade modal,
       `verifyFlash` and `teamFlash` never render. Several flashes have no
       template reading them at all.
-- [ ] **Business rules in controllers** (beyond the send flow): sync
-      frequency / plan floor and signature length in `MailboxController`;
+- [ ] **Business rules in controllers** (beyond the send and sync-now
+      flows): sync frequency / plan floor and signature length in
+      `MailboxController` — move them into `MailAccountService` before the
+      API exposes preferences/signature editing;
       the Gmail OAuth state machine in `GmailConnectController`; opt-out
       mutation in `DigestController`; password length in
       `PasswordResetController`; duplicated plan→checkout logic in
@@ -69,6 +66,15 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       would throw on duplicates.
 
 ## 3. Security and operations
+
+- [ ] `POST /api/v1/mailboxes` and `…/sync` hold the request open for the
+      IMAP verify + initial import (up to ~30 messages), and connect does
+      that IMAP work inside its database transaction (as the website
+      does). No rate limit on connect attempts, so the endpoint can be
+      used to probe IMAP credentials against third-party servers. No
+      duplicate check: the same address can be connected twice.
+- [ ] Mailbox signature / default sender / sync frequency are not editable
+      over the API yet; Gmail OAuth connect is website-only.
 
 - [ ] `GET /api/v1/conversations` (like `/chats`) fires an async mailbox
       refresh on every request; a client polling the list triggers IMAP

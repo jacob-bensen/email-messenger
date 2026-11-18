@@ -26,6 +26,7 @@ import java.util.Optional;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -72,6 +73,29 @@ class MailboxPollingServiceTest {
         // INBOX path don't care about the sent leg; lenient so it's optional.
         Mockito.lenient().when(imapClient.fetchSentSinceUid(any(ImapCredentials.class), any()))
                 .thenReturn(new ImapClient.IncrementalFetch(List.of(), null));
+    }
+
+    @Test
+    void syncNowPollsAnOwnedMailboxAndReturnsItsFreshState() {
+        when(imapClient.fetchSinceUid(any(ImapCredentials.class), eq(null)))
+                .thenReturn(new ImapClient.IncrementalFetch(List.of(), 7L));
+        User owner = userRepository.findByEmail("polling-owner@example.com").orElseThrow();
+
+        MailboxPollingService.SyncNowResult result = polling.syncNow(owner, account.getId());
+
+        assertThat(result.imported()).isZero();
+        assertThat(result.account().getLastSyncedAt()).isNotNull();
+        assertThat(result.account().getLastSeenUid()).isEqualTo(7L);
+    }
+
+    @Test
+    void syncNowRefusesAnotherUsersMailbox() {
+        userService.register("someone-else@example.com", "password1", "Someone Else");
+        User other = userRepository.findByEmail("someone-else@example.com").orElseThrow();
+
+        assertThatThrownBy(() -> polling.syncNow(other, account.getId()))
+                .isInstanceOf(java.util.NoSuchElementException.class);
+        verifyNoInteractions(imapClient);
     }
 
     @Test

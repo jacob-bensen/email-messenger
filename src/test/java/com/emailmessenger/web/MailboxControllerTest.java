@@ -298,6 +298,8 @@ class MailboxControllerTest {
         saved.markSynced();
         saved = mailAccountRepository.save(saved);
         Long mailboxId = saved.getId();
+        when(pollingService.syncNow(any(User.class), eq(mailboxId)))
+                .thenReturn(new MailboxPollingService.SyncNowResult(0, saved));
 
         mockMvc.perform(post("/mailboxes/" + mailboxId + "/sync")
                         .with(user("mailbox@example.com"))
@@ -306,23 +308,18 @@ class MailboxControllerTest {
                 .andExpect(redirectedUrl("/mailboxes"))
                 .andExpect(flash().attributeExists("syncMessage"));
 
-        verify(pollingService).pollOne(mailboxId);
+        verify(pollingService).syncNow(any(User.class), eq(mailboxId));
     }
 
     @Test
     void syncOnMailboxOwnedByAnotherUserReturns404() throws Exception {
-        userService.register("other@example.com", "password1", "Other User");
-        User other = userRepository.findByEmail("other@example.com").orElseThrow();
-        MailAccount foreign = mailAccountRepository.save(new MailAccount(
-                other, "imap.example.com", 993, true,
-                "other@example.com", "ciphertext"));
+        when(pollingService.syncNow(any(User.class), eq(99L)))
+                .thenThrow(new java.util.NoSuchElementException());
 
-        mockMvc.perform(post("/mailboxes/" + foreign.getId() + "/sync")
+        mockMvc.perform(post("/mailboxes/99/sync")
                         .with(user("mailbox@example.com"))
                         .with(csrf()))
                 .andExpect(status().isNotFound());
-
-        Mockito.verifyNoInteractions(pollingService);
     }
 
     @Test
@@ -418,6 +415,8 @@ class MailboxControllerTest {
                 "owner@example.com", "ciphertext"));
         saved.markSyncError("Login failed");
         saved = mailAccountRepository.save(saved);
+        when(pollingService.syncNow(any(User.class), eq(saved.getId())))
+                .thenReturn(new MailboxPollingService.SyncNowResult(0, saved));
 
         mockMvc.perform(post("/mailboxes/" + saved.getId() + "/sync")
                         .with(user("mailbox@example.com"))

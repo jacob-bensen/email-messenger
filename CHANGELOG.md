@@ -3,6 +3,29 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-18 — Mailboxes API (M2)
+
+- New `GET /api/v1/mailboxes`, `POST /api/v1/mailboxes` (IMAP password
+  connect), `POST /api/v1/mailboxes/{id}/sync`, `DELETE
+  /api/v1/mailboxes/{id}` and `GET /api/v1/mailboxes/providers`
+  (`docs/API.md` §5.10–5.15) in `ApiMailboxController` /
+  `ApiMailboxService`. They call the same `MailAccountService`
+  (list/connect/delete), `PlanLimitService` and `MailboxProvider` presets as
+  `/mailboxes`; the connect request body *is* the website's `MailboxForm`,
+  so field rules cannot drift. New error codes `403 plan_limit_reached`
+  and `422 mailbox_connect_failed`. The list carries the plan's `limit` and
+  a server-computed `canConnectMore`.
+- **Shared sync now.** `MailboxPollingService.syncNow(owner, id)` replaces
+  the owner lookup + poll + reload that lived in `MailboxController`; the
+  website's Sync now and the API both call it. `MailboxView.errorHint` is
+  now public so the API returns the same remediation hint as the page.
+- `validation_failed` messages now use a field's own constraint message
+  when it is a sentence (e.g. "Port must be between 1 and 65535.");
+  otherwise "Invalid value for '<field>'." (code unchanged).
+- Tests: `ApiMailboxIntegrationTest` (12), `MailboxPollingServiceTest` +2
+  (`syncNow`), `MailboxControllerTest` sync cases stub `syncNow`. Full
+  `mvn -B test`: 855 tests, 0 failures, 1 skipped (Docker test).
+
 ## 2026-11-17 (b) — Send API: reply and new message (M2)
 
 - **Shared send flow.** New public `web.ChatSendService` owns what was

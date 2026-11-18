@@ -3,6 +3,7 @@ package com.emailmessenger.email;
 import com.emailmessenger.billing.PlanLimitService;
 import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.Plan;
+import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.MailAccountRepository;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
@@ -16,6 +17,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 /**
  * IMAP poll of a connected mailbox: one {@link ImapClient} call fetches
@@ -136,6 +138,24 @@ public class MailboxPollingService {
             }
         }
         return imported;
+    }
+
+    /** What a manual "Sync now" did: messages imported and the account as the poll left it. */
+    public record SyncNowResult(int imported, MailAccount account) {}
+
+    /**
+     * Manual "Sync now" for one of {@code owner}'s mailboxes, shared by the
+     * website and the API. A successful poll also clears the circuit breaker.
+     *
+     * @throws NoSuchElementException if the id is not one of the owner's mailboxes
+     */
+    public SyncNowResult syncNow(User owner, Long accountId) {
+        MailAccount account = accounts.findByIdAndUser(accountId, owner)
+                .orElseThrow(NoSuchElementException::new);
+        int imported = pollOne(account.getId());
+        MailAccount reloaded = accounts.findById(account.getId())
+                .orElseThrow(NoSuchElementException::new);
+        return new SyncNowResult(imported, reloaded);
     }
 
     /**

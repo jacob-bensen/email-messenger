@@ -61,7 +61,7 @@ public record MailboxView(
         return ts.format(ABSOLUTE_DATE);
     }
 
-    static String errorHint(String error) {
+    public static String errorHint(String error) {
         if (error == null) return null;
         String lower = error.toLowerCase(Locale.ROOT);
         if (lower.contains("google") || lower.contains("reconnect")) {
