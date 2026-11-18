@@ -3,6 +3,26 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-18 — Mailboxes API (M2)
+
+- New `/api/v1/mailboxes` (`docs/API.md` §5.10–5.15): `GET` list (with
+  `defaultMailboxId` and the plan's `limit`), `GET …/providers` (the
+  website wizard's IMAP presets), `POST` connect with an IMAP password,
+  `POST …/{id}/sync`, `DELETE …/{id}`. New error codes
+  `403 plan_limit_reached` and `422 mailbox_connect_failed`.
+- **One service layer.** `ApiMailboxService` calls the same
+  `MailAccountService.list/connect/delete` and
+  `MailboxPollingService.pollOne` as `MailboxController`; connect input is
+  validated by building the website's `MailboxForm` and running its bean
+  constraints, so both paths reject the same input with the same message.
+  `MailboxView.errorHint` is now public so the API returns the website's
+  remediation hint. `MailboxForm`'s size limits got readable messages
+  (website shows them too).
+- Tests: `ApiMailboxIntegrationTest` (11: list/cap, connect + encryption,
+  validation, 422, 403, unlimited cap, sync ok/failed, owner-scoped
+  delete, providers, auth required). Full `mvn -B verify`: 852 tests,
+  0 failures, 1 skipped (Docker test).
+
 ## 2026-11-17 (b) — Send API: reply and new message (M2)
 
 - **Shared send flow.** New public `web.ChatSendService` owns what was

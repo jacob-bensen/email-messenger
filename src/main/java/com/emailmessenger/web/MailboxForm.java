@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Size;
 public class MailboxForm {
 
     @NotBlank(message = "IMAP host is required.")
-    @Size(max = 255)
+    @Size(max = 255, message = "IMAP host must be at most 255 characters.")
     private String host;
 
     @Min(value = 1, message = "Port must be between 1 and 65535.")
@@ -18,7 +18,7 @@ public class MailboxForm {
     private boolean ssl = true;
 
     @NotBlank(message = "Username is required.")
-    @Size(max = 254)
+    @Size(max = 254, message = "Username must be at most 254 characters.")
     private String username;
 
     @NotBlank(message = "Password is required.")

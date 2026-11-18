@@ -7,15 +7,10 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **No mailbox endpoints.** The API covers auth, conversations and
-      sending; mailboxes (list, connect, sync, remove) are next
-      (`docs/API.md` §6).
 - [ ] **API sends are not idempotent and carry no attachments**
       (`docs/API.md` §5.8). A client retry after a timeout can send twice;
       add an `Idempotency-Key` (or client message id) and multipart
       attachments.
-- [ ] **No mailbox list endpoint**, so the app cannot offer the
-      `mailboxId` scope that `GET /api/v1/conversations` accepts.
 - [ ] **Stale branches.** Hundreds of unmerged `claude/gifted-carson-*`
       branches on origin. `master` now holds the consolidated work
       (2026-11-16); the others are superseded and can be deleted by the
@@ -28,6 +23,15 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **Timestamps are zone-less.** `LocalDateTime` values are UTC by
       convention only; the API converts them to `Z` instants at the DTO
       edge (`ApiDtos`), which is right only while stored values are UTC.
+- [ ] **Mailbox connect from the API holds a DB transaction across IMAP
+      login + initial 30-message fetch** (same as the website; inherited
+      from `MailAccountService.connect`). Fine at today's scale; move the
+      initial sync out of the transaction if connects pile up.
+- [ ] **Connecting the same address twice is allowed** (web and API): no
+      uniqueness on `(user_id, username, host)`. Decide whether to reject
+      or treat it as a reconnect.
+- [ ] Gmail OAuth connect/reconnect, signatures, default sending mailbox
+      and sync frequency are website-only (`docs/API.md` §6 item 4).
 - [ ] **Live events carry only a count** (`{"imported":N}`), so any client
       must refetch the whole list.
 

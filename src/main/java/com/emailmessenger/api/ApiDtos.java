@@ -1,6 +1,8 @@
 package com.emailmessenger.api;
 
 import com.emailmessenger.billing.PlanLimits;
+import com.emailmessenger.domain.AuthType;
+import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.domain.Attachment;
@@ -13,12 +15,15 @@ import com.emailmessenger.service.SenderBubbleRun;
 import com.emailmessenger.service.SenderView;
 import com.emailmessenger.web.ChatSendService;
 import com.emailmessenger.web.ConversationListService;
+import com.emailmessenger.web.MailboxProvider;
+import com.emailmessenger.web.MailboxView;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.data.domain.Page;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -144,6 +149,43 @@ final class ApiDtos {
 
         static SendResponse of(ChatSendService.SendResult result) {
             return new SendResponse(result.conversationKey(), result.threadId(), result.messageId());
+        }
+    }
+
+    record MailboxResponse(long id, String address, String host, int port, boolean ssl, String auth,
+                           Instant lastSyncedAt, String syncError, String syncErrorHint,
+                           boolean pollingSuspended) {
+
+        static MailboxResponse of(MailAccount account) {
+            return new MailboxResponse(account.getId(), account.getUsername(), account.getHost(),
+                    account.getPort(), account.isSsl(),
+                    account.getAuthType() == AuthType.XOAUTH2 ? "google" : "password",
+                    account.getLastSyncedAt() == null ? null : account.getLastSyncedAt().toInstant(ZoneOffset.UTC),
+                    account.getLastSyncError(), MailboxView.errorHint(account.getLastSyncError()),
+                    account.isPollingSuspended());
+        }
+    }
+
+    /** {@code limit} null means unlimited. */
+    record MailboxList(List<MailboxResponse> items, Long defaultMailboxId, Long limit) {}
+
+    record ConnectMailboxRequest(String host, Integer port, Boolean ssl, String username, String password) {}
+
+    record SyncResponse(int imported, MailboxResponse mailbox) {}
+
+    record ProviderResponse(String slug, String name, String host, int port, boolean ssl,
+                            String appPasswordUrl, String help) {
+
+        static ProviderResponse of(MailboxProvider p) {
+            return new ProviderResponse(p.getSlug(), p.getDisplayName(), p.getHost(), p.getPort(), p.isSsl(),
+                    p.getAppPasswordUrl(), p.getAppPasswordHelp());
+        }
+    }
+
+    record ProviderList(List<ProviderResponse> items) {
+
+        static ProviderList all() {
+            return new ProviderList(Arrays.stream(MailboxProvider.values()).map(ProviderResponse::of).toList());
         }
     }
 
