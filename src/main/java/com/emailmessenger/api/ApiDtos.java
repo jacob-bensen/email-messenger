@@ -1,9 +1,12 @@
 package com.emailmessenger.api;
 
 import com.emailmessenger.billing.PlanLimits;
+import com.emailmessenger.domain.AuthType;
+import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.domain.Attachment;
+import com.emailmessenger.email.SyncErrorHint;
 import com.emailmessenger.service.BubbleMessage;
 import com.emailmessenger.service.ChatConversation;
 import com.emailmessenger.service.ChatMember;
@@ -13,6 +16,7 @@ import com.emailmessenger.service.SenderBubbleRun;
 import com.emailmessenger.service.SenderView;
 import com.emailmessenger.web.ChatSendService;
 import com.emailmessenger.web.ConversationListService;
+import com.emailmessenger.web.MailboxProvider;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.data.domain.Page;
@@ -146,6 +150,36 @@ final class ApiDtos {
             return new SendResponse(result.conversationKey(), result.threadId(), result.messageId());
         }
     }
+
+    record MailboxList(List<MailboxResponse> items) {}
+
+    record MailboxResponse(long id, String host, int port, boolean ssl, String username, String authType,
+                           Instant lastSyncedAt, String lastSyncError, String errorHint,
+                           boolean pollingSuspended, boolean defaultSender, String signature) {
+
+        static MailboxResponse of(MailAccount account, Long defaultAccountId) {
+            return new MailboxResponse(account.getId(), account.getHost(), account.getPort(), account.isSsl(),
+                    account.getUsername(), account.getAuthType() == AuthType.XOAUTH2 ? "google" : "password",
+                    account.getLastSyncedAt() == null ? null : account.getLastSyncedAt().toInstant(ZoneOffset.UTC),
+                    account.getLastSyncError(), SyncErrorHint.forError(account.getLastSyncError()),
+                    account.isPollingSuspended(), account.getId().equals(defaultAccountId),
+                    account.getSignature());
+        }
+    }
+
+    record ProviderList(List<ProviderResponse> items) {}
+
+    record ProviderResponse(String slug, String name, String host, int port, boolean ssl,
+                            String appPasswordUrl, String help) {
+
+        static ProviderResponse of(MailboxProvider provider) {
+            return new ProviderResponse(provider.getSlug(), provider.getDisplayName(), provider.getHost(),
+                    provider.getPort(), provider.isSsl(), provider.getAppPasswordUrl(),
+                    provider.getAppPasswordHelp());
+        }
+    }
+
+    record ConnectMailboxRequest(String host, Integer port, Boolean ssl, String username, String password) {}
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;

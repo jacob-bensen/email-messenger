@@ -7,15 +7,19 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **No mailbox endpoints.** The API covers auth, conversations and
-      sending; mailboxes (list, connect, sync, remove) are next
-      (`docs/API.md` §6).
 - [ ] **API sends are not idempotent and carry no attachments**
       (`docs/API.md` §5.8). A client retry after a timeout can send twice;
       add an `Idempotency-Key` (or client message id) and multipart
       attachments.
-- [ ] **No mailbox list endpoint**, so the app cannot offer the
-      `mailboxId` scope that `GET /api/v1/conversations` accepts.
+- [ ] **Mailbox preferences are website-only.** Default sending mailbox,
+      sync frequency and signature are readable via `GET /api/v1/mailboxes`
+      but not settable through the API; Gmail OAuth connect/reconnect too
+      (`docs/API.md` §6.4). The Google `errorHint` says "Use Reconnect",
+      which exists only on the website.
+- [ ] **API connect blocks for the initial import** (`POST
+      /api/v1/mailboxes` waits for IMAP verify + up to 30 messages, like the
+      website). Slow servers can approach the client's 90 s timeout; an
+      async connect (201 then background import) would be kinder.
 - [ ] **Stale branches.** Hundreds of unmerged `claude/gifted-carson-*`
       branches on origin. `master` now holds the consolidated work
       (2026-11-16); the others are superseded and can be deleted by the
@@ -73,6 +77,9 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] `GET /api/v1/conversations` (like `/chats`) fires an async mailbox
       refresh on every request; a client polling the list triggers IMAP
       work each time (bounded by the per-mailbox "due" check).
+- [ ] `POST /api/v1/mailboxes/{id}/sync` polls synchronously with no rate
+      limit (same as the website button); a client can hammer an IMAP
+      server by tapping repeatedly.
 - [ ] Expired `api_tokens` rows are never pruned (rejected, but kept).
       Add a cleanup to an existing daily job. No device list / "sign out
       other devices" UI on `/account` yet.

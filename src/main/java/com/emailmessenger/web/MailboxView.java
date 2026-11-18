@@ -2,6 +2,7 @@ package com.emailmessenger.web;
 
 import com.emailmessenger.domain.AuthType;
 import com.emailmessenger.domain.MailAccount;
+import com.emailmessenger.email.SyncErrorHint;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -11,7 +12,7 @@ import java.util.Locale;
 /**
  * Render-ready view of a {@link MailAccount}: the raw fields the
  * template needs plus a friendly relative timestamp for
- * {@code lastSyncedAt} and a remediation hint derived from
+ * {@code lastSyncedAt} and the {@link SyncErrorHint} for
  * {@code lastSyncError}.
  */
 public record MailboxView(
@@ -38,7 +39,7 @@ public record MailboxView(
                 account.getLastSyncedAt() != null,
                 formatRelative(account.getLastSyncedAt(), now),
                 account.getLastSyncError(),
-                errorHint(account.getLastSyncError()),
+                SyncErrorHint.forError(account.getLastSyncError()),
                 account.isPollingSuspended(),
                 account.getConsecutiveFailureCount(),
                 account.getAuthType() == AuthType.XOAUTH2,
@@ -59,34 +60,5 @@ public record MailboxView(
         if (days == 1) return "Yesterday";
         if (days < 7) return days + " days ago";
         return ts.format(ABSOLUTE_DATE);
-    }
-
-    static String errorHint(String error) {
-        if (error == null) return null;
-        String lower = error.toLowerCase(Locale.ROOT);
-        if (lower.contains("google") || lower.contains("reconnect")) {
-            return "Your Google authorization expired. Use Reconnect to sign in with Google again.";
-        }
-        // Decryption failures are NOT a rejected sign-in — the stored secret
-        // couldn't be unlocked (e.g. the encryption key changed). Re-saving it
-        // by reconnecting fixes it; a new app password is not required.
-        if (lower.contains("decrypt")) {
-            return "We couldn't unlock this mailbox's saved password. Reconnect the mailbox to re-save it.";
-        }
-        if (lower.contains("auth") || lower.contains("login")
-                || lower.contains("password") || lower.contains("credential")) {
-            return "Sign-in was rejected. Generate a new app password and reconnect the mailbox.";
-        }
-        if (lower.contains("timed out") || lower.contains("timeout")) {
-            return "The mail server didn't respond in time. Try again in a moment.";
-        }
-        if (lower.contains("ssl") || lower.contains("tls") || lower.contains("certificate")) {
-            return "TLS handshake failed. Double-check the host and port for your provider.";
-        }
-        if (lower.contains("unreachable") || lower.contains("connect")
-                || lower.contains("host") || lower.contains("network")) {
-            return "We couldn't reach your mail server. Check the host/port and your network.";
-        }
-        return "Try Sync now again. If the error persists, reconnect the mailbox.";
     }
 }

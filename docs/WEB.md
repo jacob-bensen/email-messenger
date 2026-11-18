@@ -50,13 +50,13 @@ dialect: pages compose shared pieces with `th:replace`. One stylesheet,
 ### Mailboxes
 | Route | Auth | Template | Controller → services |
 |---|---|---|---|
-| `GET /mailboxes` | user | `mailboxes/index` | `MailboxController` → `MailAccountService.list`, `PollingPolicy`, `PlanLimitService.currentPlan` |
-| `GET /mailboxes/new` | user | `mailboxes/new` | `MailboxProvider.fromSlug` |
-| `POST /mailboxes` | user | redirect / re-render | `MailAccountService.connect` |
-| `POST /mailboxes/{id}/sync` | owner | redirect | `MailboxPollingService.pollOne` (after an owner-scoped lookup) |
+| `GET /mailboxes` | user | `mailboxes/index` | `MailboxController` → `MailAccountService.list`, `PollingPolicy`, `PlanLimitService.currentPlan`; error hints from `email.SyncErrorHint` (shared with `GET /api/v1/mailboxes`) |
+| `GET /mailboxes/new` | user | `mailboxes/new` | `MailboxProvider.fromSlug` (same presets as `GET /api/v1/mailboxes/providers`) |
+| `POST /mailboxes` | user | redirect / re-render | `MailAccountService.connect` (shared with `POST /api/v1/mailboxes`) |
+| `POST /mailboxes/{id}/sync` | owner | redirect | `MailboxPollingService.pollOne` (after an owner-scoped lookup; same as `POST /api/v1/mailboxes/{id}/sync`) |
 | `POST /mailboxes/preferences` | user | redirect | `MailAccountService.updateMailPreferences` |
 | `POST /mailboxes/{id}/signature` | owner | redirect | `MailAccountService.updateSignature` |
-| `POST /mailboxes/{id}/delete` | owner | redirect | `MailAccountService.delete` |
+| `POST /mailboxes/{id}/delete` | owner | redirect | `MailAccountService.delete` (shared with `DELETE /api/v1/mailboxes/{id}`) |
 | `GET /mailboxes/gmail/connect`, `/reconnect/{id}`, `/callback` | user | redirects | `GmailConnectController` → `GmailOAuthClient`, `MailAccountService.connectGmailOAuth` / `reconnectGmailOAuth` |
 
 ### Billing, team, digest, admin

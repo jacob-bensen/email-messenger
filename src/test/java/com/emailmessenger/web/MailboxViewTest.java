@@ -40,44 +40,4 @@ class MailboxViewTest {
         assertThat(MailboxView.formatRelative(LocalDateTime.of(2026, 4, 1, 9, 0), NOW))
                 .isEqualTo("Apr 1, 2026");
     }
-
-    @Test
-    void errorHintIsNullWhenNoError() {
-        assertThat(MailboxView.errorHint(null)).isNull();
-    }
-
-    @Test
-    void errorHintForExpiredGoogleAuthorizationPointsAtReconnect() {
-        assertThat(MailboxView.errorHint("Google sign-in expired; reconnect the mailbox with Google."))
-                .contains("Use Reconnect");
-    }
-
-    @Test
-    void errorHintCallsOutAuthenticationFailures() {
-        assertThat(MailboxView.errorHint("AUTHENTICATE failed"))
-                .contains("app password");
-        assertThat(MailboxView.errorHint("Invalid login or password"))
-                .contains("app password");
-    }
-
-    @Test
-    void errorHintForDecryptFailureSaysReconnectNotNewPassword() {
-        String hint = MailboxView.errorHint("Could not decrypt stored credentials");
-        assertThat(hint).contains("Reconnect the mailbox");
-        assertThat(hint).doesNotContain("app password");
-    }
-
-    @Test
-    void errorHintCallsOutConnectivityFailures() {
-        assertThat(MailboxView.errorHint("Connection refused: imap.example.com"))
-                .contains("mail server");
-        assertThat(MailboxView.errorHint("Read timed out"))
-                .contains("didn't respond");
-    }
-
-    @Test
-    void errorHintFallsBackToGenericRetryAdvice() {
-        assertThat(MailboxView.errorHint("Quota exceeded"))
-                .contains("Sync now");
-    }
 }
