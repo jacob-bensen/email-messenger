@@ -187,6 +187,8 @@ the user, and may change. Clients branch on `code` only.
 | 404 | `not_found` | Unknown `/api` path (after authentication) |
 | 405 | `method_not_allowed` | Wrong HTTP method on an existing endpoint |
 | 409 | `no_recipients` | Send: the conversation has nobody but you in it (§5.8) |
+| 409 | `send_in_progress` | Send: an earlier request with the same `Idempotency-Key` has not finished, or its outcome is unknown (§5.8.1) |
+| 422 | `idempotency_key_reused` | Send: the `Idempotency-Key` was already used for a different request (§5.8.1) |
 | 422 | `mailbox_connect_failed` | Connect mailbox: IMAP login or connection failed (§5.12) |
 | 429 | `too_many_attempts` | Login: throttle lock (§2) |
 | 500 | `internal_error` | Anything unexpected |
@@ -452,10 +454,40 @@ Server rules (clients must not predict beyond the bubble text):
   locally predicted bubble.
 
 Errors: `400 validation_failed` (body blank or too long, malformed JSON,
-non-integer `mailboxId`); `404 not_found` (unknown key in scope, or
-`mailboxId` not the user's); `409 no_recipients`; `502 send_failed`;
-`401 unauthorized`. The request is not idempotent: a retry after a
-timeout may send twice.
+non-integer `mailboxId`, malformed `Idempotency-Key`); `404 not_found`
+(unknown key in scope, or `mailboxId` not the user's); `409 no_recipients`;
+`409 send_in_progress`, `422 idempotency_key_reused` (§5.8.1);
+`502 send_failed`; `401 unauthorized`.
+
+#### 5.8.1 Idempotency-Key (§5.8 and §5.9)
+Optional request header that makes a send safe to retry. Without it, a
+retry after a timeout may send twice.
+
+```
+Idempotency-Key: 3f6c2a0e-8d7b-4c1e-9a52-1b0f6e7d4c33
+```
+- Value: 1–100 characters from `A–Z a–z 0–9 - _ . :`; anything else →
+  `400 validation_failed`. Clients send a fresh random UUID per message and
+  reuse it for every retry of that same message.
+- Keys are per user and remembered for 24 hours from first use; after that
+  the same key starts a new send.
+- The server fingerprints the request (endpoint, path `key`, `mailboxId`,
+  and every body field). Same key + same fingerprint is a retry; same key +
+  different fingerprint → `422 idempotency_key_reused`, nothing sent.
+
+Outcomes for a request carrying a key:
+- **First use:** the send runs as normal. If it succeeds, the `201` body is
+  stored under the key. If it is rejected before reaching the mail server
+  (`400`, `404`, `409 no_recipients`) or the mail server refuses it
+  (`502 send_failed`), the key is released and a retry runs the send again.
+- **Retry after success:** `201` with the stored body (same `key`,
+  `threadId`, `messageId`) and the response header
+  `Idempotent-Replayed: true`. Nothing is sent or recorded again.
+- **Retry while the first request is still running, or after it failed in
+  an unknown state** (e.g. the server crashed after the mail server
+  accepted the message): `409 send_in_progress`. Clients must not resend
+  automatically; refetch the conversation (§5.6) and, if the message is not
+  there, let the user send it again as a new message (new key).
 
 ### 5.9 POST /api/v1/conversations
 Bearer token required. Starts a new conversation — or adds to the existing
@@ -478,8 +510,10 @@ Request:
 
 `201`: same shape as §5.8. `key` is computed by the server from the
 recipients (§4 Conversation key; your own addresses are excluded) — the
-conversation to open next. Errors: `400 validation_failed`,
-`404 not_found` (`mailboxId`), `502 send_failed`, `401 unauthorized`.
+conversation to open next. Accepts the `Idempotency-Key` header
+(§5.8.1). Errors: `400 validation_failed`, `404 not_found` (`mailboxId`),
+`409 send_in_progress`, `422 idempotency_key_reused`, `502 send_failed`,
+`401 unauthorized`.
 
 ### 5.10 GET /api/v1/mailboxes
 Bearer token required. The user's connected mailboxes, oldest first (the
@@ -694,6 +728,6 @@ Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
 1. Live updates: SSE (or push) with enough detail to update without a
    full refetch.
-2. Attachments on send (multipart), and an idempotency key for sends.
+2. Attachments on send (multipart).
 3. Account changes from the app: display name, password, email (website
    only today).

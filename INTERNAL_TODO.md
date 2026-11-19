@@ -7,10 +7,9 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **API sends are not idempotent and carry no attachments**
-      (`docs/API.md` §5.8). A client retry after a timeout can send twice;
-      add an `Idempotency-Key` (or client message id) and multipart
-      attachments.
+- [ ] **API sends carry no attachments** (`docs/API.md` §5.8): add
+      multipart once attachment bytes are stored. (Idempotency done
+      2026-11-19, §5.8.1.)
 - [ ] **Account edits are website-only:** display name, password and
       email changes have no API (`docs/API.md` §6 item 3). Display name
       has no edit path on the website either.
@@ -38,8 +37,15 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **Send then record is not atomic.** `ChatSendService` records the
       outbound copy only after SMTP accepts; a crash or DB error in between
       leaves a sent email with no bubble (until the Sent-folder import, if
-      the user's mailbox stores it). An outbox table would fix both this and
-      idempotency.
+      the user's mailbox stores it). With an `Idempotency-Key` that case
+      now answers `409 send_in_progress` forever (the key stays claimed
+      until its 24 h lifetime ends) rather than resending; an outbox table
+      would still be the real fix.
+- [ ] **Idempotency ledger is only tested on H2 inside one test
+      transaction**, so the separate claim / complete transactions and the
+      concurrent-insert race (unique violation → `409`) are not exercised
+      against PostgreSQL. Website sends (`POST /chats/{key}/send`) have no
+      double-submit guard either.
 - [ ] **Sent messages can appear twice.** `recordReply` stores the local
       copy with no Message-ID and `recordNewEmail` with a synthetic one, so
       the Sent-folder import cannot de-duplicate against either.
