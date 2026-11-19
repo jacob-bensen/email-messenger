@@ -70,6 +70,12 @@ public class MailAccountService {
     public boolean delete(User user, Long id) {
         return repository.findByIdAndUser(id, user)
                 .map(account -> {
+                    // The FK is ON DELETE SET NULL, but a managed User still pointing
+                    // at the removed row fails the flush (TransientObjectException).
+                    MailAccount current = user.getDefaultMailAccount();
+                    if (current != null && account.getId().equals(current.getId())) {
+                        user.setDefaultMailAccount(null);
+                    }
                     repository.delete(account);
                     return true;
                 })

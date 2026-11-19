@@ -67,6 +67,19 @@ class MailAccountServiceTest {
     }
 
     @Test
+    void deletingTheDefaultSendingMailboxClearsTheDefault() {
+        when(imapClient.fetchRecentInbox(any(ImapCredentials.class), anyInt())).thenReturn(List.of());
+        MailAccount saved = mailAccountService.connect(owner, "imap.example.com", 993, true,
+                "first@example.com", "pw1");
+        mailAccountService.updateMailPreferences(owner, null, saved.getId());
+
+        assertThat(mailAccountService.delete(owner, saved.getId())).isTrue();
+        mailAccountRepository.flush();
+
+        assertThat(userRepository.findById(owner.getId()).orElseThrow().getDefaultMailAccount()).isNull();
+    }
+
+    @Test
     void deleteForeignOrUnknownMailboxReturnsFalse() {
         assertThat(mailAccountService.delete(owner, 999_999L)).isFalse();
     }

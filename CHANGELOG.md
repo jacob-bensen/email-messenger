@@ -3,6 +3,26 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-19 — Mailbox API (M2: mailboxes)
+
+- New `GET /api/v1/mailboxes`, `GET /api/v1/mailboxes/providers`,
+  `POST /api/v1/mailboxes`, `POST /api/v1/mailboxes/{id}/sync`,
+  `DELETE /api/v1/mailboxes/{id}` (`docs/API.md` §5.10–5.14). New error
+  codes `403 plan_limit_reached` and `422 mailbox_connect_failed`.
+- Shared with the website, no forked logic: list/connect/remove call
+  `MailAccountService`; connect fields are validated with the website's
+  `MailboxForm` constraints (bean validation); presets are
+  `MailboxProvider`; error hints are `MailboxView.errorHint` (now public).
+  "Sync now" moved out of `MailboxController` into the new
+  `email.MailboxSyncService` (owner check → poll → reload), used by both
+  `POST /mailboxes/{id}/sync` and the API.
+- **Fix:** removing the mailbox that was the default sending account
+  failed the flush (`TransientObjectException`: the managed `User` still
+  referenced the deleted row). `MailAccountService.delete` now clears the
+  default first; the DB's `ON DELETE SET NULL` stays as the backstop.
+- Tests: `ApiMailboxIntegrationTest` (13), `MailAccountServiceTest` +1.
+  Full `mvn -B verify`: 855 tests, 0 failures, 1 skipped (Docker test).
+
 ## 2026-11-17 (b) — Send API: reply and new message (M2)
 
 - **Shared send flow.** New public `web.ChatSendService` owns what was

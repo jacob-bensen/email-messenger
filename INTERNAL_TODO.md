@@ -7,15 +7,14 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **No mailbox endpoints.** The API covers auth, conversations and
-      sending; mailboxes (list, connect, sync, remove) are next
-      (`docs/API.md` §6).
 - [ ] **API sends are not idempotent and carry no attachments**
       (`docs/API.md` §5.8). A client retry after a timeout can send twice;
       add an `Idempotency-Key` (or client message id) and multipart
       attachments.
-- [ ] **No mailbox list endpoint**, so the app cannot offer the
-      `mailboxId` scope that `GET /api/v1/conversations` accepts.
+- [ ] **Mailbox settings are website-only:** Gmail OAuth connect /
+      reconnect, signatures, sync frequency and the default sending mailbox
+      have no API. A Google mailbox whose token expired can only be
+      reconnected on the website.
 - [ ] **Stale branches.** Hundreds of unmerged `claude/gifted-carson-*`
       branches on origin. `master` now holds the consolidated work
       (2026-11-16); the others are superseded and can be deleted by the
@@ -69,6 +68,12 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       would throw on duplicates.
 
 ## 3. Security and operations
+
+- [ ] `POST /api/v1/mailboxes` and `…/{id}/sync` hold the request open
+      for the whole IMAP login + import (clients wait up to 90 s), and
+      `MailAccountService.connect` keeps a DB transaction open across IMAP
+      I/O, as the website does. No rate limit on connect attempts either
+      (an IMAP-credential probing vector).
 
 - [ ] `GET /api/v1/conversations` (like `/chats`) fires an async mailbox
       refresh on every request; a client polling the list triggers IMAP

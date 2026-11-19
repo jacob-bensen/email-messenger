@@ -53,7 +53,7 @@ dialect: pages compose shared pieces with `th:replace`. One stylesheet,
 | `GET /mailboxes` | user | `mailboxes/index` | `MailboxController` → `MailAccountService.list`, `PollingPolicy`, `PlanLimitService.currentPlan` |
 | `GET /mailboxes/new` | user | `mailboxes/new` | `MailboxProvider.fromSlug` |
 | `POST /mailboxes` | user | redirect / re-render | `MailAccountService.connect` |
-| `POST /mailboxes/{id}/sync` | owner | redirect | `MailboxPollingService.pollOne` (after an owner-scoped lookup) |
+| `POST /mailboxes/{id}/sync` | owner | redirect | `MailboxSyncService.syncNow` (owner-scoped; shared with `POST /api/v1/mailboxes/{id}/sync`) |
 | `POST /mailboxes/preferences` | user | redirect | `MailAccountService.updateMailPreferences` |
 | `POST /mailboxes/{id}/signature` | owner | redirect | `MailAccountService.updateSignature` |
 | `POST /mailboxes/{id}/delete` | owner | redirect | `MailAccountService.delete` |

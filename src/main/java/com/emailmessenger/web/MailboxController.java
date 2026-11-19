@@ -7,9 +7,8 @@ import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.ImapConnectionException;
 import com.emailmessenger.email.MailAccountService;
-import com.emailmessenger.email.MailboxPollingService;
+import com.emailmessenger.email.MailboxSyncService;
 import com.emailmessenger.email.PollingPolicy;
-import com.emailmessenger.repository.MailAccountRepository;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -36,27 +35,24 @@ class MailboxController {
     static final List<Integer> SYNC_FREQUENCY_CHOICES = List.of(5, 15, 30, 60);
 
     private final MailAccountService mailAccountService;
-    private final MailAccountRepository mailAccountRepository;
-    private final MailboxPollingService pollingService;
     private final UserService userService;
     private final GoogleOAuthProperties googleOAuthProperties;
     private final PlanLimitService planLimitService;
     private final PollingPolicy pollingPolicy;
+    private final MailboxSyncService syncService;
 
     MailboxController(MailAccountService mailAccountService,
-                      MailAccountRepository mailAccountRepository,
-                      MailboxPollingService pollingService,
                       UserService userService,
                       GoogleOAuthProperties googleOAuthProperties,
                       PlanLimitService planLimitService,
-                      PollingPolicy pollingPolicy) {
+                      PollingPolicy pollingPolicy,
+                      MailboxSyncService syncService) {
         this.mailAccountService = mailAccountService;
-        this.mailAccountRepository = mailAccountRepository;
-        this.pollingService = pollingService;
         this.userService = userService;
         this.googleOAuthProperties = googleOAuthProperties;
         this.planLimitService = planLimitService;
         this.pollingPolicy = pollingPolicy;
+        this.syncService = syncService;
     }
 
     @GetMapping
@@ -135,16 +131,8 @@ class MailboxController {
                        Principal principal,
                        RedirectAttributes redirectAttributes) {
         User owner = userService.requireByEmail(principal.getName());
-        // Ownership check: a NoSuchElementException for a foreign or unknown id
-        // surfaces as a 404 through GlobalExceptionHandler — same shape as
-        // ThreadController.viewConversation.
-        MailAccount account = mailAccountRepository.findByIdAndUser(id, owner)
-                .orElseThrow(NoSuchElementException::new);
-        pollingService.pollOne(account.getId());
-        // Reload so we see whatever pollOne wrote — lastSyncedAt + cleared
-        // error on success, or lastSyncError populated on a connect failure.
-        MailAccount reloaded = mailAccountRepository.findById(account.getId())
-                .orElseThrow(NoSuchElementException::new);
+        // A foreign or unknown id throws NoSuchElementException → 404.
+        MailAccount reloaded = syncService.syncNow(owner, id).account();
         if (reloaded.getLastSyncError() != null) {
             redirectAttributes.addFlashAttribute("syncError",
                     "Sync failed: " + reloaded.getLastSyncError());

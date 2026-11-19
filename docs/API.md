@@ -10,12 +10,13 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-17)
+## 1. Current state (2026-11-19)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline, mark-read, sending
-into a conversation and starting a new one (§5). Mailboxes are not exposed
-yet (§6). The website's own machine endpoints (§3) still use the
+into a conversation, starting a new one, and mailboxes: list, connect
+with an IMAP password, sync now, remove (§5). Gmail OAuth connect,
+signatures and mail preferences are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
 ## 2. Authentication
@@ -181,9 +182,11 @@ the user, and may change. Clients branch on `code` only.
 | 401 | `unauthorized` | No/invalid/expired/revoked bearer token, or user disabled |
 | 401 | `invalid_credentials` | Login: wrong email or password (same for unknown email) |
 | 403 | `forbidden` | Authenticated but not allowed |
+| 403 | `plan_limit_reached` | Connect mailbox: already at the plan's mailbox cap (§5.12) |
 | 404 | `not_found` | Unknown `/api` path (after authentication) |
 | 405 | `method_not_allowed` | Wrong HTTP method on an existing endpoint |
 | 409 | `no_recipients` | Send: the conversation has nobody but you in it (§5.8) |
+| 422 | `mailbox_connect_failed` | Connect mailbox: IMAP login or connection failed (§5.12) |
 | 429 | `too_many_attempts` | Login: throttle lock (§2) |
 | 500 | `internal_error` | Anything unexpected |
 | 502 | `send_failed` | Send: the mail server refused or could not be reached; nothing was sent or recorded (§5.8, §5.9) |
@@ -477,12 +480,144 @@ recipients (§4 Conversation key; your own addresses are excluded) — the
 conversation to open next. Errors: `400 validation_failed`,
 `404 not_found` (`mailboxId`), `502 send_failed`, `401 unauthorized`.
 
+### 5.10 GET /api/v1/mailboxes
+Bearer token required. The user's connected mailboxes, oldest first (the
+same `MailAccountService.list` as the website's `/mailboxes`), plus the
+plan's mailbox cap.
+
+`200`:
+```json
+{
+  "items": [
+    {
+      "id": 3,
+      "address": "ada@example.com",
+      "host": "imap.gmail.com",
+      "port": 993,
+      "ssl": true,
+      "authType": "password",
+      "isDefault": true,
+      "lastSyncedAt": "2026-11-19T08:15:00Z",
+      "lastSyncError": null,
+      "errorHint": null,
+      "pollingSuspended": false
+    }
+  ],
+  "limit": 3
+}
+```
+Mailbox object (also returned by §5.12 and §5.13):
+- `id` (integer) — the `mailboxId` that §5.5–5.9 accept.
+- `address` (string): the IMAP login, normally the email address.
+- `host` (string), `port` (integer), `ssl` (boolean): IMAP endpoint.
+- `authType` (string): `password` (IMAP password / app password) or
+  `google` (Gmail OAuth, connected on the website). Unknown future values
+  must be shown as a generic mailbox, not rejected.
+- `isDefault` (boolean): the user's default sending mailbox (website
+  setting). At most one is `true`; none when no default is set.
+- `lastSyncedAt` (instant or `null` = never synced).
+- `lastSyncError` (string or `null`): the last poll's error, raw. Cleared
+  by the next successful poll.
+- `errorHint` (string or `null`): what to do about `lastSyncError`, in
+  plain English (`MailboxView.errorHint`, the same text the website shows).
+  `null` exactly when `lastSyncError` is `null`.
+- `pollingSuspended` (boolean): automatic polling stopped after repeated
+  failures; a successful Sync now (§5.13) or reconnect resumes it.
+
+`limit` (integer or `null` = unlimited): the effective plan's mailbox cap
+(same as `GET /me` `limits.mailboxes`). Errors: `401 unauthorized`.
+
+### 5.11 GET /api/v1/mailboxes/providers
+Bearer token required. Presets for the connect form, in display order (the
+website's connect wizard, `MailboxProvider`). The server owns the list;
+clients must not hard-code hosts.
+
+`200`:
+```json
+{
+  "items": [
+    {
+      "id": "gmail",
+      "name": "Gmail",
+      "host": "imap.gmail.com",
+      "port": 993,
+      "ssl": true,
+      "appPasswordUrl": "https://myaccount.google.com/apppasswords",
+      "help": "Gmail accepts a 16-character App Password (turn on 2-Step Verification first)."
+    }
+  ]
+}
+```
+- `id` (string): stable slug (`gmail`, `icloud`, `fastmail`, `outlook`,
+  `other`). `other` has `host` `""`: the user types it.
+- `appPasswordUrl` (string or `null`): where to create an app password.
+- `help` (string): one sentence to show under the password field.
+
+Errors: `401 unauthorized`.
+
+### 5.12 POST /api/v1/mailboxes
+Bearer token required. Connects a mailbox with an IMAP password (usually an
+app password). The same `MailAccountService.connect` as the website's
+`POST /mailboxes`: checks the plan cap, logs in over IMAP to verify the
+credentials, stores the password encrypted, then imports the most recent
+30 INBOX messages before answering. Allow **up to 90 seconds**; the
+default client timeout is too short.
+
+Request:
+```json
+{ "host": "imap.gmail.com", "port": 993, "ssl": true, "username": "ada@example.com", "password": "abcd efgh ijkl mnop" }
+```
+- `host` (string, required, non-blank, ≤ 255 chars; trimmed).
+- `port` (integer, optional, default `993`; 1–65535).
+- `ssl` (boolean, optional, default `true`).
+- `username` (string, required, non-blank, ≤ 254 chars; trimmed).
+- `password` (string, required, non-blank; sent as-is). Never logged or
+  returned.
+
+Field rules are the website form's (`MailboxForm`); a violation is
+`400 validation_failed` whose `message` names the first problem.
+
+`201`: the Mailbox object (§5.10). If the credentials worked but the
+first import failed, the mailbox is still connected and `lastSyncError`
+says why — show it, do not treat it as a failure.
+
+Errors: `400 validation_failed`; `403 plan_limit_reached` (already at the
+plan's mailbox cap — `message` names the cap; upgrades happen on the
+website); `422 mailbox_connect_failed` (IMAP login or connection failed;
+`message` includes the server's reason; nothing was stored);
+`401 unauthorized`.
+
+### 5.13 POST /api/v1/mailboxes/{id}/sync
+Bearer token required. Polls one mailbox now — received and sent mail —
+and answers when the poll is done (the website's "Sync now",
+`MailboxSyncService`). Allow up to 90 seconds. Request body: none.
+
+`200`:
+```json
+{ "imported": 2, "mailbox": { …Mailbox object, after the poll… } }
+```
+- `imported` (integer): messages new to the inbox from this poll.
+- A failed poll is **not** an HTTP error: it is `200` with
+  `mailbox.lastSyncError` / `errorHint` set, exactly as a scheduled poll
+  records it. Clients refetch §5.5 when `imported > 0`.
+
+Errors: `404 not_found` (not one of the user's mailboxes);
+`401 unauthorized`.
+
+### 5.14 DELETE /api/v1/mailboxes/{id}
+Bearer token required. Disconnects a mailbox (website: "Remove"):
+deletes its stored credentials and sync cursor so polling stops.
+Conversations already imported stay. If it was the default sending
+mailbox, there is no default afterwards. `204`, empty body.
+
+Errors: `404 not_found` (unknown, foreign or already removed);
+`401 unauthorized`.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Mailboxes: list, connect (IMAP password), sync, remove.
-2. Account: device list / revoke other sessions.
-3. Live updates: SSE (or push) with enough detail to update without a
+1. Account: device list / revoke other sessions.
+2. Live updates: SSE (or push) with enough detail to update without a
    full refetch.
-4. Attachments on send (multipart), and an idempotency key for sends.
+3. Attachments on send (multipart), and an idempotency key for sends.

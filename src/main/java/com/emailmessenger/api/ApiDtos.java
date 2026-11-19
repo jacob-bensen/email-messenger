@@ -4,6 +4,8 @@ import com.emailmessenger.billing.PlanLimits;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.domain.Attachment;
+import com.emailmessenger.domain.AuthType;
+import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.service.BubbleMessage;
 import com.emailmessenger.service.ChatConversation;
 import com.emailmessenger.service.ChatMember;
@@ -13,6 +15,8 @@ import com.emailmessenger.service.SenderBubbleRun;
 import com.emailmessenger.service.SenderView;
 import com.emailmessenger.web.ChatSendService;
 import com.emailmessenger.web.ConversationListService;
+import com.emailmessenger.web.MailboxProvider;
+import com.emailmessenger.web.MailboxView;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.data.domain.Page;
@@ -146,6 +150,40 @@ final class ApiDtos {
             return new SendResponse(result.conversationKey(), result.threadId(), result.messageId());
         }
     }
+
+    record MailboxList(List<MailboxResponse> items, Long limit) {}
+
+    record MailboxResponse(long id, String address, String host, int port, boolean ssl, String authType,
+                           boolean isDefault, Instant lastSyncedAt, String lastSyncError, String errorHint,
+                           boolean pollingSuspended) {
+
+        static MailboxResponse of(MailAccount account, Long defaultAccountId) {
+            return new MailboxResponse(account.getId(), account.getUsername(), account.getHost(),
+                    account.getPort(), account.isSsl(),
+                    account.getAuthType() == AuthType.XOAUTH2 ? "google" : "password",
+                    account.getId().equals(defaultAccountId),
+                    account.getLastSyncedAt() == null ? null : account.getLastSyncedAt().toInstant(ZoneOffset.UTC),
+                    account.getLastSyncError(), MailboxView.errorHint(account.getLastSyncError()),
+                    account.isPollingSuspended());
+        }
+    }
+
+    record ProviderList(List<ProviderResponse> items) {}
+
+    record ProviderResponse(String id, String name, String host, int port, boolean ssl, String appPasswordUrl,
+                            String help) {
+
+        static ProviderResponse of(MailboxProvider provider) {
+            return new ProviderResponse(provider.getSlug(), provider.getDisplayName(), provider.getHost(),
+                    provider.getPort(), provider.isSsl(), provider.getAppPasswordUrl(),
+                    provider.getAppPasswordHelp());
+        }
+    }
+
+    /** Missing {@code port}/{@code ssl} take the website form's defaults. */
+    record ConnectMailboxRequest(String host, Integer port, Boolean ssl, String username, String password) {}
+
+    record SyncResponse(int imported, MailboxResponse mailbox) {}
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
