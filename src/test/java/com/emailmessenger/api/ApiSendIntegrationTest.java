@@ -1,6 +1,7 @@
 package com.emailmessenger.api;
 
 import com.emailmessenger.auth.UserService;
+import com.emailmessenger.domain.ApiSendRequest;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.Message;
@@ -8,6 +9,7 @@ import com.emailmessenger.domain.Participant;
 import com.emailmessenger.domain.RecipientType;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.OwnerAddressService;
+import com.emailmessenger.repository.ApiSendRequestRepository;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.repository.MailAccountRepository;
 import com.emailmessenger.repository.MessageRepository;
@@ -36,9 +38,11 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -61,6 +65,7 @@ class ApiSendIntegrationTest {
     @Autowired MessageRepository messages;
     @Autowired ParticipantRepository participants;
     @Autowired MailAccountRepository mailAccounts;
+    @Autowired ApiSendRequestRepository sendRequests;
     @PersistenceContext EntityManager em;
     @MockitoBean ReplyService replyService;
 
@@ -233,11 +238,121 @@ class ApiSendIntegrationTest {
     }
 
     @Test
+    void aRetryWithTheSameIdempotencyKeyReturnsTheFirstResultWithoutSendingAgain() throws Exception {
+        String key = "3f2b8c1e-4d5a-4b6c-9e7f-0a1b2c3d4e5f";
+        long before = messages.count();
+
+        String first = sendWithKey(key, "{\"body\":\"On my way\",\"asReply\":true}")
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String second = sendWithKey(key, "{\"body\":\"On my way\",\"asReply\":true}")
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(objectMapper.readTree(second)).isEqualTo(objectMapper.readTree(first));
+        verify(replyService, times(1)).sendReply(anyLong(), anyString(), anyString(), anyList(), anyList(), any());
+        assertThat(messages.count()).isEqualTo(before + 1);
+    }
+
+    @Test
+    void aKeyReusedForADifferentMessageIsRejected() throws Exception {
+        String key = "reuse-0123456789abcdef";
+        sendWithKey(key, "{\"body\":\"First\"}").andExpect(status().isCreated());
+
+        sendWithKey(key, "{\"body\":\"Second\"}")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("idempotency_key_reused"));
+        verify(replyService, times(1)).sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+    }
+
+    @Test
+    void aFailedSendReleasesTheKeySoTheRetrySends() throws Exception {
+        String key = "failed-0123456789abcdef";
+        doThrow(new MailSendException("relay down")).doNothing().when(replyService)
+                .sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+
+        sendWithKey(key, "{\"body\":\"hello?\"}").andExpect(status().isBadGateway());
+        sendWithKey(key, "{\"body\":\"hello?\"}").andExpect(status().isCreated());
+
+        verify(replyService, times(2)).sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+    }
+
+    @Test
+    void aKeyStillPendingIsSendInProgress() throws Exception {
+        String body = "{\"body\":\"hello?\"}";
+        String fingerprint = ApiSendIdempotency.fingerprint("messages", bobKey, null, false, null, "hello?");
+        sendRequests.saveAndFlush(new ApiSendRequest(owner.getId(), "pending-0123456789abcdef",
+                sha256(fingerprint), LocalDateTime.now(java.time.ZoneOffset.UTC)));
+
+        sendWithKey("pending-0123456789abcdef", body)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("send_in_progress"));
+        verifyNoInteractions(replyService);
+    }
+
+    @Test
+    void keysAreScopedToTheEndpointAndUser() throws Exception {
+        String key = "shared-0123456789abcdef";
+        sendWithKey(key, "{\"body\":\"hi\"}").andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/conversations").header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", key)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"to\":[\"cy@acme.com\"],\"body\":\"hi\"}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("idempotency_key_reused"));
+    }
+
+    @Test
+    void startingAConversationTwiceWithOneKeySendsOnce() throws Exception {
+        String request = "{\"to\":[\"cy@acme.com\"],\"subject\":\"Hi\",\"body\":\"Hello\"}";
+        for (int i = 0; i < 2; i++) {
+            mockMvc.perform(post("/api/v1/conversations").header("Authorization", "Bearer " + token)
+                            .header("Idempotency-Key", "start-0123456789abcdef")
+                            .contentType(MediaType.APPLICATION_JSON).content(request))
+                    .andExpect(status().isCreated());
+        }
+        verify(replyService, times(1)).sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+    }
+
+    @Test
+    void aMalformedKeyIsValidationFailed() throws Exception {
+        sendWithKey("short", "{\"body\":\"hi\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("validation_failed"));
+        sendWithKey("has spaces in it 0123456789", "{\"body\":\"hi\"}").andExpect(status().isBadRequest());
+        verifyNoInteractions(replyService);
+    }
+
+    @Test
+    void expiredKeysArePrunedAndCanBeUsedAgain() throws Exception {
+        String key = "expired-0123456789abcdef";
+        sendRequests.saveAndFlush(new ApiSendRequest(owner.getId(), key, "0".repeat(64),
+                LocalDateTime.now(java.time.ZoneOffset.UTC).minusHours(25)));
+
+        sendWithKey(key, "{\"body\":\"hi\"}").andExpect(status().isCreated());
+        verify(replyService).sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+    }
+
+    @Test
     void sendingRequiresABearerToken() throws Exception {
         mockMvc.perform(post("/api/v1/conversations/" + bobKey + "/messages")
                         .contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"hi\"}"))
                 .andExpect(status().isUnauthorized());
         verifyNoInteractions(replyService);
+    }
+
+    private ResultActions sendWithKey(String idempotencyKey, String json) throws Exception {
+        return mockMvc.perform(post("/api/v1/conversations/" + bobKey + "/messages")
+                .header("Authorization", "Bearer " + token)
+                .header("Idempotency-Key", idempotencyKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json));
+    }
+
+    private static String sha256(String text) throws Exception {
+        return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                .digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
     }
 
     private ResultActions send(String key, Map<String, Object> body) throws Exception {

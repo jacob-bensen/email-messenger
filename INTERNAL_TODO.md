@@ -7,10 +7,8 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **API sends are not idempotent and carry no attachments**
-      (`docs/API.md` §5.8). A client retry after a timeout can send twice;
-      add an `Idempotency-Key` (or client message id) and multipart
-      attachments.
+- [ ] **API sends carry no attachments** (`docs/API.md` §5.8): needs
+      multipart and stored attachment bytes. (Idempotency is done: §5.8a.)
 - [ ] **Account edits are website-only:** display name, password and
       email changes have no API (`docs/API.md` §6 item 3). Display name
       has no edit path on the website either.
@@ -71,6 +69,13 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       would throw on duplicates.
 
 ## 3. Security and operations
+
+- [ ] A send whose SMTP succeeded but whose recording failed leaves its
+      `api_send_requests` row `PENDING` for 24 h (retries get
+      `409 send_in_progress`; the email did go out). Fine as a guard, but
+      the outbox item in §2 would let it complete properly.
+- [ ] Website sends (`/chats/{key}/send`, `/chats/new`) have no
+      double-submit guard; a double click can send twice.
 
 - [ ] `POST /api/v1/mailboxes` and `…/{id}/sync` hold the request open
       for the whole IMAP login + import (clients wait up to 90 s), and

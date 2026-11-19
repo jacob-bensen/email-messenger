@@ -42,11 +42,13 @@ class ApiConversationService {
     private final ConversationListService conversations;
     private final ChatService chats;
     private final ChatSendService sender;
+    private final ApiSendIdempotency idempotency;
 
     ApiConversationService(UserRepository users, MailAccountService mailAccounts,
                            MailboxPollingService polling, ConversationListService conversations,
-                           ChatService chats, ChatSendService sender) {
+                           ChatService chats, ChatSendService sender, ApiSendIdempotency idempotency) {
         this.sender = sender;
+        this.idempotency = idempotency;
         this.users = users;
         this.mailAccounts = mailAccounts;
         this.polling = polling;
@@ -91,19 +93,28 @@ class ApiConversationService {
 
     /** Not transactional: {@link ChatSendService} keeps SMTP outside any database transaction. */
     ApiDtos.SendResponse send(ApiPrincipal principal, String key, Long mailboxId,
-                              ApiDtos.SendMessageRequest request) {
-        User owner = owner(principal);
-        MailAccount selected = mailbox(owner, mailboxId);
+                              ApiDtos.SendMessageRequest request, String idempotencyKey) {
         boolean asReply = request.asReply() != null && request.asReply();
-        return sending(() -> sender.sendToConversation(owner, selected, key, request.body(),
-                request.subject(), asReply, List.of()));
+        String fingerprint = ApiSendIdempotency.fingerprint("messages", key, mailboxId, asReply,
+                request.subject(), request.body());
+        return idempotency.once(principal.userId(), idempotencyKey, fingerprint, () -> {
+            User owner = owner(principal);
+            MailAccount selected = mailbox(owner, mailboxId);
+            return sending(() -> sender.sendToConversation(owner, selected, key, request.body(),
+                    request.subject(), asReply, List.of()));
+        });
     }
 
-    ApiDtos.SendResponse start(ApiPrincipal principal, Long mailboxId, ApiDtos.NewConversationRequest request) {
-        User owner = owner(principal);
-        MailAccount selected = mailbox(owner, mailboxId);
-        return sending(() -> sender.startConversation(owner, selected, request.to(), request.subject(),
-                request.body(), List.of()));
+    ApiDtos.SendResponse start(ApiPrincipal principal, Long mailboxId, ApiDtos.NewConversationRequest request,
+                               String idempotencyKey) {
+        String fingerprint = ApiSendIdempotency.fingerprint("conversations", mailboxId,
+                request.to() == null ? null : String.join("\n", request.to()), request.subject(), request.body());
+        return idempotency.once(principal.userId(), idempotencyKey, fingerprint, () -> {
+            User owner = owner(principal);
+            MailAccount selected = mailbox(owner, mailboxId);
+            return sending(() -> sender.startConversation(owner, selected, request.to(), request.subject(),
+                    request.body(), List.of()));
+        });
     }
 
     private static ApiDtos.SendResponse sending(Supplier<ChatSendService.SendResult> send) {

@@ -3,6 +3,32 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-19 (c) — Retry-safe sends: `Idempotency-Key` (contract fix)
+
+- Chosen from `INTERNAL_TODO.md` §1 (top contract item: "API sends are not
+  idempotent"); needs both repos. Attachments on send stay open.
+- Contract: new `docs/API.md` §5.8a. Optional `Idempotency-Key` header
+  (16–64 of `A–Z a–z 0–9 - _`) on `POST /api/v1/conversations/{key}/messages`
+  and `POST /api/v1/conversations`. Same key + same request → the first
+  `201` body again, nothing sent; still running → `409 send_in_progress`;
+  same key, different request → `422 idempotency_key_reused`; a first try
+  that failed with a §5.1 error releases the key. Keys live 24 h.
+- `V37__api_send_requests.sql`, entity `ApiSendRequest`,
+  `ApiSendRequestRepository`, `api.ApiSendIdempotency`. The claim
+  (prune expired → look up → insert `PENDING`) and the completion run in
+  their own short transactions, so SMTP stays outside any transaction as
+  before; a concurrent duplicate that loses the unique insert gets `409`.
+  The server binds the key to a SHA-256 of endpoint, path key,
+  `mailboxId` and body fields — clients send nothing extra.
+- An unexpected failure after SMTP accepted (e.g. recording failed) keeps
+  the key `PENDING`, so a retry answers `409` instead of sending again.
+- Website unchanged: it never had the retry-after-timeout problem the
+  header solves (form posts are not retried by the browser automatically).
+- Tests: `ApiSendIntegrationTest` +8 (replay, reuse rejected, failure
+  releases the key, pending → 409, endpoint scoping, start-conversation
+  replay, malformed key, expired key reusable). Full `mvn -B verify`:
+  875 tests, 0 failures, 1 skipped (Docker test).
+
 ## 2026-11-19 (b) — Account API: plan summary and signed-in devices (M2)
 
 - New `GET /api/v1/account` (user + the `/account` page's billing line),
