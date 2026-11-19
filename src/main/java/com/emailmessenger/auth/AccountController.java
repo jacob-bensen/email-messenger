@@ -1,9 +1,7 @@
 package com.emailmessenger.auth;
 
 import com.emailmessenger.domain.AuthEvent;
-import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
-import com.emailmessenger.repository.SubscriptionRepository;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12,6 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -37,16 +36,16 @@ class AccountController {
     private final AccountService accountService;
     private final UserService userService;
     private final AuthEventService authEventService;
-    private final SubscriptionRepository subscriptions;
+    private final SignedInDeviceService devices;
 
     AccountController(AccountService accountService,
                       UserService userService,
                       AuthEventService authEventService,
-                      SubscriptionRepository subscriptions) {
+                      SignedInDeviceService devices) {
         this.accountService = accountService;
         this.userService = userService;
         this.authEventService = authEventService;
-        this.subscriptions = subscriptions;
+        this.devices = devices;
     }
 
     @GetMapping("/account")
@@ -55,9 +54,8 @@ class AccountController {
         model.addAttribute("currentEmail", user.getEmail());
         model.addAttribute("displayName", user.getDisplayName());
         model.addAttribute("emailVerified", user.isEmailVerified());
-        Subscription sub = subscriptions.findByUser(user).orElse(null);
-        AccountBillingSummary billing = AccountBillingSummary.from(sub);
-        model.addAttribute("billing", billing);
+        model.addAttribute("billing", accountService.billingSummary(user));
+        model.addAttribute("devices", devices.list(user.getId(), null));
         List<AuthEvent> recentActivity = authEventService.recentFor(user, RECENT_ACTIVITY_LIMIT);
         model.addAttribute("recentActivity", recentActivity);
         return "account";
@@ -112,6 +110,22 @@ class AccountController {
     @GetMapping("/account/privacy")
     String privacy() {
         return "account-privacy";
+    }
+
+    @PostMapping("/account/devices/{id}/revoke")
+    String revokeDevice(@PathVariable long id, Principal principal, RedirectAttributes redirectAttributes) {
+        User user = userService.requireByEmail(principal.getName());
+        boolean revoked = devices.revoke(user.getId(), id);
+        redirectAttributes.addFlashAttribute("devicesOutcome", revoked ? "REVOKED" : "NOT_FOUND");
+        return "redirect:/account#devices";
+    }
+
+    @PostMapping("/account/devices/revoke-all")
+    String revokeAllDevices(Principal principal, RedirectAttributes redirectAttributes) {
+        User user = userService.requireByEmail(principal.getName());
+        devices.revokeAllExcept(user.getId(), null);
+        redirectAttributes.addFlashAttribute("devicesOutcome", "REVOKED_ALL");
+        return "redirect:/account#devices";
     }
 
     @PostMapping("/account/password")

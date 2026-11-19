@@ -147,13 +147,47 @@
       </div>
       <button type="button" class="btn btn-secondary btn-compact" disabled>Connect</button>
     </div>
-    <div class="acct-row acct-row-soon">
-      <div class="acct-soon-main">
-        <div class="acct-soon-title">Active sessions <span class="settings-coming-soon">Coming soon</span></div>
-        <div class="acct-soon-desc">Review where you're signed in and sign out everywhere.</div>
-      </div>
-      <button type="button" class="btn btn-secondary btn-compact" disabled>Manage</button>
+  </section>
+
+  <section class="acct-section" id="devices">
+    <h2 class="acct-section-title">Signed-in apps</h2>
+    <div th:if="${devicesOutcome == 'REVOKED'}" class="alert alert-success">
+      Signed that app out.
     </div>
+    <div th:if="${devicesOutcome == 'REVOKED_ALL'}" class="alert alert-success">
+      Signed out of every app.
+    </div>
+    <div th:if="${devicesOutcome == 'NOT_FOUND'}" class="alert alert-error">
+      That app was already signed out.
+    </div>
+    <p class="acct-section-sub" th:if="${devices == null or devices.isEmpty()}">
+      You're not signed in to the ConexusMail app anywhere.
+    </p>
+    <th:block th:if="${devices != null and !devices.isEmpty()}">
+      <div class="acct-row acct-row-soon" th:each="device : ${devices}">
+        <div class="acct-soon-main">
+          <div class="acct-soon-title"
+               th:text="${device.deviceName() != null ? device.deviceName() : 'ConexusMail app'}">Pixel 9</div>
+          <div class="acct-soon-desc">
+            Signed in <span th:text="${#temporals.format(device.signedInAt(), 'yyyy-MM-dd')}">2026-11-19</span><span
+              th:if="${device.lastUsedAt() != null}"> · last used <span
+              th:text="${#temporals.format(device.lastUsedAt(), 'yyyy-MM-dd HH:mm')}">2026-11-19 09:12</span> UTC</span>
+          </div>
+        </div>
+        <form method="post" th:action="@{/account/devices/{id}/revoke(id=${device.id()})}">
+          <input type="hidden" th:if="${_csrf != null}"
+                 th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+          <button type="submit" class="btn btn-secondary btn-compact">Sign out</button>
+        </form>
+      </div>
+      <div class="acct-row acct-row-foot" th:if="${devices.size() > 1}">
+        <form method="post" th:action="@{/account/devices/revoke-all}">
+          <input type="hidden" th:if="${_csrf != null}"
+                 th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+          <button type="submit" class="btn btn-secondary btn-compact">Sign out of all apps</button>
+        </form>
+      </div>
+    </th:block>
   </section>
 
   <section class="acct-section">

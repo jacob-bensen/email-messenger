@@ -11,6 +11,9 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       (`docs/API.md` §5.8). A client retry after a timeout can send twice;
       add an `Idempotency-Key` (or client message id) and multipart
       attachments.
+- [ ] **Account edits are website-only:** display name, password and
+      email changes have no API (`docs/API.md` §6 item 3). Display name
+      has no edit path on the website either.
 - [ ] **Mailbox settings are website-only:** Gmail OAuth connect /
       reconnect, signatures, sync frequency and the default sending mailbox
       have no API. A Google mailbox whose token expired can only be
@@ -78,9 +81,11 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] `GET /api/v1/conversations` (like `/chats`) fires an async mailbox
       refresh on every request; a client polling the list triggers IMAP
       work each time (bounded by the per-mailbox "due" check).
-- [ ] Expired `api_tokens` rows are never pruned (rejected, but kept).
-      Add a cleanup to an existing daily job. No device list / "sign out
-      other devices" UI on `/account` yet.
+- [ ] Expired `api_tokens` rows are never pruned (rejected, hidden from
+      the device lists, but kept). Add a cleanup to an existing daily job.
+- [ ] Signing a device out (website or API) writes no `auth_events` row;
+      the "Recent account activity" panel does not show it. Needs a new
+      `AuthEventType` (check the DB constraint on `event_type` first).
 - [ ] Changing or resetting the password does not revoke API tokens;
       disabling the user does. Decide whether a password change should.
 - [ ] Google-only accounts cannot sign in on mobile (no password). Needs a

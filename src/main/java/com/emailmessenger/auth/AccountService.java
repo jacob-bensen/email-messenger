@@ -4,6 +4,7 @@ import com.emailmessenger.domain.AuthEventType;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.EmailVerificationTokenRepository;
 import com.emailmessenger.repository.PasswordResetTokenRepository;
+import com.emailmessenger.repository.SubscriptionRepository;
 import com.emailmessenger.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,7 @@ public class AccountService {
     private final EmailVerificationTokenRepository emailVerificationTokens;
     private final EmailVerificationService emailVerificationService;
     private final AuthEventService authEvents;
+    private final SubscriptionRepository subscriptions;
     private final Clock clock;
 
     AccountService(UserRepository users,
@@ -52,6 +54,7 @@ public class AccountService {
                    EmailVerificationTokenRepository emailVerificationTokens,
                    EmailVerificationService emailVerificationService,
                    AuthEventService authEvents,
+                   SubscriptionRepository subscriptions,
                    Clock clock) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
@@ -59,7 +62,14 @@ public class AccountService {
         this.emailVerificationTokens = emailVerificationTokens;
         this.emailVerificationService = emailVerificationService;
         this.authEvents = authEvents;
+        this.subscriptions = subscriptions;
         this.clock = clock;
+    }
+
+    /** The paid-plan line of /account and {@code GET /api/v1/account}; null on Free. */
+    @Transactional(readOnly = true)
+    public AccountBillingSummary billingSummary(User user) {
+        return AccountBillingSummary.from(subscriptions.findByUser(user).orElse(null));
     }
 
     @Transactional

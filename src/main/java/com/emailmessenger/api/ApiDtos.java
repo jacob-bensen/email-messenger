@@ -1,5 +1,7 @@
 package com.emailmessenger.api;
 
+import com.emailmessenger.auth.AccountBillingSummary;
+import com.emailmessenger.auth.SignedInDevice;
 import com.emailmessenger.billing.PlanLimits;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
@@ -22,6 +24,8 @@ import jakarta.validation.constraints.Size;
 import org.springframework.data.domain.Page;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
@@ -184,6 +188,33 @@ final class ApiDtos {
     record ConnectMailboxRequest(String host, Integer port, Boolean ssl, String username, String password) {}
 
     record SyncResponse(int imported, MailboxResponse mailbox) {}
+
+    record AccountResponse(MeResponse user, BillingResponse billing) {}
+
+    record BillingResponse(String label, LocalDate renewsOn, boolean trialing, boolean canceled) {
+
+        static BillingResponse of(AccountBillingSummary summary) {
+            return summary == null ? null
+                    : new BillingResponse(summary.label(), summary.renewsOn(), summary.trialing(), summary.canceled());
+        }
+    }
+
+    record DeviceList(List<DeviceResponse> items) {}
+
+    record DeviceResponse(long id, String deviceName, Instant signedInAt, Instant lastUsedAt, Instant expiresAt,
+                          boolean current) {
+
+        static DeviceResponse of(SignedInDevice device) {
+            return new DeviceResponse(device.id(), device.deviceName(), utc(device.signedInAt()),
+                    utc(device.lastUsedAt()), utc(device.expiresAt()), device.current());
+        }
+    }
+
+    record SignOutOthersResponse(int revoked) {}
+
+    private static Instant utc(LocalDateTime value) {
+        return value == null ? null : value.toInstant(ZoneOffset.UTC);
+    }
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;

@@ -14,8 +14,9 @@ section is promoted to Implemented.
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline, mark-read, sending
-into a conversation, starting a new one, and mailboxes: list, connect
-with an IMAP password, sync now, remove (§5). Gmail OAuth connect,
+into a conversation, starting a new one, mailboxes (list, connect
+with an IMAP password, sync now, remove), and the account: plan summary,
+signed-in devices, sign a device out (§5). Gmail OAuth connect,
 signatures and mail preferences are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -613,11 +614,86 @@ mailbox, there is no default afterwards. `204`, empty body.
 Errors: `404 not_found` (unknown, foreign or already removed);
 `401 unauthorized`.
 
+### 5.15 GET /api/v1/account
+Bearer token required. The Account screen: the user (same object as
+§5.4) plus their paid subscription, summarized exactly as the website's
+`/account` page shows it (`AccountBillingSummary`).
+
+`200`:
+```json
+{
+  "user": { …same object as GET /api/v1/me… },
+  "billing": { "label": "Pro · Annual", "renewsOn": "2027-06-07", "trialing": false, "canceled": false }
+}
+```
+- `billing` is `null` on the Free plan (no paid subscription row).
+- `label` (string): display text, e.g. `Pro · Monthly`,
+  `Pro · Annual trial`, `Business · Canceled`. Show it as-is.
+- `renewsOn` (calendar date `YYYY-MM-DD` or `null` = not known yet): the
+  trial end while `trialing`, else the next renewal. Not meaningful when
+  `canceled`.
+- `trialing`, `canceled` (boolean).
+- Upgrades, cancellation and payment details happen on the website.
+
+Errors: `401 unauthorized`.
+
+### 5.16 GET /api/v1/account/devices
+Bearer token required. The user's signed-in apps: every unexpired API
+token (one per sign-in, §2), most recently used first. The website's
+`/account` "Signed-in apps" section lists the same rows
+(`SignedInDeviceService`).
+
+`200`:
+```json
+{
+  "items": [
+    {
+      "id": 17,
+      "deviceName": "ConexusMail for android",
+      "signedInAt": "2026-11-19T08:00:00Z",
+      "lastUsedAt": "2026-11-19T09:12:00Z",
+      "expiresAt": "2026-12-19T08:00:00Z",
+      "current": true
+    }
+  ]
+}
+```
+- `id` (integer): pass to §5.17.
+- `deviceName` (string or `null`): what the client sent at sign-in.
+- `signedInAt`, `expiresAt` (instants).
+- `lastUsedAt` (instant or `null` = not used since sign-in). Updated at
+  most every 5 minutes, so treat it as approximate.
+- `current` (boolean): the token that made this request. Exactly one row
+  is `true`.
+
+Errors: `401 unauthorized`.
+
+### 5.17 DELETE /api/v1/account/devices/{id}
+Bearer token required. Signs one device out (revokes its token). Revoking
+the `current` device is the same as `POST /auth/logout`: the next request
+with this token is `401`. `204`, empty body.
+
+Errors: `404 not_found` (unknown, expired, already revoked, or another
+user's); `401 unauthorized`.
+
+### 5.18 POST /api/v1/account/devices/sign-out-others
+Bearer token required. Revokes every token of the user except the one
+making this request. Request body: none.
+
+`200`:
+```json
+{ "revoked": 2 }
+```
+- `revoked` (integer): tokens revoked, `0` when there were none.
+
+Errors: `401 unauthorized`.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Account: device list / revoke other sessions.
-2. Live updates: SSE (or push) with enough detail to update without a
+1. Live updates: SSE (or push) with enough detail to update without a
    full refetch.
-3. Attachments on send (multipart), and an idempotency key for sends.
+2. Attachments on send (multipart), and an idempotency key for sends.
+3. Account changes from the app: display name, password, email (website
+   only today).

@@ -3,9 +3,11 @@ package com.emailmessenger.auth;
 import com.emailmessenger.billing.BillingPeriod;
 import com.emailmessenger.billing.StripeCheckoutGateway;
 import com.emailmessenger.billing.StripePortalGateway;
+import com.emailmessenger.domain.ApiToken;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
+import com.emailmessenger.repository.ApiTokenRepository;
 import com.emailmessenger.repository.SubscriptionRepository;
 import com.emailmessenger.repository.UserRepository;
 import com.emailmessenger.service.ReplyService;
@@ -23,6 +25,8 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -48,6 +52,7 @@ class AccountControllerTest {
     @Autowired UserRepository users;
     @Autowired SubscriptionRepository subscriptions;
     @Autowired PasswordEncoder passwordEncoder;
+    @Autowired ApiTokenRepository apiTokens;
 
     @MockitoBean JavaMailSender mailSender;
     @MockitoBean StripeCheckoutGateway stripeCheckout;
@@ -279,5 +284,65 @@ class AccountControllerTest {
                         .param("newEmail", "not-an-email"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attribute("emailOutcome", "EMAIL_INVALID"));
+    }
+
+    @Test
+    @WithMockUser(username = "devices@example.com")
+    void accountPageListsSignedInAppsAndSignsOneOut() throws Exception {
+        User user = userService.register("devices@example.com", "password1", null);
+        ApiToken phone = apiTokens.save(new ApiToken(user, "a".repeat(64), "Pixel 9",
+                LocalDateTime.now(), LocalDateTime.now().plusDays(30)));
+        apiTokens.save(new ApiToken(user, "b".repeat(64), "iPad",
+                LocalDateTime.now(), LocalDateTime.now().plusDays(30)));
+
+        mockMvc.perform(get("/account"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Pixel 9")))
+                .andExpect(content().string(containsString("Sign out of all apps")));
+
+        mockMvc.perform(post("/account/devices/" + phone.getId() + "/revoke")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/account#devices"))
+                .andExpect(flash().attribute("devicesOutcome", "REVOKED"));
+        assertThat(apiTokens.findById(phone.getId())).isEmpty();
+
+        mockMvc.perform(post("/account/devices/" + phone.getId() + "/revoke")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(flash().attribute("devicesOutcome", "NOT_FOUND"));
+    }
+
+    @Test
+    @WithMockUser(username = "devices@example.com")
+    void cannotSignOutAnotherUsersApp() throws Exception {
+        userService.register("devices@example.com", "password1", null);
+        User bob = userService.register("bob@example.com", "password1", null);
+        ApiToken bobs = apiTokens.save(new ApiToken(bob, "c".repeat(64), "Bob's phone",
+                LocalDateTime.now(), LocalDateTime.now().plusDays(30)));
+
+        mockMvc.perform(post("/account/devices/" + bobs.getId() + "/revoke")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(flash().attribute("devicesOutcome", "NOT_FOUND"));
+        assertThat(apiTokens.findById(bobs.getId())).isPresent();
+    }
+
+    @Test
+    @WithMockUser(username = "devices@example.com")
+    void signOutOfAllAppsRevokesOnlyOwnTokens() throws Exception {
+        User user = userService.register("devices@example.com", "password1", null);
+        User bob = userService.register("bob@example.com", "password1", null);
+        apiTokens.save(new ApiToken(user, "d".repeat(64), "Pixel 9",
+                LocalDateTime.now(), LocalDateTime.now().plusDays(30)));
+        apiTokens.save(new ApiToken(user, "e".repeat(64), null,
+                LocalDateTime.now(), LocalDateTime.now().plusDays(30)));
+        apiTokens.save(new ApiToken(bob, "f".repeat(64), "Bob's phone",
+                LocalDateTime.now(), LocalDateTime.now().plusDays(30)));
+
+        mockMvc.perform(post("/account/devices/revoke-all")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("devicesOutcome", "REVOKED_ALL"));
+
+        assertThat(apiTokens.findAll()).extracting(ApiToken::getDeviceName).containsExactly("Bob's phone");
     }
 }

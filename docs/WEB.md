@@ -29,7 +29,8 @@ dialect: pages compose shared pieces with `th:replace`. One stylesheet,
 | `GET/POST /password/forgot`, `GET/POST /password/reset` | public (token) | `password/forgot`, `password/reset` | `PasswordResetController` → `PasswordResetService` |
 | `GET /verify-email` | public (token) | `verify-email` | `EmailVerificationController` → `EmailVerificationService.verify` |
 | `POST /verify-email/resend` | user | redirect | `EmailVerificationService.sendVerification` |
-| `GET /account` | user | `account` | `AccountController` → `SubscriptionRepository`, `AuthEventService.recentFor` |
+| `GET /account` | user | `account` | `AccountController` → `AccountService.billingSummary`, `SignedInDeviceService.list`, `AuthEventService.recentFor` |
+| `POST /account/devices/{id}/revoke`, `POST /account/devices/revoke-all` | user | redirect `/account#devices` | `SignedInDeviceService.revoke` / `revokeAllExcept(user, null)`; flash `devicesOutcome` |
 | `POST /account/password`, `POST /account/email` | user | redirect | `AccountService.changePassword` / `changeEmail` |
 | `GET/POST /account/appearance` | user | `account-appearance` | `AppearanceSettings` (theme + accent cookies) |
 | `GET /account/notifications` | user | `account-notifications` | placeholder ("coming soon") |

@@ -3,6 +3,25 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-19 (b) — Account API: plan summary and signed-in devices (M2)
+
+- New `GET /api/v1/account` (user + the `/account` page's billing line),
+  `GET /api/v1/account/devices`, `DELETE /api/v1/account/devices/{id}`,
+  `POST /api/v1/account/devices/sign-out-others` (`docs/API.md`
+  §5.15–5.18). Removed "device list / revoke" from §6 Planned.
+- Shared with the website, no forked logic: new public
+  `auth.SignedInDeviceService` (list unexpired tokens, revoke one, revoke
+  all except one — every query owner-scoped) and
+  `AccountService.billingSummary` back both `/account` and the API.
+- Website: `/account` replaces the "Active sessions — Coming soon" row
+  with a "Signed-in apps" section (name, signed-in date, last used,
+  Sign out per app, "Sign out of all apps") via
+  `POST /account/devices/{id}/revoke` and `POST /account/devices/revoke-all`.
+- `ApiTokenRepository` bulk deletes flush and clear the persistence
+  context so a revoked token is not served from a stale first-level cache.
+- Tests: `ApiAccountIntegrationTest` (9), `AccountControllerTest` +3.
+  Full `mvn -B verify`: 867 tests, 0 failures, 1 skipped (Docker test).
+
 ## 2026-11-19 — Mailbox API (M2: mailboxes)
 
 - New `GET /api/v1/mailboxes`, `GET /api/v1/mailboxes/providers`,
