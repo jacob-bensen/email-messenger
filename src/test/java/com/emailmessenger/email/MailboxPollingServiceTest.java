@@ -319,6 +319,8 @@ class MailboxPollingServiceTest {
                 .satisfies(e -> {
                     assertThat(e.userId()).isEqualTo(owner.getId());
                     assertThat(e.importedCount()).isEqualTo(1);
+                    // The mocked message has no thread, so no key is collected.
+                    assertThat(e.conversationKeys()).isEmpty();
                 });
     }
 

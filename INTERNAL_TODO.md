@@ -30,8 +30,14 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **Timestamps are zone-less.** `LocalDateTime` values are UTC by
       convention only; the API converts them to `Z` instants at the DTO
       edge (`ApiDtos`), which is right only while stored values are UTC.
-- [ ] **Live events carry only a count** (`{"imported":N}`), so any client
-      must refetch the whole list.
+- [ ] **Website live events carry only a count** (`/chats/events`,
+      `{"imported":N}`), so the website refetches the rail; the API stream
+      (§5.19) carries rows. The website could reuse the keys now in
+      `NewMailEvent`.
+- [ ] **API events cover imports only.** Mark-read, sends from another
+      device, and mailbox removal emit no `/api/v1/events` event, so a
+      second device sees them only on its next refetch. Events have no ids
+      and no replay.
 
 ## 2. Logic drift and correctness
 

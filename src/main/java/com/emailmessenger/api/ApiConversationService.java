@@ -18,9 +18,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -35,6 +37,7 @@ class ApiConversationService {
 
     static final int DEFAULT_PAGE_SIZE = 30;
     static final int MAX_PAGE_SIZE = 100;
+    static final int MAX_CHANGED_ROWS = 50;
 
     private final UserRepository users;
     private final MailAccountService mailAccounts;
@@ -79,6 +82,18 @@ class ApiConversationService {
             throw noSuchConversation();
         }
         return ApiDtos.ConversationDetail.of(chat);
+    }
+
+    /**
+     * §5.19 event payload. Its own read-only transaction: it runs from an
+     * after-commit listener, where the import's transaction is finished.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    ApiDtos.ConversationsChanged changes(long userId, int imported, Set<String> keys) {
+        User owner = users.findById(userId).orElseThrow();
+        List<ConversationListItem> rows = conversations.rowsFor(owner, keys, MAX_CHANGED_ROWS);
+        return ApiDtos.ConversationsChanged.of(imported, rows, keys.size() > MAX_CHANGED_ROWS,
+                conversations.counts(owner, null));
     }
 
     @Transactional

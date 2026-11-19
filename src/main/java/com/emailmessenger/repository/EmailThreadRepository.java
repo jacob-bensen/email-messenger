@@ -237,6 +237,22 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
         long getUnreadCount();
     }
 
+    // Unscoped summaries of just the given conversations (newest first), for
+    // live list updates after an import touched them.
+    @Query("""
+            SELECT t.conversationKey AS conversationKey,
+                   MAX(msg.sentAt) AS lastActivity,
+                   COUNT(DISTINCT t.id) AS threadCount,
+                   COUNT(DISTINCT CASE WHEN t.unread = true THEN t.id END) AS unreadCount
+            FROM EmailThread t JOIN t.messages msg
+            WHERE t.owner = :owner AND t.conversationKey IN :keys
+            GROUP BY t.conversationKey
+            ORDER BY MAX(msg.sentAt) DESC
+            """)
+    List<ConversationSummaryRow> conversationSummariesForKeys(@Param("owner") User owner,
+                                                              @Param("keys") Collection<String> keys,
+                                                              Pageable pageable);
+
     // Per-mailbox variant of conversationSummaries: only conversations one of
     // whose threads involves the given owner-side address (:mailbox, already
     // lowercased) — as a message sender or a non-deleted recipient. This keeps

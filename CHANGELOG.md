@@ -3,6 +3,26 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-19 (c) — Live conversation-list events for the app (M3)
+
+- New `GET /api/v1/events` (`docs/API.md` §5.19): bearer-authenticated SSE
+  stream; event `conversations-changed` carries the changed conversations
+  as §5.5 unscoped list rows (≤ 50, `truncated` beyond) plus unscoped
+  `counts`, so a client updates rows in place instead of refetching.
+  §6 Planned item 1 is now push notifications.
+- `NewMailEvent` now carries the conversation keys a poll touched
+  (`MailboxPollingService` collects them from imported messages).
+- `ConversationListService.rowsFor(owner, keys, limit)` +
+  `EmailThreadRepository.conversationSummariesForKeys`: the same row
+  assembly as the list, for just those keys — no forked list logic.
+- `ApiEventStream` builds the payload once per event, only when the user
+  has a stream open, in its own read-only transaction after commit.
+- `ApiSecurityConfig` permits the ASYNC re-dispatch that closes an SSE
+  stream (the bearer filter runs once per request).
+- Tests: `ApiEventStreamTest` (4), `ApiEventsIntegrationTest` (4),
+  `MailboxPollingServiceTest` asserts the keys. Full `./mvnw test`: 875
+  tests, 0 failures, 1 skipped (Docker test).
+
 ## 2026-11-19 (b) — Account API: plan summary and signed-in devices (M2)
 
 - New `GET /api/v1/account` (user + the `/account` page's billing line),

@@ -70,7 +70,7 @@ final class ApiDtos {
         static ConversationPage of(Page<ConversationListItem> rows, ConversationListService.ChatCounts counts) {
             return new ConversationPage(rows.getContent().stream().map(ConversationRow::of).toList(),
                     rows.getNumber(), rows.getSize(), rows.getTotalElements(), rows.hasNext(),
-                    new CountsResponse(counts.all(), counts.unread(), counts.awaiting(), counts.attachments()));
+                    CountsResponse.of(counts));
         }
     }
 
@@ -87,7 +87,23 @@ final class ApiDtos {
         }
     }
 
-    record CountsResponse(long all, long unread, long awaiting, long attachments) {}
+    record CountsResponse(long all, long unread, long awaiting, long attachments) {
+
+        static CountsResponse of(ConversationListService.ChatCounts counts) {
+            return new CountsResponse(counts.all(), counts.unread(), counts.awaiting(), counts.attachments());
+        }
+    }
+
+    /** §5.19 {@code conversations-changed} event data. */
+    record ConversationsChanged(int imported, List<ConversationRow> conversations, boolean truncated,
+                                CountsResponse counts) {
+
+        static ConversationsChanged of(int imported, List<ConversationListItem> rows, boolean truncated,
+                                       ConversationListService.ChatCounts counts) {
+            return new ConversationsChanged(imported, rows.stream().map(ConversationRow::of).toList(),
+                    truncated, CountsResponse.of(counts));
+        }
+    }
 
     record ConversationDetail(String key, String title, String initials, boolean group, long threadCount,
                               int messageCount, List<MemberResponse> members, List<RunResponse> runs) {

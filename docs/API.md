@@ -15,8 +15,9 @@ section is promoted to Implemented.
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline, mark-read, sending
 into a conversation, starting a new one, mailboxes (list, connect
-with an IMAP password, sync now, remove), and the account: plan summary,
-signed-in devices, sign a device out (§5). Gmail OAuth connect,
+with an IMAP password, sync now, remove), the account: plan summary,
+signed-in devices, sign a device out, and a live event stream of
+conversation-list changes (§5). Gmail OAuth connect,
 signatures and mail preferences are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -688,12 +689,53 @@ making this request. Request body: none.
 
 Errors: `401 unauthorized`.
 
+### 5.19 GET /api/v1/events
+Bearer token required (`Authorization` header, like every `/api/v1`
+call). A Server-Sent Events stream of changes to the signed-in user's
+conversation list, detailed enough to update list rows in place without
+refetching the list.
+
+- `200 text/event-stream`, UTF-8. The server closes the stream after 30
+  minutes; clients reconnect (with backoff on errors). A `401` with the
+  JSON error envelope (§5.1) is returned instead when the token is bad.
+- Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`); clients
+  ignore comments.
+- No event ids and no replay: anything that happened while disconnected
+  is lost, so a client refetches the list (§5.5) after every (re)connect.
+- Fan-out is in-memory: works on a single backend instance only.
+
+Event `conversations-changed`, sent after a mailbox poll (scheduled, IMAP
+IDLE, sync now, or the refresh §5.5 kicks off) commits at least one
+imported message:
+```
+event: conversations-changed
+data: {"imported":2,"conversations":[{…§5.5 item…}],"truncated":false,"counts":{"all":12,"unread":3,"awaiting":1,"attachments":0}}
+```
+- `imported` (integer ≥ 1): messages imported (received + sent).
+- `conversations` (array): the current list row of every conversation the
+  import touched, exactly as a §5.5 item of the **unscoped** list (so
+  `accounts` is filled), newest `lastActivityAt` first, at most 50.
+- `truncated` (boolean): `true` when more than 50 conversations changed;
+  `conversations` then holds the 50 most recent and the client should
+  refetch the list instead.
+- `counts` (object): §5.5 `counts` for the **unscoped** list after the
+  import.
+
+Client rule: in the unscoped list with filter `all` and no `q`, replace
+the row with the same `key` (or insert it) and keep the list ordered by
+`lastActivityAt` desc; update `counts`. In any other view (a search, a
+filter, a mailbox scope) the rows may not belong in it, so refetch.
+Events are not sent for the user's own sends (the send response already
+carries the message, §5.8) or for mark-read (§5.7).
+
+Errors: `401 unauthorized`.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Live updates: SSE (or push) with enough detail to update without a
-   full refetch.
+1. Push notifications when the app is closed (the event stream only
+   reaches an open app).
 2. Attachments on send (multipart), and an idempotency key for sends.
 3. Account changes from the app: display name, password, email (website
    only today).
