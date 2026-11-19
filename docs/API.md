@@ -14,7 +14,8 @@ section is promoted to Implemented.
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline, mark-read, sending
-into a conversation, starting a new one, mailboxes (list, connect
+into a conversation, starting a new one (both retry-safe with an
+`Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove), and the account: plan summary,
 signed-in devices, sign a device out (§5). Gmail OAuth connect,
 signatures and mail preferences are website-only. The website's own machine endpoints (§3) still use the
@@ -187,6 +188,8 @@ the user, and may change. Clients branch on `code` only.
 | 404 | `not_found` | Unknown `/api` path (after authentication) |
 | 405 | `method_not_allowed` | Wrong HTTP method on an existing endpoint |
 | 409 | `no_recipients` | Send: the conversation has nobody but you in it (§5.8) |
+| 409 | `send_in_progress` | Send: a request with the same `Idempotency-Key` has not finished (§5.8.1) |
+| 422 | `idempotency_key_reused` | Send: the `Idempotency-Key` was already used for a different request (§5.8.1) |
 | 422 | `mailbox_connect_failed` | Connect mailbox: IMAP login or connection failed (§5.12) |
 | 429 | `too_many_attempts` | Login: throttle lock (§2) |
 | 500 | `internal_error` | Anything unexpected |
@@ -452,10 +455,37 @@ Server rules (clients must not predict beyond the bubble text):
   locally predicted bubble.
 
 Errors: `400 validation_failed` (body blank or too long, malformed JSON,
-non-integer `mailboxId`); `404 not_found` (unknown key in scope, or
-`mailboxId` not the user's); `409 no_recipients`; `502 send_failed`;
-`401 unauthorized`. The request is not idempotent: a retry after a
-timeout may send twice.
+non-integer `mailboxId`, malformed `Idempotency-Key`); `404 not_found`
+(unknown key in scope, or `mailboxId` not the user's); `409 no_recipients`;
+`409 send_in_progress`, `422 idempotency_key_reused` (§5.8.1);
+`502 send_failed`; `401 unauthorized`. Without an `Idempotency-Key` the
+request is not idempotent: a retry after a timeout may send twice.
+
+#### 5.8.1 Idempotency-Key (§5.8 and §5.9)
+Optional request header that makes a send safe to retry:
+```
+Idempotency-Key: 6f1c2a7e-3b0d-4c5e-9a8f-1d2e3c4b5a69
+```
+- Value: 1–100 characters from `A–Z a–z 0–9 - _ . :`; anything else →
+  `400 validation_failed`. Clients generate one per message the user
+  wrote (a UUID v4) and send the **same key with the same body** on every
+  retry of that message.
+- Scope: per user, across both send endpoints, for **24 hours** from the
+  first request; after that the key is forgotten and may send again.
+- First request with a key: processed normally. If it fails with an error
+  that means nothing was sent (`400`, `404`, `409 no_recipients`,
+  `502 send_failed`), the key is released and a retry is processed afresh.
+- Repeat after success: nothing is sent; the server answers `201` with the
+  **stored** response body of the first request and the header
+  `Idempotent-Replayed: true`.
+- Repeat while the first is still running, or after the first ended in an
+  unexpected server error (`500`, crash): `409 send_in_progress`. The
+  server keeps the key in that state rather than risk a second email (the
+  first may have gone out); clients should refetch the conversation (§5.6)
+  and offer to send again as a new message (new key) if it is not there.
+- Same key with a different request (other endpoint, conversation,
+  `mailboxId`, body, subject, `asReply` or recipients) →
+  `422 idempotency_key_reused`; nothing is sent.
 
 ### 5.9 POST /api/v1/conversations
 Bearer token required. Starts a new conversation — or adds to the existing
@@ -478,8 +508,10 @@ Request:
 
 `201`: same shape as §5.8. `key` is computed by the server from the
 recipients (§4 Conversation key; your own addresses are excluded) — the
-conversation to open next. Errors: `400 validation_failed`,
-`404 not_found` (`mailboxId`), `502 send_failed`, `401 unauthorized`.
+conversation to open next. Header `Idempotency-Key` as §5.8.1. Errors:
+`400 validation_failed`, `404 not_found` (`mailboxId`),
+`409 send_in_progress`, `422 idempotency_key_reused`, `502 send_failed`,
+`401 unauthorized`.
 
 ### 5.10 GET /api/v1/mailboxes
 Bearer token required. The user's connected mailboxes, oldest first (the
@@ -694,6 +726,7 @@ Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
 1. Live updates: SSE (or push) with enough detail to update without a
    full refetch.
-2. Attachments on send (multipart), and an idempotency key for sends.
+2. Attachments on send (multipart). (The idempotency key landed
+   2026-11-19, §5.8.1.)
 3. Account changes from the app: display name, password, email (website
    only today).

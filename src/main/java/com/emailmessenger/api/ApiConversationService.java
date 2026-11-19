@@ -13,6 +13,7 @@ import com.emailmessenger.web.ConversationListService;
 import com.emailmessenger.web.ConversationListService.ChatFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -42,11 +43,13 @@ class ApiConversationService {
     private final ConversationListService conversations;
     private final ChatService chats;
     private final ChatSendService sender;
+    private final ApiSendIdempotency idempotency;
 
     ApiConversationService(UserRepository users, MailAccountService mailAccounts,
                            MailboxPollingService polling, ConversationListService conversations,
-                           ChatService chats, ChatSendService sender) {
+                           ChatService chats, ChatSendService sender, ApiSendIdempotency idempotency) {
         this.sender = sender;
+        this.idempotency = idempotency;
         this.users = users;
         this.mailAccounts = mailAccounts;
         this.polling = polling;
@@ -89,21 +92,69 @@ class ApiConversationService {
         }
     }
 
-    /** Not transactional: {@link ChatSendService} keeps SMTP outside any database transaction. */
-    ApiDtos.SendResponse send(ApiPrincipal principal, String key, Long mailboxId,
-                              ApiDtos.SendMessageRequest request) {
+    /** A send's response, and whether it is the stored answer to an earlier request (§5.8.1). */
+    record Sent(ApiDtos.SendResponse response, boolean replayed) {}
+
+    /**
+     * Not transactional: {@link ChatSendService} keeps SMTP outside any database transaction, and an
+     * idempotency claim must be committed before SMTP runs.
+     */
+    Sent send(ApiPrincipal principal, String key, Long mailboxId, String idempotencyKey,
+              ApiDtos.SendMessageRequest request) {
         User owner = owner(principal);
         MailAccount selected = mailbox(owner, mailboxId);
         boolean asReply = request.asReply() != null && request.asReply();
-        return sending(() -> sender.sendToConversation(owner, selected, key, request.body(),
-                request.subject(), asReply, List.of()));
+        String fingerprint = fingerprint("messages", key, String.valueOf(mailboxId), request.body(),
+                request.subject(), String.valueOf(asReply));
+        return idempotent(owner, idempotencyKey, fingerprint, () -> sending(() -> sender.sendToConversation(
+                owner, selected, key, request.body(), request.subject(), asReply, List.of())));
     }
 
-    ApiDtos.SendResponse start(ApiPrincipal principal, Long mailboxId, ApiDtos.NewConversationRequest request) {
+    Sent start(ApiPrincipal principal, Long mailboxId, String idempotencyKey,
+               ApiDtos.NewConversationRequest request) {
         User owner = owner(principal);
         MailAccount selected = mailbox(owner, mailboxId);
-        return sending(() -> sender.startConversation(owner, selected, request.to(), request.subject(),
-                request.body(), List.of()));
+        String to = request.to() == null ? null : String.join("\u0001", request.to());
+        String fingerprint = fingerprint("conversations", String.valueOf(mailboxId), to, request.subject(),
+                request.body());
+        return idempotent(owner, idempotencyKey, fingerprint, () -> sending(() -> sender.startConversation(
+                owner, selected, request.to(), request.subject(), request.body(), List.of())));
+    }
+
+    private Sent idempotent(User owner, String idempotencyKey, String fingerprint,
+                            Supplier<ApiDtos.SendResponse> send) {
+        if (idempotencyKey == null) {
+            return new Sent(send.get(), false);
+        }
+        ApiSendIdempotency.validate(idempotencyKey);
+        ApiSendIdempotency.Claim claim;
+        try {
+            claim = idempotency.claim(owner.getId(), idempotencyKey, fingerprint);
+        } catch (DataIntegrityViolationException e) {
+            throw new ApiException(HttpStatus.CONFLICT, "send_in_progress", "This message is still being sent.");
+        }
+        if (claim.replay() != null) {
+            return new Sent(claim.replay(), true);
+        }
+        ApiDtos.SendResponse response;
+        try {
+            response = send.get();
+        } catch (ApiException e) {
+            // Every ApiException from sending() means the mail never left: free the key for a retry.
+            idempotency.release(claim.id());
+            throw e;
+        }
+        // Any other failure leaves the claim open on purpose: SMTP may have accepted the mail.
+        idempotency.complete(claim.id(), response);
+        return new Sent(response, false);
+    }
+
+    private static String fingerprint(String... parts) {
+        StringBuilder canonical = new StringBuilder();
+        for (String part : parts) {
+            canonical.append(part == null ? "\u0002" : part).append('\u0000');
+        }
+        return ApiTokenService.hash(canonical.toString());
     }
 
     private static ApiDtos.SendResponse sending(Supplier<ChatSendService.SendResult> send) {

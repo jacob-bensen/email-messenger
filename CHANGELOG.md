@@ -3,6 +3,24 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-19 (c) — Idempotent API sends
+
+- `POST /api/v1/conversations/{key}/messages` and `POST /api/v1/conversations`
+  accept an optional `Idempotency-Key` header (`docs/API.md` §5.8.1): a
+  retry with the same key and body replays the stored `201` response
+  (header `Idempotent-Replayed: true`) without emailing again. New error
+  codes `409 send_in_progress` and `422 idempotency_key_reused`. Keys are
+  per user and live 24 h. Removed it from §6 Planned.
+- V37 `api_send_requests` + `ApiSendRequest` entity and repository;
+  `api.ApiSendIdempotency` claims a key in its own committed transaction
+  before SMTP, completes it with the response after, and releases it when
+  the failure proves nothing was sent (`400/404/409 no_recipients/502`).
+  An unexpected failure keeps the key in flight on purpose (at most one
+  email). Sending logic itself is unchanged and still shared with the
+  website through `ChatSendService`.
+- Tests: `ApiSendIntegrationTest` +6, new `ApiSendIdempotencyTest` (3).
+  Full `mvn -B verify`: 876 tests, 0 failures, 1 skipped (Docker test).
+
 ## 2026-11-19 (b) — Account API: plan summary and signed-in devices (M2)
 
 - New `GET /api/v1/account` (user + the `/account` page's billing line),

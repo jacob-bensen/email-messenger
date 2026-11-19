@@ -36,13 +36,17 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -238,6 +242,90 @@ class ApiSendIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"hi\"}"))
                 .andExpect(status().isUnauthorized());
         verifyNoInteractions(replyService);
+    }
+
+    @Test
+    void aRetryWithTheSameIdempotencyKeyReplaysWithoutSendingAgain() throws Exception {
+        long before = messages.count();
+        String first = sendWithKey(bobKey, "k-1", Map.of("body", "On my way", "asReply", true))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        sendWithKey(bobKey, "k-1", Map.of("body", "On my way", "asReply", true))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Idempotent-Replayed", "true"))
+                .andExpect(content().json(first, true));
+
+        verify(replyService, times(1)).sendReply(anyLong(), anyString(), anyString(), anyList(), anyList(), any());
+        assertThat(messages.count()).isEqualTo(before + 1);
+    }
+
+    @Test
+    void theSameKeyForADifferentMessageIsRejectedAndSendsNothing() throws Exception {
+        sendWithKey(bobKey, "k-2", Map.of("body", "first")).andExpect(status().isCreated());
+
+        sendWithKey(bobKey, "k-2", Map.of("body", "second"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("idempotency_key_reused"));
+        mockMvc.perform(post("/api/v1/conversations").header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", "k-2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"to\":[\"bob@acme.com\"],\"body\":\"first\"}"))
+                .andExpect(status().isUnprocessableEntity());
+        verify(replyService, times(1)).sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+    }
+
+    @Test
+    void aFailedSendReleasesTheKeySoTheRetrySends() throws Exception {
+        doThrow(new MailSendException("relay down")).doNothing().when(replyService)
+                .sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+
+        sendWithKey(bobKey, "k-3", Map.of("body", "hello?")).andExpect(status().isBadGateway());
+        sendWithKey(bobKey, "k-3", Map.of("body", "hello?"))
+                .andExpect(status().isCreated())
+                .andExpect(header().doesNotExist("Idempotent-Replayed"));
+        verify(replyService, times(2)).sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+    }
+
+    @Test
+    void anUnexpectedFailureKeepsTheKeyInProgressRatherThanRiskASecondEmail() throws Exception {
+        doThrow(new IllegalStateException("crashed after SMTP")).when(replyService)
+                .sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+
+        sendWithKey(bobKey, "k-4", Map.of("body", "hello?")).andExpect(status().isInternalServerError());
+        sendWithKey(bobKey, "k-4", Map.of("body", "hello?"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("send_in_progress"));
+        verify(replyService, times(1)).sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+    }
+
+    @Test
+    void startingAConversationIsIdempotentToo() throws Exception {
+        String body = "{\"to\":[\"cy@acme.com\"],\"subject\":\"Kickoff\",\"body\":\"Monday?\"}";
+        for (int i = 0; i < 2; i++) {
+            mockMvc.perform(post("/api/v1/conversations").header("Authorization", "Bearer " + token)
+                            .header("Idempotency-Key", "6f1c2a7e-3b0d-4c5e-9a8f-1d2e3c4b5a69")
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isCreated());
+        }
+        verify(replyService, times(1)).sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+    }
+
+    @Test
+    void aMalformedIdempotencyKeyIsRejected() throws Exception {
+        sendWithKey(bobKey, "has spaces", Map.of("body", "hi"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("validation_failed"));
+        sendWithKey(bobKey, "x".repeat(101), Map.of("body", "hi")).andExpect(status().isBadRequest());
+        verifyNoInteractions(replyService);
+    }
+
+    private ResultActions sendWithKey(String key, String idempotencyKey, Map<String, Object> body) throws Exception {
+        return mockMvc.perform(post("/api/v1/conversations/" + key + "/messages")
+                .header("Authorization", "Bearer " + token)
+                .header("Idempotency-Key", idempotencyKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)));
     }
 
     private ResultActions send(String key, Map<String, Object> body) throws Exception {

@@ -1,11 +1,13 @@
 package com.emailmessenger.api;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -14,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1")
 class ApiConversationController {
+
+    static final String IDEMPOTENCY_KEY = "Idempotency-Key";
 
     private final ApiConversationService conversations;
 
@@ -47,19 +51,27 @@ class ApiConversationController {
     }
 
     @PostMapping("/conversations/{key}/messages")
-    @ResponseStatus(HttpStatus.CREATED)
-    ApiDtos.SendResponse send(@AuthenticationPrincipal ApiPrincipal principal,
-                              @PathVariable String key,
-                              @RequestParam(required = false) Long mailboxId,
-                              @RequestBody ApiDtos.SendMessageRequest request) {
-        return conversations.send(principal, key, mailboxId, request);
+    ResponseEntity<ApiDtos.SendResponse> send(@AuthenticationPrincipal ApiPrincipal principal,
+                                              @PathVariable String key,
+                                              @RequestParam(required = false) Long mailboxId,
+                                              @RequestHeader(name = IDEMPOTENCY_KEY, required = false) String idempotencyKey,
+                                              @RequestBody ApiDtos.SendMessageRequest request) {
+        return created(conversations.send(principal, key, mailboxId, idempotencyKey, request));
     }
 
     @PostMapping("/conversations")
-    @ResponseStatus(HttpStatus.CREATED)
-    ApiDtos.SendResponse start(@AuthenticationPrincipal ApiPrincipal principal,
-                               @RequestParam(required = false) Long mailboxId,
-                               @RequestBody ApiDtos.NewConversationRequest request) {
-        return conversations.start(principal, mailboxId, request);
+    ResponseEntity<ApiDtos.SendResponse> start(@AuthenticationPrincipal ApiPrincipal principal,
+                                               @RequestParam(required = false) Long mailboxId,
+                                               @RequestHeader(name = IDEMPOTENCY_KEY, required = false) String idempotencyKey,
+                                               @RequestBody ApiDtos.NewConversationRequest request) {
+        return created(conversations.start(principal, mailboxId, idempotencyKey, request));
+    }
+
+    private static ResponseEntity<ApiDtos.SendResponse> created(ApiConversationService.Sent sent) {
+        var response = ResponseEntity.status(HttpStatus.CREATED);
+        if (sent.replayed()) {
+            response.header("Idempotent-Replayed", "true");
+        }
+        return response.body(sent.response());
     }
 }

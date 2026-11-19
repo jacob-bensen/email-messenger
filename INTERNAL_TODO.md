@@ -7,10 +7,12 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **API sends are not idempotent and carry no attachments**
-      (`docs/API.md` §5.8). A client retry after a timeout can send twice;
-      add an `Idempotency-Key` (or client message id) and multipart
-      attachments.
+- [ ] **API sends carry no attachments** (`docs/API.md` §5.8). Needs
+      multipart and blob storage. (Idempotency landed 2026-11-19, §5.8.1.)
+- [ ] **Idempotency keys stuck "in progress".** A send that crashes after
+      the claim (500, JVM death mid-SMTP) leaves its key at
+      `send_in_progress` for 24 h by design (at most one email). A later
+      outbox table could resolve these by checking the Sent folder.
 - [ ] **Account edits are website-only:** display name, password and
       email changes have no API (`docs/API.md` §6 item 3). Display name
       has no edit path on the website either.
@@ -38,8 +40,10 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **Send then record is not atomic.** `ChatSendService` records the
       outbound copy only after SMTP accepts; a crash or DB error in between
       leaves a sent email with no bubble (until the Sent-folder import, if
-      the user's mailbox stores it). An outbox table would fix both this and
-      idempotency.
+      the user's mailbox stores it). An outbox table would fix this; API
+      retries are already safe via `Idempotency-Key`.
+- [ ] Website sends (`POST /chats/{key}/send`, `/chats/new`) have no
+      idempotency key; a double-submit or resubmitted form can send twice.
 - [ ] **Sent messages can appear twice.** `recordReply` stores the local
       copy with no Message-ID and `recordNewEmail` with a synthetic one, so
       the Sent-folder import cannot de-duplicate against either.
