@@ -55,6 +55,31 @@ class AccountServiceTest {
         return users.findByEmail(email).orElseThrow();
     }
 
+    // ---------- changeDisplayName ----------
+
+    @Test
+    void changeDisplayNameTrimsAndBlankClears() {
+        User user = register("dn@example.com");
+
+        assertThat(accountService.changeDisplayName(user, "  Ada  "))
+                .isEqualTo(AccountService.DisplayNameChangeOutcome.OK);
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isEqualTo("Ada");
+
+        assertThat(accountService.changeDisplayName(user, " "))
+                .isEqualTo(AccountService.DisplayNameChangeOutcome.OK);
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isNull();
+    }
+
+    @Test
+    void changeDisplayNameRejectsOverLimit() {
+        User user = register("dnlong@example.com");
+
+        assertThat(accountService.changeDisplayName(user, "x".repeat(101)))
+                .isEqualTo(AccountService.DisplayNameChangeOutcome.TOO_LONG);
+        assertThat(accountService.changeDisplayName(user, "x".repeat(100)))
+                .isEqualTo(AccountService.DisplayNameChangeOutcome.OK);
+    }
+
     // ---------- changePassword ----------
 
     @Test

@@ -32,10 +32,25 @@
               title="Address not confirmed yet">unverified</span>
       </div>
     </div>
-    <div class="acct-row" th:if="${displayName != null and !displayName.isEmpty()}">
-      <div class="acct-label">Display name</div>
-      <div class="acct-value" th:text="${displayName}">Ada Lovelace</div>
+    <div th:if="${displayNameOutcome == 'OK'}" class="alert alert-success">Display name saved.</div>
+    <div th:if="${displayNameOutcome == 'TOO_LONG'}" class="alert alert-error">
+      Display name can be at most 100 characters.
     </div>
+    <form method="post" th:action="@{/account/display-name}" class="acct-form" autocomplete="off">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <div class="acct-row">
+        <label class="acct-label" for="displayName">Display name</label>
+        <input class="acct-input" id="displayName" type="text" name="displayName" maxlength="100"
+               th:value="${displayName}" placeholder="Your name" autocomplete="name">
+      </div>
+      <div class="acct-row">
+        <div class="acct-label"></div>
+        <div class="acct-value">
+          <button type="submit" class="btn btn-primary btn-compact">Save name</button>
+        </div>
+      </div>
+    </form>
   </section>
 
   <section class="acct-section" th:if="${billing != null}">

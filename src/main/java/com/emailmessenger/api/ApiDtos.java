@@ -1,6 +1,7 @@
 package com.emailmessenger.api;
 
 import com.emailmessenger.auth.AccountBillingSummary;
+import com.emailmessenger.auth.AccountService;
 import com.emailmessenger.auth.SignedInDevice;
 import com.emailmessenger.billing.PlanLimits;
 import com.emailmessenger.domain.Plan;
@@ -39,6 +40,12 @@ final class ApiDtos {
             @NotBlank String email,
             @NotBlank String password,
             @Size(max = ApiTokenService.MAX_DEVICE_NAME_LENGTH) String deviceName) {}
+
+    record DisplayNameRequest(@Size(max = AccountService.MAX_DISPLAY_NAME_LENGTH) String displayName) {}
+
+    record ChangePasswordRequest(@NotBlank String currentPassword, @NotBlank String newPassword) {}
+
+    record ChangeEmailRequest(@NotBlank String currentPassword, @NotBlank String newEmail) {}
 
     record LoginResponse(String token, String tokenType, Instant expiresAt, MeResponse user) {}
 

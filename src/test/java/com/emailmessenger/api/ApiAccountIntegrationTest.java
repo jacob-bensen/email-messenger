@@ -7,6 +7,9 @@ import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.ApiTokenRepository;
 import com.emailmessenger.repository.SubscriptionRepository;
+import com.emailmessenger.repository.UserRepository;
+import jakarta.mail.Session;
+import jakarta.mail.internet.MimeMessage;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
@@ -17,6 +20,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -27,13 +33,17 @@ import java.time.LocalDateTime;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** docs/API.md §5.15–5.18. */
+/** docs/API.md §5.15–5.21. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -44,13 +54,18 @@ class ApiAccountIntegrationTest {
     @Autowired UserService userService;
     @Autowired SubscriptionRepository subscriptions;
     @Autowired ApiTokenRepository apiTokens;
+    @Autowired UserRepository users;
+    @Autowired PasswordEncoder passwordEncoder;
     @PersistenceContext EntityManager em;
+
+    @MockitoBean JavaMailSender mailSender;
 
     private User owner;
     private String token;
 
     @BeforeEach
     void setUp() throws Exception {
+        when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
         owner = userService.register("ada@example.com", "correct-horse", "Ada Lovelace");
         token = login("ada@example.com", "Pixel 9");
     }
@@ -167,6 +182,106 @@ class ApiAccountIntegrationTest {
         authed(get("/api/v1/me"), bobToken).andExpect(status().isOk());
         authed(post("/api/v1/account/devices/sign-out-others"), token)
                 .andExpect(jsonPath("$.revoked").value(0));
+    }
+
+    @Test
+    void displayNameIsTrimmedAndReturnedAsTheUser() throws Exception {
+        authed(put("/api/v1/account/display-name"), token, "{\"displayName\":\"  Countess Ada  \"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName").value("Countess Ada"))
+                .andExpect(jsonPath("$.email").value("ada@example.com"))
+                .andExpect(jsonPath("$.plan").value("free"));
+
+        authed(get("/api/v1/me"), token).andExpect(jsonPath("$.displayName").value("Countess Ada"));
+    }
+
+    @Test
+    void blankOrMissingDisplayNameClearsIt() throws Exception {
+        authed(put("/api/v1/account/display-name"), token, "{\"displayName\":\"   \"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName").value(nullValue()));
+        authed(put("/api/v1/account/display-name"), token, "{}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName").value(nullValue()));
+    }
+
+    @Test
+    void overlongDisplayNameIsRejected() throws Exception {
+        authed(put("/api/v1/account/display-name"), token, "{\"displayName\":\"" + "x".repeat(101) + "\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("validation_failed"));
+        assertThat(users.findById(owner.getId()).orElseThrow().getDisplayName()).isEqualTo("Ada Lovelace");
+    }
+
+    @Test
+    void passwordChangeKeepsTokensAndRequiresTheNewPasswordToSignIn() throws Exception {
+        String ipad = login("ada@example.com", "iPad");
+
+        authed(post("/api/v1/account/password"), token,
+                "{\"currentPassword\":\"correct-horse\",\"newPassword\":\"battery-staple\"}")
+                .andExpect(status().isNoContent());
+
+        assertThat(passwordEncoder.matches("battery-staple",
+                users.findById(owner.getId()).orElseThrow().getPasswordHash())).isTrue();
+        authed(get("/api/v1/me"), token).andExpect(status().isOk());
+        authed(get("/api/v1/me"), ipad).andExpect(status().isOk());
+    }
+
+    @Test
+    void passwordChangeErrors() throws Exception {
+        authed(post("/api/v1/account/password"), token,
+                "{\"currentPassword\":\"wrong-horse\",\"newPassword\":\"battery-staple\"}")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("current_password_incorrect"));
+        authed(post("/api/v1/account/password"), token,
+                "{\"currentPassword\":\"wrong-horse\",\"newPassword\":\"short\"}")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("password_too_short"));
+        authed(post("/api/v1/account/password"), token, "{\"newPassword\":\"battery-staple\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("validation_failed"));
+        assertThat(passwordEncoder.matches("correct-horse",
+                users.findById(owner.getId()).orElseThrow().getPasswordHash())).isTrue();
+    }
+
+    @Test
+    void emailChangeReturnsTheUnverifiedUserAndKeepsTheToken() throws Exception {
+        authed(post("/api/v1/account/email"), token,
+                "{\"currentPassword\":\"correct-horse\",\"newEmail\":\"  Ada@NewMail.example \"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("ada@newmail.example"))
+                .andExpect(jsonPath("$.emailVerified").value(false));
+
+        verify(mailSender).send(any(MimeMessage.class));
+        authed(get("/api/v1/me"), token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("ada@newmail.example"));
+        login("ada@newmail.example", "Pixel 9");
+    }
+
+    @Test
+    void emailChangeErrors() throws Exception {
+        userService.register("bob@example.com", "correct-horse", "Bob");
+
+        expectEmailError("wrong-horse", "ada@newmail.example", 422, "current_password_incorrect");
+        expectEmailError("correct-horse", "not-an-address", 422, "email_invalid");
+        expectEmailError("correct-horse", "ADA@example.com", 422, "email_unchanged");
+        expectEmailError("correct-horse", "bob@example.com", 409, "email_taken");
+        authed(post("/api/v1/account/email"), token, "{\"currentPassword\":\"correct-horse\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("validation_failed"));
+        assertThat(users.findById(owner.getId()).orElseThrow().getEmail()).isEqualTo("ada@example.com");
+    }
+
+    private void expectEmailError(String currentPassword, String newEmail, int status, String code) throws Exception {
+        authed(post("/api/v1/account/email"), token, objectMapper.writeValueAsString(
+                        new ApiDtos.ChangeEmailRequest(currentPassword, newEmail)))
+                .andExpect(status().is(status))
+                .andExpect(jsonPath("$.error.code").value(code));
+    }
+
+    private ResultActions authed(MockHttpServletRequestBuilder request, String bearer, String json) throws Exception {
+        return authed(request.contentType(MediaType.APPLICATION_JSON).content(json), bearer);
     }
 
     private long deviceId(String deviceName) {

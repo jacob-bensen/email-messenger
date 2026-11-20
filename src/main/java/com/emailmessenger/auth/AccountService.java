@@ -32,10 +32,13 @@ public class AccountService {
 
     public enum PasswordChangeOutcome { OK, CURRENT_INCORRECT, NEW_TOO_SHORT }
 
+    public enum DisplayNameChangeOutcome { OK, TOO_LONG }
+
     public enum EmailChangeOutcome {
         OK, CURRENT_INCORRECT, EMAIL_INVALID, EMAIL_TAKEN, NO_CHANGE
     }
 
+    public static final int MAX_DISPLAY_NAME_LENGTH = 100;
     static final int MIN_PASSWORD_LENGTH = 8;
     static final int MAX_EMAIL_LENGTH = 254;
 
@@ -70,6 +73,18 @@ public class AccountService {
     @Transactional(readOnly = true)
     public AccountBillingSummary billingSummary(User user) {
         return AccountBillingSummary.from(subscriptions.findByUser(user).orElse(null));
+    }
+
+    /** Blank clears the name; same 100-char cap as registration. */
+    @Transactional
+    public DisplayNameChangeOutcome changeDisplayName(User user, String displayName) {
+        String trimmed = displayName == null || displayName.isBlank() ? null : displayName.trim();
+        if (trimmed != null && trimmed.length() > MAX_DISPLAY_NAME_LENGTH) {
+            return DisplayNameChangeOutcome.TOO_LONG;
+        }
+        user.setDisplayName(trimmed);
+        users.save(user);
+        return DisplayNameChangeOutcome.OK;
     }
 
     @Transactional

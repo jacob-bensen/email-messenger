@@ -3,6 +3,26 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-20 (b) — Account edits over the API: display name, password, email
+
+- Chosen from `INTERNAL_TODO.md` §1 (next unblocked contract item;
+  attachments stay blocked on blob storage): account edits were
+  website-only and the website had no display-name edit at all.
+- Contract first: `docs/API.md` §5.19 `PUT /api/v1/account/display-name`
+  (→ `Me`; blank clears, 100-char cap), §5.20 `POST /api/v1/account/password`
+  (→ `204`), §5.21 `POST /api/v1/account/email` (→ `Me`, unverified, a
+  verification mail goes out). New error codes `current_password_incorrect`,
+  `password_too_short`, `email_invalid`, `email_unchanged` (422) and
+  `email_taken` (409). API tokens stay valid after either change.
+- `AccountService.changeDisplayName` (new) is shared by the new website
+  form `POST /account/display-name` (Profile section of `/account`) and the
+  API; the API's password/email endpoints call the existing
+  `changePassword` / `changeEmail`, mapping their outcome enums to codes in
+  `ApiAccountService`. No migration.
+- Tests: `ApiAccountIntegrationTest` +7, `AccountControllerTest` +2,
+  `AccountServiceTest` +2. Full `mvn -B verify`: 885 tests,
+  0 failures, 1 skipped (Docker test).
+
 ## 2026-11-20 — Idempotent API sends (`Idempotency-Key`)
 
 - Chosen from `INTERNAL_TODO.md` §1 (top contract item): a mobile retry
