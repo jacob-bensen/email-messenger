@@ -3,6 +3,27 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-20 — Idempotent API sends
+
+- `POST /api/v1/conversations/{key}/messages` and `POST /api/v1/conversations`
+  accept an optional `Idempotency-Key` header (`docs/API.md` §5.8): a retry
+  with the same key replays the first `201` instead of sending twice; a key
+  still in flight is `409 send_in_progress`; a key reused for a different
+  request is `422 idempotency_key_reused`; a failed send releases the key.
+  Removed "idempotency key" from §6 Planned.
+- Why: the mobile compose box retries failed/timed-out sends, and a
+  timeout after SMTP accepted the message used to send it twice. Top
+  item of both repos' INTERNAL_TODO §1.
+- V37 `api_send_requests` + `ApiSendRequest` entity/repository;
+  `api.SendIdempotencyService` wraps the existing `ChatSendService` call in
+  `ApiConversationService` (claim → send → complete/release, each step
+  its own short transaction via `TransactionTemplate`, so SMTP still runs
+  outside any DB transaction). Daily prune at 03:15 UTC.
+- The website's reply/new forms are unchanged (POST-redirect-GET; no
+  client retries), so there is no web counterpart.
+- Tests: `ApiSendIntegrationTest` +6. `./mvnw test`: 873 tests,
+  0 failures, 1 skipped (Docker test).
+
 ## 2026-11-19 (b) — Account API: plan summary and signed-in devices (M2)
 
 - New `GET /api/v1/account` (user + the `/account` page's billing line),

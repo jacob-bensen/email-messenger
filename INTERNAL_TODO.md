@@ -7,10 +7,8 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **API sends are not idempotent and carry no attachments**
-      (`docs/API.md` §5.8). A client retry after a timeout can send twice;
-      add an `Idempotency-Key` (or client message id) and multipart
-      attachments.
+- [ ] **API sends carry no attachments** (`docs/API.md` §5.8). Needs
+      multipart and stored attachment bytes. (Idempotency done 2026-11-20.)
 - [ ] **Account edits are website-only:** display name, password and
       email changes have no API (`docs/API.md` §6 item 3). Display name
       has no edit path on the website either.
