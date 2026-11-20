@@ -7,10 +7,9 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **API sends are not idempotent and carry no attachments**
-      (`docs/API.md` §5.8). A client retry after a timeout can send twice;
-      add an `Idempotency-Key` (or client message id) and multipart
-      attachments.
+- [ ] **API sends carry no attachments** (`docs/API.md` §5.8): needs
+      multipart and stored attachment bytes. (Idempotency done 2026-11-20,
+      §5.8.1.)
 - [ ] **Account edits are website-only:** display name, password and
       email changes have no API (`docs/API.md` §6 item 3). Display name
       has no edit path on the website either.
@@ -82,7 +81,14 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       refresh on every request; a client polling the list triggers IMAP
       work each time (bounded by the per-mailbox "due" check).
 - [ ] Expired `api_tokens` rows are never pruned (rejected, hidden from
-      the device lists, but kept). Add a cleanup to an existing daily job.
+      the device lists, but kept), nor are `api_send_requests` rows older
+      than 24 h (replaced only when the same key is reused). Add a cleanup
+      to an existing daily job.
+- [ ] An API send that fails unexpectedly after reserving its
+      `Idempotency-Key` (e.g. a DB error recording the bubble after SMTP
+      accepted) leaves the key unfinished for 24 h: retries get
+      `409 send_in_progress` by design. The website's send has no
+      idempotency at all (a double-submit sends twice).
 - [ ] Signing a device out (website or API) writes no `auth_events` row;
       the "Recent account activity" panel does not show it. Needs a new
       `AuthEventType` (check the DB constraint on `event_type` first).

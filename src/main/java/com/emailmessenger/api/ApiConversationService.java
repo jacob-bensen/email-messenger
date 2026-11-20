@@ -13,6 +13,7 @@ import com.emailmessenger.web.ConversationListService;
 import com.emailmessenger.web.ConversationListService.ChatFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -20,8 +21,14 @@ import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 /**
  * docs/API.md §5.5–5.9. Delegates to the same {@link ConversationListService},
@@ -35,6 +42,7 @@ class ApiConversationService {
 
     static final int DEFAULT_PAGE_SIZE = 30;
     static final int MAX_PAGE_SIZE = 100;
+    private static final Pattern IDEMPOTENCY_KEY = Pattern.compile("[A-Za-z0-9_.:-]{8,100}");
 
     private final UserRepository users;
     private final MailAccountService mailAccounts;
@@ -42,11 +50,13 @@ class ApiConversationService {
     private final ConversationListService conversations;
     private final ChatService chats;
     private final ChatSendService sender;
+    private final SendIdempotencyStore idempotency;
 
     ApiConversationService(UserRepository users, MailAccountService mailAccounts,
                            MailboxPollingService polling, ConversationListService conversations,
-                           ChatService chats, ChatSendService sender) {
+                           ChatService chats, ChatSendService sender, SendIdempotencyStore idempotency) {
         this.sender = sender;
+        this.idempotency = idempotency;
         this.users = users;
         this.mailAccounts = mailAccounts;
         this.polling = polling;
@@ -91,19 +101,88 @@ class ApiConversationService {
 
     /** Not transactional: {@link ChatSendService} keeps SMTP outside any database transaction. */
     ApiDtos.SendResponse send(ApiPrincipal principal, String key, Long mailboxId,
-                              ApiDtos.SendMessageRequest request) {
+                              ApiDtos.SendMessageRequest request, String idempotencyKey) {
         User owner = owner(principal);
         MailAccount selected = mailbox(owner, mailboxId);
         boolean asReply = request.asReply() != null && request.asReply();
-        return sending(() -> sender.sendToConversation(owner, selected, key, request.body(),
-                request.subject(), asReply, List.of()));
+        String fingerprint = fingerprint("reply", key, mailboxId, request.body(), request.subject(),
+                String.valueOf(asReply));
+        return idempotently(owner, idempotencyKey, fingerprint, () -> sending(() -> sender.sendToConversation(
+                owner, selected, key, request.body(), request.subject(), asReply, List.of())));
     }
 
-    ApiDtos.SendResponse start(ApiPrincipal principal, Long mailboxId, ApiDtos.NewConversationRequest request) {
+    ApiDtos.SendResponse start(ApiPrincipal principal, Long mailboxId, ApiDtos.NewConversationRequest request,
+                               String idempotencyKey) {
         User owner = owner(principal);
         MailAccount selected = mailbox(owner, mailboxId);
-        return sending(() -> sender.startConversation(owner, selected, request.to(), request.subject(),
-                request.body(), List.of()));
+        List<String> parts = new ArrayList<>(List.of("new", String.valueOf(mailboxId),
+                String.valueOf(request.subject()), String.valueOf(request.body())));
+        if (request.to() != null) {
+            parts.addAll(request.to());
+        }
+        String fingerprint = fingerprint(parts.toArray(String[]::new));
+        return idempotently(owner, idempotencyKey, fingerprint, () -> sending(() -> sender.startConversation(
+                owner, selected, request.to(), request.subject(), request.body(), List.of())));
+    }
+
+    /**
+     * docs/API.md §5.8.1. A rejected send ({@link ApiException}: nothing went out) releases the key;
+     * any other failure keeps it unfinished, because the mail may already have been accepted.
+     */
+    private ApiDtos.SendResponse idempotently(User owner, String idempotencyKey, String fingerprint,
+                                              Supplier<ApiDtos.SendResponse> send) {
+        if (idempotencyKey == null) {
+            return send.get();
+        }
+        if (!IDEMPOTENCY_KEY.matcher(idempotencyKey).matches()) {
+            throw invalid("Idempotency-Key must be 8–100 characters: letters, digits, _ - . :");
+        }
+        long userId = owner.getId();
+        SendIdempotencyStore.Prior prior;
+        try {
+            prior = idempotency.reserve(userId, idempotencyKey, fingerprint);
+        } catch (DataIntegrityViolationException e) {
+            throw sendInProgress();
+        }
+        if (prior != null) {
+            if (!prior.requestHash().equals(fingerprint)) {
+                throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "idempotency_key_reused",
+                        "This Idempotency-Key was already used for a different message.");
+            }
+            if (prior.response() == null) {
+                throw sendInProgress();
+            }
+            return prior.response();
+        }
+        ApiDtos.SendResponse response;
+        try {
+            response = send.get();
+        } catch (ApiException e) {
+            idempotency.release(userId, idempotencyKey);
+            throw e;
+        }
+        idempotency.complete(userId, idempotencyKey, response);
+        return response;
+    }
+
+    private static ApiException sendInProgress() {
+        return new ApiException(HttpStatus.CONFLICT, "send_in_progress",
+                "This message is still being sent, or may already have been sent. Check the conversation.");
+    }
+
+    /** SHA-256 over length-prefixed parts, so no choice of field values can collide by concatenation. */
+    private static String fingerprint(Object... parts) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            for (Object part : parts) {
+                byte[] bytes = String.valueOf(part).getBytes(StandardCharsets.UTF_8);
+                digest.update((bytes.length + ":").getBytes(StandardCharsets.US_ASCII));
+                digest.update(bytes);
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private static ApiDtos.SendResponse sending(Supplier<ChatSendService.SendResult> send) {
