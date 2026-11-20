@@ -50,7 +50,7 @@ API response needs must be loaded inside the service transaction.
   transaction; SMTP never runs inside one). The two steps are not atomic: a
   crash between them sends without recording.
 
-## Database (Flyway V1–V36, PostgreSQL 16; H2 in tests)
+## Database (Flyway V1–V37, PostgreSQL 16; H2 in tests)
 Ids are identity `BIGINT`; timestamps are zone-less `TIMESTAMP` holding UTC.
 Migrations are immutable — add `V37__…` next.
 
@@ -58,6 +58,7 @@ Migrations are immutable — add `V37__…` next.
 |---|---|---|
 | `users` | `User` | unique `email`; `password_hash`, `google_subject`, `email_verified_at`, lifecycle-email stamps, `sync_frequency_minutes`, `default_mail_account_id` |
 | `persistent_logins` | — | Spring Security remember-me |
+| `api_send_requests` | `ApiSendRequest` | `/api/v1` send `Idempotency-Key`s (API.md §5.19): `(user_id, idempotency_key)` unique, request fingerprint, the replayed result once completed; rows older than 24 h are pruned on the next keyed send; cascade-deleted with the user |
 | `api_tokens` | `ApiToken` | mobile bearer tokens: SHA-256 hash only, `device_name`, `last_used_at` (written at most every 5 min), `expires_at` (30 days); cascade-deleted with the user |
 | `auth_events` | `AuthEvent` | login/security audit; drives the login throttle |
 | `password_reset_tokens`, `email_verifications` | `PasswordResetToken`, `EmailVerificationToken` | SHA-256 token hashes with expiry |

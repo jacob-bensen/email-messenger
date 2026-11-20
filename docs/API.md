@@ -10,11 +10,12 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-19)
+## 1. Current state (2026-11-20)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline, mark-read, sending
-into a conversation, starting a new one, mailboxes (list, connect
+into a conversation and starting a new one (both idempotent with an
+`Idempotency-Key`, §5.19), mailboxes (list, connect
 with an IMAP password, sync now, remove), and the account: plan summary,
 signed-in devices, sign a device out (§5). Gmail OAuth connect,
 signatures and mail preferences are website-only. The website's own machine endpoints (§3) still use the
@@ -187,6 +188,8 @@ the user, and may change. Clients branch on `code` only.
 | 404 | `not_found` | Unknown `/api` path (after authentication) |
 | 405 | `method_not_allowed` | Wrong HTTP method on an existing endpoint |
 | 409 | `no_recipients` | Send: the conversation has nobody but you in it (§5.8) |
+| 409 | `send_in_progress` | Send: an earlier request with this `Idempotency-Key` has not finished (§5.19) |
+| 422 | `idempotency_key_reused` | Send: this `Idempotency-Key` was used for a different request (§5.19) |
 | 422 | `mailbox_connect_failed` | Connect mailbox: IMAP login or connection failed (§5.12) |
 | 429 | `too_many_attempts` | Login: throttle lock (§2) |
 | 500 | `internal_error` | Anything unexpected |
@@ -452,10 +455,14 @@ Server rules (clients must not predict beyond the bubble text):
   locally predicted bubble.
 
 Errors: `400 validation_failed` (body blank or too long, malformed JSON,
-non-integer `mailboxId`); `404 not_found` (unknown key in scope, or
-`mailboxId` not the user's); `409 no_recipients`; `502 send_failed`;
-`401 unauthorized`. The request is not idempotent: a retry after a
-timeout may send twice.
+non-integer `mailboxId`, malformed `Idempotency-Key`); `404 not_found`
+(unknown key in scope, or `mailboxId` not the user's); `409 no_recipients`;
+`409 send_in_progress`, `422 idempotency_key_reused` (§5.19);
+`502 send_failed`; `401 unauthorized`.
+
+Header (optional, clients should always send it): `Idempotency-Key` —
+makes a retry safe (§5.19). Without it a retry after a timeout may send
+twice.
 
 ### 5.9 POST /api/v1/conversations
 Bearer token required. Starts a new conversation — or adds to the existing
@@ -478,8 +485,10 @@ Request:
 
 `201`: same shape as §5.8. `key` is computed by the server from the
 recipients (§4 Conversation key; your own addresses are excluded) — the
-conversation to open next. Errors: `400 validation_failed`,
-`404 not_found` (`mailboxId`), `502 send_failed`, `401 unauthorized`.
+conversation to open next. Header: `Idempotency-Key` as §5.8 / §5.19.
+Errors: `400 validation_failed`, `404 not_found` (`mailboxId`),
+`409 send_in_progress`, `422 idempotency_key_reused`, `502 send_failed`,
+`401 unauthorized`.
 
 ### 5.10 GET /api/v1/mailboxes
 Bearer token required. The user's connected mailboxes, oldest first (the
@@ -688,12 +697,39 @@ making this request. Request body: none.
 
 Errors: `401 unauthorized`.
 
+### 5.19 Idempotent sends (`Idempotency-Key`)
+Applies to §5.8 and §5.9. The client picks a fresh random key for each
+message the user sends and reuses it, unchanged, for every retry of that
+message (including after the app restarts, if it keeps the outbox).
+
+- Format: 1–64 characters of `A–Z a–z 0–9 - _`. Anything else →
+  `400 validation_failed`. Keys are scoped to the signed-in **user** (not
+  the device) and remembered for **24 hours** from first use; after that
+  the same key starts a new send.
+- The server fingerprints the request: endpoint, path `key`, `mailboxId`
+  and the JSON body fields (`body`, `subject`, `asReply` for §5.8; `to`,
+  `subject`, `body` for §5.9), exactly as sent.
+
+Outcomes for a request carrying a key:
+
+| Earlier request with this key | Response |
+|---|---|
+| None (or older than 24 h) | Sent normally |
+| Finished with `201` | `201` with the **original** body (same `key`, `threadId`, `messageId`), header `Idempotent-Replayed: true`; nothing is sent again |
+| Failed (`4xx`/`502`) | Forgotten: the retry is sent normally (nothing was sent the first time) |
+| Still running, or interrupted after the mail may have gone out | `409 send_in_progress`; nothing is sent. The client must not retry with a new key automatically — refetch the conversation (§5.6) and let the user decide |
+| Same key, different fingerprint | `422 idempotency_key_reused`; nothing is sent |
+
+A malformed key and `422 idempotency_key_reused` are checked before
+anything else; a `409 send_in_progress` row is cleared only by the 24-hour
+expiry.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
 1. Live updates: SSE (or push) with enough detail to update without a
    full refetch.
-2. Attachments on send (multipart), and an idempotency key for sends.
+2. Attachments on send (multipart).
 3. Account changes from the app: display name, password, email (website
    only today).

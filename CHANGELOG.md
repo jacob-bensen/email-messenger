@@ -3,6 +3,26 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-20 — Idempotent API sends (`Idempotency-Key`)
+
+- Chosen from `INTERNAL_TODO.md` §1 (contract breakage): a client retry
+  after a lost response could send the same email twice.
+- Contract: new `docs/API.md` §5.19; §5.8/§5.9 accept an optional
+  `Idempotency-Key` header (1–64 `[A-Za-z0-9_-]`, per user, 24 h). Same
+  key + same request → original `201` replayed with
+  `Idempotent-Replayed: true`; different request → `422
+  idempotency_key_reused`; unfinished → `409 send_in_progress`; a failed
+  send frees the key. Removed from §6 Planned.
+- `V37__api_send_requests.sql` + `ApiSendRequest` /
+  `ApiSendRequestRepository`; `api.ApiSendIdempotency` wraps the existing
+  `ChatSendService` path (claim committed before SMTP, completed after the
+  record, deleted on any failure). The website's send forms are unchanged
+  and share the same `ChatSendService`.
+- Tests: `ApiSendIntegrationTest` +7 (replay, per-endpoint/request/user
+  scoping, failed send frees key, in-progress, expiry, malformed key,
+  §5.9 replay). Full `mvn -B verify`: 874 tests, 0 failures, 1 skipped
+  (Docker test).
+
 ## 2026-11-19 (b) — Account API: plan summary and signed-in devices (M2)
 
 - New `GET /api/v1/account` (user + the `/account` page's billing line),

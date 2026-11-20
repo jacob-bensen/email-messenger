@@ -7,10 +7,9 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **API sends are not idempotent and carry no attachments**
-      (`docs/API.md` §5.8). A client retry after a timeout can send twice;
-      add an `Idempotency-Key` (or client message id) and multipart
-      attachments.
+- [ ] **API sends carry no attachments** (`docs/API.md` §5.8): needs
+      multipart and stored attachment bytes. (Idempotency done 2026-11-20,
+      §5.19.)
 - [ ] **Account edits are website-only:** display name, password and
       email changes have no API (`docs/API.md` §6 item 3). Display name
       has no edit path on the website either.
@@ -35,6 +34,10 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 2. Logic drift and correctness
 
+- [ ] **A crash between SMTP and the idempotency claim's completion**
+      leaves the key `send_in_progress` for 24 h (correctly: the mail may
+      have gone out). The website's own send forms carry no key, so a
+      double-submit there can still send twice.
 - [ ] **Send then record is not atomic.** `ChatSendService` records the
       outbound copy only after SMTP accepts; a crash or DB error in between
       leaves a sent email with no bubble (until the Sent-folder import, if
