@@ -3,6 +3,29 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-20 — Live events API for the mobile Chats list (M3)
+
+- New `GET /api/v1/events` (`docs/API.md` §5.19): bearer-authenticated
+  SSE. `ready` on open, then `conversations-changed` after each poll that
+  imports mail, carrying the touched conversations as §5.5 rows (unscoped,
+  account tags filled) plus fresh unscoped counts — enough for the app to
+  update rows in place. `counts: null` (rows could not be built) tells
+  the client to refetch. §6 Planned item 1 narrowed to what's left.
+- Shared service layer: `NewMailEvent` now carries the conversation keys
+  the poll touched (`MailboxPollingService` collects them from inbox and
+  Sent imports); `ConversationListService.items(owner, keys)` builds the
+  rows with the same `assemble` path as `/chats` and `GET /conversations`
+  (new `EmailThreadRepository.conversationSummariesForKeys`). The website's
+  count-only `new-mail` stream is unchanged.
+- `ApiEventStream` builds rows once per event, after commit, in a new
+  read-only transaction, and only when the user has a stream open.
+  `ApiSecurityConfig` permits `ASYNC` dispatches (an SSE completion
+  re-dispatches with no bearer filter run on the stateless chain).
+- Tests: `./mvnw test` 875 run, 0 failures, 0 errors, 1 skipped (+8:
+  `ApiEventStreamTest` 5, `ApiEventsIntegrationTest` 2,
+  `ConversationListServiceTest` 1; the polling event test now asserts
+  keys).
+
 ## 2026-11-19 (b) — Account API: plan summary and signed-in devices (M2)
 
 - New `GET /api/v1/account` (user + the `/account` page's billing line),

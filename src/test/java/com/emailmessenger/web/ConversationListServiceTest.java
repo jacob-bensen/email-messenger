@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -91,6 +92,26 @@ class ConversationListServiceTest {
         assertThat(items.get(1).preview()).contains("Lunch Friday");
         // Latest of the two threads was read → no unread on the conversation.
         assertThat(items.get(1).unread()).isFalse();
+    }
+
+    @Test
+    void itemsReturnsOnlyTheRequestedConversationsMostRecentFirst() {
+        Participant ada = participants.save(new Participant("ada@acme.com", "Ada"));
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        Participant cy = participants.save(new Participant("cy@acme.com", "Cy"));
+        inbound("A", ada, List.of(me), "from ada", false, LocalDateTime.of(2026, 3, 1, 9, 0));
+        inbound("B", bob, List.of(me), "from bob", true, LocalDateTime.of(2026, 3, 2, 9, 0));
+        inbound("C", cy, List.of(me), "from cy", false, LocalDateTime.of(2026, 3, 3, 9, 0));
+        Set<String> mine = ownerAddressService.addressesFor(owner);
+        String adaKey = keyService.keyFor(List.of("ada@acme.com"), mine);
+        String bobKey = keyService.keyFor(List.of("bob@acme.com"), mine);
+
+        List<ConversationListItem> items = listService.items(owner, List.of(adaKey, bobKey, "unknown-key"));
+
+        assertThat(items).extracting(ConversationListItem::title).containsExactly("Bob", "Ada");
+        assertThat(items.get(0).unread()).isTrue();
+        assertThat(items.get(0).preview()).isEqualTo("from bob");
+        assertThat(listService.items(owner, List.of())).isEmpty();
     }
 
     @Test

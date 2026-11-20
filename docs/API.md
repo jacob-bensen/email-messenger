@@ -10,13 +10,14 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-19)
+## 1. Current state (2026-11-20)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline, mark-read, sending
 into a conversation, starting a new one, mailboxes (list, connect
 with an IMAP password, sync now, remove), and the account: plan summary,
-signed-in devices, sign a device out (§5). Gmail OAuth connect,
+signed-in devices, sign a device out, and a live event stream that
+carries changed conversation rows (§5.19). Gmail OAuth connect,
 signatures and mail preferences are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -77,6 +78,7 @@ Server-Sent Events stream of new-mail notifications for the signed-in user.
   ```
   Sent after a poll commits with at least one imported message. It carries a
   count only — no conversation keys or message ids — so the client refetches.
+  (The mobile stream, §5.19, carries the changed rows instead.)
 - Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`).
 - No event ids, no replay of missed events. Fan-out is in-memory, so it
   works on a single backend instance only.
@@ -688,12 +690,59 @@ making this request. Request body: none.
 
 Errors: `401 unauthorized`.
 
+### 5.19 GET /api/v1/events
+Bearer token required (`Authorization` header, like every `/api/v1`
+call). Server-Sent Events stream of changes to the user's conversation
+list, detailed enough to update list rows in place.
+
+- `200 text/event-stream`, UTF-8. One stream per open app; several
+  streams per user (devices) all receive every event.
+- The server closes the stream after **30 minutes**; it also drops without
+  notice when the network does. Clients reconnect (back off on repeated
+  failures) and, because there are no event ids and no replay, **refetch
+  the list on every `ready` after the first** to catch what they missed.
+- A token revoked while a stream is open is not re-checked until the
+  client reconnects (then `401 unauthorized`).
+- Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`); ignore it.
+- Fan-out is in-memory: a single backend instance only.
+
+Events (`data` is always one line of JSON):
+
+`ready` — sent once, first, when the stream opens.
+```
+event: ready
+data: {}
+```
+
+`conversations-changed` — after a mailbox poll (scheduled, IMAP IDLE, the
+website's refresh, `POST /api/v1/mailboxes/{id}/sync`, or the background
+refresh `GET /api/v1/conversations` starts) commits at least one imported
+message, received or sent.
+```
+event: conversations-changed
+data: {"imported":2,"conversations":[{…§5.5 item…}],"counts":{"all":12,"unread":3,"awaiting":2,"attachments":1}}
+```
+- `imported` (integer ≥ 1): messages imported by that poll.
+- `conversations` (array of §5.5 items): the conversations those messages
+  landed in, most recently active first, as the **unscoped** list shows
+  them (`accounts` filled). Each replaces the row with the same `key`, or
+  is a new row.
+- `counts` (§5.5 `counts`, unscoped) or `null`. `null` means the server
+  could not build the rows; `conversations` is then `[]` and the client
+  refetches.
+- A client showing a scoped (`mailboxId`), filtered (`filter` ≠ `all`) or
+  searched (`q`) list cannot place rows itself (membership is a server
+  rule) and refetches instead.
+
+Not emitted (yet): mark-read, sends from this or another device, removed
+mailboxes. Those changes show on the next refetch.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Live updates: SSE (or push) with enough detail to update without a
-   full refetch.
+1. Live updates for the open conversation and for mark-read / sends from
+   other devices; push notifications when no stream is open.
 2. Attachments on send (multipart), and an idempotency key for sends.
 3. Account changes from the app: display name, password, email (website
    only today).
