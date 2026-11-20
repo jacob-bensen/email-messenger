@@ -1,6 +1,7 @@
 package com.emailmessenger.api;
 
 import com.emailmessenger.auth.UserService;
+import com.emailmessenger.domain.ApiSendRequest;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.Message;
@@ -8,6 +9,7 @@ import com.emailmessenger.domain.Participant;
 import com.emailmessenger.domain.RecipientType;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.OwnerAddressService;
+import com.emailmessenger.repository.ApiSendRequestRepository;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.repository.MailAccountRepository;
 import com.emailmessenger.repository.MessageRepository;
@@ -36,13 +38,16 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -61,6 +66,7 @@ class ApiSendIntegrationTest {
     @Autowired MessageRepository messages;
     @Autowired ParticipantRepository participants;
     @Autowired MailAccountRepository mailAccounts;
+    @Autowired ApiSendRequestRepository sendRequests;
     @PersistenceContext EntityManager em;
     @MockitoBean ReplyService replyService;
 
@@ -238,6 +244,100 @@ class ApiSendIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"hi\"}"))
                 .andExpect(status().isUnauthorized());
         verifyNoInteractions(replyService);
+    }
+
+    @Test
+    void aRetryWithTheSameIdempotencyKeyReplaysTheFirstResultWithoutSendingAgain() throws Exception {
+        long before = messages.count();
+        String first = sendWithKey(bobKey, "k-1", Map.of("body", "On my way", "asReply", true))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        sendWithKey(bobKey, "k-1", Map.of("body", "On my way", "asReply", true))
+                .andExpect(status().isCreated())
+                .andExpect(content().json(first, true));
+
+        verify(replyService, times(1)).sendReply(anyLong(), anyString(), anyString(), anyList(), anyList(), any());
+        assertThat(messages.count()).isEqualTo(before + 1);
+    }
+
+    @Test
+    void aDifferentMessageUnderAUsedKeyIsRejected() throws Exception {
+        sendWithKey(bobKey, "k-2", Map.of("body", "First")).andExpect(status().isCreated());
+
+        sendWithKey(bobKey, "k-2", Map.of("body", "Second"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("idempotency_key_reused"));
+        verify(replyService, times(1)).sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+    }
+
+    @Test
+    void keysArePerUserAndPerEndpoint() throws Exception {
+        sendWithKey(bobKey, "shared", Map.of("body", "Hi")).andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/conversations").header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", "shared")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"to\":[\"bob@acme.com\"],\"body\":\"Hi\"}"))
+                .andExpect(status().isUnprocessableEntity());
+
+        userService.register("eve@example.com", "correct-horse", "Eve");
+        String eve = objectMapper.readTree(mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"eve@example.com\",\"password\":\"correct-horse\"}"))
+                .andReturn().getResponse().getContentAsString()).get("token").asText();
+        mockMvc.perform(post("/api/v1/conversations").header("Authorization", "Bearer " + eve)
+                        .header("Idempotency-Key", "shared")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"to\":[\"bob@acme.com\"],\"body\":\"Hi\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void aFailedSendFreesTheKeyForARetry() throws Exception {
+        doThrow(new MailSendException("relay down")).doNothing().when(replyService)
+                .sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+
+        sendWithKey(bobKey, "k-3", Map.of("body", "hello?")).andExpect(status().isBadGateway());
+        sendWithKey(bobKey, "k-3", Map.of("body", "hello?")).andExpect(status().isCreated());
+        verify(replyService, times(2)).sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+    }
+
+    @Test
+    void aClaimWithoutARecordedOutcomeIsInProgress() throws Exception {
+        sendRequests.saveAndFlush(new ApiSendRequest(owner.getId(), "k-4",
+                ApiSendIdempotency.fingerprint("messages", bobKey, null, "hi", null, false),
+                LocalDateTime.now()));
+
+        sendWithKey(bobKey, "k-4", Map.of("body", "hi"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("send_in_progress"));
+        verifyNoInteractions(replyService);
+    }
+
+    @Test
+    void anExpiredKeyCanBeUsedAgain() throws Exception {
+        sendRequests.saveAndFlush(new ApiSendRequest(owner.getId(), "k-5", "old-fingerprint",
+                LocalDateTime.now().minusHours(25)));
+
+        sendWithKey(bobKey, "k-5", Map.of("body", "hi")).andExpect(status().isCreated());
+    }
+
+    @Test
+    void aMalformedIdempotencyKeyIsRejectedBeforeSending() throws Exception {
+        sendWithKey(bobKey, "has space", Map.of("body", "hi"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("validation_failed"));
+        sendWithKey(bobKey, "x".repeat(101), Map.of("body", "hi")).andExpect(status().isBadRequest());
+        verifyNoInteractions(replyService);
+    }
+
+    private ResultActions sendWithKey(String key, String idempotencyKey, Map<String, Object> body) throws Exception {
+        return mockMvc.perform(post("/api/v1/conversations/" + key + "/messages")
+                .header("Authorization", "Bearer " + token)
+                .header("Idempotency-Key", idempotencyKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)));
     }
 
     private ResultActions send(String key, Map<String, Object> body) throws Exception {

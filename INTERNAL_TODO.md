@@ -7,10 +7,9 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 
 ## 1. Contract breakage (client ↔ server)
 
-- [ ] **API sends are not idempotent and carry no attachments**
-      (`docs/API.md` §5.8). A client retry after a timeout can send twice;
-      add an `Idempotency-Key` (or client message id) and multipart
-      attachments.
+- [ ] **API sends carry no attachments** (`docs/API.md` §5.8). Add
+      multipart attachments (blocked on attachment storage). Sends are
+      idempotent since 2026-11-20 (§5.8.1).
 - [ ] **Account edits are website-only:** display name, password and
       email changes have no API (`docs/API.md` §6 item 3). Display name
       has no edit path on the website either.
@@ -81,6 +80,13 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] `GET /api/v1/conversations` (like `/chats`) fires an async mailbox
       refresh on every request; a client polling the list triggers IMAP
       work each time (bounded by the per-mailbox "due" check).
+- [ ] `api_send_requests` rows older than 24 h are ignored and replaced
+      on reuse, but never pruned; add the cleanup with the `api_tokens`
+      one below.
+- [ ] A send whose server failed after SMTP accepted (e.g. recording
+      threw) leaves its key `PENDING`: retries get `409 send_in_progress`
+      for 24 h instead of a replay. Correct (no double send) but the
+      client cannot learn the message id; an outbox table would fix it.
 - [ ] Expired `api_tokens` rows are never pruned (rejected, hidden from
       the device lists, but kept). Add a cleanup to an existing daily job.
 - [ ] Signing a device out (website or API) writes no `auth_events` row;

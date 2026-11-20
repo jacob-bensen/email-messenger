@@ -17,7 +17,7 @@ API response needs must be loaded inside the service transaction.
 | `service` | Conversation model: `ConversationKeyService`, `ConversationService` (bubble runs), `ReplyService` (SMTP send), `EmailBodyCleaner` / `IMTransformService` (quote + signature stripping, markdown), view-model records |
 | `email` | Mailbox integration: `MailAccountService` (connect/list/remove), `EmailImportService` (MIME → threads), `MailboxPollingService` + `PollingPolicy`, `ImapIdleService`, `JakartaImapClient`, `GmailOAuthClient`, `CredentialEncryptor` |
 | `web` | Thymeleaf controllers plus the chat-facing services `ChatService`, `ChatSendService` (the send flow), `ConversationListService`, `OutboundMessageService`, `SavedSearchService`, `ChatEventStream` (SSE) |
-| `api` | `/api/v1` for the mobile client: `ApiSecurityConfig` (stateless bearer chain), `ApiTokenService`, `ApiAuthService`, `ApiConversationService` (list → `web.ConversationListService`; one conversation + mark read → `web.ChatService`; send / start a conversation → `web.ChatSendService`; `service.HtmlText` gives bubbles a plain-text body), `ApiMailboxService` (list / connect / remove → `email.MailAccountService`, connect fields validated as `web.MailboxForm`, sync now → `email.MailboxSyncService`, presets from `web.MailboxProvider`, error hints from `web.MailboxView.errorHint`), `ApiAccountService` (billing line → `auth.AccountService.billingSummary`; devices → `auth.SignedInDeviceService`), JSON error envelope (`ApiExceptionHandler`), DTO records in `ApiDtos`. Controllers stay thin and call the same services as the website |
+| `api` | `/api/v1` for the mobile client: `ApiSecurityConfig` (stateless bearer chain), `ApiTokenService`, `ApiAuthService`, `ApiConversationService` (list → `web.ConversationListService`; one conversation + mark read → `web.ChatService`; send / start a conversation → `web.ChatSendService`, retry-safe via `ApiSendIdempotency`; `service.HtmlText` gives bubbles a plain-text body), `ApiMailboxService` (list / connect / remove → `email.MailAccountService`, connect fields validated as `web.MailboxForm`, sync now → `email.MailboxSyncService`, presets from `web.MailboxProvider`, error hints from `web.MailboxView.errorHint`), `ApiAccountService` (billing line → `auth.AccountService.billingSummary`; devices → `auth.SignedInDeviceService`), JSON error envelope (`ApiExceptionHandler`), DTO records in `ApiDtos`. Controllers stay thin and call the same services as the website |
 | `auth` | `SecurityConfig`, users, registration, Google OIDC, password reset, email verification, login throttle, account settings, `SignedInDeviceService` (list / revoke API tokens, shared by `/account` and `/api/v1/account/devices`) |
 | `billing` | Stripe checkout/portal/webhook, `PlanLimits` / `PlanLimitService`, trial and banner logic |
 | `team` | Teams and invites (membership only — teams grant no data access yet) |
@@ -50,7 +50,7 @@ API response needs must be loaded inside the service transaction.
   transaction; SMTP never runs inside one). The two steps are not atomic: a
   crash between them sends without recording.
 
-## Database (Flyway V1–V36, PostgreSQL 16; H2 in tests)
+## Database (Flyway V1–V37, PostgreSQL 16; H2 in tests)
 Ids are identity `BIGINT`; timestamps are zone-less `TIMESTAMP` holding UTC.
 Migrations are immutable — add `V37__…` next.
 
@@ -59,6 +59,7 @@ Migrations are immutable — add `V37__…` next.
 | `users` | `User` | unique `email`; `password_hash`, `google_subject`, `email_verified_at`, lifecycle-email stamps, `sync_frequency_minutes`, `default_mail_account_id` |
 | `persistent_logins` | — | Spring Security remember-me |
 | `api_tokens` | `ApiToken` | mobile bearer tokens: SHA-256 hash only, `device_name`, `last_used_at` (written at most every 5 min), `expires_at` (30 days); cascade-deleted with the user |
+| `api_send_requests` | `ApiSendRequest` | `Idempotency-Key`s of API sends (`docs/API.md` §5.8.1): unique per (`user_id`, key), request `fingerprint` (SHA-256), `status` `PENDING` → `DONE` with the recorded `conversation_key` / `thread_id` / `message_id`; failed sends delete their row; honored for 24 h; cascade-deleted with the user |
 | `auth_events` | `AuthEvent` | login/security audit; drives the login throttle |
 | `password_reset_tokens`, `email_verifications` | `PasswordResetToken`, `EmailVerificationToken` | SHA-256 token hashes with expiry |
 | `mail_accounts` | `MailAccount` | per user; encrypted IMAP password or Gmail refresh token; UID cursors, failure counter, `next_poll_at`, `auth_type`, `signature`; unique `(user_id, host, username)` |

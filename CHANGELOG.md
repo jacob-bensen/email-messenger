@@ -3,6 +3,29 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-20 — Idempotent API sends (`Idempotency-Key`)
+
+- Chosen from `INTERNAL_TODO.md` §1 (top contract item): a mobile retry
+  after a timeout could send the same email twice.
+- Contract first: `docs/API.md` §5.8.1. `POST /api/v1/conversations/{key}/messages`
+  and `POST /api/v1/conversations` accept an optional `Idempotency-Key`
+  header (1–100 printable ASCII). Same key + same request → the first
+  `201` body again, nothing sent; key reused for a different request →
+  `422 idempotency_key_reused`; earlier attempt still running or ended
+  without a recorded outcome → `409 send_in_progress`. A send that provably
+  sent nothing (validation, `404`, `409 no_recipients`, `502 send_failed`)
+  frees its key. Keys are per user, honored for 24 h.
+- `V37__api_send_requests.sql`, `ApiSendRequest` entity +
+  `ApiSendRequestRepository`, `api.ApiSendIdempotency` (claim → send →
+  complete/release, each its own short transaction so SMTP stays outside
+  any DB transaction). `ApiConversationService` wraps the unchanged
+  `ChatSendService` call; the website path is untouched (it has no retry
+  problem: one form post per click).
+- Tests: `ApiSendIntegrationTest` +7 (replay, reused key, per-user and
+  per-endpoint keys, failed send frees the key, unknown outcome is
+  in-progress, expired key reusable, malformed key). Full `mvn -B verify`:
+  874 tests, 0 failures, 1 skipped (Docker test).
+
 ## 2026-11-19 (b) — Account API: plan summary and signed-in devices (M2)
 
 - New `GET /api/v1/account` (user + the `/account` page's billing line),

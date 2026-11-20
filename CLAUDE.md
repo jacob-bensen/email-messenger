@@ -50,7 +50,7 @@ Rules mirrored in the mobile client (change both sides together, see
 - Maven (with wrapper) for build
 - JUnit 5 + Spring Boot Test; one Testcontainers + GreenMail test that needs
   Docker
-- Flyway for schema migrations (latest: V36)
+- Flyway for schema migrations (latest: V37)
 - Stripe (`stripe-java`), Jakarta Mail, jsoup
 
 ## Commands
