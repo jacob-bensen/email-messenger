@@ -10,14 +10,15 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-20)
+## 1. Current state (2026-11-21)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline, mark-read, sending
 into a conversation, starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove), and the account: plan summary,
-signed-in devices, sign a device out (§5). Gmail OAuth connect,
+signed-in devices, sign a device out, edit the display name, change the
+password (§5). Gmail OAuth connect,
 signatures and mail preferences are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -187,6 +188,10 @@ the user, and may change. Clients branch on `code` only.
 | 403 | `plan_limit_reached` | Connect mailbox: already at the plan's mailbox cap (§5.12) |
 | 404 | `not_found` | Unknown `/api` path (after authentication) |
 | 405 | `method_not_allowed` | Wrong HTTP method on an existing endpoint |
+| 422 | `display_name_too_long` | Edit account: display name over 100 characters (§5.19) |
+| 422 | `password_too_short` | Change password: new password under 8 characters (§5.20) |
+| 422 | `password_too_long` | Change password: new password over 72 UTF-8 bytes (§5.20) |
+| 422 | `current_password_incorrect` | Change password: current password wrong, or the account has none (§5.20) |
 | 409 | `no_recipients` | Send: the conversation has nobody but you in it (§5.8) |
 | 409 | `send_in_progress` | Send: an earlier request with the same `Idempotency-Key` has not finished, or its outcome is unknown (§5.8.1) |
 | 422 | `idempotency_key_reused` | Send: the `Idempotency-Key` was already used for a different message (§5.8.1) |
@@ -720,6 +725,47 @@ making this request. Request body: none.
 
 Errors: `401 unauthorized`.
 
+### 5.19 PATCH /api/v1/account
+Bearer token required. Changes the user's display name. The website's
+`/account` Profile form (`POST /account/display-name`) calls the same
+`AccountService.changeDisplayName`.
+
+Request:
+```json
+{ "displayName": "Ada King" }
+```
+- `displayName` (string or `null`): surrounding whitespace is trimmed;
+  `null`, empty or blank clears the name. At most **100** characters after
+  trimming.
+
+`200`: the updated user, same object as `GET /api/v1/me` (§5.4).
+
+Errors: `400 validation_failed` (body missing or not JSON),
+`422 display_name_too_long`, `401 unauthorized`.
+
+### 5.20 POST /api/v1/account/password
+Bearer token required. Changes the password, given the current one. Same
+rule as the website's `POST /account/password`
+(`AccountService.changePassword`): on success every outstanding
+password-reset and email-verification link is invalidated and a
+`PASSWORD_CHANGED` event is recorded. Signed-in devices, including other
+apps, stay signed in (use §5.18 to sign them out).
+
+Request:
+```json
+{ "currentPassword": "correct-horse", "newPassword": "battery-staple-9" }
+```
+- `currentPassword` (string; missing counts as incorrect).
+- `newPassword` (string; missing counts as too short): **8 to 72** characters, counted as
+  UTF-8 bytes for the upper bound (bcrypt's input limit).
+
+`204`, empty body.
+
+Errors, checked in this order: `400 validation_failed` (body missing or
+not JSON), `422 password_too_short`, `422 password_too_long`,
+`422 current_password_incorrect` (also for a Google-only account, which
+has no password), `401 unauthorized`.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
@@ -728,5 +774,5 @@ Intended resources, in build order (see the mobile repo's
    full refetch.
 2. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
-3. Account changes from the app: display name, password, email (website
-   only today).
+3. Email change from the app (website only today; display name and
+   password landed 2026-11-21, §5.19–5.20).

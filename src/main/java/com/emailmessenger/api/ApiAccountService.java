@@ -9,7 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** docs/API.md §5.15–5.18, over the same services as the website's /account page. */
+/** docs/API.md §5.15–5.20, over the same services as the website's /account page. */
 @Service
 class ApiAccountService {
 
@@ -28,10 +28,38 @@ class ApiAccountService {
 
     @Transactional(readOnly = true)
     ApiDtos.AccountResponse account(ApiPrincipal principal) {
-        User user = users.findById(principal.userId())
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized", "Sign in again."));
+        User user = requireUser(principal);
         return new ApiDtos.AccountResponse(ApiDtos.MeResponse.of(user, planLimits.currentPlan(user)),
                 ApiDtos.BillingResponse.of(accounts.billingSummary(user)));
+    }
+
+    @Transactional
+    ApiDtos.MeResponse update(ApiPrincipal principal, ApiDtos.UpdateAccountRequest request) {
+        User user = requireUser(principal);
+        if (accounts.changeDisplayName(user, request.displayName()) == AccountService.DisplayNameChangeOutcome.TOO_LONG) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "display_name_too_long",
+                    "Display name can be at most " + AccountService.MAX_DISPLAY_NAME_LENGTH + " characters.");
+        }
+        return ApiDtos.MeResponse.of(user, planLimits.currentPlan(user));
+    }
+
+    @Transactional
+    void changePassword(ApiPrincipal principal, ApiDtos.ChangePasswordRequest request) {
+        User user = requireUser(principal);
+        switch (accounts.changePassword(user, request.currentPassword(), request.newPassword())) {
+            case OK -> { }
+            case NEW_TOO_SHORT -> throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "password_too_short",
+                    "New password must be at least 8 characters.");
+            case NEW_TOO_LONG -> throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "password_too_long",
+                    "New password can be at most 72 characters.");
+            case CURRENT_INCORRECT -> throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "current_password_incorrect", "That isn't your current password.");
+        }
+    }
+
+    private User requireUser(ApiPrincipal principal) {
+        return users.findById(principal.userId())
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized", "Sign in again."));
     }
 
     ApiDtos.DeviceList devices(ApiPrincipal principal) {

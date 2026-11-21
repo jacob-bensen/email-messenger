@@ -212,6 +212,10 @@ final class ApiDtos {
 
     record SignOutOthersResponse(int revoked) {}
 
+    record UpdateAccountRequest(String displayName) {}
+
+    record ChangePasswordRequest(String currentPassword, String newPassword) {}
+
     private static Instant utc(LocalDateTime value) {
         return value == null ? null : value.toInstant(ZoneOffset.UTC);
     }

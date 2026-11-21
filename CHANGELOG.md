@@ -3,6 +3,33 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-21 — Display name and password over the API
+
+- Chosen from `INTERNAL_TODO.md` §1 (account edits were website-only): a
+  both-repo contract gap that fits one run. Email change stays
+  website-only (token handling after an address change still needs a
+  decision).
+- Contract first: `docs/API.md` §5.19 `PATCH /api/v1/account`
+  `{displayName}` → the `me` object; §5.20 `POST /api/v1/account/password`
+  `{currentPassword, newPassword}` → `204`. New error codes
+  `422 display_name_too_long`, `password_too_short`, `password_too_long`,
+  `current_password_incorrect`. Other devices stay signed in after a
+  password change.
+- Shared service, no forked logic: new `AccountService.changeDisplayName`
+  (trim; blank clears; ≤ 100 chars, the registration limit) backs both the
+  API and a new website form, `POST /account/display-name` (the Profile
+  section of `/account` used to show the name read-only, with no way to
+  edit it). `ApiAccountService` maps the existing
+  `AccountService.changePassword` outcomes to error codes.
+- **Fix:** `changePassword` with a new password over 72 UTF-8 bytes threw
+  from `BCryptPasswordEncoder` (a 500 on `/account/password`). It now
+  returns `NEW_TOO_LONG`; the website shows an error and the field has
+  `maxlength="72"`. Registration and reset still have the gap
+  (`INTERNAL_TODO.md` §3).
+- Tests: `ApiAccountIntegrationTest` +7, `AccountServiceTest` +5,
+  `AccountControllerTest` +2. Full `mvn -B verify`: 888 tests, 0
+  failures, 1 skipped (Docker test).
+
 ## 2026-11-20 — Idempotent API sends (`Idempotency-Key`)
 
 - Chosen from `INTERNAL_TODO.md` §1 (top contract item): a mobile retry

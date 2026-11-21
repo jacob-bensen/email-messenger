@@ -10,11 +10,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDateTime;
 
 /**
- * In-app self-serve for the signed-in user's password and email.
+ * In-app self-serve for the signed-in user's display name, password and email.
  *
  * <p>Both flows require the user's current password. On a successful
  * change every outstanding password-reset and email-verification token
@@ -30,13 +31,18 @@ import java.time.LocalDateTime;
 @Service
 public class AccountService {
 
-    public enum PasswordChangeOutcome { OK, CURRENT_INCORRECT, NEW_TOO_SHORT }
+    public enum PasswordChangeOutcome { OK, CURRENT_INCORRECT, NEW_TOO_SHORT, NEW_TOO_LONG }
+
+    public enum DisplayNameChangeOutcome { OK, TOO_LONG }
 
     public enum EmailChangeOutcome {
         OK, CURRENT_INCORRECT, EMAIL_INVALID, EMAIL_TAKEN, NO_CHANGE
     }
 
     static final int MIN_PASSWORD_LENGTH = 8;
+    // BCryptPasswordEncoder rejects longer input with an exception.
+    static final int MAX_PASSWORD_BYTES = 72;
+    public static final int MAX_DISPLAY_NAME_LENGTH = 100;
     static final int MAX_EMAIL_LENGTH = 254;
 
     private final UserRepository users;
@@ -72,12 +78,27 @@ public class AccountService {
         return AccountBillingSummary.from(subscriptions.findByUser(user).orElse(null));
     }
 
+    /** Blank clears the name; shared by /account and {@code PATCH /api/v1/account}. */
+    @Transactional
+    public DisplayNameChangeOutcome changeDisplayName(User user, String displayName) {
+        String trimmed = displayName == null ? "" : displayName.trim();
+        if (trimmed.length() > MAX_DISPLAY_NAME_LENGTH) {
+            return DisplayNameChangeOutcome.TOO_LONG;
+        }
+        user.setDisplayName(trimmed.isEmpty() ? null : trimmed);
+        users.save(user);
+        return DisplayNameChangeOutcome.OK;
+    }
+
     @Transactional
     public PasswordChangeOutcome changePassword(User user,
                                                 String currentPassword,
                                                 String newPassword) {
         if (newPassword == null || newPassword.length() < MIN_PASSWORD_LENGTH) {
             return PasswordChangeOutcome.NEW_TOO_SHORT;
+        }
+        if (newPassword.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES) {
+            return PasswordChangeOutcome.NEW_TOO_LONG;
         }
         if (currentPassword == null
                 || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {

@@ -55,7 +55,57 @@ class AccountServiceTest {
         return users.findByEmail(email).orElseThrow();
     }
 
+    // ---------- changeDisplayName ----------
+
+    @Test
+    void changeDisplayNameTrimsAndSaves() {
+        User user = register("name@example.com");
+
+        assertThat(accountService.changeDisplayName(user, "  Ada King  "))
+                .isEqualTo(AccountService.DisplayNameChangeOutcome.OK);
+
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isEqualTo("Ada King");
+    }
+
+    @Test
+    void blankDisplayNameClearsIt() {
+        User user = register("blank@example.com");
+
+        accountService.changeDisplayName(user, "   ");
+
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isNull();
+    }
+
+    @Test
+    void displayNameOverTheLimitIsRejectedAndUnchanged() {
+        User user = register("long@example.com");
+
+        assertThat(accountService.changeDisplayName(user, "x".repeat(101)))
+                .isEqualTo(AccountService.DisplayNameChangeOutcome.TOO_LONG);
+        assertThat(accountService.changeDisplayName(user, " " + "x".repeat(100) + " "))
+                .isEqualTo(AccountService.DisplayNameChangeOutcome.OK);
+    }
+
     // ---------- changePassword ----------
+
+    @Test
+    void changePasswordOver72BytesIsRejectedInsteadOfThrowing() {
+        User user = register("bytes@example.com");
+
+        assertThat(accountService.changePassword(user, "password1", "é".repeat(37)))
+                .isEqualTo(AccountService.PasswordChangeOutcome.NEW_TOO_LONG);
+        assertThat(accountService.changePassword(user, "password1", "a".repeat(72)))
+                .isEqualTo(AccountService.PasswordChangeOutcome.OK);
+    }
+
+    @Test
+    void changePasswordWithoutAnExistingPasswordIsCurrentIncorrect() {
+        User user = register("google@example.com");
+        user.setPasswordHash(null);
+
+        assertThat(accountService.changePassword(user, "anything1", "brand-new-12"))
+                .isEqualTo(AccountService.PasswordChangeOutcome.CURRENT_INCORRECT);
+    }
 
     @Test
     void changePasswordWithCorrectCurrentSwapsHash() {

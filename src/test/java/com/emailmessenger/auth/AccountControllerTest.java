@@ -123,6 +123,36 @@ class AccountControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "dn@example.com")
+    void changeDisplayNameSavesAndShowsItInTheForm() throws Exception {
+        User user = userService.register("dn@example.com", "password1", "Old Name");
+
+        mockMvc.perform(post("/account/display-name")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("displayName", " New Name "))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/account"))
+                .andExpect(flash().attribute("displayNameOutcome", "OK"));
+
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isEqualTo("New Name");
+        String body = mockMvc.perform(get("/account")).andReturn().getResponse().getContentAsString();
+        assertThat(body).contains("value=\"New Name\"");
+    }
+
+    @Test
+    @WithMockUser(username = "dnlong@example.com")
+    void changeDisplayNameTooLongFlashesError() throws Exception {
+        User user = userService.register("dnlong@example.com", "password1", "Kept");
+
+        mockMvc.perform(post("/account/display-name")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("displayName", "x".repeat(101)))
+                .andExpect(flash().attribute("displayNameOutcome", "TOO_LONG"));
+
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isEqualTo("Kept");
+    }
+
+    @Test
     @WithMockUser(username = "pwok@example.com")
     void changePasswordHappyPathFlashesOkAndRedirects() throws Exception {
         User user = userService.register("pwok@example.com", "password1", "PwOk");

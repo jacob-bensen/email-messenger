@@ -10,9 +10,11 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **API sends carry no attachments** (`docs/API.md` §5.8). Add
       multipart attachments (blocked on attachment storage). Sends are
       idempotent since 2026-11-20 (§5.8.1).
-- [ ] **Account edits are website-only:** display name, password and
-      email changes have no API (`docs/API.md` §6 item 3). Display name
-      has no edit path on the website either.
+- [ ] **Email change is website-only** (`docs/API.md` §6 item 3). The
+      website flow ends the session and makes the user sign in again as
+      the new address; an API version must decide what happens to the
+      bearer tokens (they are keyed by user id, so they would keep
+      working).
 - [ ] **Mailbox settings are website-only:** Gmail OAuth connect /
       reconnect, signatures, sync frequency and the default sending mailbox
       have no API. A Google mailbox whose token expired can only be
@@ -93,7 +95,17 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       the "Recent account activity" panel does not show it. Needs a new
       `AuthEventType` (check the DB constraint on `event_type` first).
 - [ ] Changing or resetting the password does not revoke API tokens;
-      disabling the user does. Decide whether a password change should.
+      disabling the user does. Decided for now (2026-11-21, `API.md`
+      §5.20): devices stay signed in and the user can use "sign out other
+      devices". Revisit for password *reset*, which implies a leak.
+- [ ] No rate limit on `POST /api/v1/account/password` (or the website's
+      `/account/password`): a stolen token/session can guess the current
+      password without hitting the login throttle.
+- [ ] Registration allows passwords up to 100 characters, but
+      `BCryptPasswordEncoder` throws above 72 bytes, so a long password at
+      sign-up (and at password reset) is a 500. `AccountService` checks
+      72 bytes since 2026-11-21; `RegistrationForm` and
+      `PasswordResetService` do not.
 - [ ] Google-only accounts cannot sign in on mobile (no password). Needs a
       native Google sign-in → token exchange design.
 

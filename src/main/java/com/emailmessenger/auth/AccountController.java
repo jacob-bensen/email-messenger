@@ -128,6 +128,16 @@ class AccountController {
         return "redirect:/account#devices";
     }
 
+    @PostMapping("/account/display-name")
+    String changeDisplayName(@RequestParam(value = "displayName", required = false) String displayName,
+                             Principal principal,
+                             RedirectAttributes redirectAttributes) {
+        User user = userService.requireByEmail(principal.getName());
+        AccountService.DisplayNameChangeOutcome outcome = accountService.changeDisplayName(user, displayName);
+        redirectAttributes.addFlashAttribute("displayNameOutcome", outcome.name());
+        return "redirect:/account";
+    }
+
     @PostMapping("/account/password")
     String changePassword(@RequestParam(value = "currentPassword", required = false) String currentPassword,
                           @RequestParam(value = "newPassword", required = false) String newPassword,

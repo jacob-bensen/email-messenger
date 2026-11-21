@@ -2,6 +2,7 @@ package com.emailmessenger.api;
 
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.billing.BillingPeriod;
+import com.emailmessenger.domain.AuthEventType;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.Subscription;
 import com.emailmessenger.domain.User;
@@ -29,6 +30,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -167,6 +169,95 @@ class ApiAccountIntegrationTest {
         authed(get("/api/v1/me"), bobToken).andExpect(status().isOk());
         authed(post("/api/v1/account/devices/sign-out-others"), token)
                 .andExpect(jsonPath("$.revoked").value(0));
+    }
+
+    @Test
+    void patchAccountChangesTheDisplayName() throws Exception {
+        authed(patch("/api/v1/account").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"displayName\":\"  Ada King \"}"), token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("ada@example.com"))
+                .andExpect(jsonPath("$.displayName").value("Ada King"))
+                .andExpect(jsonPath("$.plan").value("free"));
+
+        authed(get("/api/v1/me"), token).andExpect(jsonPath("$.displayName").value("Ada King"));
+    }
+
+    @Test
+    void patchAccountWithNullOrBlankClearsTheName() throws Exception {
+        authed(patch("/api/v1/account").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"displayName\":null}"), token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName").value(nullValue()));
+        authed(patch("/api/v1/account").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"displayName\":\"   \"}"), token)
+                .andExpect(jsonPath("$.displayName").value(nullValue()));
+    }
+
+    @Test
+    void patchAccountRejectsALongNameAndKeepsTheOldOne() throws Exception {
+        authed(patch("/api/v1/account").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"displayName\":\"" + "x".repeat(101) + "\"}"), token)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("display_name_too_long"));
+
+        authed(get("/api/v1/me"), token).andExpect(jsonPath("$.displayName").value("Ada Lovelace"));
+    }
+
+    @Test
+    void patchAccountWithoutABodyIsValidationFailed() throws Exception {
+        authed(patch("/api/v1/account").contentType(MediaType.APPLICATION_JSON), token)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("validation_failed"));
+    }
+
+    @Test
+    void accountEditsRequireAToken() throws Exception {
+        mockMvc.perform(patch("/api/v1/account").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/account/password").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void changePasswordSwapsTheSignInPasswordAndKeepsDevices() throws Exception {
+        String ipad = login("ada@example.com", "iPad");
+
+        changePassword("correct-horse", "battery-staple-9").andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new ApiDtos.LoginRequest("ada@example.com", "correct-horse", null))))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new ApiDtos.LoginRequest("ada@example.com", "battery-staple-9", null))))
+                .andExpect(status().isOk());
+        authed(get("/api/v1/me"), ipad).andExpect(status().isOk());
+        assertThat(em.createQuery("SELECT COUNT(e) FROM AuthEvent e WHERE e.eventType = :t", Long.class)
+                .setParameter("t", AuthEventType.PASSWORD_CHANGED).getSingleResult()).isEqualTo(1L);
+    }
+
+    @Test
+    void changePasswordErrorsUseTheWebsitesRules() throws Exception {
+        changePassword("correct-horse", "short")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("password_too_short"));
+        changePassword("correct-horse", "x".repeat(73))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("password_too_long"));
+        changePassword("wrong-horse", "battery-staple-9")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("current_password_incorrect"));
+        changePassword(null, "battery-staple-9")
+                .andExpect(jsonPath("$.error.code").value("current_password_incorrect"));
+
+        login("ada@example.com", null);
+    }
+
+    private ResultActions changePassword(String current, String next) throws Exception {
+        return authed(post("/api/v1/account/password").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new ApiDtos.ChangePasswordRequest(current, next))), token);
     }
 
     private long deviceId(String deviceName) {
