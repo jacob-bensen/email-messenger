@@ -451,6 +451,21 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
                                                               @Param("requireAwaiting") boolean requireAwaiting,
                                                               Pageable pageable);
 
+    // Unscoped summaries for specific conversations (live updates re-send just
+    // the rows a poll touched). Same aggregates as conversationSummariesFiltered.
+    @Query("""
+            SELECT t.conversationKey AS conversationKey,
+                   MAX(msg.sentAt) AS lastActivity,
+                   COUNT(DISTINCT t.id) AS threadCount,
+                   COUNT(DISTINCT CASE WHEN t.unread = true THEN t.id END) AS unreadCount
+            FROM EmailThread t JOIN t.messages msg
+            WHERE t.owner = :owner AND t.conversationKey IN :keys
+            GROUP BY t.conversationKey
+            ORDER BY MAX(msg.sentAt) DESC
+            """)
+    List<ConversationSummaryRow> conversationSummariesForKeys(@Param("owner") User owner,
+                                                              @Param("keys") Collection<String> keys);
+
     // Dashboard tile count for a given scope + triage filter (no free-text).
     @Query("""
             SELECT COUNT(DISTINCT t.conversationKey) FROM EmailThread t

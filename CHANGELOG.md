@@ -3,6 +3,33 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-21 — Live updates for the app: `GET /api/v1/events`
+
+- Chosen from the mobile roadmap (M3 "Live updates with enough detail to
+  update a list row in place"), `docs/API.md` §6 item 1, and
+  `INTERNAL_TODO.md` §1 ("live events carry only a count").
+- Contract first: `docs/API.md` §5.19. Bearer-auth SSE: `ready` on open
+  (clients refetch to catch up — no replay), `conversations` after a poll
+  commits with `{imported, items: [§5.5 rows], counts}` (unscoped rows and
+  counts), `:ping` every 25 s, 30-minute close. Streams close at the next
+  event/ping once their token is signed out or expired.
+- `NewMailEvent` now carries the conversation keys a poll touched
+  (`MailboxPollingService` reads them after the whole poll, so a re-key by
+  a later message in the same poll is reflected).
+- `web.ConversationListService.rows(owner, keys)` — the same row assembly
+  as the list (refactored into a list-based `assemble`), backed by new
+  `EmailThreadRepository.conversationSummariesForKeys`. No forked logic:
+  `/api/v1/conversations` and the live rows come from one code path.
+- `api.ApiEventStream` (registry per user, token-bound, payload built in a
+  fresh read-only transaction after commit) + `ApiEventController`.
+  `ApiTokenService.isActive`. `ApiSecurityConfig` permits the `ASYNC`
+  dispatcher type (SSE re-dispatch carries no bearer context).
+- Website unchanged (its `/chats/events` keeps the count-only payload).
+- Tests: `ApiEventStreamIntegrationTest` (5: 401 without token, ready +
+  rows + counts, other users isolated, sign-out-others closes the stream,
+  logout closes it), `MailboxPollingServiceTest` +1 (keys in the event).
+  Full `./mvnw -B verify`: 880 tests, 0 failures, 1 skipped (Docker test).
+
 ## 2026-11-20 — Idempotent API sends (`Idempotency-Key`)
 
 - Chosen from `INTERNAL_TODO.md` §1 (top contract item): a mobile retry

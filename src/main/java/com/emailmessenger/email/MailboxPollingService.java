@@ -1,7 +1,9 @@
 package com.emailmessenger.email;
 
 import com.emailmessenger.billing.PlanLimitService;
+import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.MailAccount;
+import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.repository.MailAccountRepository;
 import jakarta.mail.internet.MimeMessage;
@@ -15,7 +17,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * IMAP poll of a connected mailbox: one {@link ImapClient} call fetches
@@ -156,6 +162,7 @@ public class MailboxPollingService {
 
         int imported = 0;
         int sentImported = 0;
+        List<EmailThread> touched = new ArrayList<>();
         try {
             // Resolving creds can fail (undecryptable secret, expired OAuth
             // refresh) — that throws ImapConnectionException, handled below on
@@ -166,8 +173,10 @@ public class MailboxPollingService {
 
             for (MimeMessage mime : fetch.messages()) {
                 try {
-                    if (importService.importMessage(mime, account.getUser()).isPresent()) {
+                    Optional<Message> saved = importService.importMessage(mime, account.getUser());
+                    if (saved.isPresent()) {
                         imported++;
+                        touched.add(saved.get().getThread());
                     }
                 } catch (EmailImportException e) {
                     log.warn("Skipping unparseable polled message for {}@{}: {}",
@@ -184,7 +193,7 @@ public class MailboxPollingService {
             // connected before sent sync existed — then track only newer sent mail.
             if (account.getLastSeenSentUid() == null) {
                 for (MimeMessage mime : imapClient.fetchRecentSent(credentials, SENT_BACKFILL_LIMIT)) {
-                    sentImported += importSent(mime, account);
+                    sentImported += importSent(mime, account, touched);
                 }
                 account.setLastSeenSentUid(
                         imapClient.fetchSentSinceUid(credentials, null).newLastUid());
@@ -192,7 +201,7 @@ public class MailboxPollingService {
                 ImapClient.IncrementalFetch sentFetch = imapClient.fetchSentSinceUid(
                         credentials, account.getLastSeenSentUid());
                 for (MimeMessage mime : sentFetch.messages()) {
-                    sentImported += importSent(mime, account);
+                    sentImported += importSent(mime, account, touched);
                 }
                 if (sentFetch.newLastUid() != null) {
                     account.setLastSeenSentUid(sentFetch.newLastUid());
@@ -219,15 +228,31 @@ public class MailboxPollingService {
         accounts.save(account);
         if (imported + sentImported > 0) {
             // getId() on the lazy user proxy doesn't trigger initialization.
-            eventPublisher.publishEvent(
-                    new NewMailEvent(account.getUser().getId(), imported + sentImported));
+            eventPublisher.publishEvent(new NewMailEvent(account.getUser().getId(),
+                    imported + sentImported, conversationKeys(touched)));
         }
         return imported + sentImported;
     }
 
-    private int importSent(MimeMessage mime, MailAccount account) {
+    /**
+     * Read at the end of the poll, not per message: a later message in the same
+     * poll can re-key a thread (a new Cc), and clients need the final key.
+     */
+    private static Set<String> conversationKeys(List<EmailThread> touched) {
+        Set<String> keys = new LinkedHashSet<>();
+        for (EmailThread thread : touched) {
+            if (thread != null && thread.getConversationKey() != null) {
+                keys.add(thread.getConversationKey());
+            }
+        }
+        return keys;
+    }
+
+    private int importSent(MimeMessage mime, MailAccount account, List<EmailThread> touched) {
         try {
-            return importService.importMessage(mime, account.getUser(), true).isPresent() ? 1 : 0;
+            Optional<Message> saved = importService.importMessage(mime, account.getUser(), true);
+            saved.ifPresent(m -> touched.add(m.getThread()));
+            return saved.isPresent() ? 1 : 0;
         } catch (EmailImportException e) {
             log.warn("Skipping unparseable sent message for {}@{}: {}",
                     account.getUsername(), account.getHost(), e.getMessage());

@@ -12,11 +12,13 @@ import com.emailmessenger.service.ConversationLabels;
 import com.emailmessenger.service.ConversationListItem;
 import org.jsoup.Jsoup;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -147,12 +149,34 @@ public class ConversationListService {
         return lower ? trimmed.toLowerCase(Locale.ROOT) : trimmed;
     }
 
+    /**
+     * Unscoped rows (account tags filled, as the merged list shows them) for
+     * the given conversations, most recently active first. Keys the owner has
+     * no thread for are skipped.
+     */
+    @Transactional(readOnly = true)
+    public List<ConversationListItem> rows(User owner, Collection<String> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return List.of();
+        }
+        return assemble(owner, threads.conversationSummariesForKeys(owner, keys), true);
+    }
+
     private Page<ConversationListItem> assemble(User owner, Page<ConversationSummaryRow> summaries,
                                                boolean includeAccounts) {
         if (summaries.isEmpty()) {
             return summaries.map(s -> null);
         }
-        List<String> keys = summaries.getContent().stream()
+        List<ConversationListItem> items = assemble(owner, summaries.getContent(), includeAccounts);
+        return new PageImpl<>(items, summaries.getPageable(), summaries.getTotalElements());
+    }
+
+    private List<ConversationListItem> assemble(User owner, List<ConversationSummaryRow> summaries,
+                                               boolean includeAccounts) {
+        if (summaries.isEmpty()) {
+            return List.of();
+        }
+        List<String> keys = summaries.stream()
                 .map(ConversationSummaryRow::getConversationKey).toList();
 
         Map<String, ConversationPreviewRow> previews = firstByKey(
@@ -165,9 +189,9 @@ public class ConversationListService {
         Map<String, List<String>> accountsByKey = includeAccounts
                 ? accountsByKey(senders, recipients, ownerAddresses) : Map.of();
 
-        return summaries.map(s -> toItem(s, previews.get(s.getConversationKey()),
+        return summaries.stream().map(s -> toItem(s, previews.get(s.getConversationKey()),
                 membersByKey.getOrDefault(s.getConversationKey(), List.of()),
-                accountsByKey.getOrDefault(s.getConversationKey(), List.of())));
+                accountsByKey.getOrDefault(s.getConversationKey(), List.of()))).toList();
     }
 
     private ConversationListItem toItem(ConversationSummaryRow summary, ConversationPreviewRow preview,

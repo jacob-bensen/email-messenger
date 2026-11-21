@@ -29,8 +29,14 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **Timestamps are zone-less.** `LocalDateTime` values are UTC by
       convention only; the API converts them to `Z` instants at the DTO
       edge (`ApiDtos`), which is right only while stored values are UTC.
-- [ ] **Live events carry only a count** (`{"imported":N}`), so any client
-      must refetch the whole list.
+- [ ] **Website live events still carry only a count** (`/chats/events`,
+      `{"imported":N}`), so the website refetches its rail. The app's
+      stream (`/api/v1/events`, 2026-11-21) carries the changed rows; the
+      website could switch to the same payload.
+- [ ] **Live events cover polls only.** Sends (`ChatSendService`), the
+      initial import on connect, mark-read and mailbox removal emit
+      nothing, so a user's other devices see those changes only on their
+      next refetch (`docs/API.md` §5.19).
 
 ## 2. Logic drift and correctness
 
@@ -87,6 +93,10 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       threw) leaves its key `PENDING`: retries get `409 send_in_progress`
       for 24 h instead of a replay. Correct (no double send) but the
       client cannot learn the message id; an outbox table would fix it.
+- [ ] `ApiEventStream` checks `ApiTokenService.isActive` per open stream
+      on every event and every 25 s keepalive (one indexed query each).
+      Fine at today's scale; cache or batch it if streams grow. Fan-out
+      is in-memory (single instance), like the website's stream.
 - [ ] Expired `api_tokens` rows are never pruned (rejected, hidden from
       the device lists, but kept). Add a cleanup to an existing daily job.
 - [ ] Signing a device out (website or API) writes no `auth_events` row;

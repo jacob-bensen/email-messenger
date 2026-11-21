@@ -1,6 +1,7 @@
 package com.emailmessenger.email;
 
 import com.emailmessenger.auth.UserService;
+import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.User;
@@ -320,6 +321,39 @@ class MailboxPollingServiceTest {
                     assertThat(e.userId()).isEqualTo(owner.getId());
                     assertThat(e.importedCount()).isEqualTo(1);
                 });
+    }
+
+    @Test
+    void newMailEventCarriesTheConversationKeysThePollTouched(ApplicationEvents events) throws Exception {
+        account.setLastSeenUid(100L);
+        accountRepository.save(account);
+        MimeMessage m1 = plainMessage("<keys-1@test>", "Hello", "a@example.com", "Body");
+        MimeMessage m2 = plainMessage("<keys-2@test>", "Again", "a@example.com", "Body");
+        MimeMessage m3 = plainMessage("<keys-3@test>", "Other", "b@example.com", "Body");
+        when(imapClient.fetchSinceUid(any(ImapCredentials.class), eq(100L)))
+                .thenReturn(new ImapClient.IncrementalFetch(List.of(m1, m2, m3), 103L));
+        Message inA = messageIn("key-a");
+        Message alsoInA = messageIn("key-a");
+        Message inB = messageIn("key-b");
+        when(importService.importMessage(any(MimeMessage.class), any(User.class)))
+                .thenReturn(Optional.of(inA), Optional.of(alsoInA), Optional.of(inB));
+
+        polling.pollOne(account.getId());
+
+        assertThat(events.stream(NewMailEvent.class))
+                .singleElement()
+                .satisfies(e -> {
+                    assertThat(e.importedCount()).isEqualTo(3);
+                    assertThat(e.conversationKeys()).containsExactly("key-a", "key-b");
+                });
+    }
+
+    private static Message messageIn(String conversationKey) {
+        EmailThread thread = Mockito.mock(EmailThread.class);
+        when(thread.getConversationKey()).thenReturn(conversationKey);
+        Message message = Mockito.mock(Message.class);
+        when(message.getThread()).thenReturn(thread);
+        return message;
     }
 
     @Test

@@ -10,14 +10,15 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-20)
+## 1. Current state (2026-11-21)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline, mark-read, sending
 into a conversation, starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove), and the account: plan summary,
-signed-in devices, sign a device out (§5). Gmail OAuth connect,
+signed-in devices, sign a device out, plus a live event stream that
+carries changed list rows (§5.19). Gmail OAuth connect,
 signatures and mail preferences are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -78,6 +79,7 @@ Server-Sent Events stream of new-mail notifications for the signed-in user.
   ```
   Sent after a poll commits with at least one imported message. It carries a
   count only — no conversation keys or message ids — so the client refetches.
+  (The app's stream, §5.19, carries the changed rows.)
 - Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`).
 - No event ids, no replay of missed events. Fan-out is in-memory, so it
   works on a single backend instance only.
@@ -720,12 +722,57 @@ making this request. Request body: none.
 
 Errors: `401 unauthorized`.
 
+### 5.19 GET /api/v1/events
+Bearer token required. A Server-Sent Events stream of live changes to the
+user's conversation list, so a client can update rows in place instead of
+refetching. Same trigger as the website's `GET /chats/events` (§3): a
+mailbox poll (scheduled, IMAP IDLE, the background refresh a list request
+starts, or sync now §5.13) that imported at least one message. The initial
+import on connect (§5.12) and sends (§5.8, §5.9) do not emit events; their
+own responses tell the caller. Rows are built by the same `ConversationListService` as §5.5.
+
+`200 text/event-stream`. Events:
+
+- `ready`, sent once when the stream opens. Data: `{}`. There are no event
+  ids and no replay, so on every `ready` (first connect and each reconnect)
+  a client refetches what it shows (§5.5, and §5.6 for an open
+  conversation) to catch up on anything it missed while disconnected.
+- `conversations`, after a poll commits. Data (one line of JSON):
+  ```json
+  {
+    "imported": 2,
+    "items": [ { "key": "154e1e0a…", "title": "Ada Lovelace", "…": "§5.5 row" } ],
+    "counts": { "all": 12, "unread": 3, "awaiting": 5, "attachments": 1 }
+  }
+  ```
+  - `imported` (integer ≥ 1): messages imported (received + sent).
+  - `items` (array): the conversations those messages landed in, as
+    §5.5 rows, most recently active first. Rows are **unscoped** (as
+    `GET /api/v1/conversations` with no `mailboxId`: `accounts` filled)
+    and ignore any search or filter a client has applied. May be empty.
+  - `counts`: §5.5 counts for the unscoped list.
+
+  Client rule: a client showing the unscoped list with no `q` and filter
+  `all` may upsert `items` by `key` (replace or insert, then order by
+  `lastActivityAt` descending) and take `counts`; any other view (search,
+  filter, mailbox scope) refetches instead. A client showing one of the
+  `items`' conversations refetches it (§5.6). A thread re-keyed by the
+  import (a new Cc) can leave its old row stale until the next refetch.
+- Comment line `:ping` every 25 s; ignore it.
+
+The server closes the stream after 30 minutes, and at the next event or
+ping once the token is signed out (§5.3, §5.17, §5.18) or expired; clients
+reconnect with backoff (a reconnect with a dead token gets `401`, which
+means signed out). Fan-out is in-memory: single backend instance only.
+
+Errors: `401 unauthorized`.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Live updates: SSE (or push) with enough detail to update without a
-   full refetch.
+1. Push notifications (when no stream is open). The SSE stream landed
+   2026-11-21 (§5.19).
 2. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
 3. Account changes from the app: display name, password, email (website

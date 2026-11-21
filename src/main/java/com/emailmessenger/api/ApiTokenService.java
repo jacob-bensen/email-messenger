@@ -72,6 +72,16 @@ class ApiTokenService {
                 });
     }
 
+    /** Whether a token id still authenticates: not revoked, unexpired, user enabled. */
+    @Transactional(readOnly = true)
+    boolean isActive(long tokenId) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        return tokens.findById(tokenId)
+                .filter(token -> !token.isExpired(now))
+                .filter(token -> token.getUser().isEnabled())
+                .isPresent();
+    }
+
     @Transactional
     void revoke(long tokenId) {
         tokens.deleteById(tokenId);
