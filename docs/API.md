@@ -10,14 +10,15 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-20)
+## 1. Current state (2026-11-21)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline, mark-read, sending
 into a conversation, starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove), and the account: plan summary,
-signed-in devices, sign a device out (§5). Gmail OAuth connect,
+signed-in devices, sign a device out, change display name and password
+(§5). Gmail OAuth connect,
 signatures and mail preferences are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -191,6 +192,8 @@ the user, and may change. Clients branch on `code` only.
 | 409 | `send_in_progress` | Send: an earlier request with the same `Idempotency-Key` has not finished, or its outcome is unknown (§5.8.1) |
 | 422 | `idempotency_key_reused` | Send: the `Idempotency-Key` was already used for a different message (§5.8.1) |
 | 422 | `mailbox_connect_failed` | Connect mailbox: IMAP login or connection failed (§5.12) |
+| 422 | `password_too_short` | Change password: new password under 8 characters (§5.20) |
+| 422 | `current_password_incorrect` | Change password: current password does not match (§5.20) |
 | 429 | `too_many_attempts` | Login: throttle lock (§2) |
 | 500 | `internal_error` | Anything unexpected |
 | 502 | `send_failed` | Send: the mail server refused or could not be reached; nothing was sent or recorded (§5.8, §5.9) |
@@ -720,6 +723,52 @@ making this request. Request body: none.
 
 Errors: `401 unauthorized`.
 
+### 5.19 PUT /api/v1/account/display-name
+Bearer token required. Sets or clears the user's display name (website:
+`/account` "Display name" form, same `AccountService.changeDisplayName`).
+
+Request:
+```json
+{ "displayName": "Ada Byron" }
+```
+- `displayName` (string or `null`): surrounding whitespace is stripped; at
+  most 100 characters after stripping. Blank, `null` or an absent field
+  clears the name (clients then show the email address).
+
+`200`: the updated user, same object as `GET /api/v1/me` (§5.4).
+
+Errors: `400 validation_failed` (no/malformed body, or longer than 100
+characters; nothing changes); `401 unauthorized`.
+
+### 5.20 POST /api/v1/account/password
+Bearer token required. Changes the password (website: `/account`
+"Password" form, same `AccountService.changePassword`). On success every
+**other** signed-in device is signed out (its token revoked, as §5.18);
+the token making this request keeps working. The website's form signs out
+all apps, since it has no token of its own. Outstanding password-reset and
+email-verification links stop working, and a `PASSWORD_CHANGED` row is
+added to the account activity log.
+
+Request:
+```json
+{ "currentPassword": "correct-horse", "newPassword": "battery-staple" }
+```
+- `newPassword` (string): at least 8 characters. Checked first.
+- `currentPassword` (string): must match. A Google-only account (no
+  password set) can never match; it sets a password through "Forgot
+  password" on the website.
+
+`200`:
+```json
+{ "revoked": 1 }
+```
+- `revoked` (integer): other devices signed out, `0` when there were none.
+
+Errors: `400 validation_failed` (no/malformed body);
+`422 password_too_short`; `422 current_password_incorrect`;
+`401 unauthorized`. A wrong current password is **not** a `401`: the
+client is still signed in.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
@@ -728,5 +777,5 @@ Intended resources, in build order (see the mobile repo's
    full refetch.
 2. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
-3. Account changes from the app: display name, password, email (website
-   only today).
+3. Email change from the app (website only today; display name and
+   password landed 2026-11-21, §5.19–5.20).

@@ -31,7 +31,8 @@ dialect: pages compose shared pieces with `th:replace`. One stylesheet,
 | `POST /verify-email/resend` | user | redirect | `EmailVerificationService.sendVerification` |
 | `GET /account` | user | `account` | `AccountController` → `AccountService.billingSummary`, `SignedInDeviceService.list`, `AuthEventService.recentFor` |
 | `POST /account/devices/{id}/revoke`, `POST /account/devices/revoke-all` | user | redirect `/account#devices` | `SignedInDeviceService.revoke` / `revokeAllExcept(user, null)`; flash `devicesOutcome` |
-| `POST /account/password`, `POST /account/email` | user | redirect | `AccountService.changePassword` / `changeEmail` |
+| `POST /account/display-name` | user | redirect `/account` | `AccountService.changeDisplayName` (also `PUT /api/v1/account/display-name`); flash `displayNameOutcome` |
+| `POST /account/password`, `POST /account/email` | user | redirect | `AccountService.changePassword(…, null)` (signs out every signed-in app; also `POST /api/v1/account/password`, which keeps the caller's token) / `changeEmail` |
 | `GET/POST /account/appearance` | user | `account-appearance` | `AppearanceSettings` (theme + accent cookies) |
 | `GET /account/notifications` | user | `account-notifications` | placeholder ("coming soon") |
 | `GET /account/privacy` | user | `account-privacy` | — |

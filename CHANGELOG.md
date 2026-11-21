@@ -3,6 +3,29 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+
+## 2026-11-21 — Account edits from the app: display name and password
+
+- Contract gap #2 in `INTERNAL_TODO.md` (account edits were website-only).
+  New `PUT /api/v1/account/display-name` and `POST /api/v1/account/password`
+  (`docs/API.md` §5.19–5.20; new codes `password_too_short`,
+  `current_password_incorrect`, both `422` so a client never mistakes them
+  for a sign-out).
+- `AccountService.changeDisplayName` (strip, ≤ 100 chars, blank clears) is
+  shared by the API and a new `POST /account/display-name` form on
+  `/account` — the website had no way to edit the name either.
+- `AccountService.changePassword` now takes the token to keep and revokes
+  every other API token on success (returns `PasswordChangeResult`). The
+  website keeps none, so a password change there signs out every app; the
+  API keeps the caller's. Resolves the "should a password change revoke
+  tokens?" item in `INTERNAL_TODO.md`.
+- Tests: +7 `AccountServiceTest`, +2 `AccountControllerTest`, +8
+  `ApiAccountIntegrationTest`. `./mvnw -q -B verify`: 889 tests, 0
+  failures, 0 errors, 1 skipped (the Docker-only Testcontainers test).
+- Branch: work is on the session branch `claude/gifted-carson-q6liea`, not
+  `master` as the routine prompt says; the environment only permits
+  pushing to the session branch.
+
 ## 2026-11-20 — Idempotent API sends (`Idempotency-Key`)
 
 - Chosen from `INTERNAL_TODO.md` §1 (top contract item): a mobile retry

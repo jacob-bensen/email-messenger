@@ -191,6 +191,10 @@ final class ApiDtos {
 
     record AccountResponse(MeResponse user, BillingResponse billing) {}
 
+    record DisplayNameRequest(String displayName) {}
+
+    record ChangePasswordRequest(String currentPassword, String newPassword) {}
+
     record BillingResponse(String label, LocalDate renewsOn, boolean trialing, boolean canceled) {
 
         static BillingResponse of(AccountBillingSummary summary) {

@@ -32,10 +32,29 @@
               title="Address not confirmed yet">unverified</span>
       </div>
     </div>
-    <div class="acct-row" th:if="${displayName != null and !displayName.isEmpty()}">
-      <div class="acct-label">Display name</div>
-      <div class="acct-value" th:text="${displayName}">Ada Lovelace</div>
+    <div th:if="${displayNameOutcome == 'OK'}" class="alert alert-success">
+      Display name saved.
     </div>
+    <div th:if="${displayNameOutcome == 'TOO_LONG'}" class="alert alert-error">
+      Display name must be at most 100 characters.
+    </div>
+    <form method="post" th:action="@{/account/display-name}" class="acct-form">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <div class="acct-row">
+        <label class="acct-label" for="displayName">Display name</label>
+        <input class="acct-input" id="displayName" type="text" name="displayName"
+               maxlength="100" autocomplete="name" placeholder="Your name"
+               th:value="${displayName}">
+      </div>
+      <div class="acct-row acct-row-foot">
+        <div class="acct-label"></div>
+        <div class="acct-foot">
+          <small class="auth-hint">Leave blank to show your email address instead.</small>
+          <button type="submit" class="btn btn-primary btn-compact">Save name</button>
+        </div>
+      </div>
+    </form>
   </section>
 
   <section class="acct-section" th:if="${billing != null}">
@@ -64,6 +83,8 @@
     <h2 class="acct-section-title">Password</h2>
     <div th:if="${passwordOutcome == 'OK'}" class="alert alert-success">
       Password updated. Use the new password the next time you sign in.
+      <span th:if="${passwordSignedOutDevices != null and passwordSignedOutDevices > 0}">
+        Signed-in apps were signed out.</span>
     </div>
     <div th:if="${passwordOutcome == 'CURRENT_INCORRECT'}" class="alert alert-error">
       That isn't your current password. Try again.
