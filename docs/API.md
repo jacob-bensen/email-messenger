@@ -10,14 +10,15 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-20)
+## 1. Current state (2026-11-21)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline, mark-read, sending
 into a conversation, starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove), and the account: plan summary,
-signed-in devices, sign a device out (§5). Gmail OAuth connect,
+signed-in devices, sign a device out, change the display name and the
+password (§5). Email changes are website-only. Gmail OAuth connect,
 signatures and mail preferences are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -189,6 +190,8 @@ the user, and may change. Clients branch on `code` only.
 | 405 | `method_not_allowed` | Wrong HTTP method on an existing endpoint |
 | 409 | `no_recipients` | Send: the conversation has nobody but you in it (§5.8) |
 | 409 | `send_in_progress` | Send: an earlier request with the same `Idempotency-Key` has not finished, or its outcome is unknown (§5.8.1) |
+| 422 | `current_password_incorrect` | Change password: `currentPassword` is wrong (§5.20). Deliberately not `401`, which means "sign in again" |
+| 422 | `password_too_short` | Change password: `newPassword` under 8 characters (§5.20) |
 | 422 | `idempotency_key_reused` | Send: the `Idempotency-Key` was already used for a different message (§5.8.1) |
 | 422 | `mailbox_connect_failed` | Connect mailbox: IMAP login or connection failed (§5.12) |
 | 429 | `too_many_attempts` | Login: throttle lock (§2) |
@@ -720,6 +723,51 @@ making this request. Request body: none.
 
 Errors: `401 unauthorized`.
 
+### 5.19 PATCH /api/v1/me
+Bearer token required. Changes the display name — the same
+`AccountService.changeDisplayName` as the website's `POST /account/profile`.
+
+Request:
+```json
+{ "displayName": "Ada King" }
+```
+- `displayName` (string or `null`, ≤ 100 chars after trimming; longer is a
+  `400 validation_failed`): surrounding whitespace is trimmed; `null`,
+  absent or blank clears it.
+
+`200`: the updated user, same object as §5.4.
+
+Errors: `400 validation_failed`; `401 unauthorized`.
+
+### 5.20 POST /api/v1/account/password
+Bearer token required. Changes the password — the same
+`AccountService.changePassword` as the website's `POST /account/password`.
+On success every outstanding password-reset and email-verification link is
+voided and **every other signed-in device is signed out** (its token is
+revoked); the token making this request keeps working. The website's form
+signs out every app, since it has no token of its own.
+
+Request:
+```json
+{ "currentPassword": "correct-horse", "newPassword": "battery-staple" }
+```
+- `currentPassword` (string, required, non-blank).
+- `newPassword` (string, required, ≥ 8 characters; ≤ 72 bytes UTF-8 is
+  the bcrypt limit — longer is a `400 validation_failed`).
+
+`200`:
+```json
+{ "revoked": 2 }
+```
+- `revoked` (integer): other devices signed out, as §5.18.
+
+Errors: `400 validation_failed` (field missing or blank, new password over
+72 bytes); `422 current_password_incorrect`; `422 password_too_short`;
+`401 unauthorized`. Checked in that order: a short new password is
+reported before a wrong current one, as on the website. A Google-only
+account has no password and gets `current_password_incorrect` (it cannot
+sign in on mobile yet anyway, §2).
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
@@ -728,5 +776,5 @@ Intended resources, in build order (see the mobile repo's
    full refetch.
 2. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
-3. Account changes from the app: display name, password, email (website
-   only today).
+3. Email change from the app (website only today; needs a re-sign-in
+   story, since the website ends the session on change).

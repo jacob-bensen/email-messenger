@@ -22,7 +22,8 @@ import java.util.List;
  * Authenticated self-serve account page.
  *
  * <p>{@code GET /account} shows current email/display name + the change
- * forms. {@code POST /account/password} swaps the bcrypt hash and
+ * forms. {@code POST /account/profile} sets or clears the display name.
+ * {@code POST /account/password} swaps the bcrypt hash and
  * flashes a status outcome. {@code POST /account/email} swaps the
  * username on the {@code users} row, ends the current session, and
  * redirects to {@code /login?email-changed} so the user signs back in
@@ -53,6 +54,7 @@ class AccountController {
         User user = userService.requireByEmail(principal.getName());
         model.addAttribute("currentEmail", user.getEmail());
         model.addAttribute("displayName", user.getDisplayName());
+        model.addAttribute("maxDisplayNameLength", AccountService.MAX_DISPLAY_NAME_LENGTH);
         model.addAttribute("emailVerified", user.isEmailVerified());
         model.addAttribute("billing", accountService.billingSummary(user));
         model.addAttribute("devices", devices.list(user.getId(), null));
@@ -134,9 +136,20 @@ class AccountController {
                           Principal principal,
                           RedirectAttributes redirectAttributes) {
         User user = userService.requireByEmail(principal.getName());
-        AccountService.PasswordChangeOutcome outcome =
-                accountService.changePassword(user, currentPassword, newPassword);
-        redirectAttributes.addFlashAttribute("passwordOutcome", outcome.name());
+        AccountService.PasswordChange change =
+                accountService.changePassword(user, currentPassword, newPassword, null);
+        redirectAttributes.addFlashAttribute("passwordOutcome", change.outcome().name());
+        redirectAttributes.addFlashAttribute("passwordRevokedDevices", change.revokedDevices());
+        return "redirect:/account";
+    }
+
+    @PostMapping("/account/profile")
+    String changeProfile(@RequestParam(value = "displayName", required = false) String displayName,
+                         Principal principal,
+                         RedirectAttributes redirectAttributes) {
+        User user = userService.requireByEmail(principal.getName());
+        AccountService.DisplayNameOutcome outcome = accountService.changeDisplayName(user, displayName);
+        redirectAttributes.addFlashAttribute("profileOutcome", outcome.name());
         return "redirect:/account";
     }
 

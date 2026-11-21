@@ -140,6 +140,63 @@ class AccountControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "pwapps@example.com")
+    void changePasswordSignsOutEverySignedInApp() throws Exception {
+        User user = userService.register("pwapps@example.com", "password1", null);
+        LocalDateTime now = LocalDateTime.now();
+        apiTokens.save(new ApiToken(user, "hash-a", "Pixel 9", now, now.plusDays(30)));
+        apiTokens.save(new ApiToken(user, "hash-b", "iPad", now, now.plusDays(30)));
+
+        mockMvc.perform(post("/account/password")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("currentPassword", "password1")
+                        .param("newPassword", "brand-new-12"))
+                .andExpect(flash().attribute("passwordOutcome", "OK"))
+                .andExpect(flash().attribute("passwordRevokedDevices", 2));
+
+        assertThat(apiTokens.findActiveByUserId(user.getId(), LocalDateTime.now())).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(username = "name@example.com")
+    void changeProfileSavesTheTrimmedDisplayName() throws Exception {
+        User user = userService.register("name@example.com", "password1", "Old Name");
+
+        mockMvc.perform(post("/account/profile")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("displayName", "  Ada King "))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/account"))
+                .andExpect(flash().attribute("profileOutcome", "OK"));
+
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isEqualTo("Ada King");
+        mockMvc.perform(get("/account"))
+                .andExpect(content().string(containsString("value=\"Ada King\"")));
+    }
+
+    @Test
+    @WithMockUser(username = "longname@example.com")
+    void changeProfileRejectsAnOverlongName() throws Exception {
+        User user = userService.register("longname@example.com", "password1", "Keep Me");
+
+        mockMvc.perform(post("/account/profile")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("displayName", "x".repeat(101)))
+                .andExpect(flash().attribute("profileOutcome", "TOO_LONG"));
+
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isEqualTo("Keep Me");
+    }
+
+    @Test
+    @WithMockUser(username = "namecsrf@example.com")
+    void changeProfileRequiresCsrf() throws Exception {
+        userService.register("namecsrf@example.com", "password1", null);
+
+        mockMvc.perform(post("/account/profile").param("displayName", "Mallory"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @WithMockUser(username = "pwwrong@example.com")
     void changePasswordWithWrongCurrentFlashesError() throws Exception {
         User user = userService.register("pwwrong@example.com", "password1", null);

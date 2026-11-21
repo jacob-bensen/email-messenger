@@ -32,10 +32,28 @@
               title="Address not confirmed yet">unverified</span>
       </div>
     </div>
-    <div class="acct-row" th:if="${displayName != null and !displayName.isEmpty()}">
-      <div class="acct-label">Display name</div>
-      <div class="acct-value" th:text="${displayName}">Ada Lovelace</div>
+    <div th:if="${profileOutcome == 'OK'}" class="alert alert-success">Display name saved.</div>
+    <div th:if="${profileOutcome == 'TOO_LONG'}" class="alert alert-error"
+         th:text="|Display name must be at most ${maxDisplayNameLength} characters.|">
+      Display name must be at most 100 characters.
     </div>
+    <form method="post" th:action="@{/account/profile}" class="acct-form">
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <div class="acct-row">
+        <label class="acct-label" for="displayName">Display name</label>
+        <input class="acct-input" id="displayName" type="text" name="displayName"
+               th:value="${displayName}" th:maxlength="${maxDisplayNameLength}"
+               autocomplete="name" placeholder="Ada Lovelace">
+      </div>
+      <div class="acct-row acct-row-foot">
+        <div class="acct-label"></div>
+        <div class="acct-foot">
+          <small class="auth-hint">Optional. Used when we greet you in the app and in emails.</small>
+          <button type="submit" class="btn btn-primary btn-compact">Save name</button>
+        </div>
+      </div>
+    </form>
   </section>
 
   <section class="acct-section" th:if="${billing != null}">
@@ -64,12 +82,17 @@
     <h2 class="acct-section-title">Password</h2>
     <div th:if="${passwordOutcome == 'OK'}" class="alert alert-success">
       Password updated. Use the new password the next time you sign in.
+      <th:block th:if="${passwordRevokedDevices != null and passwordRevokedDevices > 0}"
+                th:text="${passwordRevokedDevices == 1 ? '1 signed-in app was signed out.' : passwordRevokedDevices + ' signed-in apps were signed out.'}"></th:block>
     </div>
     <div th:if="${passwordOutcome == 'CURRENT_INCORRECT'}" class="alert alert-error">
       That isn't your current password. Try again.
     </div>
     <div th:if="${passwordOutcome == 'NEW_TOO_SHORT'}" class="alert alert-error">
       New password must be at least 8 characters.
+    </div>
+    <div th:if="${passwordOutcome == 'NEW_TOO_LONG'}" class="alert alert-error">
+      New password is too long. Use at most 72 characters (fewer with accented letters or emoji).
     </div>
     <form method="post" th:action="@{/account/password}" class="acct-form" autocomplete="off">
       <input type="hidden" th:if="${_csrf != null}"

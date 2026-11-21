@@ -3,6 +3,36 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-21 — Display name and password from the app (API.md §5.19–5.20)
+
+- Chosen from `INTERNAL_TODO.md` §1 (top unblocked contract item; API
+  attachments are blocked on attachment storage): account edits were
+  website-only, and the display name had no edit path anywhere.
+- Contract first: `docs/API.md` §5.19 `PATCH /api/v1/me` (`displayName`,
+  trimmed, blank/null clears, ≤ 100 chars → `200` with the `Me` object)
+  and §5.20 `POST /api/v1/account/password` (`currentPassword`,
+  `newPassword` → `200 {"revoked": n}`). New error codes
+  `422 current_password_incorrect` (deliberately not `401`, which clients
+  read as "sign in again") and `422 password_too_short`.
+- Decision (was open in `INTERNAL_TODO.md` §3): a password change now
+  signs out API devices — every other device from the API, every device
+  from the website form (which has no token). Whoever knew the old password
+  may have signed an app in with it.
+- `AccountService.changeDisplayName` (new) and `changePassword(…, keepTokenId)`
+  (now returns `PasswordChange(outcome, revokedDevices)`, revokes through
+  `SignedInDeviceService`, rejects new passwords over 72 UTF-8 bytes —
+  `BCryptPasswordEncoder` throws on those — and treats a missing
+  password hash (Google-only user) as an incorrect current password).
+  One service for both paths: `AccountController` (`POST /account/profile`
+  new; `POST /account/password`) and `ApiAccountService`.
+- Website: `/account` Profile section is now an editable display-name form;
+  the password success message says how many apps were signed out; new
+  "too long" message.
+- No migration (`users.display_name` is already `VARCHAR(255)`).
+- Tests: `AccountServiceTest` +6, `AccountControllerTest` +4,
+  `ApiAccountIntegrationTest` +7. Full `mvn -B verify`: 891 tests,
+  0 failures, 1 skipped (Docker test).
+
 ## 2026-11-20 — Idempotent API sends (`Idempotency-Key`)
 
 - Chosen from `INTERNAL_TODO.md` §1 (top contract item): a mobile retry
