@@ -18,7 +18,8 @@ into a conversation, starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove), and the account: plan summary,
 signed-in devices, sign a device out, edit the display name, change the
-password (§5). Email-address changes, Gmail OAuth connect, signatures and
+password (§5), and a live event stream of imported mail (§5.21).
+Email-address changes, Gmail OAuth connect, signatures and
 mail preferences are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -79,6 +80,7 @@ Server-Sent Events stream of new-mail notifications for the signed-in user.
   ```
   Sent after a poll commits with at least one imported message. It carries a
   count only — no conversation keys or message ids — so the client refetches.
+  (The mobile API's `/api/v1/events`, §5.21, carries the changed rows.)
 - Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`).
 - No event ids, no replay of missed events. Fan-out is in-memory, so it
   works on a single backend instance only.
@@ -769,12 +771,51 @@ token is still valid and the client must not sign out);
 The length checks run before the current password is checked. Nothing
 changes on any error.
 
+### 5.21 GET /api/v1/events
+Bearer token required (`Authorization` header; the client must be able to
+set headers, so a browser `EventSource` cannot use it). A Server-Sent
+Events stream of the user's mail changes, detailed enough to update a
+conversation list in place without refetching it. Server:
+`ApiEventStream`; the website's §3 `/chats/events` stream is separate and
+unchanged.
+
+- `200 text/event-stream`. The server closes the stream after 30 minutes;
+  clients reconnect (backoff is the client's choice). An invalid or
+  revoked token gets the usual `401 unauthorized` JSON envelope (§5.1)
+  instead of a stream; clients treat it like any other `401`.
+- Event `ready`, sent once on every (re)connect, data `{}`. No events are
+  replayed, so a client that reconnects refetches what it shows.
+- Event `conversations`, sent after a mailbox poll (scheduled, IMAP IDLE,
+  §5.13 sync or §5.5's background refresh) commits at least one imported
+  message:
+  ```
+  event: conversations
+  data: {"imported":2,"conversations":[{…§5.5 row…}],"truncated":false,"counts":{"all":12,"unread":3,"awaiting":4,"attachments":1}}
+  ```
+  - `imported` (integer ≥ 1): messages imported (received + sent).
+  - `conversations` (array of §5.5 rows): the conversations those messages
+    landed in, as they now are, newest `lastActivityAt` first. Rows are
+    **unscoped** (all mailboxes merged, `accounts` filled), as in §5.5
+    without `mailboxId`, `q` or `filter`.
+  - `truncated` (boolean): more than 50 conversations changed (e.g. a
+    first sync); `conversations` is then `[]` and the client refetches.
+  - `counts` (object): §5.5 `counts` for the unscoped list.
+- Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`).
+- Client rule: when showing the unscoped, unfiltered, unsearched list,
+  replace each row by `key` (inserting new ones), re-sort by
+  `lastActivityAt` descending and take `counts`. Otherwise (a mailbox
+  scope, a filter or a search is active, or `truncated`) refetch, because
+  only the server can tell whether a row matches. Mark-read and sends do
+  not produce events.
+- Fan-out is in-memory, so events reach only streams open on the backend
+  instance that ran the poll.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Live updates: SSE (or push) with enough detail to update without a
-   full refetch.
+1. Push notifications (Web Push / FCM / APNs) when no client is
+   connected. (The SSE stream landed 2026-11-23, §5.21.)
 2. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
 3. Email-address change from the app (website only today; it needs a

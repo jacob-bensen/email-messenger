@@ -3,6 +3,33 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-23 (b) — Live events for the app (`/api/v1/events`)
+
+- Chosen from the mobile roadmap (M3 "Live updates with enough detail to
+  update a list row in place", needs both repos) and `INTERNAL_TODO.md`
+  §1 "live events carry only a count".
+- Contract first: `docs/API.md` §5.21 `GET /api/v1/events` — bearer SSE;
+  `ready` on every connect; `conversations` with `imported`, the changed
+  §5.5 rows (unscoped, newest first), `truncated` (> 50 changed → `[]`,
+  refetch) and unscoped `counts`; `:ping` keepalive. §6 now leads with
+  push notifications.
+- `NewMailEvent` gains `conversationKeys`; `MailboxPollingService`
+  collects the key of every imported (received or sent) message.
+- Shared service, no forked logic: rows come from
+  `ConversationListService.rowsFor(owner, keys)` (new; same `assemble` as
+  `/chats` and §5.5) over the new
+  `EmailThreadRepository.conversationSummariesForKeys`.
+- `ApiEventStream` (per-user emitters; payload built once per event in a
+  fresh read-only transaction, since the after-commit listener still has
+  the poll's finished one bound; failures never reach the poll) and
+  `ApiEventsController`. Keepalive closes streams whose token was revoked
+  or expired (`ApiTokenService.isActive`). The API chain permits `ASYNC`
+  dispatches (the SSE completion re-dispatch carries no bearer header).
+  The website's `ChatEventStream` is unchanged.
+- Tests: `ApiEventStreamTest` 6, `ApiEventsIntegrationTest` 5,
+  `MailboxPollingServiceTest` asserts the keys. Full `mvn -B verify`:
+  905 tests, 0 failures, 1 skipped (Docker test).
+
 ## 2026-11-23 — Account edits over the API: display name and password
 
 - Chosen from `INTERNAL_TODO.md` §1 (top unblocked contract item; the
