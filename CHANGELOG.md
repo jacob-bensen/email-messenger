@@ -3,6 +3,27 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-23 — Account edits from the app: display name and password
+
+- Chosen from `INTERNAL_TODO.md` §1 ("Account edits are website-only"),
+  the top contract item that needs both repos and is not blocked.
+- Contract first: `docs/API.md` §5.19 `PATCH /api/v1/account`
+  (`{"displayName": …}` → the §5.4 user; null/blank clears, ≤ 100 chars)
+  and §5.20 `POST /api/v1/account/password` (`204`; new codes
+  `422 password_too_short`, `422 current_password_incorrect`). §6 now
+  lists only email change as planned.
+- One service for both paths: `AccountService.changeDisplayName` (new)
+  and `changePassword(…, keepTokenId)`. Website gets a display-name form
+  on `/account` (`POST /account/display-name`; before this there was no
+  way to edit the name at all).
+- Decision (was open in `INTERNAL_TODO.md` §3): a password change now
+  revokes API tokens — every other device from the app, every app from
+  the website — so a device signed in with a leaked password loses
+  access.
+- Tests: `AccountServiceTest` +4, `AccountControllerTest` +3,
+  `ApiAccountIntegrationTest` +5. Full `./mvnw -B verify`: 886 tests,
+  0 failures, 1 skipped (Docker test). BUILD SUCCESS.
+
 ## 2026-11-20 — Idempotent API sends (`Idempotency-Key`)
 
 - Chosen from `INTERNAL_TODO.md` §1 (top contract item): a mobile retry

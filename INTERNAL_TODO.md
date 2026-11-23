@@ -10,9 +10,10 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **API sends carry no attachments** (`docs/API.md` §5.8). Add
       multipart attachments (blocked on attachment storage). Sends are
       idempotent since 2026-11-20 (§5.8.1).
-- [ ] **Account edits are website-only:** display name, password and
-      email changes have no API (`docs/API.md` §6 item 3). Display name
-      has no edit path on the website either.
+- [ ] **Email change is website-only** (`docs/API.md` §6 item 3): the
+      API would have to re-issue the token for the new address and send
+      the verification mail. Display name and password have an API since
+      2026-11-23 (§5.19, §5.20).
 - [ ] **Mailbox settings are website-only:** Gmail OAuth connect /
       reconnect, signatures, sync frequency and the default sending mailbox
       have no API. A Google mailbox whose token expired can only be
@@ -92,8 +93,13 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] Signing a device out (website or API) writes no `auth_events` row;
       the "Recent account activity" panel does not show it. Needs a new
       `AuthEventType` (check the DB constraint on `event_type` first).
-- [ ] Changing or resetting the password does not revoke API tokens;
-      disabling the user does. Decide whether a password change should.
+- [ ] Resetting the password (forgot-password link) does not revoke API
+      tokens; changing it does since 2026-11-23. Make the reset path match.
+- [ ] `POST /api/v1/account/password` and `POST /account/password` have
+      no attempt limit: a stolen bearer token or session could brute-force
+      the current password. Reuse the login throttle.
+- [ ] A password change writes `PASSWORD_CHANGED` but not which devices it
+      signed out (same gap as the device sign-out audit below).
 - [ ] Google-only accounts cannot sign in on mobile (no password). Needs a
       native Google sign-in → token exchange design.
 

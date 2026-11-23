@@ -10,14 +10,15 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-20)
+## 1. Current state (2026-11-23)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline, mark-read, sending
 into a conversation, starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove), and the account: plan summary,
-signed-in devices, sign a device out (§5). Gmail OAuth connect,
+signed-in devices, sign a device out, edit the display name and change
+the password (§5). Email change, Gmail OAuth connect,
 signatures and mail preferences are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -187,6 +188,8 @@ the user, and may change. Clients branch on `code` only.
 | 403 | `plan_limit_reached` | Connect mailbox: already at the plan's mailbox cap (§5.12) |
 | 404 | `not_found` | Unknown `/api` path (after authentication) |
 | 405 | `method_not_allowed` | Wrong HTTP method on an existing endpoint |
+| 422 | `current_password_incorrect` | Change password: `currentPassword` is wrong (§5.20) |
+| 422 | `password_too_short` | Change password: `newPassword` has fewer than 8 characters (§5.20) |
 | 409 | `no_recipients` | Send: the conversation has nobody but you in it (§5.8) |
 | 409 | `send_in_progress` | Send: an earlier request with the same `Idempotency-Key` has not finished, or its outcome is unknown (§5.8.1) |
 | 422 | `idempotency_key_reused` | Send: the `Idempotency-Key` was already used for a different message (§5.8.1) |
@@ -720,6 +723,47 @@ making this request. Request body: none.
 
 Errors: `401 unauthorized`.
 
+### 5.19 PATCH /api/v1/account
+Bearer token required. Edits the profile. The website's `/account`
+"Display name" form calls the same service
+(`AccountService.changeDisplayName`).
+
+Request:
+```json
+{ "displayName": "Ada King" }
+```
+- `displayName` (string or `null`, **required key**): surrounding
+  whitespace is trimmed; `null`, `""` or all-whitespace clears the name.
+  At most 100 characters after trimming.
+
+`200`: the updated user, same object as §5.4 (clients replace their
+cached user with it).
+
+Errors: `400 validation_failed` (body missing or not JSON, `displayName`
+key absent or not a string, longer than 100 characters);
+`401 unauthorized`.
+
+### 5.20 POST /api/v1/account/password
+Bearer token required. Changes the password. Same service as the
+website's `/account` "Password" form (`AccountService.changePassword`).
+
+Request:
+```json
+{ "currentPassword": "correct-horse", "newPassword": "battery-staple" }
+```
+- `currentPassword` (string, required).
+- `newPassword` (string, required, at least 8 characters).
+
+`204`, empty body. On success every **other** signed-in device is signed
+out (its API token revoked); the token making this request keeps
+working. Outstanding password-reset and email-verification links stop
+working. A change made on the website signs out every app.
+
+Errors, checked in this order: `400 validation_failed` (body missing or
+not JSON, a field absent or `null`); `422 password_too_short`;
+`422 current_password_incorrect` (also for a Google-only account, which
+has no password); `401 unauthorized`.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
@@ -728,5 +772,6 @@ Intended resources, in build order (see the mobile repo's
    full refetch.
 2. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
-3. Account changes from the app: display name, password, email (website
-   only today).
+3. Email change from the app (website only today: it needs re-sign-in
+   as the new address and a fresh verification mail). Display name and
+   password landed 2026-11-23 (§5.19, §5.20).

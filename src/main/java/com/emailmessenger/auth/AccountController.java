@@ -22,8 +22,8 @@ import java.util.List;
  * Authenticated self-serve account page.
  *
  * <p>{@code GET /account} shows current email/display name + the change
- * forms. {@code POST /account/password} swaps the bcrypt hash and
- * flashes a status outcome. {@code POST /account/email} swaps the
+ * forms. {@code POST /account/display-name} and {@code POST /account/password}
+ * flash a status outcome. {@code POST /account/email} swaps the
  * username on the {@code users} row, ends the current session, and
  * redirects to {@code /login?email-changed} so the user signs back in
  * as the new address (and a verification mail is already on the way).
@@ -135,8 +135,18 @@ class AccountController {
                           RedirectAttributes redirectAttributes) {
         User user = userService.requireByEmail(principal.getName());
         AccountService.PasswordChangeOutcome outcome =
-                accountService.changePassword(user, currentPassword, newPassword);
+                accountService.changePassword(user, currentPassword, newPassword, null);
         redirectAttributes.addFlashAttribute("passwordOutcome", outcome.name());
+        return "redirect:/account";
+    }
+
+    @PostMapping("/account/display-name")
+    String changeDisplayName(@RequestParam(value = "displayName", required = false) String displayName,
+                             Principal principal,
+                             RedirectAttributes redirectAttributes) {
+        User user = userService.requireByEmail(principal.getName());
+        AccountService.DisplayNameChangeOutcome outcome = accountService.changeDisplayName(user, displayName);
+        redirectAttributes.addFlashAttribute("displayNameOutcome", outcome.name());
         return "redirect:/account";
     }
 

@@ -140,6 +140,52 @@ class AccountControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "pwapps@example.com")
+    void changePasswordSignsOutEveryApp() throws Exception {
+        User user = userService.register("pwapps@example.com", "password1", null);
+        ApiToken phone = apiTokens.save(new ApiToken(user, "d".repeat(64), "Pixel 9",
+                LocalDateTime.now(), LocalDateTime.now().plusDays(30)));
+
+        mockMvc.perform(post("/account/password")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("currentPassword", "password1")
+                        .param("newPassword", "brand-new-12"))
+                .andExpect(flash().attribute("passwordOutcome", "OK"));
+
+        assertThat(apiTokens.findById(phone.getId())).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(username = "name@example.com")
+    void changeDisplayNameSavesTrimmedNameAndShowsItInTheForm() throws Exception {
+        User user = userService.register("name@example.com", "password1", null);
+
+        mockMvc.perform(post("/account/display-name")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("displayName", "  Ada King "))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/account"))
+                .andExpect(flash().attribute("displayNameOutcome", "OK"));
+
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isEqualTo("Ada King");
+        mockMvc.perform(get("/account"))
+                .andExpect(content().string(containsString("value=\"Ada King\"")));
+    }
+
+    @Test
+    @WithMockUser(username = "longname@example.com")
+    void changeDisplayNameTooLongFlashesError() throws Exception {
+        User user = userService.register("longname@example.com", "password1", "Short");
+
+        mockMvc.perform(post("/account/display-name")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("displayName", "x".repeat(101)))
+                .andExpect(flash().attribute("displayNameOutcome", "TOO_LONG"));
+
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isEqualTo("Short");
+    }
+
+    @Test
     @WithMockUser(username = "pwwrong@example.com")
     void changePasswordWithWrongCurrentFlashesError() throws Exception {
         User user = userService.register("pwwrong@example.com", "password1", null);
