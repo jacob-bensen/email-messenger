@@ -55,4 +55,10 @@ class ApiAccountController {
                                                   @Valid @RequestBody ApiDtos.ChangePasswordRequest request) {
         return account.changePassword(principal, request);
     }
+
+    @PostMapping("/email")
+    ApiDtos.MeResponse changeEmail(@AuthenticationPrincipal ApiPrincipal principal,
+                                   @Valid @RequestBody ApiDtos.ChangeEmailRequest request) {
+        return account.changeEmail(principal, request);
+    }
 }

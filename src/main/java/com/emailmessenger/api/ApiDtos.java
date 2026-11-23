@@ -219,6 +219,8 @@ final class ApiDtos {
 
     record ChangePasswordResponse(int revokedDevices) {}
 
+    record ChangeEmailRequest(@NotNull String currentPassword, @NotNull String newEmail) {}
+
     private static Instant utc(LocalDateTime value) {
         return value == null ? null : value.toInstant(ZoneOffset.UTC);
     }

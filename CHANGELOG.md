@@ -3,6 +3,31 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-23 — Email change over the API
+
+- Chosen from `INTERNAL_TODO.md` §1 (top unblocked contract item after the
+  blocked attachment item): email change was the last website-only
+  account edit, and `docs/API.md` §6 listed it next.
+- Contract first: `docs/API.md` §5.21 `POST /api/v1/account/email`
+  (`{currentPassword, newEmail}` → the §5.4 user, now unverified); new
+  error codes `email_invalid` / `email_unchanged` (422) and `email_taken`
+  (409) in §5.1. The current password is checked first, so `email_taken`
+  only answers someone who knows it.
+- `ApiAccountService.changeEmail` maps `auth.AccountService.changeEmail`
+  outcomes — the same rule as `POST /account/email` (normalize, validate,
+  clear verification, revoke reset/verification links, send a new
+  verification mail, audit both addresses). No logic forked.
+- Devices stay signed in: API tokens belong to the account (user id), not
+  the address. The website still ends its own session because that is
+  keyed by the old username. Decision recorded in §5.21.
+- §6 item 3 now plans a `passwordSet` flag (Google-only accounts have a
+  random password hash, so they get `current_password_incorrect`).
+- Tests: `ApiAccountIntegrationTest` +3 (success keeps devices and
+  re-login works with the new address only; current password checked
+  before `email_taken`; taken / invalid / unchanged / missing field) and
+  the no-token case. `./mvnw -B verify`: 897 run, 0 failures, 0 errors,
+  1 skipped (the Docker-only Testcontainers test).
+
 ## 2026-11-23 — Account edits over the API: display name and password
 
 - Chosen from `INTERNAL_TODO.md` §1 (top unblocked contract item; the

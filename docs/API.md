@@ -18,8 +18,8 @@ into a conversation, starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove), and the account: plan summary,
 signed-in devices, sign a device out, edit the display name, change the
-password (§5). Email-address changes, Gmail OAuth connect, signatures and
-mail preferences are website-only. The website's own machine endpoints (§3) still use the
+password and change the email address (§5). Gmail OAuth connect,
+signatures and mail preferences are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
 ## 2. Authentication
@@ -189,8 +189,11 @@ the user, and may change. Clients branch on `code` only.
 | 404 | `not_found` | Unknown `/api` path (after authentication) |
 | 405 | `method_not_allowed` | Wrong HTTP method on an existing endpoint |
 | 409 | `no_recipients` | Send: the conversation has nobody but you in it (§5.8) |
+| 409 | `email_taken` | Change email: another account already uses `newEmail` (§5.21) |
 | 409 | `send_in_progress` | Send: an earlier request with the same `Idempotency-Key` has not finished, or its outcome is unknown (§5.8.1) |
-| 422 | `current_password_incorrect` | Change password: `currentPassword` is wrong, or the account has no password (Google-only) (§5.20) |
+| 422 | `current_password_incorrect` | Change password or email: `currentPassword` is wrong, or the account has no password (Google-only) (§5.20, §5.21) |
+| 422 | `email_invalid` | Change email: `newEmail` is not an email address or is over 254 characters (§5.21) |
+| 422 | `email_unchanged` | Change email: `newEmail` is already the account's address (§5.21) |
 | 422 | `password_too_short` | Change password: `newPassword` under 8 characters (§5.20) |
 | 422 | `password_too_long` | Change password: `newPassword` over 72 bytes in UTF-8 (§5.20) |
 | 422 | `idempotency_key_reused` | Send: the `Idempotency-Key` was already used for a different message (§5.8.1) |
@@ -769,6 +772,38 @@ token is still valid and the client must not sign out);
 The length checks run before the current password is checked. Nothing
 changes on any error.
 
+### 5.21 POST /api/v1/account/email
+Bearer token required. Changes the sign-in email address (website:
+`/account` "Email"), through the same rule
+(`AccountService.changeEmail`). On success the new address is
+**unverified**: `emailVerified` becomes `false` and a verification email is
+sent to the new address (a send failure is logged, not an error; the user
+can ask for another link on the website). Outstanding password-reset and
+verification links are invalidated. Signed-in devices stay signed in —
+tokens belong to the account, not the address — including the caller's.
+(The website signs its own browser session out instead, because that
+session is keyed by the old address.)
+
+Request:
+```json
+{ "currentPassword": "correct-horse", "newEmail": "ada.king@example.com" }
+```
+- `currentPassword` (string, required).
+- `newEmail` (string, required): normalized like the login `email`
+  (trimmed, lowercased); at most 254 characters and of the form
+  `local@domain`.
+
+`200`: the user, same object as §5.4, with the new `email` and
+`"emailVerified": false`. The client should replace its cached user with
+it and sign in with the new address from now on.
+
+Errors: `400 validation_failed` (body missing or malformed, or a field
+missing); `422 current_password_incorrect` (not `401`; the token is still
+valid); `422 email_invalid`; `422 email_unchanged`; `409 email_taken`;
+`401 unauthorized`. The current password is checked **first**, so
+`email_taken` is only revealed to someone who knows it. Nothing changes on
+any error.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
@@ -777,6 +812,8 @@ Intended resources, in build order (see the mobile repo's
    full refetch.
 2. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
-3. Email-address change from the app (website only today; it needs a
-   verification email and the client to re-read `me`). Display name and
-   password landed 2026-11-23 (§5.19, §5.20).
+3. A `passwordSet` flag on the user (§5.4) so clients can hide password
+   and email changes from Google-only accounts, which have no password.
+   Needs a new column; today those accounts get
+   `422 current_password_incorrect`. (Email change landed 2026-11-23,
+   §5.21.)

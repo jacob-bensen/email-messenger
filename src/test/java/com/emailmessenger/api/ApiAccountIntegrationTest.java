@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** docs/API.md §5.15–5.20. */
+/** docs/API.md §5.15–5.21. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -262,12 +262,80 @@ class ApiAccountIntegrationTest {
     }
 
     @Test
+    void emailChangeReturnsTheUnverifiedUserAndKeepsDevicesSignedIn() throws Exception {
+        owner.setEmailVerifiedAt(LocalDateTime.now());
+        String ipad = login("ada@example.com", "iPad");
+
+        authed(post("/api/v1/account/email").contentType(MediaType.APPLICATION_JSON)
+                        .content(emailBody("correct-horse", "  Ada.King@Example.com ")), token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("ada.king@example.com"))
+                .andExpect(jsonPath("$.emailVerified").value(false))
+                .andExpect(jsonPath("$.displayName").value("Ada Lovelace"));
+
+        authed(get("/api/v1/me"), token).andExpect(jsonPath("$.email").value("ada.king@example.com"));
+        authed(get("/api/v1/me"), ipad).andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new ApiDtos.LoginRequest("ada.king@example.com", "correct-horse", "Pixel 9"))))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new ApiDtos.LoginRequest("ada@example.com", "correct-horse", "Pixel 9"))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void emailChangeChecksTheCurrentPasswordFirst() throws Exception {
+        userService.register("bob@example.com", "correct-horse", "Bob");
+
+        authed(post("/api/v1/account/email").contentType(MediaType.APPLICATION_JSON)
+                        .content(emailBody("wrong-horse", "bob@example.com")), token)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("current_password_incorrect"));
+        authed(get("/api/v1/me"), token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("ada@example.com"));
+    }
+
+    @Test
+    void emailChangeErrors() throws Exception {
+        userService.register("bob@example.com", "correct-horse", "Bob");
+
+        authed(post("/api/v1/account/email").contentType(MediaType.APPLICATION_JSON)
+                        .content(emailBody("correct-horse", "BOB@example.com")), token)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("email_taken"));
+        authed(post("/api/v1/account/email").contentType(MediaType.APPLICATION_JSON)
+                        .content(emailBody("correct-horse", "not-an-address")), token)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("email_invalid"));
+        authed(post("/api/v1/account/email").contentType(MediaType.APPLICATION_JSON)
+                        .content(emailBody("correct-horse", "Ada@Example.com")), token)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("email_unchanged"));
+        authed(post("/api/v1/account/email").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newEmail\":\"ada.king@example.com\"}"), token)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("validation_failed"));
+
+        authed(get("/api/v1/me"), token).andExpect(jsonPath("$.email").value("ada@example.com"));
+    }
+
+    @Test
     void accountEditsRequireAToken() throws Exception {
         mockMvc.perform(put("/api/v1/account/profile").contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(post("/api/v1/account/password").contentType(MediaType.APPLICATION_JSON)
                         .content(passwordBody("correct-horse", "battery-staple")))
                 .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/account/email").contentType(MediaType.APPLICATION_JSON)
+                        .content(emailBody("correct-horse", "ada.king@example.com")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private String emailBody(String current, String newEmail) throws Exception {
+        return objectMapper.writeValueAsString(new ApiDtos.ChangeEmailRequest(current, newEmail));
     }
 
     private String passwordBody(String current, String next) throws Exception {

@@ -9,7 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** docs/API.md §5.15–5.20, over the same services as the website's /account page. */
+/** docs/API.md §5.15–5.21, over the same services as the website's /account page. */
 @Service
 class ApiAccountService {
 
@@ -71,6 +71,22 @@ class ApiAccountService {
                     "password_too_short", "The new password must be at least 8 characters.");
             case NEW_TOO_LONG -> throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "password_too_long", "The new password is too long (72 bytes at most).");
+        };
+    }
+
+    @Transactional
+    ApiDtos.MeResponse changeEmail(ApiPrincipal principal, ApiDtos.ChangeEmailRequest request) {
+        User user = user(principal);
+        return switch (accounts.changeEmail(user, request.currentPassword(), request.newEmail())) {
+            case OK -> ApiDtos.MeResponse.of(user, planLimits.currentPlan(user));
+            case CURRENT_INCORRECT -> throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "current_password_incorrect", "That isn't your current password.");
+            case EMAIL_INVALID -> throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "email_invalid", "Enter a valid email address.");
+            case NO_CHANGE -> throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "email_unchanged", "That is already your email address.");
+            case EMAIL_TAKEN -> throw new ApiException(HttpStatus.CONFLICT,
+                    "email_taken", "Another account already uses that email address.");
         };
     }
 

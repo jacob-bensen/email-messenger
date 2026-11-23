@@ -10,10 +10,12 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **API sends carry no attachments** (`docs/API.md` §5.8). Add
       multipart attachments (blocked on attachment storage). Sends are
       idempotent since 2026-11-20 (§5.8.1).
-- [ ] **Email change is website-only** (`docs/API.md` §6 item 3).
-      Display name and password have an API since 2026-11-23 (§5.19–5.20).
-      `Me` has no "password set" flag, so the app cannot tell a Google-only
-      account that it has no password to change.
+- [ ] **`Me` has no "password set" flag** (`docs/API.md` §6 item 3), so
+      the app cannot hide Change password / Change email from a Google-only
+      account (random hash; both answer `current_password_incorrect`).
+      Needs a column: the random hash is indistinguishable from a real one,
+      and a Google user may later set a password via `/password/forgot`.
+      Email change has an API since 2026-11-23 (§5.21).
 - [ ] **Mailbox settings are website-only:** Gmail OAuth connect /
       reconnect, signatures, sync frequency and the default sending mailbox
       have no API. A Google mailbox whose token expired can only be
@@ -98,9 +100,12 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       over BCrypt's 72-byte limit, which Spring's encoder rejects with an
       exception (a 500). `AccountService.changePassword` checks it
       (`password_too_long`); give the other two paths the same rule.
-- [ ] `POST /api/v1/account/password` has no attempt throttle on a wrong
-      `currentPassword` (a stolen token could guess the password). Reuse
-      `LoginThrottleService` keyed by user.
+- [ ] `POST /api/v1/account/password` and `…/email` have no attempt
+      throttle on a wrong `currentPassword` (a stolen token could guess the
+      password; the website forms likewise). Reuse `LoginThrottleService`
+      keyed by user.
+- [ ] An email change sends no notice to the **old** address (website and
+      API alike), so a hijacked session can move the account silently.
 - [ ] Google-only accounts cannot sign in on mobile (no password). Needs a
       native Google sign-in → token exchange design.
 
