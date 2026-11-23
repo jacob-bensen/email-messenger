@@ -134,9 +134,20 @@ class AccountController {
                           Principal principal,
                           RedirectAttributes redirectAttributes) {
         User user = userService.requireByEmail(principal.getName());
-        AccountService.PasswordChangeOutcome outcome =
-                accountService.changePassword(user, currentPassword, newPassword);
-        redirectAttributes.addFlashAttribute("passwordOutcome", outcome.name());
+        AccountService.PasswordChange change =
+                accountService.changePassword(user, currentPassword, newPassword, null);
+        redirectAttributes.addFlashAttribute("passwordOutcome", change.outcome().name());
+        redirectAttributes.addFlashAttribute("passwordRevokedDevices", change.revokedDevices());
+        return "redirect:/account";
+    }
+
+    @PostMapping("/account/display-name")
+    String changeDisplayName(@RequestParam(value = "displayName", required = false) String displayName,
+                             Principal principal,
+                             RedirectAttributes redirectAttributes) {
+        User user = userService.requireByEmail(principal.getName());
+        AccountService.DisplayNameOutcome outcome = accountService.changeDisplayName(user, displayName);
+        redirectAttributes.addFlashAttribute("displayNameOutcome", outcome.name());
         return "redirect:/account";
     }
 

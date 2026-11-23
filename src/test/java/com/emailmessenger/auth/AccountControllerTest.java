@@ -170,6 +170,46 @@ class AccountControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "rename@example.com")
+    void changeDisplayNameSavesAndFlashesOk() throws Exception {
+        User user = userService.register("rename@example.com", "password1", "Old Name");
+
+        mockMvc.perform(post("/account/display-name")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("displayName", "  New Name "))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/account"))
+                .andExpect(flash().attribute("displayNameOutcome", "OK"));
+
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isEqualTo("New Name");
+    }
+
+    @Test
+    @WithMockUser(username = "renamelong@example.com")
+    void changeDisplayNameTooLongFlashesError() throws Exception {
+        User user = userService.register("renamelong@example.com", "password1", "Kept");
+
+        mockMvc.perform(post("/account/display-name")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("displayName", "x".repeat(101)))
+                .andExpect(flash().attribute("displayNameOutcome", "TOO_LONG"));
+
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isEqualTo("Kept");
+    }
+
+    @Test
+    @WithMockUser(username = "nameform@example.com")
+    void accountPageShowsTheDisplayNameForm() throws Exception {
+        userService.register("nameform@example.com", "password1", "Ada Form");
+
+        String body = mockMvc.perform(get("/account"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(body).contains("action=\"/account/display-name\"");
+        assertThat(body).contains("value=\"Ada Form\"");
+    }
+
+    @Test
     void changePasswordRequiresCsrf() throws Exception {
         mockMvc.perform(post("/account/password")
                         .with(SecurityMockMvcRequestPostProcessors.user("noone@example.com"))

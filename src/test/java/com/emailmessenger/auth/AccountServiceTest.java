@@ -5,6 +5,8 @@ import com.emailmessenger.billing.StripePortalGateway;
 import com.emailmessenger.domain.EmailVerificationToken;
 import com.emailmessenger.domain.PasswordResetToken;
 import com.emailmessenger.domain.User;
+import com.emailmessenger.domain.ApiToken;
+import com.emailmessenger.repository.ApiTokenRepository;
 import com.emailmessenger.repository.EmailVerificationTokenRepository;
 import com.emailmessenger.repository.PasswordResetTokenRepository;
 import com.emailmessenger.repository.UserRepository;
@@ -38,6 +40,8 @@ class AccountServiceTest {
     @Autowired PasswordResetTokenRepository passwordResetTokens;
     @Autowired EmailVerificationTokenRepository emailVerificationTokens;
     @Autowired PasswordEncoder passwordEncoder;
+    @Autowired ApiTokenRepository apiTokens;
+    @Autowired SignedInDeviceService devices;
 
     @MockitoBean JavaMailSender mailSender;
     @MockitoBean StripeCheckoutGateway stripeCheckout;
@@ -55,6 +59,12 @@ class AccountServiceTest {
         return users.findByEmail(email).orElseThrow();
     }
 
+    private ApiToken token(User user, String deviceName) {
+        LocalDateTime now = LocalDateTime.now();
+        return apiTokens.save(new ApiToken(user, "hash-" + deviceName + "-" + user.getId(), deviceName,
+                now, now.plusDays(30)));
+    }
+
     // ---------- changePassword ----------
 
     @Test
@@ -62,7 +72,7 @@ class AccountServiceTest {
         User user = register("pw@example.com");
 
         AccountService.PasswordChangeOutcome outcome =
-                accountService.changePassword(user, "password1", "brand-new-12");
+                accountService.changePassword(user, "password1", "brand-new-12", null).outcome();
 
         assertThat(outcome).isEqualTo(AccountService.PasswordChangeOutcome.OK);
         User reloaded = users.findById(user.getId()).orElseThrow();
@@ -75,7 +85,7 @@ class AccountServiceTest {
         User user = register("wrong@example.com");
 
         AccountService.PasswordChangeOutcome outcome =
-                accountService.changePassword(user, "not-the-password", "brand-new-12");
+                accountService.changePassword(user, "not-the-password", "brand-new-12", null).outcome();
 
         assertThat(outcome).isEqualTo(AccountService.PasswordChangeOutcome.CURRENT_INCORRECT);
         User reloaded = users.findById(user.getId()).orElseThrow();
@@ -87,7 +97,7 @@ class AccountServiceTest {
         User user = register("short@example.com");
 
         AccountService.PasswordChangeOutcome outcome =
-                accountService.changePassword(user, "password1", "short");
+                accountService.changePassword(user, "password1", "short", null).outcome();
 
         assertThat(outcome).isEqualTo(AccountService.PasswordChangeOutcome.NEW_TOO_SHORT);
         User reloaded = users.findById(user.getId()).orElseThrow();
@@ -104,10 +114,92 @@ class AccountServiceTest {
                 user, "hash-ev-" + user.getId(),
                 LocalDateTime.now().plusHours(24)));
 
-        accountService.changePassword(user, "password1", "brand-new-12");
+        accountService.changePassword(user, "password1", "brand-new-12", null);
 
         assertThat(passwordResetTokens.findById(pr.getId()).orElseThrow().getUsedAt()).isNotNull();
         assertThat(emailVerificationTokens.findById(ev.getId()).orElseThrow().getUsedAt()).isNotNull();
+    }
+
+    @Test
+    void changePasswordOverBcryptsLimitRejects() {
+        User user = register("long@example.com");
+
+        AccountService.PasswordChangeOutcome outcome =
+                accountService.changePassword(user, "password1", "é".repeat(37), null).outcome();
+
+        assertThat(outcome).isEqualTo(AccountService.PasswordChangeOutcome.NEW_TOO_LONG);
+        assertThat(accountService.changePassword(user, "password1", "a".repeat(72), null).outcome())
+                .isEqualTo(AccountService.PasswordChangeOutcome.OK);
+    }
+
+    @Test
+    void changePasswordSignsOutAppsExceptTheKeptOne() {
+        User user = register("apps@example.com");
+        ApiToken phone = token(user, "Phone");
+        token(user, "Tablet");
+        User other = register("other@example.com");
+        ApiToken othersPhone = token(other, "Phone");
+
+        AccountService.PasswordChange change =
+                accountService.changePassword(user, "password1", "brand-new-12", phone.getId());
+
+        assertThat(change.revokedDevices()).isEqualTo(1);
+        assertThat(devices.list(user.getId(), null)).extracting(SignedInDevice::id).containsExactly(phone.getId());
+        assertThat(devices.list(other.getId(), null)).extracting(SignedInDevice::id)
+                .containsExactly(othersPhone.getId());
+    }
+
+    @Test
+    void changePasswordOnTheWebsiteSignsOutEveryApp() {
+        User user = register("web@example.com");
+        token(user, "Phone");
+
+        assertThat(accountService.changePassword(user, "password1", "brand-new-12", null).revokedDevices())
+                .isEqualTo(1);
+        assertThat(devices.list(user.getId(), null)).isEmpty();
+    }
+
+    @Test
+    void failedPasswordChangeKeepsApps() {
+        User user = register("keep@example.com");
+        token(user, "Phone");
+
+        accountService.changePassword(user, "wrong-password", "brand-new-12", null);
+
+        assertThat(devices.list(user.getId(), null)).hasSize(1);
+    }
+
+    // ---------- changeDisplayName ----------
+
+    @Test
+    void changeDisplayNameTrimsAndSaves() {
+        User user = register("name@example.com");
+
+        assertThat(accountService.changeDisplayName(user, "  Ada King  "))
+                .isEqualTo(AccountService.DisplayNameOutcome.OK);
+
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isEqualTo("Ada King");
+    }
+
+    @Test
+    void blankDisplayNameClearsIt() {
+        User user = register("blank@example.com");
+
+        assertThat(accountService.changeDisplayName(user, "   ")).isEqualTo(AccountService.DisplayNameOutcome.OK);
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isNull();
+        accountService.changeDisplayName(user, null);
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isNull();
+    }
+
+    @Test
+    void displayNameOverTheLimitIsRejected() {
+        User user = register("longname@example.com");
+
+        assertThat(accountService.changeDisplayName(user, "x".repeat(101)))
+                .isEqualTo(AccountService.DisplayNameOutcome.TOO_LONG);
+        assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isEqualTo("Test");
+        assertThat(accountService.changeDisplayName(user, "x".repeat(100)))
+                .isEqualTo(AccountService.DisplayNameOutcome.OK);
     }
 
     // ---------- changeEmail ----------

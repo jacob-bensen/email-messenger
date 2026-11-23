@@ -30,10 +30,11 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** docs/API.md §5.15–5.18. */
+/** docs/API.md §5.15–5.20. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -167,6 +168,110 @@ class ApiAccountIntegrationTest {
         authed(get("/api/v1/me"), bobToken).andExpect(status().isOk());
         authed(post("/api/v1/account/devices/sign-out-others"), token)
                 .andExpect(jsonPath("$.revoked").value(0));
+    }
+
+    @Test
+    void profileUpdateTrimsAndReturnsTheUser() throws Exception {
+        authed(put("/api/v1/account/profile").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"  Ada King \"}"), token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName").value("Ada King"))
+                .andExpect(jsonPath("$.email").value("ada@example.com"))
+                .andExpect(jsonPath("$.plan").value("free"));
+
+        authed(get("/api/v1/me"), token).andExpect(jsonPath("$.displayName").value("Ada King"));
+    }
+
+    @Test
+    void blankOrNullDisplayNameClearsIt() throws Exception {
+        authed(put("/api/v1/account/profile").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"   \"}"), token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName").value(nullValue()));
+        authed(put("/api/v1/account/profile").contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"), token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName").value(nullValue()));
+    }
+
+    @Test
+    void tooLongDisplayNameIsAValidationError() throws Exception {
+        authed(put("/api/v1/account/profile").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"" + "x".repeat(101) + "\"}"), token)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("validation_failed"));
+
+        authed(get("/api/v1/me"), token).andExpect(jsonPath("$.displayName").value("Ada Lovelace"));
+    }
+
+    @Test
+    void profileRequiresABody() throws Exception {
+        authed(put("/api/v1/account/profile"), token)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("validation_failed"));
+    }
+
+    @Test
+    void passwordChangeSignsOutOtherDevicesAndKeepsTheCaller() throws Exception {
+        String ipad = login("ada@example.com", "iPad");
+
+        authed(post("/api/v1/account/password").contentType(MediaType.APPLICATION_JSON)
+                        .content(passwordBody("correct-horse", "battery-staple")), token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.revokedDevices").value(1));
+
+        authed(get("/api/v1/me"), ipad).andExpect(status().isUnauthorized());
+        authed(get("/api/v1/me"), token).andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new ApiDtos.LoginRequest("ada@example.com", "battery-staple", "Pixel 9"))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void wrongCurrentPasswordIs422NotASignOut() throws Exception {
+        String ipad = login("ada@example.com", "iPad");
+
+        authed(post("/api/v1/account/password").contentType(MediaType.APPLICATION_JSON)
+                        .content(passwordBody("wrong-horse", "battery-staple")), token)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("current_password_incorrect"));
+
+        authed(get("/api/v1/me"), ipad).andExpect(status().isOk());
+        authed(get("/api/v1/me"), token).andExpect(status().isOk());
+    }
+
+    @Test
+    void newPasswordLengthIsChecked() throws Exception {
+        authed(post("/api/v1/account/password").contentType(MediaType.APPLICATION_JSON)
+                        .content(passwordBody("correct-horse", "short")), token)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("password_too_short"));
+        authed(post("/api/v1/account/password").contentType(MediaType.APPLICATION_JSON)
+                        .content(passwordBody("correct-horse", "x".repeat(73))), token)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("password_too_long"));
+    }
+
+    @Test
+    void passwordChangeNeedsBothFields() throws Exception {
+        authed(post("/api/v1/account/password").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newPassword\":\"battery-staple\"}"), token)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("validation_failed"));
+    }
+
+    @Test
+    void accountEditsRequireAToken() throws Exception {
+        mockMvc.perform(put("/api/v1/account/profile").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/account/password").contentType(MediaType.APPLICATION_JSON)
+                        .content(passwordBody("correct-horse", "battery-staple")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private String passwordBody(String current, String next) throws Exception {
+        return objectMapper.writeValueAsString(new ApiDtos.ChangePasswordRequest(current, next));
     }
 
     private long deviceId(String deviceName) {

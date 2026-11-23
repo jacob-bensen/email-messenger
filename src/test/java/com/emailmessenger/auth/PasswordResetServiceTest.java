@@ -2,8 +2,10 @@ package com.emailmessenger.auth;
 
 import com.emailmessenger.billing.StripeCheckoutGateway;
 import com.emailmessenger.billing.StripePortalGateway;
+import com.emailmessenger.domain.ApiToken;
 import com.emailmessenger.domain.PasswordResetToken;
 import com.emailmessenger.domain.User;
+import com.emailmessenger.repository.ApiTokenRepository;
 import com.emailmessenger.repository.PasswordResetTokenRepository;
 import com.emailmessenger.repository.UserRepository;
 import com.emailmessenger.service.ReplyService;
@@ -38,6 +40,8 @@ class PasswordResetServiceTest {
     @Autowired UserRepository users;
     @Autowired PasswordResetTokenRepository tokens;
     @Autowired PasswordEncoder passwordEncoder;
+    @Autowired ApiTokenRepository apiTokens;
+    @Autowired SignedInDeviceService devices;
 
     @MockitoBean JavaMailSender mailSender;
     @MockitoBean StripeCheckoutGateway stripeCheckout;
@@ -168,6 +172,18 @@ class PasswordResetServiceTest {
 
         PasswordResetToken row = tokens.findAll().get(0);
         assertThat(row.getUsedAt()).isNotNull();
+    }
+
+    @Test
+    void consumeTokenSignsOutEverySignedInApp() throws Exception {
+        User user = newUser("apps-reset@example.com");
+        LocalDateTime now = LocalDateTime.now();
+        apiTokens.save(new ApiToken(user, "hash-reset-phone", "Phone", now, now.plusDays(30)));
+        passwordResetService.requestReset("apps-reset@example.com");
+
+        assertThat(passwordResetService.consumeToken(extractTokenFromCapturedEmail(), "brand-new-pw")).isPresent();
+
+        assertThat(devices.list(user.getId(), null)).isEmpty();
     }
 
     @Test

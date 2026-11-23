@@ -10,15 +10,16 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-20)
+## 1. Current state (2026-11-23)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline, mark-read, sending
 into a conversation, starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove), and the account: plan summary,
-signed-in devices, sign a device out (§5). Gmail OAuth connect,
-signatures and mail preferences are website-only. The website's own machine endpoints (§3) still use the
+signed-in devices, sign a device out, edit the display name, change the
+password (§5). Email-address changes, Gmail OAuth connect, signatures and
+mail preferences are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
 ## 2. Authentication
@@ -189,6 +190,9 @@ the user, and may change. Clients branch on `code` only.
 | 405 | `method_not_allowed` | Wrong HTTP method on an existing endpoint |
 | 409 | `no_recipients` | Send: the conversation has nobody but you in it (§5.8) |
 | 409 | `send_in_progress` | Send: an earlier request with the same `Idempotency-Key` has not finished, or its outcome is unknown (§5.8.1) |
+| 422 | `current_password_incorrect` | Change password: `currentPassword` is wrong, or the account has no password (Google-only) (§5.20) |
+| 422 | `password_too_short` | Change password: `newPassword` under 8 characters (§5.20) |
+| 422 | `password_too_long` | Change password: `newPassword` over 72 bytes in UTF-8 (§5.20) |
 | 422 | `idempotency_key_reused` | Send: the `Idempotency-Key` was already used for a different message (§5.8.1) |
 | 422 | `mailbox_connect_failed` | Connect mailbox: IMAP login or connection failed (§5.12) |
 | 429 | `too_many_attempts` | Login: throttle lock (§2) |
@@ -720,6 +724,51 @@ making this request. Request body: none.
 
 Errors: `401 unauthorized`.
 
+### 5.19 PUT /api/v1/account/profile
+Bearer token required. Replaces the editable profile fields; today that is
+only the display name. Same rule as the website's `/account` "Display
+name" form (`AccountService.changeDisplayName`).
+
+Request:
+```json
+{ "displayName": "Ada King" }
+```
+- `displayName` (string or `null`): surrounding whitespace is trimmed;
+  blank, `null` or a missing field clears the name. At most 100
+  characters after trimming.
+
+`200`: the user, same object as §5.4, with the new `displayName`.
+
+Errors: `400 validation_failed` (no/malformed body, or name over 100
+characters); `401 unauthorized`.
+
+### 5.20 POST /api/v1/account/password
+Bearer token required. Changes the password (website: `/account`
+"Password"). On success every **other** signed-in device is signed out
+(its token revoked, §5.16); the token making this request stays valid.
+The website's form signs out every app, since it has no token of its
+own, and so does a completed password reset.
+
+Request:
+```json
+{ "currentPassword": "correct-horse", "newPassword": "battery-staple" }
+```
+- `currentPassword` (string, required).
+- `newPassword` (string, required): 8 characters to 72 bytes (UTF-8).
+
+`200`:
+```json
+{ "revokedDevices": 2 }
+```
+- `revokedDevices` (integer): other devices signed out, `0` when none.
+
+Errors: `400 validation_failed` (body missing or malformed, or a field
+missing); `422 current_password_incorrect` (deliberately not `401`: the
+token is still valid and the client must not sign out);
+`422 password_too_short`; `422 password_too_long`; `401 unauthorized`.
+The length checks run before the current password is checked. Nothing
+changes on any error.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
@@ -728,5 +777,6 @@ Intended resources, in build order (see the mobile repo's
    full refetch.
 2. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
-3. Account changes from the app: display name, password, email (website
-   only today).
+3. Email-address change from the app (website only today; it needs a
+   verification email and the client to re-read `me`). Display name and
+   password landed 2026-11-23 (§5.19, §5.20).

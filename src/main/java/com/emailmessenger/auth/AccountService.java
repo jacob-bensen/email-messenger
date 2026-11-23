@@ -10,6 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDateTime;
 
@@ -30,13 +31,21 @@ import java.time.LocalDateTime;
 @Service
 public class AccountService {
 
-    public enum PasswordChangeOutcome { OK, CURRENT_INCORRECT, NEW_TOO_SHORT }
+    public enum PasswordChangeOutcome { OK, CURRENT_INCORRECT, NEW_TOO_SHORT, NEW_TOO_LONG }
+
+    public enum DisplayNameOutcome { OK, TOO_LONG }
+
+    /** Result of {@link #changePassword}; {@code revokedDevices} is how many apps were signed out. */
+    public record PasswordChange(PasswordChangeOutcome outcome, int revokedDevices) {}
 
     public enum EmailChangeOutcome {
         OK, CURRENT_INCORRECT, EMAIL_INVALID, EMAIL_TAKEN, NO_CHANGE
     }
 
     static final int MIN_PASSWORD_LENGTH = 8;
+    // BCrypt only reads the first 72 bytes, and Spring's encoder rejects longer input.
+    static final int MAX_PASSWORD_BYTES = 72;
+    public static final int MAX_DISPLAY_NAME_LENGTH = 100;
     static final int MAX_EMAIL_LENGTH = 254;
 
     private final UserRepository users;
@@ -46,6 +55,7 @@ public class AccountService {
     private final EmailVerificationService emailVerificationService;
     private final AuthEventService authEvents;
     private final SubscriptionRepository subscriptions;
+    private final SignedInDeviceService devices;
     private final Clock clock;
 
     AccountService(UserRepository users,
@@ -55,6 +65,7 @@ public class AccountService {
                    EmailVerificationService emailVerificationService,
                    AuthEventService authEvents,
                    SubscriptionRepository subscriptions,
+                   SignedInDeviceService devices,
                    Clock clock) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
@@ -63,6 +74,7 @@ public class AccountService {
         this.emailVerificationService = emailVerificationService;
         this.authEvents = authEvents;
         this.subscriptions = subscriptions;
+        this.devices = devices;
         this.clock = clock;
     }
 
@@ -72,25 +84,47 @@ public class AccountService {
         return AccountBillingSummary.from(subscriptions.findByUser(user).orElse(null));
     }
 
+    /** Trimmed; blank clears the name. Shared by /account and {@code PUT /api/v1/account/profile}. */
     @Transactional
-    public PasswordChangeOutcome changePassword(User user,
-                                                String currentPassword,
-                                                String newPassword) {
+    public DisplayNameOutcome changeDisplayName(User user, String displayName) {
+        String trimmed = displayName == null ? "" : displayName.strip();
+        if (trimmed.length() > MAX_DISPLAY_NAME_LENGTH) {
+            return DisplayNameOutcome.TOO_LONG;
+        }
+        user.setDisplayName(trimmed.isEmpty() ? null : trimmed);
+        users.save(user);
+        return DisplayNameOutcome.OK;
+    }
+
+    /**
+     * Also signs out every signed-in app except {@code keepTokenId} (the API
+     * caller's own token; null on the website), so a leaked token does not
+     * outlive the password it was issued for.
+     */
+    @Transactional
+    public PasswordChange changePassword(User user,
+                                         String currentPassword,
+                                         String newPassword,
+                                         Long keepTokenId) {
         if (newPassword == null || newPassword.length() < MIN_PASSWORD_LENGTH) {
-            return PasswordChangeOutcome.NEW_TOO_SHORT;
+            return new PasswordChange(PasswordChangeOutcome.NEW_TOO_SHORT, 0);
+        }
+        if (newPassword.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES) {
+            return new PasswordChange(PasswordChangeOutcome.NEW_TOO_LONG, 0);
         }
         if (currentPassword == null
                 || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            return PasswordChangeOutcome.CURRENT_INCORRECT;
+            return new PasswordChange(PasswordChangeOutcome.CURRENT_INCORRECT, 0);
         }
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         users.save(user);
         LocalDateTime now = LocalDateTime.now(clock);
         passwordResetTokens.markAllUsedFor(user, now);
         emailVerificationTokens.markAllUsedFor(user, now);
+        int revoked = devices.revokeAllExcept(user.getId(), keepTokenId);
         authEvents.record(user, user.getEmail(), AuthEventType.PASSWORD_CHANGED,
                 ClientIp.fromCurrentRequest());
-        return PasswordChangeOutcome.OK;
+        return new PasswordChange(PasswordChangeOutcome.OK, revoked);
     }
 
     @Transactional

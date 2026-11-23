@@ -67,6 +67,7 @@ public class PasswordResetService {
     private final JavaMailSender mailSender;
     private final SiteProperties site;
     private final AuthEventService authEvents;
+    private final SignedInDeviceService devices;
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
@@ -79,7 +80,9 @@ public class PasswordResetService {
                          JavaMailSender mailSender,
                          SiteProperties site,
                          AuthEventService authEvents,
+                         SignedInDeviceService devices,
                          Clock clock) {
+        this.devices = devices;
         this.users = users;
         this.tokens = tokens;
         this.passwordEncoder = passwordEncoder;
@@ -193,6 +196,7 @@ public class PasswordResetService {
         user.setPasswordSet(true);
         users.save(user);
         tokens.markAllUsedFor(user, now);
+        devices.revokeAllExcept(user.getId(), null);
         authEvents.record(user, user.getEmail(), AuthEventType.PASSWORD_RESET_COMPLETED,
                 ClientIp.fromCurrentRequest());
         return Optional.of(user);

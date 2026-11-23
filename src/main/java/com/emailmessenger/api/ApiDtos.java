@@ -20,6 +20,7 @@ import com.emailmessenger.web.ConversationListService;
 import com.emailmessenger.web.MailboxProvider;
 import com.emailmessenger.web.MailboxView;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.springframework.data.domain.Page;
 
@@ -211,6 +212,12 @@ final class ApiDtos {
     }
 
     record SignOutOthersResponse(int revoked) {}
+
+    record ProfileRequest(String displayName) {}
+
+    record ChangePasswordRequest(@NotNull String currentPassword, @NotNull String newPassword) {}
+
+    record ChangePasswordResponse(int revokedDevices) {}
 
     private static Instant utc(LocalDateTime value) {
         return value == null ? null : value.toInstant(ZoneOffset.UTC);

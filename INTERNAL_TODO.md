@@ -10,9 +10,10 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **API sends carry no attachments** (`docs/API.md` §5.8). Add
       multipart attachments (blocked on attachment storage). Sends are
       idempotent since 2026-11-20 (§5.8.1).
-- [ ] **Account edits are website-only:** display name, password and
-      email changes have no API (`docs/API.md` §6 item 3). Display name
-      has no edit path on the website either.
+- [ ] **Email change is website-only** (`docs/API.md` §6 item 3).
+      Display name and password have an API since 2026-11-23 (§5.19–5.20).
+      `Me` has no "password set" flag, so the app cannot tell a Google-only
+      account that it has no password to change.
 - [ ] **Mailbox settings are website-only:** Gmail OAuth connect /
       reconnect, signatures, sync frequency and the default sending mailbox
       have no API. A Google mailbox whose token expired can only be
@@ -92,8 +93,14 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] Signing a device out (website or API) writes no `auth_events` row;
       the "Recent account activity" panel does not show it. Needs a new
       `AuthEventType` (check the DB constraint on `event_type` first).
-- [ ] Changing or resetting the password does not revoke API tokens;
-      disabling the user does. Decide whether a password change should.
+- [ ] Registration (`RegistrationForm`, max 100 chars) and password
+      reset (`PasswordResetService.consumeToken`, no max) accept passwords
+      over BCrypt's 72-byte limit, which Spring's encoder rejects with an
+      exception (a 500). `AccountService.changePassword` checks it
+      (`password_too_long`); give the other two paths the same rule.
+- [ ] `POST /api/v1/account/password` has no attempt throttle on a wrong
+      `currentPassword` (a stolen token could guess the password). Reuse
+      `LoginThrottleService` keyed by user.
 - [ ] Google-only accounts cannot sign in on mobile (no password). Needs a
       native Google sign-in → token exchange design.
 

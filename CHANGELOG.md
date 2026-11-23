@@ -3,6 +3,32 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-23 — Account edits over the API: display name and password
+
+- Chosen from `INTERNAL_TODO.md` §1 (top unblocked contract item; the
+  attachment item is blocked on storage): account edits were website-only,
+  and the display name had no edit path anywhere.
+- Contract first: `docs/API.md` §5.19 `PUT /api/v1/account/profile`
+  (`{displayName}` → the §5.4 user; trimmed, blank/null clears, ≤ 100
+  chars else `400 validation_failed`) and §5.20
+  `POST /api/v1/account/password` (`{currentPassword, newPassword}` →
+  `{revokedDevices}`). New codes `422 current_password_incorrect` (not
+  401, so clients don't sign out), `422 password_too_short`,
+  `422 password_too_long`. §6 now lists only email change.
+- Shared service, no forked logic: `AccountService.changeDisplayName`
+  (new) and `changePassword` back both `/account` and the API.
+  `changePassword` now rejects new passwords over BCrypt's 72 bytes
+  (`NEW_TOO_LONG`; previously an exception) and **signs out every API
+  token except the caller's** (website: all of them) — resolves the
+  "password change does not revoke tokens" item in §3. A completed
+  password reset also revokes every token.
+- Website: `/account` Profile section has a display-name form
+  (`POST /account/display-name`, flash `displayNameOutcome`); the password
+  success message mentions signed-out apps; `NEW_TOO_LONG` message.
+- Tests: `ApiAccountIntegrationTest` +9, `AccountServiceTest` +7,
+  `AccountControllerTest` +3, `PasswordResetServiceTest` +1. Full
+  `mvn -B verify`: 894 tests, 0 failures, 1 skipped (Docker test).
+
 ## 2026-11-20 — Idempotent API sends (`Idempotency-Key`)
 
 - Chosen from `INTERNAL_TODO.md` §1 (top contract item): a mobile retry
