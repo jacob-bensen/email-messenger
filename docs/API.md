@@ -16,10 +16,11 @@ section is promoted to Implemented.
 paged conversation list, one conversation's timeline, mark-read, sending
 into a conversation, starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
-with an IMAP password, sync now, remove), and the account: plan summary,
+with an IMAP password, sync now, remove, signature, sync frequency and
+default sending mailbox), and the account: plan summary,
 signed-in devices, sign a device out, edit the display name, change the
-password and change the email address (§5). Gmail OAuth connect,
-signatures and mail preferences are website-only. The website's own machine endpoints (§3) still use the
+password and change the email address (§5). Gmail OAuth connect and
+reconnect are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
 ## 2. Authentication
@@ -185,7 +186,7 @@ the user, and may change. Clients branch on `code` only.
 | 401 | `unauthorized` | No/invalid/expired/revoked bearer token, or user disabled |
 | 401 | `invalid_credentials` | Login: wrong email or password (same for unknown email) |
 | 403 | `forbidden` | Authenticated but not allowed |
-| 403 | `plan_limit_reached` | Connect mailbox: already at the plan's mailbox cap (§5.12) |
+| 403 | `plan_limit_reached` | Connect mailbox: already at the plan's mailbox cap (§5.12); mail preferences: sync frequency faster than the plan allows (§5.22) |
 | 404 | `not_found` | Unknown `/api` path (after authentication) |
 | 405 | `method_not_allowed` | Wrong HTTP method on an existing endpoint |
 | 409 | `no_recipients` | Send: the conversation has nobody but you in it (§5.8) |
@@ -548,10 +549,16 @@ plan's mailbox cap.
       "lastSyncedAt": "2026-11-19T08:15:00Z",
       "lastSyncError": null,
       "errorHint": null,
-      "pollingSuspended": false
+      "pollingSuspended": false,
+      "signature": "Ada Lovelace\nAnalytical Engines Ltd"
     }
   ],
-  "limit": 3
+  "limit": 3,
+  "preferences": {
+    "syncFrequencyMinutes": null,
+    "minSyncFrequencyMinutes": 15,
+    "syncFrequencyChoices": [5, 15, 30, 60]
+  }
 }
 ```
 Mailbox object (also returned by §5.12 and §5.13):
@@ -571,9 +578,25 @@ Mailbox object (also returned by §5.12 and §5.13):
   `null` exactly when `lastSyncError` is `null`.
 - `pollingSuspended` (boolean): automatic polling stopped after repeated
   failures; a successful Sync now (§5.13) or reconnect resumes it.
+- `signature` (string or `null`): plain-text signature appended to mail
+  sent from this mailbox; `null` when none. Set with §5.23.
 
 `limit` (integer or `null` = unlimited): the effective plan's mailbox cap
-(same as `GET /me` `limits.mailboxes`). Errors: `401 unauthorized`.
+(same as `GET /me` `limits.mailboxes`).
+
+`preferences` (object): the user's mail preferences, shared by all
+mailboxes (website: `/mailboxes` "Preferences"). Set with §5.22.
+- `syncFrequencyMinutes` (integer or `null`): how often mailboxes are
+  checked; `null` = the plan default (`minSyncFrequencyMinutes`).
+- `minSyncFrequencyMinutes` (integer): the plan's fastest cadence (Free
+  15, paid 5). A saved value below it (left over from a downgrade) is
+  applied as this floor.
+- `syncFrequencyChoices` (integer array, ascending): the values §5.22
+  accepts besides `null`, before the plan floor. Clients show choices
+  below `minSyncFrequencyMinutes` as unavailable ("paid plans"), never
+  hard-code the list.
+
+Errors: `401 unauthorized`.
 
 ### 5.11 GET /api/v1/mailboxes/providers
 Bearer token required. Presets for the connect form, in display order (the
@@ -813,6 +836,49 @@ valid); `422 email_invalid`; `422 email_unchanged`; `409 email_taken`;
 `401 unauthorized`. The current password is checked **first**, so
 `email_taken` is only revealed to someone who knows it. Nothing changes on
 any error.
+
+### 5.22 PUT /api/v1/mailboxes/preferences
+Bearer token required. Replaces the mail preferences (website:
+`/mailboxes` "Preferences", the same `MailAccountService.updateMailPreferences`
+and rules). Both fields are replaced: an omitted field counts as `null`.
+
+Request:
+```json
+{ "syncFrequencyMinutes": 30, "defaultMailboxId": 3 }
+```
+- `syncFrequencyMinutes` (integer or `null`): one of
+  `preferences.syncFrequencyChoices` (§5.10) and not below
+  `minSyncFrequencyMinutes`; `null` = plan default. A change makes every
+  mailbox due for a poll now so the new cadence applies at once.
+- `defaultMailboxId` (integer or `null`): the default sending mailbox
+  (§5.10 `isDefault`); `null` clears it.
+
+`200`: the full mailbox list, same object as §5.10.
+
+Errors: `400 validation_failed` (body malformed, or the frequency is not
+one of the choices); `403 plan_limit_reached` (frequency faster than the
+plan allows; `message` says so; upgrades happen on the website);
+`404 not_found` (`defaultMailboxId` is not one of the user's mailboxes);
+`401 unauthorized`. The frequency is checked first. Nothing changes on
+any error.
+
+### 5.23 PUT /api/v1/mailboxes/{id}/signature
+Bearer token required. Sets one mailbox's signature (website:
+`/mailboxes` "Signature", `MailAccountService.updateSignature`).
+
+Request:
+```json
+{ "signature": "Ada Lovelace\nAnalytical Engines Ltd" }
+```
+- `signature` (string or `null`): at most 2000 characters before trimming.
+  Leading/trailing whitespace is trimmed; `null`, empty or blank clears
+  it.
+
+`200`: the Mailbox object (§5.10) with the new `signature`.
+
+Errors: `400 validation_failed` (body malformed, or over 2000
+characters); `404 not_found` (not one of the user's mailboxes);
+`401 unauthorized`. Nothing changes on any error.
 
 ## 6. Planned (not implemented)
 

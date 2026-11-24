@@ -39,10 +39,11 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** docs/API.md §5.10–5.14. IMAP is mocked at {@link ImapClient}; persistence and polling are real. */
+/** docs/API.md §5.10–5.14, §5.22–5.23. IMAP is mocked at {@link ImapClient}; persistence and polling are real. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -74,7 +75,11 @@ class ApiMailboxIntegrationTest {
         authed(get("/api/v1/mailboxes"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items", hasSize(0)))
-                .andExpect(jsonPath("$.limit").value(3));
+                .andExpect(jsonPath("$.limit").value(3))
+                .andExpect(jsonPath("$.preferences.syncFrequencyMinutes").value(nullValue()))
+                .andExpect(jsonPath("$.preferences.minSyncFrequencyMinutes").value(15))
+                .andExpect(jsonPath("$.preferences.syncFrequencyChoices", hasSize(4)))
+                .andExpect(jsonPath("$.preferences.syncFrequencyChoices[0]").value(5));
     }
 
     @Test
@@ -256,11 +261,97 @@ class ApiMailboxIntegrationTest {
     }
 
     @Test
+    void preferencesSetFrequencyAndDefaultAndAnswerWithTheList() throws Exception {
+        MailAccount account = connected();
+
+        putJson("/api/v1/mailboxes/preferences", Map.of("syncFrequencyMinutes", 30, "defaultMailboxId", account.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.preferences.syncFrequencyMinutes").value(30))
+                .andExpect(jsonPath("$.items[0].isDefault").value(true));
+        em.flush();
+        em.clear();
+        User reloaded = users.findById(owner.getId()).orElseThrow();
+        assertThat(reloaded.getSyncFrequencyMinutes()).isEqualTo(30);
+        assertThat(reloaded.getDefaultMailAccount().getId()).isEqualTo(account.getId());
+
+        // PUT replaces: omitted fields clear both settings.
+        putJson("/api/v1/mailboxes/preferences", Map.of())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.preferences.syncFrequencyMinutes").value(nullValue()))
+                .andExpect(jsonPath("$.items[0].isDefault").value(false));
+    }
+
+    @Test
+    void preferencesRefuseFrequenciesTheRulesDoNotAllow() throws Exception {
+        putJson("/api/v1/mailboxes/preferences", Map.of("syncFrequencyMinutes", 5))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("plan_limit_reached"))
+                .andExpect(jsonPath("$.error.message", containsString("15 minutes")));
+        putJson("/api/v1/mailboxes/preferences", Map.of("syncFrequencyMinutes", 7))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("validation_failed"));
+        authed(put("/api/v1/mailboxes/preferences").contentType(MediaType.APPLICATION_JSON).content("nope"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("validation_failed"));
+        em.flush();
+        em.clear();
+        assertThat(users.findById(owner.getId()).orElseThrow().getSyncFrequencyMinutes()).isNull();
+    }
+
+    @Test
+    void preferencesWithAForeignDefaultMailboxAre404() throws Exception {
+        User other = userService.register("bob@example.com", "correct-horse", "Bob");
+        MailAccount foreign = mailAccounts.save(new MailAccount(other, "imap.example.com", 993, true,
+                "bob@example.com", "x"));
+
+        putJson("/api/v1/mailboxes/preferences", Map.of("defaultMailboxId", foreign.getId()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("not_found"));
+    }
+
+    @Test
+    void signatureIsSetTrimmedClearedAndListed() throws Exception {
+        MailAccount account = connected();
+        String path = "/api/v1/mailboxes/" + account.getId() + "/signature";
+
+        putJson(path, Map.of("signature", "  Ada Lovelace\nAnalytical Engines  "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(account.getId()))
+                .andExpect(jsonPath("$.signature").value("Ada Lovelace\nAnalytical Engines"));
+        authed(get("/api/v1/mailboxes"))
+                .andExpect(jsonPath("$.items[0].signature").value("Ada Lovelace\nAnalytical Engines"));
+
+        Map<String, Object> cleared = new HashMap<>();
+        cleared.put("signature", null);
+        putJson(path, cleared)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.signature").value(nullValue()));
+    }
+
+    @Test
+    void signatureOverTheLimitOrOnAForeignMailboxIsRefused() throws Exception {
+        MailAccount account = connected();
+        putJson("/api/v1/mailboxes/" + account.getId() + "/signature", Map.of("signature", "x".repeat(2001)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("validation_failed"))
+                .andExpect(jsonPath("$.error.message", containsString("2000")));
+
+        User other = userService.register("bob@example.com", "correct-horse", "Bob");
+        MailAccount foreign = mailAccounts.save(new MailAccount(other, "imap.example.com", 993, true,
+                "bob@example.com", "x"));
+        putJson("/api/v1/mailboxes/" + foreign.getId() + "/signature", Map.of("signature", "Hi"))
+                .andExpect(status().isNotFound());
+        assertThat(mailAccounts.findById(foreign.getId()).orElseThrow().getSignature()).isNull();
+    }
+
+    @Test
     void everyEndpointNeedsAToken() throws Exception {
         mockMvc.perform(get("/api/v1/mailboxes")).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/mailboxes/providers")).andExpect(status().isUnauthorized());
         mockMvc.perform(post("/api/v1/mailboxes/1/sync")).andExpect(status().isUnauthorized());
         mockMvc.perform(delete("/api/v1/mailboxes/1")).andExpect(status().isUnauthorized());
+        mockMvc.perform(put("/api/v1/mailboxes/preferences")).andExpect(status().isUnauthorized());
+        mockMvc.perform(put("/api/v1/mailboxes/1/signature")).andExpect(status().isUnauthorized());
     }
 
     private MailAccount connected() throws Exception {
@@ -268,6 +359,10 @@ class ApiMailboxIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return mailAccounts.findById(objectMapper.readTree(json).get("id").asLong()).orElseThrow();
+    }
+
+    private ResultActions putJson(String path, Map<String, ?> body) throws Exception {
+        return authed(put(path).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body)));
     }
 
     private ResultActions connect(Map<String, ?> body) throws Exception {

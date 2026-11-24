@@ -16,10 +16,10 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       such an account stays Google-only (and cannot sign in on mobile).
       Decide whether to allow a first password (verified email + Google
       re-auth) before building it.
-- [ ] **Mailbox settings are website-only:** Gmail OAuth connect /
-      reconnect, signatures, sync frequency and the default sending mailbox
-      have no API. A Google mailbox whose token expired can only be
-      reconnected on the website.
+- [ ] **Gmail OAuth connect / reconnect is website-only.** Signatures,
+      sync frequency and the default sending mailbox have an API since
+      2026-11-24 (§5.22–5.23). A Google mailbox whose token expired can
+      only be reconnected on the website (needs a mobile OAuth design).
 - [ ] **Stale branches.** Hundreds of unmerged `claude/gifted-carson-*`
       branches on origin. `master` now holds the consolidated work
       (2026-11-16); the others are superseded and can be deleted by the
@@ -58,7 +58,6 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       `verifyFlash` and `teamFlash` never render. Several flashes have no
       template reading them at all.
 - [ ] **Business rules in controllers** (beyond the send flow): sync
-      frequency / plan floor and signature length in `MailboxController`;
       the Gmail OAuth state machine in `GmailConnectController`; opt-out
       mutation in `DigestController`; password length in
       `PasswordResetController`; duplicated plan→checkout logic in

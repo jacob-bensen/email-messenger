@@ -40,19 +40,22 @@ public class MailAccountService {
     private final CredentialEncryptor encryptor;
     private final PlanLimitService planLimitService;
     private final EmailImportService importService;
+    private final MailPreferencesRules preferencesRules;
 
     MailAccountService(MailAccountRepository repository,
                        UserRepository userRepository,
                        ImapClient imapClient,
                        CredentialEncryptor encryptor,
                        PlanLimitService planLimitService,
-                       EmailImportService importService) {
+                       EmailImportService importService,
+                       MailPreferencesRules preferencesRules) {
         this.repository = repository;
         this.userRepository = userRepository;
         this.imapClient = imapClient;
         this.encryptor = encryptor;
         this.planLimitService = planLimitService;
         this.importService = importService;
+        this.preferencesRules = preferencesRules;
     }
 
     @Transactional(readOnly = true)
@@ -154,12 +157,15 @@ public class MailAccountService {
 
     /**
      * Saves the user's mail preferences. {@code syncFrequencyMinutes} null means
-     * plan default; the caller validates the value against the plan floor.
-     * {@code defaultAccountId} null clears the default sending account; a
-     * non-owned id 404s like the other per-mailbox endpoints.
+     * plan default. {@code defaultAccountId} null clears the default sending
+     * account; a non-owned id 404s like the other per-mailbox endpoints.
+     *
+     * @throws MailSettingsException  if the frequency is not offered or is below the plan floor
+     * @throws NoSuchElementException if the default account isn't one of the user's mailboxes
      */
     @Transactional
     public void updateMailPreferences(User user, Integer syncFrequencyMinutes, Long defaultAccountId) {
+        preferencesRules.checkSyncFrequency(user, syncFrequencyMinutes);
         MailAccount defaultAccount = defaultAccountId == null ? null
                 : repository.findByIdAndUser(defaultAccountId, user)
                         .orElseThrow(NoSuchElementException::new);
@@ -179,13 +185,19 @@ public class MailAccountService {
         }
     }
 
-    /** Sets (or clears, when blank) the plain-text signature for an owned mailbox. */
+    /**
+     * Sets (or clears, when blank) the plain-text signature for an owned mailbox.
+     *
+     * @throws MailSettingsException  if the signature is too long
+     * @throws NoSuchElementException if the id isn't one of the user's mailboxes
+     */
     @Transactional
-    public void updateSignature(User user, Long accountId, String signature) {
+    public MailAccount updateSignature(User user, Long accountId, String signature) {
+        MailPreferencesRules.checkSignature(signature);
         MailAccount account = repository.findByIdAndUser(accountId, user)
                 .orElseThrow(NoSuchElementException::new);
         account.setSignature(signature == null || signature.isBlank() ? null : signature.strip());
-        repository.save(account);
+        return repository.save(account);
     }
 
     private void runInitialSync(MailAccount account, ImapCredentials credentials) {

@@ -3,6 +3,33 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-24 — Mailbox settings over the API (signature, sync frequency, default sender)
+
+- Chosen from `INTERNAL_TODO.md` §1 "Mailbox settings are website-only"
+  (the top items above it are blocked on attachment storage or a product
+  decision). Needs both repos; also clears the "rules in
+  `MailboxController`" part of §2.
+- Contract first: `docs/API.md` §5.10 Mailbox gains `signature`; the list
+  gains `preferences` (`syncFrequencyMinutes`, `minSyncFrequencyMinutes`,
+  `syncFrequencyChoices`). New §5.22 `PUT /api/v1/mailboxes/preferences`
+  (replace both; answers with the §5.10 list) and §5.23
+  `PUT /api/v1/mailboxes/{id}/signature`. `403 plan_limit_reached` now also
+  covers a frequency below the plan floor.
+- New `email.MailPreferencesRules` (choices, plan floor, 2000-char
+  signature cap) and `MailSettingsException`; `MailAccountService`
+  enforces them inside `updateMailPreferences` / `updateSignature`, so the
+  website and the API share one rule set. `MailboxController` lost its own
+  checks (it still parses form strings) and shows the exception's message
+  as the flash, unchanged for users. `updateSignature` now returns the
+  saved mailbox. No migration.
+- Tests: `ApiMailboxIntegrationTest` (+5: preferences round trip and
+  replace semantics, floor / choice / malformed body, foreign default 404,
+  signature set/trim/clear, over-limit and foreign signature),
+  `MailAccountServiceTest` (+2: rules enforced in the service),
+  `MailboxControllerTest` (rejections now come from the service).
+  `./mvnw -B verify`: 907 run, 0 failures, 0 errors, 1 skipped (the
+  Docker-only Testcontainers test).
+
 ## 2026-11-24 — `passwordSet` on the user; Google-only accounts get a clear error
 
 - Chosen from `INTERNAL_TODO.md` §1 (top unblocked contract item; the

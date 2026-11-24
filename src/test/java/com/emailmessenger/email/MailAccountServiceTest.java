@@ -263,6 +263,37 @@ class MailAccountServiceTest {
                 .isInstanceOf(java.util.NoSuchElementException.class);
     }
 
+    @Test
+    void updateMailPreferencesRejectsAFrequencyOutsideTheChoicesOrBelowThePlanFloor() {
+        // No subscription → Free plan → 15-minute floor.
+        MailSettingsException notOffered = catchThrowableOfType(MailSettingsException.class,
+                () -> mailAccountService.updateMailPreferences(owner, 7, null));
+        assertThat(notOffered.reason()).isEqualTo(MailSettingsException.Reason.INVALID_SYNC_FREQUENCY);
+
+        MailSettingsException tooFast = catchThrowableOfType(MailSettingsException.class,
+                () -> mailAccountService.updateMailPreferences(owner, 5, null));
+        assertThat(tooFast.reason()).isEqualTo(MailSettingsException.Reason.SYNC_FREQUENCY_BELOW_PLAN);
+        assertThat(tooFast.getMessage()).contains("every 15 minutes");
+
+        assertThat(userRepository.findById(owner.getId()).orElseThrow().getSyncFrequencyMinutes()).isNull();
+    }
+
+    @Test
+    void updateSignatureRejectsOverTwoThousandCharactersAndKeepsTheOld() {
+        when(imapClient.fetchRecentInbox(any(ImapCredentials.class), anyInt())).thenReturn(List.of());
+        MailAccount saved = mailAccountService.connect(owner, "imap.example.com", 993, true,
+                "user@example.com", "pw");
+        mailAccountService.updateSignature(owner, saved.getId(), "Best");
+
+        MailSettingsException e = catchThrowableOfType(MailSettingsException.class,
+                () -> mailAccountService.updateSignature(owner, saved.getId(), "x".repeat(2001)));
+
+        assertThat(e.reason()).isEqualTo(MailSettingsException.Reason.SIGNATURE_TOO_LONG);
+        assertThat(mailAccountRepository.findById(saved.getId()).orElseThrow().getSignature()).isEqualTo("Best");
+        assertThat(mailAccountService.updateSignature(owner, saved.getId(), "x".repeat(2000)).getSignature())
+                .hasSize(2000);
+    }
+
     private MimeMessage plainMessage(String messageId, String subject, String from, String body)
             throws Exception {
         Session session = Session.getInstance(new Properties());

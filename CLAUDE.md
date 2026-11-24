@@ -14,7 +14,7 @@ next.
 
 ## Related repositories
 
-- **`email-messenger`** (this repo) — BACKEND: mobile REST API (`/api/v1`: auth, me, conversation list, one conversation + mark read, send + new conversation, mailboxes, account + signed-in devices + display name / password / email change),
+- **`email-messenger`** (this repo) — BACKEND: mobile REST API (`/api/v1`: auth, me, conversation list, one conversation + mark read, send + new conversation, mailboxes + signature / sync frequency / default sending mailbox, account + signed-in devices + display name / password / email change),
   Thymeleaf website, persistence, all authoritative business rules.
 - **`conexus-mail-mobile`** — FRONTEND: Flutter client. Its `lib/domain/`
   mirrors rules defined here.

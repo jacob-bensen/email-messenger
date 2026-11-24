@@ -156,11 +156,19 @@ final class ApiDtos {
         }
     }
 
-    record MailboxList(List<MailboxResponse> items, Long limit) {}
+    record MailboxList(List<MailboxResponse> items, Long limit, MailPreferencesResponse preferences) {}
+
+    record MailPreferencesResponse(Integer syncFrequencyMinutes, long minSyncFrequencyMinutes,
+                                   List<Integer> syncFrequencyChoices) {}
+
+    /** PUT semantics: an omitted field binds as {@code null} and clears the setting. */
+    record MailPreferencesRequest(Integer syncFrequencyMinutes, Long defaultMailboxId) {}
+
+    record SignatureRequest(String signature) {}
 
     record MailboxResponse(long id, String address, String host, int port, boolean ssl, String authType,
                            boolean isDefault, Instant lastSyncedAt, String lastSyncError, String errorHint,
-                           boolean pollingSuspended) {
+                           boolean pollingSuspended, String signature) {
 
         static MailboxResponse of(MailAccount account, Long defaultAccountId) {
             return new MailboxResponse(account.getId(), account.getUsername(), account.getHost(),
@@ -169,7 +177,7 @@ final class ApiDtos {
                     account.getId().equals(defaultAccountId),
                     account.getLastSyncedAt() == null ? null : account.getLastSyncedAt().toInstant(ZoneOffset.UTC),
                     account.getLastSyncError(), MailboxView.errorHint(account.getLastSyncError()),
-                    account.isPollingSuspended());
+                    account.isPollingSuspended(), account.getSignature());
         }
     }
 

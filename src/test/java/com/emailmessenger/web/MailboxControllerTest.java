@@ -8,6 +8,7 @@ import com.emailmessenger.domain.Plan;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.ImapConnectionException;
 import com.emailmessenger.email.MailAccountService;
+import com.emailmessenger.email.MailSettingsException;
 import com.emailmessenger.email.MailboxPollingService;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.repository.MailAccountRepository;
@@ -28,6 +29,8 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -357,28 +360,28 @@ class MailboxControllerTest {
     }
 
     @Test
-    void preferencesRejectFrequencyBelowThePlanFloor() throws Exception {
-        // The test user has no subscription → Free plan → 15-minute floor.
+    void preferencesShowTheServiceRejectionAsAFlash() throws Exception {
+        MailSettingsException rejection = mock(MailSettingsException.class);
+        when(rejection.getMessage()).thenReturn("Checking every 5 minutes needs a paid plan.");
+        doThrow(rejection).when(mailAccountService).updateMailPreferences(any(User.class), eq(5), eq(null));
+
         mockMvc.perform(post("/mailboxes/preferences")
                         .with(user("mailbox@example.com"))
                         .with(csrf())
                         .param("syncFrequency", "5"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/mailboxes"))
-                .andExpect(flash().attributeExists("syncError"));
-
-        verify(mailAccountService, never())
-                .updateMailPreferences(any(User.class), any(), any());
+                .andExpect(flash().attribute("syncError", "Checking every 5 minutes needs a paid plan."));
     }
 
     @Test
-    void preferencesRejectAFrequencyOutsideTheOfferedChoices() throws Exception {
+    void preferencesRejectANonNumericFrequencyWithoutCallingTheService() throws Exception {
         mockMvc.perform(post("/mailboxes/preferences")
                         .with(user("mailbox@example.com"))
                         .with(csrf())
-                        .param("syncFrequency", "7"))
+                        .param("syncFrequency", "soon"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(flash().attributeExists("syncError"));
+                .andExpect(flash().attribute("syncError", "Pick a valid sync frequency."));
 
         verify(mailAccountService, never())
                 .updateMailPreferences(any(User.class), any(), any());
@@ -399,16 +402,17 @@ class MailboxControllerTest {
     }
 
     @Test
-    void signatureOverTwoThousandCharactersIsRejected() throws Exception {
+    void signatureRejectionIsShownAsAFlash() throws Exception {
+        MailSettingsException rejection = mock(MailSettingsException.class);
+        when(rejection.getMessage()).thenReturn("Signatures are limited to 2000 characters.");
+        doThrow(rejection).when(mailAccountService).updateSignature(any(User.class), eq(9L), anyString());
+
         mockMvc.perform(post("/mailboxes/9/signature")
                         .with(user("mailbox@example.com"))
                         .with(csrf())
                         .param("signature", "x".repeat(2001)))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(flash().attributeExists("syncError"));
-
-        verify(mailAccountService, never())
-                .updateSignature(any(User.class), any(), anyString());
+                .andExpect(flash().attribute("syncError", "Signatures are limited to 2000 characters."));
     }
 
     @Test

@@ -2,13 +2,13 @@ package com.emailmessenger.web;
 
 import com.emailmessenger.auth.GoogleOAuthProperties;
 import com.emailmessenger.auth.UserService;
-import com.emailmessenger.billing.PlanLimitService;
 import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.ImapConnectionException;
 import com.emailmessenger.email.MailAccountService;
+import com.emailmessenger.email.MailPreferencesRules;
+import com.emailmessenger.email.MailSettingsException;
 import com.emailmessenger.email.MailboxSyncService;
-import com.emailmessenger.email.PollingPolicy;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -31,27 +31,21 @@ import java.util.Optional;
 @RequestMapping("/mailboxes")
 class MailboxController {
 
-    /** Sync-frequency choices offered in the preferences select, in minutes. */
-    static final List<Integer> SYNC_FREQUENCY_CHOICES = List.of(5, 15, 30, 60);
-
     private final MailAccountService mailAccountService;
     private final UserService userService;
     private final GoogleOAuthProperties googleOAuthProperties;
-    private final PlanLimitService planLimitService;
-    private final PollingPolicy pollingPolicy;
+    private final MailPreferencesRules preferencesRules;
     private final MailboxSyncService syncService;
 
     MailboxController(MailAccountService mailAccountService,
                       UserService userService,
                       GoogleOAuthProperties googleOAuthProperties,
-                      PlanLimitService planLimitService,
-                      PollingPolicy pollingPolicy,
+                      MailPreferencesRules preferencesRules,
                       MailboxSyncService syncService) {
         this.mailAccountService = mailAccountService;
         this.userService = userService;
         this.googleOAuthProperties = googleOAuthProperties;
-        this.planLimitService = planLimitService;
-        this.pollingPolicy = pollingPolicy;
+        this.preferencesRules = preferencesRules;
         this.syncService = syncService;
     }
 
@@ -63,10 +57,9 @@ class MailboxController {
                 .map(a -> MailboxView.from(a, now))
                 .toList();
         model.addAttribute("mailboxes", mailboxes);
-        model.addAttribute("syncFrequencyChoices", SYNC_FREQUENCY_CHOICES);
+        model.addAttribute("syncFrequencyChoices", MailPreferencesRules.SYNC_FREQUENCY_CHOICES);
         model.addAttribute("syncFrequency", owner.getSyncFrequencyMinutes());
-        model.addAttribute("planFloorMinutes",
-                pollingPolicy.intervalFor(planLimitService.currentPlan(owner)).toMinutes());
+        model.addAttribute("planFloorMinutes", preferencesRules.minSyncFrequencyMinutes(owner));
         // getId() on the lazy proxy doesn't need the row loaded.
         model.addAttribute("defaultAccountId", owner.getDefaultMailAccount() == null
                 ? null : owner.getDefaultMailAccount().getId());
@@ -150,21 +143,18 @@ class MailboxController {
                              RedirectAttributes redirectAttributes) {
         User owner = userService.requireByEmail(principal.getName());
         Integer minutes = parseOptionalInt(syncFrequencyRaw);
-        if (syncFrequencyRaw != null && !syncFrequencyRaw.isBlank()
-                && (minutes == null || !SYNC_FREQUENCY_CHOICES.contains(minutes))) {
+        if (minutes == null && syncFrequencyRaw != null && !syncFrequencyRaw.isBlank()) {
             redirectAttributes.addFlashAttribute("syncError", "Pick a valid sync frequency.");
             return "redirect:/mailboxes";
         }
-        long floor = pollingPolicy.intervalFor(planLimitService.currentPlan(owner)).toMinutes();
-        if (minutes != null && minutes < floor) {
-            redirectAttributes.addFlashAttribute("syncError",
-                    "Checking every " + minutes + " minutes needs a paid plan — your plan syncs every "
-                            + floor + " minutes at the fastest.");
+        Long defaultAccountId = parseOptionalLong(defaultAccountRaw);
+        try {
+            // A foreign/unknown default account id 404s inside the service.
+            mailAccountService.updateMailPreferences(owner, minutes, defaultAccountId);
+        } catch (MailSettingsException e) {
+            redirectAttributes.addFlashAttribute("syncError", e.getMessage());
             return "redirect:/mailboxes";
         }
-        Long defaultAccountId = parseOptionalLong(defaultAccountRaw);
-        // A foreign/unknown default account id 404s inside the service.
-        mailAccountService.updateMailPreferences(owner, minutes, defaultAccountId);
         redirectAttributes.addFlashAttribute("syncMessage", "Preferences saved.");
         return "redirect:/mailboxes";
     }
@@ -175,13 +165,13 @@ class MailboxController {
                          Principal principal,
                          RedirectAttributes redirectAttributes) {
         User owner = userService.requireByEmail(principal.getName());
-        if (signature != null && signature.length() > 2000) {
-            redirectAttributes.addFlashAttribute("syncError",
-                    "Signatures are limited to 2000 characters.");
+        try {
+            // A foreign or unknown id 404s inside the service, same posture as sync/delete.
+            mailAccountService.updateSignature(owner, id, signature);
+        } catch (MailSettingsException e) {
+            redirectAttributes.addFlashAttribute("syncError", e.getMessage());
             return "redirect:/mailboxes";
         }
-        // A foreign or unknown id 404s inside the service, same posture as sync/delete.
-        mailAccountService.updateSignature(owner, id, signature);
         redirectAttributes.addFlashAttribute("syncMessage", "Signature saved.");
         return "redirect:/mailboxes";
     }

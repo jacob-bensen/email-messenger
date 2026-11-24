@@ -52,12 +52,12 @@ dialect: pages compose shared pieces with `th:replace`. One stylesheet,
 ### Mailboxes
 | Route | Auth | Template | Controller → services |
 |---|---|---|---|
-| `GET /mailboxes` | user | `mailboxes/index` | `MailboxController` → `MailAccountService.list`, `PollingPolicy`, `PlanLimitService.currentPlan` |
+| `GET /mailboxes` | user | `mailboxes/index` | `MailboxController` → `MailAccountService.list`, `MailPreferencesRules` (choices, plan floor) |
 | `GET /mailboxes/new` | user | `mailboxes/new` | `MailboxProvider.fromSlug` |
 | `POST /mailboxes` | user | redirect / re-render | `MailAccountService.connect` |
 | `POST /mailboxes/{id}/sync` | owner | redirect | `MailboxSyncService.syncNow` (owner-scoped; shared with `POST /api/v1/mailboxes/{id}/sync`) |
-| `POST /mailboxes/preferences` | user | redirect | `MailAccountService.updateMailPreferences` |
-| `POST /mailboxes/{id}/signature` | owner | redirect | `MailAccountService.updateSignature` |
+| `POST /mailboxes/preferences` | user | redirect | `MailAccountService.updateMailPreferences` (rules in `MailPreferencesRules`; a `MailSettingsException` becomes the `syncError` flash; shared with `PUT /api/v1/mailboxes/preferences`) |
+| `POST /mailboxes/{id}/signature` | owner | redirect | `MailAccountService.updateSignature` (2000-char cap in `MailPreferencesRules`; shared with `PUT /api/v1/mailboxes/{id}/signature`) |
 | `POST /mailboxes/{id}/delete` | owner | redirect | `MailAccountService.delete` |
 | `GET /mailboxes/gmail/connect`, `/reconnect/{id}`, `/callback` | user | redirects | `GmailConnectController` → `GmailOAuthClient`, `MailAccountService.connectGmailOAuth` / `reconnectGmailOAuth` |
 

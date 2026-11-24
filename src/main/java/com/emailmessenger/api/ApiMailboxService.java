@@ -7,6 +7,8 @@ import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.ImapConnectionException;
 import com.emailmessenger.email.MailAccountService;
+import com.emailmessenger.email.MailPreferencesRules;
+import com.emailmessenger.email.MailSettingsException;
 import com.emailmessenger.email.MailboxSyncService;
 import com.emailmessenger.repository.UserRepository;
 import com.emailmessenger.web.MailboxForm;
@@ -24,7 +26,7 @@ import java.util.Locale;
 import java.util.NoSuchElementException;
 
 /**
- * docs/API.md §5.10–5.14. Delegates to the same {@link MailAccountService},
+ * docs/API.md §5.10–5.14, §5.22–5.23. Delegates to the same {@link MailAccountService},
  * {@link MailboxSyncService} and {@link MailboxForm} rules as the website's
  * {@code /mailboxes}; this class only maps to and from the wire shape.
  */
@@ -38,25 +40,65 @@ class ApiMailboxService {
     private final MailAccountService mailAccounts;
     private final MailboxSyncService syncService;
     private final PlanLimitService planLimits;
+    private final MailPreferencesRules preferencesRules;
     private final Validator validator;
 
     ApiMailboxService(UserRepository users, MailAccountService mailAccounts, MailboxSyncService syncService,
-                      PlanLimitService planLimits, Validator validator) {
+                      PlanLimitService planLimits, MailPreferencesRules preferencesRules, Validator validator) {
         this.users = users;
         this.mailAccounts = mailAccounts;
         this.syncService = syncService;
         this.planLimits = planLimits;
+        this.preferencesRules = preferencesRules;
         this.validator = validator;
     }
 
     @Transactional(readOnly = true)
     ApiDtos.MailboxList list(ApiPrincipal principal) {
+        return listFor(owner(principal));
+    }
+
+    /** One transaction: the change and the list it answers with see the same state. */
+    @Transactional
+    ApiDtos.MailboxList updatePreferences(ApiPrincipal principal, ApiDtos.MailPreferencesRequest request) {
         User owner = owner(principal);
+        try {
+            mailAccounts.updateMailPreferences(owner, request.syncFrequencyMinutes(), request.defaultMailboxId());
+        } catch (MailSettingsException e) {
+            throw settingsError(e);
+        } catch (NoSuchElementException e) {
+            throw noSuchMailbox();
+        }
+        return listFor(owner);
+    }
+
+    ApiDtos.MailboxResponse updateSignature(ApiPrincipal principal, long id, ApiDtos.SignatureRequest request) {
+        User owner = owner(principal);
+        try {
+            return ApiDtos.MailboxResponse.of(mailAccounts.updateSignature(owner, id, request.signature()),
+                    defaultId(owner));
+        } catch (MailSettingsException e) {
+            throw settingsError(e);
+        } catch (NoSuchElementException e) {
+            throw noSuchMailbox();
+        }
+    }
+
+    private ApiDtos.MailboxList listFor(User owner) {
         Long defaultId = defaultId(owner);
         long cap = planLimits.limitsFor(owner).mailboxes();
         return new ApiDtos.MailboxList(
                 mailAccounts.list(owner).stream().map(a -> ApiDtos.MailboxResponse.of(a, defaultId)).toList(),
-                cap == PlanLimits.UNLIMITED ? null : cap);
+                cap == PlanLimits.UNLIMITED ? null : cap,
+                new ApiDtos.MailPreferencesResponse(owner.getSyncFrequencyMinutes(),
+                        preferencesRules.minSyncFrequencyMinutes(owner),
+                        MailPreferencesRules.SYNC_FREQUENCY_CHOICES));
+    }
+
+    private static ApiException settingsError(MailSettingsException e) {
+        return e.reason() == MailSettingsException.Reason.SYNC_FREQUENCY_BELOW_PLAN
+                ? new ApiException(HttpStatus.FORBIDDEN, "plan_limit_reached", e.getMessage())
+                : new ApiException(HttpStatus.BAD_REQUEST, "validation_failed", e.getMessage());
     }
 
     ApiDtos.ProviderList providers() {
