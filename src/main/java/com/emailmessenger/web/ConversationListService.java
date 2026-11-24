@@ -103,12 +103,25 @@ public class ConversationListService {
     @Transactional(readOnly = true)
     public Page<ConversationListItem> list(User owner, String mailboxAddress, String query,
                                            ChatFilter filter, Pageable pageable) {
+        return list(owner, mailboxAddress, query, filter, Set.of(), pageable);
+    }
+
+    /**
+     * As above, restricted to the given conversation keys (empty = no
+     * restriction) — how a live client refreshes only the rows new mail touched.
+     */
+    @Transactional(readOnly = true)
+    public Page<ConversationListItem> list(User owner, String mailboxAddress, String query,
+                                           ChatFilter filter, Set<String> keys, Pageable pageable) {
         String mbox = blankToNull(mailboxAddress, true);
         String q = blankToNull(query, false);
         ChatFilter f = filter == null ? ChatFilter.ALL : filter;
+        boolean anyKey = !keys.isEmpty();
+        // An empty IN () is not portable SQL; the flag skips it, the placeholder keeps it valid.
         Page<ConversationSummaryRow> summaries = threads.conversationSummariesFiltered(
                 owner, mbox, q,
                 f == ChatFilter.UNREAD, f == ChatFilter.ATTACHMENTS, f == ChatFilter.AWAITING,
+                anyKey, anyKey ? keys : Set.of(""),
                 pageable);
         // Only the cross-account Hub needs per-row account tags.
         return assemble(owner, summaries, mbox == null);

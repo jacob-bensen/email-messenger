@@ -409,6 +409,7 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
                         WHERE rm2.thread = t AND (
                             LOWER(p.email) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
                             OR LOWER(COALESCE(p.displayName, '')) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))))))
+              AND (:anyKey = false OR t.conversationKey IN :keys)
             GROUP BY t.conversationKey
             ORDER BY MAX(msg.sentAt) DESC
             """,
@@ -442,6 +443,7 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
                         WHERE rm2.thread = t AND (
                             LOWER(p.email) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
                             OR LOWER(COALESCE(p.displayName, '')) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))))))
+              AND (:anyKey = false OR t.conversationKey IN :keys)
             """)
     Page<ConversationSummaryRow> conversationSummariesFiltered(@Param("owner") User owner,
                                                               @Param("mailbox") String mailbox,
@@ -449,6 +451,8 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
                                                               @Param("requireUnread") boolean requireUnread,
                                                               @Param("requireAttachments") boolean requireAttachments,
                                                               @Param("requireAwaiting") boolean requireAwaiting,
+                                                              @Param("anyKey") boolean anyKey,
+                                                              @Param("keys") Collection<String> keys,
                                                               Pageable pageable);
 
     // Dashboard tile count for a given scope + triage filter (no free-text).

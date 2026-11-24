@@ -30,8 +30,9 @@ class ApiConversationController {
                                   @RequestParam(defaultValue = "" + ApiConversationService.DEFAULT_PAGE_SIZE) int size,
                                   @RequestParam(name = "q", required = false) String query,
                                   @RequestParam(required = false) Long mailboxId,
-                                  @RequestParam(required = false) String filter) {
-        return conversations.list(principal, page, size, query, mailboxId, filter);
+                                  @RequestParam(required = false) String filter,
+                                  @RequestParam(required = false) String keys) {
+        return conversations.list(principal, page, size, query, mailboxId, filter, keys);
     }
 
     @GetMapping("/conversations/{key}")

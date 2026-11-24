@@ -17,9 +17,11 @@ paged conversation list, one conversation's timeline, mark-read, sending
 into a conversation, starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove, signature, sync frequency and
-default sending mailbox), and the account: plan summary,
+default sending mailbox), the account: plan summary,
 signed-in devices, sign a device out, edit the display name, change the
-password and change the email address (§5). Gmail OAuth connect and
+password and change the email address, and a live event stream naming the
+conversations new mail touched (§5.24) that clients pair with the list's
+`keys` filter (§5.5) to update rows in place. Gmail OAuth connect and
 reconnect are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -73,13 +75,14 @@ Server-Sent Events stream of new-mail notifications for the signed-in user.
 - Auth: session cookie.
 - `200 text/event-stream`. The server closes the stream after 30 minutes;
   clients reconnect.
-- Event `new-mail`, data is JSON:
+- Event `new-mail`, data is JSON (same event as `/api/v1/events`, §5.24):
   ```
   event: new-mail
-  data: {"imported":2}
+  data: {"imported":2,"conversationKeys":["154e1e0a1872533ddf397a16e5a65dcf"]}
   ```
-  Sent after a poll commits with at least one imported message. It carries a
-  count only — no conversation keys or message ids — so the client refetches.
+  Sent after a poll commits with at least one imported message.
+  `conversationKeys` names the conversations that gained a message (§5.24);
+  the website ignores it and refreshes the rail and open pane.
 - Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`).
 - No event ids, no replay of missed events. Fan-out is in-memory, so it
   works on a single backend instance only.
@@ -287,6 +290,7 @@ Query parameters (all optional):
 | `q` | string | — | Free-text search; blank = none. Matches subject, body or a participant's name/address |
 | `mailboxId` | integer | — | Scope to one connected mailbox (an id the user owns). Omitted = all mailboxes merged |
 | `filter` | `all`, `unread`, `awaiting`, `attachments` (case-insensitive) | `all` | `unread`: has an unread thread. `awaiting`: latest message is inbound (you owe a reply). `attachments`: has an attachment |
+| `keys` | comma-separated conversation keys, at most 100 | — | Only these conversations (still narrowed by `q`, `filter` and `mailboxId`). Blank entries are ignored; empty = no restriction. Used with the live `conversationKeys` (§5.24) to refresh just the changed rows |
 
 Scope rule (server-owned, same as the website): a `mailboxId` narrows the
 list only when the user has **more than one** connected mailbox; with a
@@ -329,12 +333,13 @@ single mailbox every conversation belongs to it, so the list is unscoped.
   on. Filled only for the unscoped list; `[]` when scoped.
 - `senderEmail` (string or `null`): latest inbound sender, else the first
   member's address.
-- `totalItems` (integer): rows matching `q` + `filter` in scope.
+- `totalItems` (integer): rows matching `q` + `filter` (+ `keys`) in scope.
 - `counts` (object of integers): conversations in scope per filter,
   ignoring `q` and `filter`.
 
 Errors: `400 validation_failed` (`page` < 0, `size` outside 1–100, a
-non-integer number, or an unknown `filter`); `404 not_found` (`mailboxId`
+non-integer number, an unknown `filter`, more than 100 `keys` or a key
+over 64 characters); `404 not_found` (`mailboxId`
 is not one of the user's mailboxes); `401 unauthorized`.
 
 ### 5.6 GET /api/v1/conversations/{key}
@@ -880,12 +885,46 @@ Errors: `400 validation_failed` (body malformed, or over 2000
 characters); `404 not_found` (not one of the user's mailboxes);
 `401 unauthorized`. Nothing changes on any error.
 
+### 5.24 GET /api/v1/events
+Bearer token required. Server-Sent Events stream of new-mail signals for
+the signed-in user — the same `ChatEventStream` fan-out the website's
+`/chats/events` (§3) uses.
+
+- Request: no body; an `Accept` header, if sent, must allow
+  `text/event-stream`. The bearer token is
+  checked once, when the stream opens; a token revoked later does not close
+  an open stream before it ends.
+- `200 text/event-stream`. The server ends the stream after 30 minutes;
+  clients reconnect (after a pause, with backoff on errors).
+- Event `new-mail`, data is one line of JSON:
+  ```
+  event: new-mail
+  data: {"imported":2,"conversationKeys":["154e1e0a1872533ddf397a16e5a65dcf"]}
+  ```
+  - `imported` (integer ≥ 1): messages one mailbox poll imported
+    (received + sent).
+  - `conversationKeys` (string[], distinct, may be empty): conversation
+    keys (§4) of the threads those messages landed in. Clients refetch just
+    these rows with `GET /api/v1/conversations?keys=…` (§5.5), using their
+    current `q`, `filter` and `mailboxId`, and refetch an open conversation
+    whose key is listed. Keys that come back absent do not match the
+    current view.
+  Sent after the poll's transaction commits, so a follow-up fetch sees the
+  new rows.
+- Comment line `:ping` every 25 s. Clients ignore comments and unknown
+  event names.
+- No event ids and no replay: events while disconnected are lost, so a
+  client refetches its list after reconnecting. Fan-out is in-memory
+  (single backend instance).
+
+Errors (before the stream opens): `401 unauthorized` as JSON (§5.1).
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Live updates: SSE (or push) with enough detail to update without a
-   full refetch.
+1. Push notifications (Web Push for the website, FCM/APNs for mobile) for
+   new mail when no stream is open.
 2. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
 3. A way for a Google-only account (`passwordSet: false`, §5.4, landed

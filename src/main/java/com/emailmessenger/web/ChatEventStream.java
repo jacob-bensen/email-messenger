@@ -1,22 +1,26 @@
 package com.emailmessenger.web;
 
 import com.emailmessenger.email.NewMailEvent;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Registry of open SSE connections (one per browser tab on the chats view),
- * keyed by user id. {@link NewMailEvent}s fan out here as {@code new-mail}
+ * Registry of open SSE connections (one per browser tab on the chats view or
+ * per app on {@code /api/v1/events}), keyed by user id. {@link NewMailEvent}s fan out here as {@code new-mail}
  * events, which the page turns into an in-place refresh — no reload.
  *
  * <p>The listener runs after commit when a transaction is active (so the
@@ -24,16 +28,18 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * (the scheduler's self-invoked poll path runs without one).
  */
 @Component
-class ChatEventStream {
+public class ChatEventStream {
 
     private static final Logger log = LoggerFactory.getLogger(ChatEventStream.class);
 
     /** Generous cap; the browser's EventSource reconnects transparently. */
     static final long EMITTER_TIMEOUT_MS = 30 * 60 * 1000L;
 
+    private static final ObjectMapper JSON = new ObjectMapper();
+
     private final Map<Long, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
 
-    SseEmitter subscribe(Long userId) {
+    public SseEmitter subscribe(Long userId) {
         SseEmitter emitter = createEmitter();
         List<SseEmitter> forUser =
                 emitters.computeIfAbsent(userId, id -> new CopyOnWriteArrayList<>());
@@ -54,7 +60,7 @@ class ChatEventStream {
             try {
                 emitter.send(SseEmitter.event()
                         .name("new-mail")
-                        .data("{\"imported\":" + event.importedCount() + "}"));
+                        .data(payload(event), MediaType.APPLICATION_JSON));
             } catch (Exception e) {
                 // Dead connection (closed tab, dropped network) — drop it; the
                 // live tab's EventSource will have reconnected on its own.
@@ -78,6 +84,18 @@ class ChatEventStream {
                 }
             }
         });
+    }
+
+    /** docs/API.md §5.24: {@code {"imported":N,"conversationKeys":[...]}}. */
+    static String payload(NewMailEvent event) {
+        try {
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("imported", event.importedCount());
+            data.put("conversationKeys", event.conversationKeys().stream().sorted().toList());
+            return JSON.writeValueAsString(data);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     int activeCount(Long userId) {

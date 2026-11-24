@@ -3,6 +3,41 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-24 — Live updates over the API (event stream + `keys` refetch)
+
+- Chosen from the mobile roadmap (`docs/DESIGN.md` §ROADMAP M3 "Live
+  updates with enough detail to update a list row in place") and
+  `INTERNAL_TODO.md` §1 "Live events carry only a count" — the top
+  unblocked two-repo item (the ones above it need attachment storage, a
+  product decision, or a mobile OAuth design).
+- Contract first: new `docs/API.md` §5.24 `GET /api/v1/events` (bearer
+  SSE, `new-mail` with `imported` + `conversationKeys`); §5.5 gains
+  `keys` (≤ 100 comma-separated keys, ≤ 64 chars each) to refetch only
+  those rows under the current `q` / `filter` / `mailboxId`; §3
+  `/chats/events` now carries the same payload (the website ignores the
+  keys). §6 Planned now starts with push notifications.
+- `NewMailEvent` carries the conversation keys the poll's imports
+  landed in (`MailboxPollingService` collects them from the saved
+  messages' threads). `ChatEventStream` is public and serializes the
+  payload with Jackson (sorted keys); `ApiEventsController` subscribes
+  API clients to the same fan-out. `ApiSecurityConfig` permits
+  `DispatcherType.ASYNC` (the stateless chain has no context on the
+  stream's async dispatches; the opening request was authenticated).
+- `EmailThreadRepository.conversationSummariesFiltered` takes an
+  `anyKey` flag + `keys`; `ConversationListService.list` gains a
+  keys-restricted overload shared by the website's default path. No
+  migration.
+- Tests: `ApiEventsIntegrationTest` (new, 3: stream delivers keys, other
+  users' mail not streamed, 401 envelope), `ApiConversationIntegrationTest`
+  (+1 keys filter with filter + unknown key; bad-parameter cases for too
+  many / too long keys), `ChatEventStreamTest` (+1 payload),
+  `MailboxPollingServiceTest` (event carries keys).
+  `./mvnw -B test`: 912 run, 0 failures, 0 errors, 1 skipped (the
+  Docker-only Testcontainers test).
+- Branch: committed to the session branch `claude/gifted-carson-g9t7gl`
+  (which matched `master`), not `master` directly — the session's git
+  policy only allows pushing to that branch.
+
 ## 2026-11-24 — Mailbox settings over the API (signature, sync frequency, default sender)
 
 - Chosen from `INTERNAL_TODO.md` §1 "Mailbox settings are website-only"

@@ -20,7 +20,9 @@ import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -35,6 +37,8 @@ class ApiConversationService {
 
     static final int DEFAULT_PAGE_SIZE = 30;
     static final int MAX_PAGE_SIZE = 100;
+    static final int MAX_KEYS = 100;
+    static final int MAX_KEY_LENGTH = 64;
 
     private final UserRepository users;
     private final MailAccountService mailAccounts;
@@ -58,18 +62,41 @@ class ApiConversationService {
 
     @Transactional(readOnly = true)
     ApiDtos.ConversationPage list(ApiPrincipal principal, int page, int size, String query,
-                                  Long mailboxId, String filterParam) {
+                                  Long mailboxId, String filterParam, String keysParam) {
         if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
             throw invalid("page must be ≥ 0 and size between 1 and " + MAX_PAGE_SIZE + ".");
         }
         ChatFilter filter = filterParam == null || filterParam.isBlank()
                 ? ChatFilter.ALL
                 : ChatFilter.parse(filterParam).orElseThrow(() -> invalid("Unknown filter."));
+        Set<String> keys = parseKeys(keysParam);
         User owner = owner(principal);
         String scope = scope(owner, mailboxId);
         polling.refreshDueForUserAsync(owner.getId());
-        Page<ConversationListItem> rows = conversations.list(owner, scope, query, filter, PageRequest.of(page, size));
+        Page<ConversationListItem> rows =
+                conversations.list(owner, scope, query, filter, keys, PageRequest.of(page, size));
         return ApiDtos.ConversationPage.of(rows, conversations.counts(owner, scope));
+    }
+
+    static Set<String> parseKeys(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return Set.of();
+        }
+        Set<String> keys = new LinkedHashSet<>();
+        for (String part : raw.split(",")) {
+            String key = part.trim();
+            if (key.isEmpty()) {
+                continue;
+            }
+            if (key.length() > MAX_KEY_LENGTH) {
+                throw invalid("A conversation key is at most " + MAX_KEY_LENGTH + " characters.");
+            }
+            keys.add(key);
+        }
+        if (keys.size() > MAX_KEYS) {
+            throw invalid("At most " + MAX_KEYS + " keys.");
+        }
+        return keys;
     }
 
     @Transactional(readOnly = true)

@@ -124,6 +124,35 @@ class ApiConversationIntegrationTest {
     }
 
     @Test
+    void restrictsToTheGivenKeysWithinTheCurrentFilter() throws Exception {
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        Participant cy = participants.save(new Participant("cy@acme.com", "Cy"));
+        Participant di = participants.save(new Participant("di@acme.com", "Di"));
+        String bobKey = inbound("Lunch", bob, List.of(me), "pizza?", false, LocalDateTime.of(2026, 1, 1, 9, 0));
+        String cyKey = inbound("Report", cy, List.of(me), "numbers", true, LocalDateTime.of(2026, 1, 2, 9, 0));
+        inbound("Other", di, List.of(me), "hi", true, LocalDateTime.of(2026, 1, 3, 9, 0));
+
+        mockMvc.perform(get("/api/v1/conversations?keys=" + bobKey + ", ," + cyKey + "," + bobKey)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(2)))
+                .andExpect(jsonPath("$.items[0].title").value("Cy"))
+                .andExpect(jsonPath("$.items[1].title").value("Bob"))
+                .andExpect(jsonPath("$.totalItems").value(2))
+                .andExpect(jsonPath("$.counts.all").value(3));
+
+        mockMvc.perform(get("/api/v1/conversations?filter=unread&keys=" + bobKey + "," + cyKey)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andExpect(jsonPath("$.items[0].key").value(cyKey));
+
+        mockMvc.perform(get("/api/v1/conversations?keys=nope").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(0)))
+                .andExpect(jsonPath("$.totalItems").value(0));
+    }
+
+    @Test
     void scopesToAMailboxOnlyWhenTheUserHasSeveral() throws Exception {
         MailAccount personal = mailAccounts.save(new MailAccount(owner, "imap.example.com", 993, true,
                 "ada@example.com", "ciphertext"));
@@ -165,7 +194,10 @@ class ApiConversationIntegrationTest {
 
     @Test
     void rejectsBadParameters() throws Exception {
-        for (String query : List.of("filter=starred", "size=0", "size=101", "page=-1", "page=abc", "mailboxId=x")) {
+        String tooManyKeys = "keys=" + String.join(",",
+                java.util.stream.IntStream.range(0, 101).mapToObj(i -> "k" + i).toList());
+        for (String query : List.of("filter=starred", "size=0", "size=101", "page=-1", "page=abc", "mailboxId=x",
+                "keys=" + "k".repeat(65), tooManyKeys)) {
             mockMvc.perform(get("/api/v1/conversations?" + query).header("Authorization", "Bearer " + token))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error.code").value("validation_failed"));
@@ -286,8 +318,8 @@ class ApiConversationIntegrationTest {
                 .andExpect(jsonPath("$.counts.unread").value(1));
     }
 
-    private void inbound(String subject, Participant sender, List<Participant> to, String body,
-                         boolean unread, LocalDateTime at) {
+    private String inbound(String subject, Participant sender, List<Participant> to, String body,
+                           boolean unread, LocalDateTime at) {
         EmailThread thread = threads.save(new EmailThread(owner, subject, "<" + subject + "@x>"));
         Message m = new Message(thread, sender, subject, body, null, at);
         for (Participant p : to) {
@@ -301,5 +333,6 @@ class ApiConversationIntegrationTest {
         threads.saveAndFlush(thread);
         em.flush();
         em.clear();
+        return thread.getConversationKey();
     }
 }
