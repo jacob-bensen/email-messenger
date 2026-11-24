@@ -54,6 +54,7 @@ class AccountController {
         model.addAttribute("currentEmail", user.getEmail());
         model.addAttribute("displayName", user.getDisplayName());
         model.addAttribute("emailVerified", user.isEmailVerified());
+        model.addAttribute("passwordSet", user.isPasswordSet());
         model.addAttribute("billing", accountService.billingSummary(user));
         model.addAttribute("devices", devices.list(user.getId(), null));
         List<AuthEvent> recentActivity = authEventService.recentFor(user, RECENT_ACTIVITY_LIMIT);

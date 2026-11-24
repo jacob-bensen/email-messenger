@@ -30,6 +30,7 @@ import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -83,6 +84,37 @@ class AccountControllerTest {
                 .andExpect(model().attribute("currentEmail", "ada@example.com"))
                 .andExpect(model().attribute("displayName", "Ada Lovelace"))
                 .andExpect(content().string(containsString("ada@example.com")));
+    }
+
+    @Test
+    @WithMockUser(username = "google@example.com")
+    void accountPageHidesPasswordAndEmailFormsWithoutAPassword() throws Exception {
+        User user = userService.register("google@example.com", "password1", "Goo");
+        user.setPasswordSet(false);
+
+        mockMvc.perform(get("/account"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("passwordSet", false))
+                .andExpect(content().string(containsString("this account has no password")))
+                .andExpect(content().string(not(containsString("action=\"/account/password\""))))
+                .andExpect(content().string(not(containsString("action=\"/account/email\""))));
+    }
+
+    @Test
+    @WithMockUser(username = "googlepw@example.com")
+    void changePasswordWithoutAPasswordFlashesNotSet() throws Exception {
+        User user = userService.register("googlepw@example.com", "password1", null);
+        user.setPasswordSet(false);
+
+        mockMvc.perform(post("/account/password")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .param("currentPassword", "password1")
+                        .param("newPassword", "brand-new-12"))
+                .andExpect(redirectedUrl("/account"))
+                .andExpect(flash().attribute("passwordOutcome", "PASSWORD_NOT_SET"));
+
+        assertThat(passwordEncoder.matches("password1",
+                users.findById(user.getId()).orElseThrow().getPasswordHash())).isTrue();
     }
 
     @Test

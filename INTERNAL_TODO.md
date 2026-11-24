@@ -10,12 +10,6 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **API sends carry no attachments** (`docs/API.md` §5.8). Add
       multipart attachments (blocked on attachment storage). Sends are
       idempotent since 2026-11-20 (§5.8.1).
-- [ ] **`Me` has no "password set" flag** (`docs/API.md` §6 item 3), so
-      the app cannot hide Change password / Change email from a Google-only
-      account (random hash; both answer `current_password_incorrect`).
-      Needs a column: the random hash is indistinguishable from a real one,
-      and a Google user may later set a password via `/password/forgot`.
-      Email change has an API since 2026-11-23 (§5.21).
 - [ ] **Mailbox settings are website-only:** Gmail OAuth connect /
       reconnect, signatures, sync frequency and the default sending mailbox
       have no API. A Google mailbox whose token expired can only be
@@ -107,7 +101,12 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] An email change sends no notice to the **old** address (website and
       API alike), so a hijacked session can move the account silently.
 - [ ] Google-only accounts cannot sign in on mobile (no password). Needs a
-      native Google sign-in → token exchange design.
+      native Google sign-in → token exchange design. They also have no way
+      to set a password: `/password/forgot` answers "use Google"
+      (`PasswordResetService.Outcome.GOOGLE_ONLY`) and `/account` now hides
+      the password and email forms (`passwordSet` false, 2026-11-24). A
+      signed-in "Set a password" form (no current password, re-auth with
+      Google first) would unblock both email change and mobile sign-in.
 
 - [ ] `CredentialEncryptor` falls back to a hardcoded dev key (WARN only)
       when `MAILBOX_ENCRYPTION_*` are unset; production should refuse to

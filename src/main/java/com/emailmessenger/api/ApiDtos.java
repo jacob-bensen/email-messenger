@@ -44,11 +44,11 @@ final class ApiDtos {
     record LoginResponse(String token, String tokenType, Instant expiresAt, MeResponse user) {}
 
     record MeResponse(long id, String email, String displayName, boolean emailVerified,
-                      String plan, LimitsResponse limits) {
+                      boolean passwordSet, String plan, LimitsResponse limits) {
 
         static MeResponse of(User user, Plan plan) {
             return new MeResponse(user.getId(), user.getEmail(), user.getDisplayName(),
-                    user.isEmailVerified(), plan.name().toLowerCase(Locale.ROOT),
+                    user.isEmailVerified(), user.isPasswordSet(), plan.name().toLowerCase(Locale.ROOT),
                     LimitsResponse.of(PlanLimits.forPlan(plan)));
         }
     }

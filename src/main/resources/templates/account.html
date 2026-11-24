@@ -76,7 +76,17 @@
     </div>
   </section>
 
-  <section class="acct-section">
+  <section class="acct-section" th:if="${!passwordSet}">
+    <h2 class="acct-section-title">Password and email</h2>
+    <p class="acct-section-sub">You sign in with Google, so this account has no password,
+      and changing your password or sign-in email isn't available.</p>
+    <div th:if="${passwordOutcome == 'PASSWORD_NOT_SET' or emailOutcome == 'PASSWORD_NOT_SET'}"
+         class="alert alert-error">
+      This account has no password to check, so it can't be changed here.
+    </div>
+  </section>
+
+  <section class="acct-section" th:if="${passwordSet}">
     <h2 class="acct-section-title">Password</h2>
     <div th:if="${passwordOutcome == 'OK'}" class="alert alert-success">
       Password updated. Use the new password the next time you sign in.
@@ -115,7 +125,7 @@
     </form>
   </section>
 
-  <section class="acct-section">
+  <section class="acct-section" th:if="${passwordSet}">
     <h2 class="acct-section-title">Email address</h2>
     <p class="acct-section-sub">We'll send a confirmation link to the new address and sign you out.</p>
     <div th:if="${emailOutcome == 'CURRENT_INCORRECT'}" class="alert alert-error">

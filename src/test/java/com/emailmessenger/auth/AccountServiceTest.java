@@ -93,6 +93,22 @@ class AccountServiceTest {
     }
 
     @Test
+    void accountWithoutAPasswordCannotChangePasswordOrEmail() {
+        User user = register("google-only@example.com");
+        user.setPasswordSet(false);
+
+        // Even the right "current password" (the stored random secret in real
+        // Google accounts) is not accepted, and the check comes first.
+        assertThat(accountService.changePassword(user, "password1", "short", null).outcome())
+                .isEqualTo(AccountService.PasswordChangeOutcome.PASSWORD_NOT_SET);
+        assertThat(accountService.changeEmail(user, "password1", "new@example.com"))
+                .isEqualTo(AccountService.EmailChangeOutcome.PASSWORD_NOT_SET);
+        User reloaded = users.findById(user.getId()).orElseThrow();
+        assertThat(reloaded.getEmail()).isEqualTo("google-only@example.com");
+        assertThat(passwordEncoder.matches("password1", reloaded.getPasswordHash())).isTrue();
+    }
+
+    @Test
     void changePasswordWithShortNewRejects() {
         User user = register("short@example.com");
 

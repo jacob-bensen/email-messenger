@@ -3,6 +3,30 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-24 — `passwordSet` on the user; no password, no password/email change
+
+- Chosen from `INTERNAL_TODO.md` §1 (top unblocked contract item):
+  `docs/API.md` §6 item 3. The TODO said it needed a new column, but
+  `users.password_set` already exists (V19, maintained by Google
+  provisioning and password reset), so no migration was needed.
+- Contract first: §5.4 `Me` gains `passwordSet` (boolean, also inside
+  §5.15 `user` and the §5.2 login response); new error
+  `422 password_not_set` on §5.20 / §5.21, checked before anything else;
+  §5.1 table updated; §6 item 3 removed.
+- `AccountService.changePassword` / `changeEmail` return
+  `PASSWORD_NOT_SET` when `!user.isPasswordSet()`: before, a Google-only
+  account got `current_password_incorrect`, which was true (its hash is a
+  random secret) but misleading. `ApiAccountService` maps it to
+  `password_not_set`; `ApiDtos.MeResponse` carries `passwordSet`.
+- Website: `/account` renders the Password and Email forms only when a
+  password is set; otherwise one "You sign in with Google" note (and an
+  error line for a stale form post). Same service rule for both paths.
+- Tests: `AccountServiceTest` +1, `AccountControllerTest` +2 (forms hidden;
+  stale post flashes `PASSWORD_NOT_SET`), `ApiAccountIntegrationTest` +2
+  (`me`/`account` report the flag; both endpoints answer
+  `password_not_set` and change nothing). `./mvnw -B test`: 902 run,
+  0 failures, 0 errors, 1 skipped (the Docker-only Testcontainers test).
+
 ## 2026-11-23 — Email change over the API
 
 - Chosen from `INTERNAL_TODO.md` §1 (top unblocked contract item after the

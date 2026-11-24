@@ -242,6 +242,35 @@ class ApiAccountIntegrationTest {
     }
 
     @Test
+    void meSaysWhetherAPasswordIsSet() throws Exception {
+        authed(get("/api/v1/me"), token).andExpect(jsonPath("$.passwordSet").value(true));
+
+        withoutPassword();
+        authed(get("/api/v1/me"), token).andExpect(jsonPath("$.passwordSet").value(false));
+        authed(get("/api/v1/account"), token).andExpect(jsonPath("$.user.passwordSet").value(false));
+    }
+
+    private void withoutPassword() {
+        em.find(User.class, owner.getId()).setPasswordSet(false);
+        em.flush();
+    }
+
+    @Test
+    void accountWithoutAPasswordGetsPasswordNotSet() throws Exception {
+        withoutPassword();
+
+        authed(post("/api/v1/account/password").contentType(MediaType.APPLICATION_JSON)
+                        .content(passwordBody("correct-horse", "battery-staple")), token)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("password_not_set"));
+        authed(post("/api/v1/account/email").contentType(MediaType.APPLICATION_JSON)
+                        .content(emailBody("correct-horse", "ada.king@example.com")), token)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("password_not_set"));
+        authed(get("/api/v1/me"), token).andExpect(jsonPath("$.email").value("ada@example.com"));
+    }
+
+    @Test
     void newPasswordLengthIsChecked() throws Exception {
         authed(post("/api/v1/account/password").contentType(MediaType.APPLICATION_JSON)
                         .content(passwordBody("correct-horse", "short")), token)
