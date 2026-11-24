@@ -286,6 +286,78 @@ class ApiConversationIntegrationTest {
                 .andExpect(jsonPath("$.counts.unread").value(1));
     }
 
+    @Test
+    void pagesOlderMessagesWithABeforeCursor() throws Exception {
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        EmailThread thread = threads.save(new EmailThread(owner, "Lunch", "<lunch-1@x>"));
+        List<Long> ids = new java.util.ArrayList<>();
+        for (int i = 1; i <= 5; i++) {
+            Message m = new Message(thread, bob, "Lunch", "m" + i, null, LocalDateTime.of(2026, 1, 1, 9, i));
+            m.setMessageIdHeader("<lunch-" + i + "@x>");
+            if (i == 5) {
+                m.setInReplyTo("<lunch-1@x>");
+            }
+            m.addRecipient(me, RecipientType.TO);
+            thread.addMessage(messages.save(m), true);
+            ids.add(m.getId());
+        }
+        thread.setConversationKey(keyService.compute(thread, ownerAddressService.addressesFor(owner)));
+        threads.saveAndFlush(thread);
+        em.clear();
+        String key = thread.getConversationKey();
+        String path = "/api/v1/conversations/" + key;
+
+        mockMvc.perform(get(path + "?limit=2").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.messageCount").value(5))
+                .andExpect(jsonPath("$.hasMore").value(true))
+                .andExpect(jsonPath("$.runs", hasSize(1)))
+                .andExpect(jsonPath("$.runs[0].continuesEarlier").value(true))
+                .andExpect(jsonPath("$.runs[0].messages[0].bodyText").value("m4"))
+                .andExpect(jsonPath("$.runs[0].messages[1].bodyText").value("m5"))
+                .andExpect(jsonPath("$.runs[0].messages[1].replyToId").value(ids.get(0)));
+
+        mockMvc.perform(get(path + "?limit=2&before=" + ids.get(3)).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.hasMore").value(true))
+                .andExpect(jsonPath("$.runs[0].continuesEarlier").value(true))
+                .andExpect(jsonPath("$.runs[0].messages[0].bodyText").value("m2"))
+                .andExpect(jsonPath("$.runs[0].messages[1].bodyText").value("m3"));
+
+        mockMvc.perform(get(path + "?limit=2&before=" + ids.get(1)).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.hasMore").value(false))
+                .andExpect(jsonPath("$.messageCount").value(5))
+                .andExpect(jsonPath("$.runs[0].continuesEarlier").value(false))
+                .andExpect(jsonPath("$.runs[0].messages", hasSize(1)))
+                .andExpect(jsonPath("$.runs[0].messages[0].bodyText").value("m1"));
+
+        mockMvc.perform(get(path + "?before=" + ids.get(0)).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.hasMore").value(false))
+                .andExpect(jsonPath("$.runs", hasSize(0)));
+
+        mockMvc.perform(get(path).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.hasMore").value(false))
+                .andExpect(jsonPath("$.runs[0].continuesEarlier").value(false))
+                .andExpect(jsonPath("$.runs[0].messages", hasSize(5)));
+    }
+
+    @Test
+    void rejectsABadPageCursorOrLimit() throws Exception {
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        inbound("Lunch", bob, List.of(me), "pizza?", true, LocalDateTime.of(2026, 1, 1, 9, 0));
+        inbound("Other", participants.save(new Participant("eve@acme.com", "Eve")), List.of(me), "hi", true,
+                LocalDateTime.of(2026, 1, 1, 9, 0));
+        String key = keyService.keyFor(List.of("bob@acme.com"), ownerAddressService.addressesFor(owner));
+        long otherConversationsMessage = messages.findAll().stream()
+                .filter(m -> m.getBodyPlain().equals("hi")).findFirst().orElseThrow().getId();
+
+        for (String query : List.of("?limit=0", "?limit=201", "?limit=x", "?before=x",
+                "?before=" + otherConversationsMessage)) {
+            mockMvc.perform(get("/api/v1/conversations/" + key + query).header("Authorization", "Bearer " + token))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("validation_failed"));
+        }
+    }
+
     private void inbound(String subject, Participant sender, List<Participant> to, String body,
                          boolean unread, LocalDateTime at) {
         EmailThread thread = threads.save(new EmailThread(owner, subject, "<" + subject + "@x>"));

@@ -117,10 +117,16 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       without a trusted proxy). No rate limit on register, forgot-password,
       send or `/chats/refresh`. No Content-Security-Policy.
 - [ ] `ChatEventStream` is in-memory: single instance only.
-- [ ] Search is `LIKE '%q%'` with no full-text index; a conversation loads
-      all its messages with no pagination — on the website and in
-      `GET /api/v1/conversations/{key}` alike. Long histories need a
-      cursor (`before=<messageId>`) before they get slow.
+- [ ] Search is `LIKE '%q%'` with no full-text index. The website's
+      `/chats/{key}` still renders a conversation's whole history. The API
+      pages it (§5.6, 2026-11-24), but `ChatService.page` still loads every
+      message entity of the conversation to find the cursor and compute
+      members / thread count; only body cleaning is limited to the page.
+      Push the window into SQL (keyset on `sent_at, id`) if long
+      histories get slow.
+- [ ] Messages with a null `sent_at` sort first on H2 and last on
+      PostgreSQL in the timeline queries; pages are stable per database
+      but the two differ. Pin `NULLS FIRST/LAST` if it matters.
 - [ ] `GET /api/v1/conversations/{key}` omits member signatures (the
       website shows them in the side panel); add with the signature →
       contact card roadmap item.

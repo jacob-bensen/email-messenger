@@ -13,7 +13,8 @@ section is promoted to Implemented.
 ## 1. Current state (2026-11-24)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
-paged conversation list, one conversation's timeline, mark-read, sending
+paged conversation list, one conversation's timeline (paged with a
+`before` cursor), mark-read, sending
 into a conversation, starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove), and the account: plan summary,
@@ -339,16 +340,27 @@ is not one of the user's mailboxes); `401 unauthorized`.
 ### 5.6 GET /api/v1/conversations/{key}
 Bearer token required. One conversation as a texting-style timeline: every
 message of the user's threads that share `key` (§4), merged across email
-threads, oldest first, grouped into bubble runs. The same `ChatService`
-build the website's `/chats/{key}` uses. Reading does **not** mark the
+threads, oldest first, grouped into bubble runs — one page at a time, newest
+page first. The same `ChatService` build the website's `/chats/{key}` uses
+(the website shows the whole timeline; the API pages it). Reading does **not** mark the
 conversation read (§5.7) and does not trigger a mailbox refresh.
 
 Path: `key` — a conversation key from §5.5. Anything that is not one of the
 user's conversations (including a malformed key) is `404 not_found`.
 
-Query parameter (optional): `mailboxId` (integer) — same meaning and scope
-rule as §5.5: with more than one connected mailbox, only the threads that
-involve that mailbox's address are included.
+Query parameters (all optional):
+- `mailboxId` (integer) — same meaning and scope rule as §5.5: with more
+  than one connected mailbox, only the threads that involve that mailbox's
+  address are included.
+- `limit` (integer 1–200, default 50) — at most this many messages.
+- `before` (integer, a message `id`) — return the messages just older than
+  this one in timeline order. Omitted: the newest messages. Clients pass the
+  `id` of the oldest message they hold to load the previous page.
+
+Timeline order is `sentAt` ascending, then message `id` ascending, so a
+cursor is stable between requests. A page is the `limit` messages directly
+before the cursor; runs are built over the page only, and a run that started
+on an older page is flagged `continuesEarlier` (below).
 
 `200`:
 ```json
@@ -359,12 +371,14 @@ involve that mailbox's address are included.
   "group": false,
   "threadCount": 1,
   "messageCount": 2,
+  "hasMore": false,
   "members": [
     { "email": "ada@acme.com", "displayName": "Ada Lovelace", "initials": "AL", "label": "Ada Lovelace" }
   ],
   "runs": [
     {
       "outbound": false,
+      "continuesEarlier": false,
       "sender": { "email": "ada@acme.com", "displayName": "Ada Lovelace", "initials": "AL" },
       "thread": { "id": 7, "subject": "Lunch" },
       "messages": [
@@ -382,7 +396,10 @@ involve that mailbox's address are included.
 }
 ```
 - `key`, `title`, `initials`, `group`: as in §5.5. `threadCount`
-  (integer ≥ 1), `messageCount` (integer ≥ 1, total messages over all runs).
+  (integer ≥ 1) and `messageCount` (integer ≥ 1) count the **whole**
+  conversation in scope, not the page.
+- `hasMore` (boolean): older messages exist before this page; load them
+  with `before` = the first message's `id`.
 - `members` (array): the non-owner participants in first-seen order.
   `displayName` is a string or `null`; `label` is the display name, else the
   email (§4 title input); `initials` per §4.
@@ -390,7 +407,13 @@ involve that mailbox's address are included.
   within the same email thread. `outbound` (boolean): sent by the user.
   `sender` (object): who sent the run's messages (`displayName` may be
   `null`). `thread` (object): the email thread the run belongs to (`id`
-  integer, `subject` string or `null`).
+  integer, `subject` string or `null`). `continuesEarlier` (boolean): `true`
+  only on a page's first run, when the message just before the page belongs
+  to the same run (same thread, same side). A client joining an older page
+  in front of this one merges that run into the older page's last run
+  instead of starting a new one; it never regroups on its own.
+- `members`, titles and `replyToId` are computed from the whole
+  conversation, so they are identical on every page.
 - `messages[]`, oldest first within the run:
   - `id` (integer): message id.
   - `sentAt` (instant or `null`).
@@ -402,16 +425,20 @@ involve that mailbox's address are included.
     `<br>` become line breaks, runs of blank lines collapse to one, trimmed.
     Clients that do not render HTML show this. May be `""`.
   - `replyToId` (integer or `null`): the message this one answers, when
-    that message is also in this timeline.
+    that message is also in this conversation (possibly on an older page).
   - `attachments` (array): `filename` (string), `mimeType` (string or
     `null`), `sizeBytes` (integer or `null`). Metadata only — attachment
     bytes are not stored yet, so there is no download endpoint.
 
 Signatures (shown in the website's side panel) are not part of the
-response yet. There is no pagination: the whole conversation is returned.
+response yet. A `before` older than everything returns `"runs": []` with
+`hasMore: false`.
 
 Errors: `404 not_found` (unknown key, or `mailboxId` not the user's);
-`400 validation_failed` (non-integer `mailboxId`); `401 unauthorized`.
+`400 validation_failed` (non-integer `mailboxId` or `before`, `limit`
+outside 1–200, or `before` not a message of this conversation in scope —
+e.g. it was removed with its mailbox; reload from the newest page);
+`401 unauthorized`.
 
 ### 5.7 POST /api/v1/conversations/{key}/read
 Bearer token required. Marks every thread of the conversation read — only

@@ -539,7 +539,7 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
     @Query("""
             SELECT m FROM Message m JOIN m.thread t
             WHERE t.owner = :owner AND t.conversationKey = :key
-            ORDER BY m.sentAt ASC
+            ORDER BY m.sentAt ASC, m.id ASC
             """)
     List<Message> findMessagesByConversationKey(@Param("owner") User owner,
                                                 @Param("key") String key);
@@ -556,7 +556,7 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
                 OR EXISTS (SELECT 1 FROM MessageRecipient rr JOIN rr.message rm JOIN rr.participant rp
                            WHERE rm.thread = t AND LOWER(rp.email) = :mailbox)
               )
-            ORDER BY m.sentAt ASC
+            ORDER BY m.sentAt ASC, m.id ASC
             """)
     List<Message> findMessagesByConversationKeyForMailbox(@Param("owner") User owner,
                                                           @Param("mailbox") String mailbox,

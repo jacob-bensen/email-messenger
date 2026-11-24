@@ -3,6 +3,31 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-24 — Conversation timeline in pages (`before` cursor)
+
+- Chosen from `INTERNAL_TODO.md` §3 ("a conversation loads all its
+  messages with no pagination … needs a cursor") and the mobile TODO's
+  matching contract item; the §1 attachment items are still blocked on
+  storage and the Google-password item on a product decision.
+- Contract first: `docs/API.md` §5.6 gains `limit` (1–200, default 50) and
+  `before` (message id) query parameters, `hasMore`, and
+  `continuesEarlier` on runs; `messageCount` / `threadCount` now say they
+  count the whole conversation; a foreign or unknown `before` is
+  `400 validation_failed`.
+- `ChatService.page` (shared service layer; the website keeps calling
+  `buildFor` and renders everything) slices the timeline and builds runs
+  for the page only via the new `ConversationService.buildChatWindow`,
+  which still takes members, title, thread count and reply targets from
+  the whole conversation. Body cleaning (jsoup) now runs only for the
+  page's messages on the API path; the query still loads every message.
+- Both timeline queries order by `sentAt, id`, so equal timestamps keep a
+  stable order between requests (website included).
+- Tests: `ApiConversationIntegrationTest` +2 (three pages over a split
+  run, `replyToId` across pages, empty page before the oldest message;
+  bad `limit` / `before`). Full `mvn -B verify`: 902 run, 0 failures,
+  1 skipped (Docker-only end-to-end test). Run with the system Maven 3.9.11
+  because the wrapper's download is blocked here.
+
 ## 2026-11-24 — `passwordSet` on the user; Google-only accounts get a clear error
 
 - Chosen from `INTERNAL_TODO.md` §1 (top unblocked contract item; the

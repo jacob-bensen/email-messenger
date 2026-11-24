@@ -37,8 +37,11 @@ class ApiConversationController {
     @GetMapping("/conversations/{key}")
     ApiDtos.ConversationDetail get(@AuthenticationPrincipal ApiPrincipal principal,
                                    @PathVariable String key,
-                                   @RequestParam(required = false) Long mailboxId) {
-        return conversations.get(principal, key, mailboxId);
+                                   @RequestParam(required = false) Long mailboxId,
+                                   @RequestParam(required = false) Long before,
+                                   @RequestParam(defaultValue = "" + ApiConversationService.DEFAULT_MESSAGE_LIMIT)
+                                   int limit) {
+        return conversations.get(principal, key, mailboxId, before, limit);
     }
 
     @PostMapping("/conversations/{key}/read")

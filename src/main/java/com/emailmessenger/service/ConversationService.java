@@ -74,7 +74,7 @@ public class ConversationService {
      * is the correspondent, used for the header identity.
      */
     public SenderConversation buildSenderConversation(List<Message> messages, String senderEmail) {
-        BuiltRuns built = buildRuns(messages);
+        BuiltRuns built = buildRuns(messages, 0, messages.size());
 
         // Header identity is the correspondent (the requested address), taken
         // from their first received message rather than an outbound one.
@@ -99,7 +99,17 @@ public class ConversationService {
      * the member list so the chat is keyed by the other people.
      */
     public ChatConversation buildChatConversation(List<Message> messages, Set<String> ownerAddresses) {
-        BuiltRuns built = buildRuns(messages);
+        return buildChatWindow(messages, ownerAddresses, 0, messages.size());
+    }
+
+    /**
+     * Like {@link #buildChatConversation} but with bubble runs for only
+     * {@code messages[from, to)} — one page of a long timeline. Members, title,
+     * thread count and reply targets still come from the whole conversation, so
+     * a page looks like a slice of the full build.
+     */
+    public ChatConversation buildChatWindow(List<Message> messages, Set<String> ownerAddresses, int from, int to) {
+        BuiltRuns built = buildRuns(messages, from, to);
         List<ChatMember> members = buildMembers(messages, ownerAddresses);
         String key = messages.isEmpty() ? null : messages.get(0).getThread().getConversationKey();
         String initials = members.isEmpty() ? "?" : members.get(0).initials();
@@ -186,11 +196,14 @@ public class ConversationService {
     }
 
     /** Shared bubble-run grouping: a new run per thread change or direction flip. */
-    private BuiltRuns buildRuns(List<Message> messages) {
+    private BuiltRuns buildRuns(List<Message> messages, int from, int to) {
         Map<String, Long> idIndex = messageIdIndex(messages);
         // Identity set: EmailThread keeps default equals/hashCode, so this counts
         // distinct threads even when one recurs in non-consecutive runs.
         Set<EmailThread> distinctThreads = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Message msg : messages) {
+            distinctThreads.add(msg.getThread());
+        }
 
         List<SenderBubbleRun> runs = new ArrayList<>();
         EmailThread currentThread = null;
@@ -198,9 +211,8 @@ public class ConversationService {
         SenderView currentRunSender = null;
         List<BubbleMessage> currentBubbles = new ArrayList<>();
 
-        for (Message msg : messages) {
+        for (Message msg : messages.subList(from, to)) {
             EmailThread thread = msg.getThread();
-            distinctThreads.add(thread);
             boolean outbound = msg.isOutbound();
 
             if (currentThread == null || currentThread != thread || currentOutbound != outbound) {
