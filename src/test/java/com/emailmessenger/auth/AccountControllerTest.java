@@ -82,7 +82,26 @@ class AccountControllerTest {
                 .andExpect(view().name("account"))
                 .andExpect(model().attribute("currentEmail", "ada@example.com"))
                 .andExpect(model().attribute("displayName", "Ada Lovelace"))
+                .andExpect(model().attribute("passwordSet", true))
+                .andExpect(content().string(containsString("action=\"/account/password\"")))
                 .andExpect(content().string(containsString("ada@example.com")));
+    }
+
+    @Test
+    @WithMockUser(username = "gonly@example.com")
+    void googleOnlyAccountSeesNoPasswordOrEmailForms() throws Exception {
+        userService.register("gonly@example.com", "password1", "G Only");
+        User user = users.findByEmail("gonly@example.com").orElseThrow();
+        user.setGoogleSubject("sub-gonly");
+        user.setPasswordSet(false);
+        users.save(user);
+
+        mockMvc.perform(get("/account"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("passwordSet", false))
+                .andExpect(content().string(containsString("has no password to change")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("action=\"/account/password\""))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("action=\"/account/email\""))));
     }
 
     @Test

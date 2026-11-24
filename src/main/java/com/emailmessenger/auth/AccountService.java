@@ -31,7 +31,7 @@ import java.time.LocalDateTime;
 @Service
 public class AccountService {
 
-    public enum PasswordChangeOutcome { OK, CURRENT_INCORRECT, NEW_TOO_SHORT, NEW_TOO_LONG }
+    public enum PasswordChangeOutcome { OK, PASSWORD_NOT_SET, CURRENT_INCORRECT, NEW_TOO_SHORT, NEW_TOO_LONG }
 
     public enum DisplayNameOutcome { OK, TOO_LONG }
 
@@ -39,7 +39,7 @@ public class AccountService {
     public record PasswordChange(PasswordChangeOutcome outcome, int revokedDevices) {}
 
     public enum EmailChangeOutcome {
-        OK, CURRENT_INCORRECT, EMAIL_INVALID, EMAIL_TAKEN, NO_CHANGE
+        OK, PASSWORD_NOT_SET, CURRENT_INCORRECT, EMAIL_INVALID, EMAIL_TAKEN, NO_CHANGE
     }
 
     static final int MIN_PASSWORD_LENGTH = 8;
@@ -106,6 +106,11 @@ public class AccountService {
                                          String currentPassword,
                                          String newPassword,
                                          Long keepTokenId) {
+        // A Google-provisioned account holds a random hash nobody knows, so
+        // "current password" can never be right; say why instead.
+        if (!user.isPasswordSet()) {
+            return new PasswordChange(PasswordChangeOutcome.PASSWORD_NOT_SET, 0);
+        }
         if (newPassword == null || newPassword.length() < MIN_PASSWORD_LENGTH) {
             return new PasswordChange(PasswordChangeOutcome.NEW_TOO_SHORT, 0);
         }
@@ -131,6 +136,9 @@ public class AccountService {
     public EmailChangeOutcome changeEmail(User user,
                                           String currentPassword,
                                           String newEmail) {
+        if (!user.isPasswordSet()) {
+            return EmailChangeOutcome.PASSWORD_NOT_SET;
+        }
         if (currentPassword == null
                 || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
             return EmailChangeOutcome.CURRENT_INCORRECT;

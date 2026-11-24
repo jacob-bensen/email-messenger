@@ -10,7 +10,7 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-23)
+## 1. Current state (2026-11-24)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline, mark-read, sending
@@ -191,7 +191,8 @@ the user, and may change. Clients branch on `code` only.
 | 409 | `no_recipients` | Send: the conversation has nobody but you in it (§5.8) |
 | 409 | `email_taken` | Change email: another account already uses `newEmail` (§5.21) |
 | 409 | `send_in_progress` | Send: an earlier request with the same `Idempotency-Key` has not finished, or its outcome is unknown (§5.8.1) |
-| 422 | `current_password_incorrect` | Change password or email: `currentPassword` is wrong, or the account has no password (Google-only) (§5.20, §5.21) |
+| 422 | `current_password_incorrect` | Change password or email: `currentPassword` is wrong (§5.20, §5.21) |
+| 422 | `password_not_set` | Change password or email: the account signs in with Google and has no password (`passwordSet: false`, §5.4) (§5.20, §5.21) |
 | 422 | `email_invalid` | Change email: `newEmail` is not an email address or is over 254 characters (§5.21) |
 | 422 | `email_unchanged` | Change email: `newEmail` is already the account's address (§5.21) |
 | 422 | `password_too_short` | Change password: `newPassword` under 8 characters (§5.20) |
@@ -247,6 +248,7 @@ Bearer token required. The signed-in user.
   "email": "ada@example.com",
   "displayName": "Ada Lovelace",
   "emailVerified": false,
+  "passwordSet": true,
   "plan": "free",
   "limits": { "mailboxes": 3, "threads": 500, "savedSearches": null }
 }
@@ -254,6 +256,12 @@ Bearer token required. The signed-in user.
 - `id` (integer), `email` (string, normalized lowercase).
 - `displayName` (string or `null`).
 - `emailVerified` (boolean).
+- `passwordSet` (boolean): `false` for an account created by Google sign-in
+  that never chose a password (`users.password_set`). Such an account cannot
+  change its password or email (§5.20, §5.21 answer
+  `422 password_not_set`), so clients hide those actions. It becomes `true`
+  once a password is set; today no path sets one for a Google-only account
+  (`/password/forgot` sends them to Google sign-in instead).
 - `plan` (string): `free`, `pro` or `business` — the **effective** plan
   (§4 Plan limits: a lapsed subscription is `free`).
 - `limits` (object): caps of the effective plan per §4; each value is an
@@ -766,7 +774,8 @@ Request:
 - `revokedDevices` (integer): other devices signed out, `0` when none.
 
 Errors: `400 validation_failed` (body missing or malformed, or a field
-missing); `422 current_password_incorrect` (deliberately not `401`: the
+missing); `422 password_not_set` (Google-only account, §5.4; checked
+first); `422 current_password_incorrect` (deliberately not `401`: the
 token is still valid and the client must not sign out);
 `422 password_too_short`; `422 password_too_long`; `401 unauthorized`.
 The length checks run before the current password is checked. Nothing
@@ -798,7 +807,8 @@ Request:
 it and sign in with the new address from now on.
 
 Errors: `400 validation_failed` (body missing or malformed, or a field
-missing); `422 current_password_incorrect` (not `401`; the token is still
+missing); `422 password_not_set` (Google-only account, §5.4; checked
+first); `422 current_password_incorrect` (not `401`; the token is still
 valid); `422 email_invalid`; `422 email_unchanged`; `409 email_taken`;
 `401 unauthorized`. The current password is checked **first**, so
 `email_taken` is only revealed to someone who knows it. Nothing changes on
@@ -812,8 +822,5 @@ Intended resources, in build order (see the mobile repo's
    full refetch.
 2. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
-3. A `passwordSet` flag on the user (§5.4) so clients can hide password
-   and email changes from Google-only accounts, which have no password.
-   Needs a new column; today those accounts get
-   `422 current_password_incorrect`. (Email change landed 2026-11-23,
-   §5.21.)
+3. A way for a Google-only account (`passwordSet: false`, §5.4, landed
+   2026-11-24) to set a first password, and Google sign-in on mobile.

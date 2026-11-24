@@ -82,7 +82,10 @@ id/secret are set), persistent remember-me, CSRF on everything except the
 Stripe webhook. API password sign-in goes through the same
 `AuthenticationManager` as form login, so the audit listeners and login
 throttle are shared. API controllers get an `ApiPrincipal(userId, email,
-tokenId)` instead of a `Principal` name. There
+tokenId)` instead of a `Principal` name. A Google-provisioned user has a random password hash and
+`users.password_set = false` (V19); `AccountService` refuses password and
+email changes for them (`PASSWORD_NOT_SET`), and `Me.passwordSet` exposes
+the flag to clients. There
 are no roles; admin is an email allowlist checked in `AdminAuthorizer`.
 Controllers resolve the user with
 `UserService.requireByEmail(principal.getName())` and pass the `User` into

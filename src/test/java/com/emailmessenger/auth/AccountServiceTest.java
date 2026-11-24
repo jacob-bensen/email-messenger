@@ -67,6 +67,28 @@ class AccountServiceTest {
 
     // ---------- changePassword ----------
 
+    private User googleOnly(String email) {
+        User user = register(email);
+        user.setGoogleSubject("sub-" + email);
+        user.setPasswordSet(false);
+        return users.save(user);
+    }
+
+    @Test
+    void googleOnlyAccountCannotChangePasswordOrEmail() {
+        User user = googleOnly("google@example.com");
+        String hash = user.getPasswordHash();
+
+        assertThat(accountService.changePassword(user, "password1", "brand-new-12", null).outcome())
+                .isEqualTo(AccountService.PasswordChangeOutcome.PASSWORD_NOT_SET);
+        assertThat(accountService.changeEmail(user, "password1", "moved@example.com"))
+                .isEqualTo(AccountService.EmailChangeOutcome.PASSWORD_NOT_SET);
+
+        User reloaded = users.findById(user.getId()).orElseThrow();
+        assertThat(reloaded.getPasswordHash()).isEqualTo(hash);
+        assertThat(reloaded.getEmail()).isEqualTo("google@example.com");
+    }
+
     @Test
     void changePasswordWithCorrectCurrentSwapsHash() {
         User user = register("pw@example.com");

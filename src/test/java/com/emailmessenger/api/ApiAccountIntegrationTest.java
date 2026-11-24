@@ -61,6 +61,7 @@ class ApiAccountIntegrationTest {
         authed(get("/api/v1/account"), token)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user.email").value("ada@example.com"))
+                .andExpect(jsonPath("$.user.passwordSet").value(true))
                 .andExpect(jsonPath("$.user.plan").value("free"))
                 .andExpect(jsonPath("$.user.limits.mailboxes").value(3))
                 .andExpect(jsonPath("$.billing").value(nullValue()));
@@ -283,6 +284,28 @@ class ApiAccountIntegrationTest {
                         .content(objectMapper.writeValueAsString(
                                 new ApiDtos.LoginRequest("ada@example.com", "correct-horse", "Pixel 9"))))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void googleOnlyAccountHasNoPasswordToChange() throws Exception {
+        User managed = em.find(User.class, owner.getId());
+        managed.setGoogleSubject("google-sub-ada");
+        managed.setPasswordSet(false);
+        em.flush();
+        em.clear();
+
+        authed(get("/api/v1/me"), token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passwordSet").value(false));
+        authed(post("/api/v1/account/password").contentType(MediaType.APPLICATION_JSON)
+                        .content(passwordBody("correct-horse", "battery-staple")), token)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("password_not_set"));
+        authed(post("/api/v1/account/email").contentType(MediaType.APPLICATION_JSON)
+                        .content(emailBody("correct-horse", "ada.king@example.com")), token)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("password_not_set"));
+        authed(get("/api/v1/me"), token).andExpect(jsonPath("$.email").value("ada@example.com"));
     }
 
     @Test

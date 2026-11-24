@@ -32,7 +32,7 @@ dialect: pages compose shared pieces with `th:replace`. One stylesheet,
 | `GET /account` | user | `account` | `AccountController` → `AccountService.billingSummary`, `SignedInDeviceService.list`, `AuthEventService.recentFor` |
 | `POST /account/devices/{id}/revoke`, `POST /account/devices/revoke-all` | user | redirect `/account#devices` | `SignedInDeviceService.revoke` / `revokeAllExcept(user, null)`; flash `devicesOutcome` |
 | `POST /account/display-name` | user | redirect `/account` | `AccountService.changeDisplayName` (shared with `PUT /api/v1/account/profile`); flash `displayNameOutcome` |
-| `POST /account/password`, `POST /account/email` | user | redirect | `AccountService.changePassword` (signs out every app; shared with `POST /api/v1/account/password`) / `changeEmail` (shared with `POST /api/v1/account/email`) |
+| `POST /account/password`, `POST /account/email` | user | redirect | `AccountService.changePassword` (signs out every app; shared with `POST /api/v1/account/password`) / `changeEmail` (shared with `POST /api/v1/account/email`). Both answer `PASSWORD_NOT_SET` for a Google-only account, and `/account` hides both forms when `passwordSet` is false |
 | `GET/POST /account/appearance` | user | `account-appearance` | `AppearanceSettings` (theme + accent cookies) |
 | `GET /account/notifications` | user | `account-notifications` | placeholder ("coming soon") |
 | `GET /account/privacy` | user | `account-privacy` | — |

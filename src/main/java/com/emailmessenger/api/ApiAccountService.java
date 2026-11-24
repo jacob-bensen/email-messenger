@@ -65,6 +65,7 @@ class ApiAccountService {
                 request.currentPassword(), request.newPassword(), principal.tokenId());
         return switch (change.outcome()) {
             case OK -> new ApiDtos.ChangePasswordResponse(change.revokedDevices());
+            case PASSWORD_NOT_SET -> throw passwordNotSet();
             case CURRENT_INCORRECT -> throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "current_password_incorrect", "That isn't your current password.");
             case NEW_TOO_SHORT -> throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,
@@ -79,6 +80,7 @@ class ApiAccountService {
         User user = user(principal);
         return switch (accounts.changeEmail(user, request.currentPassword(), request.newEmail())) {
             case OK -> ApiDtos.MeResponse.of(user, planLimits.currentPlan(user));
+            case PASSWORD_NOT_SET -> throw passwordNotSet();
             case CURRENT_INCORRECT -> throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "current_password_incorrect", "That isn't your current password.");
             case EMAIL_INVALID -> throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,
@@ -88,6 +90,11 @@ class ApiAccountService {
             case EMAIL_TAKEN -> throw new ApiException(HttpStatus.CONFLICT,
                     "email_taken", "Another account already uses that email address.");
         };
+    }
+
+    private static ApiException passwordNotSet() {
+        return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "password_not_set",
+                "This account signs in with Google and has no password.");
     }
 
     private User user(ApiPrincipal principal) {

@@ -3,6 +3,30 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-24 — `passwordSet` on the user; Google-only accounts get a clear error
+
+- Chosen from `INTERNAL_TODO.md` §1 (top unblocked contract item; the
+  attachment item is still blocked on storage) and `docs/API.md` §6 item 3.
+  The TODO said this needed a new column, but `users.password_set` already
+  existed (V19, written `false` by Google provisioning and `true` by a
+  password reset), so no migration was needed.
+- Contract first: `docs/API.md` §5.4 `Me` gains `passwordSet` (boolean);
+  new `422 password_not_set` in §5.1 for §5.20 / §5.21, checked before any
+  other rule. `current_password_incorrect` no longer covers Google-only
+  accounts.
+- `AccountService.changePassword` / `changeEmail` return `PASSWORD_NOT_SET`
+  when `!user.isPasswordSet()` — one rule for the website and the API
+  (`ApiAccountService` maps it to the new code).
+- Website `/account`: the Password and Email forms are hidden for a
+  Google-only account, with a one-line reason; a direct POST gets a
+  `PASSWORD_NOT_SET` flash.
+- Tests: `AccountServiceTest` (both edits refused, nothing changes),
+  `AccountControllerTest` (forms hidden / shown), `ApiAccountIntegrationTest`
+  (`passwordSet` on `/me` and `/account`; both endpoints answer
+  `password_not_set`). `./mvnw -B verify`:
+  900 run, 0 failures, 0 errors, 1 skipped (the Docker-only
+  Testcontainers test).
+
 ## 2026-11-23 — Email change over the API
 
 - Chosen from `INTERNAL_TODO.md` §1 (top unblocked contract item after the

@@ -10,12 +10,12 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **API sends carry no attachments** (`docs/API.md` §5.8). Add
       multipart attachments (blocked on attachment storage). Sends are
       idempotent since 2026-11-20 (§5.8.1).
-- [ ] **`Me` has no "password set" flag** (`docs/API.md` §6 item 3), so
-      the app cannot hide Change password / Change email from a Google-only
-      account (random hash; both answer `current_password_incorrect`).
-      Needs a column: the random hash is indistinguishable from a real one,
-      and a Google user may later set a password via `/password/forgot`.
-      Email change has an API since 2026-11-23 (§5.21).
+- [ ] **Google-only accounts can never set a password.** `Me.passwordSet`
+      and `422 password_not_set` landed 2026-11-24, but `/password/forgot`
+      answers `GOOGLE_ONLY` and `/account` has no "set a password" form, so
+      such an account stays Google-only (and cannot sign in on mobile).
+      Decide whether to allow a first password (verified email + Google
+      re-auth) before building it.
 - [ ] **Mailbox settings are website-only:** Gmail OAuth connect /
       reconnect, signatures, sync frequency and the default sending mailbox
       have no API. A Google mailbox whose token expired can only be

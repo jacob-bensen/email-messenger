@@ -92,7 +92,13 @@
     <div th:if="${passwordOutcome == 'NEW_TOO_LONG'}" class="alert alert-error">
       New password is too long (72 bytes at most).
     </div>
-    <form method="post" th:action="@{/account/password}" class="acct-form" autocomplete="off">
+    <p th:unless="${passwordSet}" class="acct-section-sub">
+      You sign in with Google, so this account has no password to change.
+    </p>
+    <div th:if="${passwordOutcome == 'PASSWORD_NOT_SET'}" class="alert alert-error">
+      This account signs in with Google and has no password.
+    </div>
+    <form th:if="${passwordSet}" method="post" th:action="@{/account/password}" class="acct-form" autocomplete="off">
       <input type="hidden" th:if="${_csrf != null}"
              th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
       <div class="acct-row">
@@ -117,7 +123,13 @@
 
   <section class="acct-section">
     <h2 class="acct-section-title">Email address</h2>
-    <p class="acct-section-sub">We'll send a confirmation link to the new address and sign you out.</p>
+    <p th:if="${passwordSet}" class="acct-section-sub">We'll send a confirmation link to the new address and sign you out.</p>
+    <p th:unless="${passwordSet}" class="acct-section-sub">
+      Changing the address needs your password, and this account signs in with Google.
+    </p>
+    <div th:if="${emailOutcome == 'PASSWORD_NOT_SET'}" class="alert alert-error">
+      This account signs in with Google and has no password.
+    </div>
     <div th:if="${emailOutcome == 'CURRENT_INCORRECT'}" class="alert alert-error">
       That isn't your current password. Try again.
     </div>
@@ -130,7 +142,7 @@
     <div th:if="${emailOutcome == 'NO_CHANGE'}" class="alert alert-error">
       That's already your email address.
     </div>
-    <form method="post" th:action="@{/account/email}" class="acct-form" autocomplete="off">
+    <form th:if="${passwordSet}" method="post" th:action="@{/account/email}" class="acct-form" autocomplete="off">
       <input type="hidden" th:if="${_csrf != null}"
              th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
       <div class="acct-row">
