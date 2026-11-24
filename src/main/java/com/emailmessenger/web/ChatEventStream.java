@@ -1,6 +1,8 @@
 package com.emailmessenger.web;
 
 import com.emailmessenger.email.NewMailEvent;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -9,22 +11,24 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Registry of open SSE connections (one per browser tab on the chats view),
- * keyed by user id. {@link NewMailEvent}s fan out here as {@code new-mail}
- * events, which the page turns into an in-place refresh — no reload.
+ * Registry of open SSE connections (browser tabs on the chats view and app
+ * connections to {@code GET /api/v1/events}), keyed by user id.
+ * {@link NewMailEvent}s fan out here as {@code new-mail} events (API.md §3,
+ * §5.24), which clients turn into an in-place refresh — no reload.
  *
  * <p>The listener runs after commit when a transaction is active (so the
  * browser's follow-up fetch sees the imported rows) and immediately otherwise
  * (the scheduler's self-invoked poll path runs without one).
  */
 @Component
-class ChatEventStream {
+public class ChatEventStream {
 
     private static final Logger log = LoggerFactory.getLogger(ChatEventStream.class);
 
@@ -32,9 +36,22 @@ class ChatEventStream {
     static final long EMITTER_TIMEOUT_MS = 30 * 60 * 1000L;
 
     private final Map<Long, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
+    private final ObjectMapper objectMapper;
 
-    SseEmitter subscribe(Long userId) {
+    ChatEventStream(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
+    public SseEmitter subscribe(Long userId) {
         SseEmitter emitter = createEmitter();
+        try {
+            // Buffered until the response starts; lets the app see the stream
+            // is open before any mail arrives (API.md §5.24).
+            emitter.send(SseEmitter.event().comment("ok"));
+        } catch (IOException e) {
+            emitter.completeWithError(e);
+            return emitter;
+        }
         List<SseEmitter> forUser =
                 emitters.computeIfAbsent(userId, id -> new CopyOnWriteArrayList<>());
         forUser.add(emitter);
@@ -50,11 +67,18 @@ class ChatEventStream {
         if (forUser == null) {
             return;
         }
+        String data;
+        try {
+            data = objectMapper.writeValueAsString(
+                    new NewMailPayload(event.importedCount(), event.conversationKeys()));
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Cannot serialize new-mail event", e);
+        }
         for (SseEmitter emitter : forUser) {
             try {
                 emitter.send(SseEmitter.event()
                         .name("new-mail")
-                        .data("{\"imported\":" + event.importedCount() + "}"));
+                        .data(data));
             } catch (Exception e) {
                 // Dead connection (closed tab, dropped network) — drop it; the
                 // live tab's EventSource will have reconnected on its own.
@@ -79,6 +103,8 @@ class ChatEventStream {
             }
         });
     }
+
+    record NewMailPayload(int imported, List<String> conversationKeys) {}
 
     int activeCount(Long userId) {
         List<SseEmitter> forUser = emitters.get(userId);

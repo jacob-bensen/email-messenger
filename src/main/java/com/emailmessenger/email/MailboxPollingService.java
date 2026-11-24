@@ -1,7 +1,9 @@
 package com.emailmessenger.email;
 
 import com.emailmessenger.billing.PlanLimitService;
+import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.MailAccount;
+import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.Plan;
 import com.emailmessenger.repository.MailAccountRepository;
 import jakarta.mail.internet.MimeMessage;
@@ -15,7 +17,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * IMAP poll of a connected mailbox: one {@link ImapClient} call fetches
@@ -156,6 +161,7 @@ public class MailboxPollingService {
 
         int imported = 0;
         int sentImported = 0;
+        Set<String> conversationKeys = new LinkedHashSet<>();
         try {
             // Resolving creds can fail (undecryptable secret, expired OAuth
             // refresh) — that throws ImapConnectionException, handled below on
@@ -166,8 +172,10 @@ public class MailboxPollingService {
 
             for (MimeMessage mime : fetch.messages()) {
                 try {
-                    if (importService.importMessage(mime, account.getUser()).isPresent()) {
+                    Optional<Message> saved = importService.importMessage(mime, account.getUser());
+                    if (saved.isPresent()) {
                         imported++;
+                        addKey(conversationKeys, saved.get());
                     }
                 } catch (EmailImportException e) {
                     log.warn("Skipping unparseable polled message for {}@{}: {}",
@@ -184,7 +192,7 @@ public class MailboxPollingService {
             // connected before sent sync existed — then track only newer sent mail.
             if (account.getLastSeenSentUid() == null) {
                 for (MimeMessage mime : imapClient.fetchRecentSent(credentials, SENT_BACKFILL_LIMIT)) {
-                    sentImported += importSent(mime, account);
+                    sentImported += importSent(mime, account, conversationKeys);
                 }
                 account.setLastSeenSentUid(
                         imapClient.fetchSentSinceUid(credentials, null).newLastUid());
@@ -192,7 +200,7 @@ public class MailboxPollingService {
                 ImapClient.IncrementalFetch sentFetch = imapClient.fetchSentSinceUid(
                         credentials, account.getLastSeenSentUid());
                 for (MimeMessage mime : sentFetch.messages()) {
-                    sentImported += importSent(mime, account);
+                    sentImported += importSent(mime, account, conversationKeys);
                 }
                 if (sentFetch.newLastUid() != null) {
                     account.setLastSeenSentUid(sentFetch.newLastUid());
@@ -220,18 +228,28 @@ public class MailboxPollingService {
         if (imported + sentImported > 0) {
             // getId() on the lazy user proxy doesn't trigger initialization.
             eventPublisher.publishEvent(
-                    new NewMailEvent(account.getUser().getId(), imported + sentImported));
+                    new NewMailEvent(account.getUser().getId(), imported + sentImported,
+                            List.copyOf(conversationKeys)));
         }
         return imported + sentImported;
     }
 
-    private int importSent(MimeMessage mime, MailAccount account) {
+    private int importSent(MimeMessage mime, MailAccount account, Set<String> conversationKeys) {
         try {
-            return importService.importMessage(mime, account.getUser(), true).isPresent() ? 1 : 0;
+            Optional<Message> saved = importService.importMessage(mime, account.getUser(), true);
+            saved.ifPresent(message -> addKey(conversationKeys, message));
+            return saved.isPresent() ? 1 : 0;
         } catch (EmailImportException e) {
             log.warn("Skipping unparseable sent message for {}@{}: {}",
                     account.getUsername(), account.getHost(), e.getMessage());
             return 0;
+        }
+    }
+
+    private static void addKey(Set<String> conversationKeys, Message message) {
+        EmailThread thread = message.getThread();
+        if (thread != null && thread.getConversationKey() != null) {
+            conversationKeys.add(thread.getConversationKey());
         }
     }
 

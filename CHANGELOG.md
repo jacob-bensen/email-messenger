@@ -3,6 +3,33 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-24 — Live new-mail events for the app (API.md §5.24)
+
+- Chosen from the mobile §ROADMAP (M3 "Live updates with enough detail to
+  update a list row in place", the first unblocked item) and
+  `INTERNAL_TODO.md` §1 "Live events carry only a count". The other §1
+  items are blocked (attachment storage, a Google-only password decision,
+  a mobile OAuth design) or not contract work. Needs both repos.
+- Contract first: new §5.24 `GET /api/v1/events` (bearer auth, SSE,
+  opening `:ok` comment, `new-mail` with `imported` +
+  `conversationKeys`, 25 s `:ping`, no replay — refetch on reconnect). §3
+  `GET /chats/events` now carries the same data; the website script still
+  reads only `imported`. §6 "Planned" now starts with push notifications.
+- `NewMailEvent` gains `conversationKeys` (distinct keys of the threads
+  that gained messages, after re-keying); `MailboxPollingService` collects
+  them from received and sent imports. `ChatEventStream` serializes the
+  payload with Jackson, sends `:ok` on subscribe, and is now public so
+  `api.ApiEventsController` reuses it — one fan-out for web and app.
+  `ApiSecurityConfig` permits ASYNC dispatches (the stream's completion
+  dispatch carries no bearer context; the REQUEST dispatch was
+  authenticated). No migration.
+- Tests: new `ApiEventsIntegrationTest` (401 envelope without a token;
+  `:ok`, then only this user's `new-mail` with keys, on the wire),
+  `ChatEventStreamTest` (+1 payload JSON; counts include the `:ok` send),
+  `MailboxPollingServiceTest` (event carries the key).
+  `./mvnw -B verify`: 910 run, 0 failures, 0 errors, 1 skipped (the
+  Docker-only Testcontainers test).
+
 ## 2026-11-24 — Mailbox settings over the API (signature, sync frequency, default sender)
 
 - Chosen from `INTERNAL_TODO.md` §1 "Mailbox settings are website-only"

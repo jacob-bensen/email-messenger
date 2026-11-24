@@ -19,7 +19,8 @@ into a conversation, starting a new one (both retry-safe with an
 with an IMAP password, sync now, remove, signature, sync frequency and
 default sending mailbox), and the account: plan summary,
 signed-in devices, sign a device out, edit the display name, change the
-password and change the email address (§5). Gmail OAuth connect and
+password and change the email address (§5), plus a live new-mail event
+stream (§5.24). Gmail OAuth connect and
 reconnect are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -73,13 +74,14 @@ Server-Sent Events stream of new-mail notifications for the signed-in user.
 - Auth: session cookie.
 - `200 text/event-stream`. The server closes the stream after 30 minutes;
   clients reconnect.
-- Event `new-mail`, data is JSON:
+- Event `new-mail`; the same event and JSON data as the API stream
+  (§5.24), fanned out by the same `ChatEventStream`:
   ```
   event: new-mail
-  data: {"imported":2}
+  data: {"imported":2,"conversationKeys":["9f2c…"]}
   ```
-  Sent after a poll commits with at least one imported message. It carries a
-  count only — no conversation keys or message ids — so the client refetches.
+  The website's script reads `imported` only and refreshes the rail and the
+  open pane.
 - Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`).
 - No event ids, no replay of missed events. Fan-out is in-memory, so it
   works on a single backend instance only.
@@ -880,12 +882,54 @@ Errors: `400 validation_failed` (body malformed, or over 2000
 characters); `404 not_found` (not one of the user's mailboxes);
 `401 unauthorized`. Nothing changes on any error.
 
+### 5.24 GET /api/v1/events
+Server-Sent Events stream of new-mail notifications for the token's user,
+so an open app can update without polling. Fanned out by the same
+`ChatEventStream` as the website's `GET /chats/events` (§3), with the same
+events.
+
+- Auth: bearer token, like every `/api/v1` endpoint. A missing or bad
+  token gets the usual `401 unauthorized` JSON envelope (§5.1) before any
+  stream starts; once streaming, a revoked token is not re-checked until
+  the client reconnects.
+- Request: `Accept: text/event-stream` (any `Accept` works; the response
+  is always the stream).
+- `200 text/event-stream`. The server closes the stream after 30 minutes;
+  a dropped or closed stream is the client's cue to reconnect (with
+  backoff). The response starts with a comment line `:ok` so a client knows
+  the stream is open before any mail arrives.
+- Event `new-mail`, data is one JSON object on one line:
+  ```
+  event: new-mail
+  data: {"imported":2,"conversationKeys":["9f2c…","41ab…"]}
+  ```
+  | Field | Type | Notes |
+  |---|---|---|
+  | `imported` | integer ≥ 1 | Messages imported by one mailbox poll (received + sent) |
+  | `conversationKeys` | string[] | Distinct `key`s (§4, §5.5) of the conversations that gained those messages, as keyed after the import; never empty |
+
+  Sent after a poll (scheduled, IMAP IDLE-triggered, or `POST
+  /api/v1/mailboxes/{id}/sync`) commits with at least one imported message.
+  Messages sent through the API (§5.8, §5.9) do not produce an event; the
+  sender already has the response.
+- Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`); clients
+  may treat ~60 s of silence as a dead connection.
+- No event ids, no replay: after a reconnect the client refetches what it
+  shows (an event may have been missed). Unknown event names and unknown
+  data fields must be ignored. Fan-out is in-memory (single backend
+  instance only).
+
+What a client does with an event (the server does not dictate it): the
+mobile app refetches page 0 of the list it shows and merges the rows in
+place, and refetches the open conversation when its key is listed.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Live updates: SSE (or push) with enough detail to update without a
-   full refetch.
+1. Live updates, part 2: push notifications when the app is closed (Web
+   Push for the website is on the backend roadmap; mobile needs FCM/APNs).
+   The open-app stream landed 2026-11-24 (§5.24).
 2. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
 3. A way for a Google-only account (`passwordSet: false`, §5.4, landed

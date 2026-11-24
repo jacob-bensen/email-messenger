@@ -32,8 +32,10 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **Timestamps are zone-less.** `LocalDateTime` values are UTC by
       convention only; the API converts them to `Z` instants at the DTO
       edge (`ApiDtos`), which is right only while stored values are UTC.
-- [ ] **Live events carry only a count** (`{"imported":N}`), so any client
-      must refetch the whole list.
+- [ ] **Live events name conversations, not rows** (§5.24, 2026-11-24):
+      a client still refetches page 0 / the open conversation per event.
+      Fine at today's volume; a per-row summary in the event would need a
+      per-user list projection at publish time.
 
 ## 2. Logic drift and correctness
 
@@ -115,7 +117,13 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] `ClientIp` trusts the leftmost `X-Forwarded-For` value (spoofable
       without a trusted proxy). No rate limit on register, forgot-password,
       send or `/chats/refresh`. No Content-Security-Policy.
-- [ ] `ChatEventStream` is in-memory: single instance only.
+- [ ] `ChatEventStream` is in-memory: single instance only. Since
+      2026-11-24 it also serves `GET /api/v1/events`; there is no cap on
+      open streams per user or token, and a revoked token's open stream
+      lives until it ends (≤ 30 min) — close a token's emitters on revoke.
+- [ ] Each live event makes the app call `GET /api/v1/conversations`,
+      which also fires the async mailbox refresh (see the item above);
+      events can thereby trigger more polls (bounded by the "due" check).
 - [ ] Search is `LIKE '%q%'` with no full-text index; a conversation loads
       all its messages with no pagination — on the website and in
       `GET /api/v1/conversations/{key}` alike. Long histories need a
