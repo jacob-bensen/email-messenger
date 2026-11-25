@@ -115,6 +115,45 @@ class ApiSendIntegrationTest {
     }
 
     @Test
+    void replyToIdAnswersThatMessageOnItsOwnThread() throws Exception {
+        EmailThread status = inbound("Status", bob, List.of(me), "All good?", LocalDateTime.of(2026, 11, 16, 11, 0));
+        assertThat(status.getConversationKey()).isEqualTo(bobKey);
+        Long pizza = messages.findByThreadIdOrderBySentAtAsc(lunch.getId()).get(0).getId();
+
+        String json = send(bobKey, Map.of("body", "Yes to pizza", "replyToId", pizza, "subject", "ignored"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.threadId").value(lunch.getId()))
+                .andReturn().getResponse().getContentAsString();
+
+        verify(replyService).sendReplyTo(eq("Lunch"), eq("<Lunch@x>"), eq("Yes to pizza"), eq(List.of()),
+                eq(List.of("bob@acme.com")), eq("ada@example.com"));
+        long sent = objectMapper.readTree(json).get("messageId").asLong();
+        em.flush();
+        em.clear();
+        mockMvc.perform(get("/api/v1/conversations/" + bobKey).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.runs[2].messages[0].id").value(sent))
+                .andExpect(jsonPath("$.runs[2].messages[0].replyToId").value(pizza))
+                .andExpect(jsonPath("$.runs[2].thread.subject").value("Lunch"));
+    }
+
+    @Test
+    void replyToIdOutsideTheConversationIsNotFoundAndSendsNothing() throws Exception {
+        Participant cy = participants.save(new Participant("cy@acme.com", "Cy"));
+        EmailThread other = inbound("Other", cy, List.of(me), "Hi", LocalDateTime.of(2026, 11, 16, 12, 0));
+        Long foreign = messages.findByThreadIdOrderBySentAtAsc(other.getId()).get(0).getId();
+
+        send(bobKey, Map.of("body", "hi", "replyToId", foreign))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("not_found"));
+        send(bobKey, Map.of("body", "hi", "replyToId", 999_999))
+                .andExpect(status().isNotFound());
+        send(bobKey, Map.of("body", "hi", "replyToId", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("validation_failed"));
+        verifyNoInteractions(replyService);
+    }
+
+    @Test
     void notAReplySendsANewEmailFiledUnderTheSameConversation() throws Exception {
         String json = send(bobKey, Map.of("body", "Separate topic"))
                 .andExpect(status().isCreated())
@@ -306,7 +345,7 @@ class ApiSendIntegrationTest {
     @Test
     void aClaimWithoutARecordedOutcomeIsInProgress() throws Exception {
         sendRequests.saveAndFlush(new ApiSendRequest(owner.getId(), "k-4",
-                ApiSendIdempotency.fingerprint("messages", bobKey, null, "hi", null, false),
+                ApiSendIdempotency.fingerprint("messages", bobKey, null, "hi", null, false, null),
                 LocalDateTime.now()));
 
         sendWithKey(bobKey, "k-4", Map.of("body", "hi"))

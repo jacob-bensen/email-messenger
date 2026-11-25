@@ -251,7 +251,8 @@ class ConversationController {
     /**
      * Sends a chat message. By default it goes out as a brand-new email with the
      * given (optional) subject; ticking "reply" instead continues the
-     * conversation's most recent thread. Rules live in {@link ChatSendService}.
+     * conversation's most recent thread, and a bubble's Reply action
+     * ({@code replyTo}) answers that message. Rules live in {@link ChatSendService}.
      */
     @PostMapping("/chats/{key}/send")
     String send(@PathVariable String key,
@@ -259,6 +260,7 @@ class ConversationController {
                 BindingResult bindingResult,
                 @RequestParam(value = "subject", required = false) String subject,
                 @RequestParam(value = "asReply", defaultValue = "false") boolean asReply,
+                @RequestParam(value = "replyTo", required = false) Long replyTo,
                 @RequestParam(value = "attachments", required = false) MultipartFile[] attachments,
                 @RequestParam(value = "mailbox", required = false) String mailboxParam,
                 Principal principal,
@@ -268,7 +270,7 @@ class ConversationController {
         List<MailAccount> accounts = mailAccountService.list(owner);
         MailAccount selected = selectMailbox(accounts, mailboxParam);
         try {
-            chatSendService.sendToConversation(owner, selected, key, replyForm.getBody(), subject, asReply,
+            chatSendService.sendToConversation(owner, selected, key, replyForm.getBody(), subject, asReply, replyTo,
                     toOutgoingAttachments(attachments));
         } catch (ChatSendService.SendRejectedException e) {
             switch (e.reason()) {
@@ -279,7 +281,7 @@ class ConversationController {
                     }
                     return "chat";
                 }
-                case NO_MEMBERS -> {
+                case NO_MEMBERS, NO_SUCH_MESSAGE -> {
                     redirectAttributes.addFlashAttribute("sendError", e.getMessage());
                     return "redirect:/chats/" + key + mailboxQuery(selected);
                 }
@@ -288,7 +290,7 @@ class ConversationController {
                 }
             }
         }
-        redirectAttributes.addFlashAttribute("successMessage", asReply ? "Reply sent." : "Message sent.");
+        redirectAttributes.addFlashAttribute("successMessage", asReply || replyTo != null ? "Reply sent." : "Message sent.");
         return "redirect:/chats/" + key + mailboxQuery(selected);
     }
 

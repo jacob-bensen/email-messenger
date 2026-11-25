@@ -107,9 +107,9 @@ class ApiConversationService {
         MailAccount selected = mailbox(owner, mailboxId);
         boolean asReply = request.asReply() != null && request.asReply();
         String fingerprint = ApiSendIdempotency.fingerprint("messages", key, mailboxId,
-                request.body(), request.subject(), asReply);
+                request.body(), request.subject(), asReply, request.replyToId());
         return sending(owner, idempotencyKey, fingerprint, () -> sender.sendToConversation(owner, selected, key,
-                request.body(), request.subject(), asReply, List.of()));
+                request.body(), request.subject(), asReply, request.replyToId(), List.of()));
     }
 
     ApiDtos.SendResponse start(ApiPrincipal principal, Long mailboxId, ApiDtos.NewConversationRequest request,
@@ -150,6 +150,7 @@ class ApiConversationService {
         } catch (ChatSendService.SendRejectedException e) {
             throw switch (e.reason()) {
                 case NO_SUCH_CONVERSATION -> noSuchConversation();
+                case NO_SUCH_MESSAGE -> new ApiException(HttpStatus.NOT_FOUND, "not_found", e.getMessage());
                 case NO_MEMBERS -> new ApiException(HttpStatus.CONFLICT, "no_recipients", e.getMessage());
                 // The API has no attachments, so "a message or an attachment" would mislead.
                 case EMPTY_MESSAGE -> invalid("Write a message.");

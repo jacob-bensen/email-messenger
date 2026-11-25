@@ -15,7 +15,7 @@ section is promoted to Implemented.
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline (paged by
 message, newest first), mark-read, sending
-into a conversation, starting a new one (both retry-safe with an
+into a conversation (optionally as a reply to one message), starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove, signature, sync frequency and
 default sending mailbox), and the account: plan summary,
@@ -464,7 +464,7 @@ picks the sending account.
 
 Request:
 ```json
-{ "body": "Pizza at noon works.", "subject": null, "asReply": true }
+{ "body": "Pizza at noon works.", "subject": null, "asReply": true, "replyToId": null }
 ```
 - `body` (string, required): the message text, plain text. Must not be
   blank; at most 100 000 characters. Attachments cannot be sent through the
@@ -476,6 +476,15 @@ Request:
   `Re: <thread subject>`, `In-Reply-To`/`References` set to that thread's
   latest message); `false` sends a new email that the server files under
   this same conversation.
+- `replyToId` (integer, optional): answer **that** message — a §5.6
+  message `id` of this conversation in the same `mailboxId` scope (any
+  page, inbound or outbound). The email goes onto that message's thread
+  (subject `Re: <that thread's subject>`) with `In-Reply-To`/`References`
+  set to that message's Message-ID (no threading headers when the server
+  has none for it). Implies a reply: `asReply` and `subject` are ignored.
+  The recorded message's §5.6 `replyToId` is this id when the target has a
+  Message-ID. Not in the conversation in scope → `404 not_found`, nothing
+  sent.
 
 Server rules (clients must not predict beyond the bubble text):
 - Recipients are the conversation's members (§5.6 `members`), reply-all.
@@ -499,8 +508,9 @@ Server rules (clients must not predict beyond the bubble text):
   by the page's `hasMore`.
 
 Errors: `400 validation_failed` (body blank or too long, malformed JSON,
-non-integer `mailboxId`); `404 not_found` (unknown key in scope, or
-`mailboxId` not the user's); `409 no_recipients`; `502 send_failed`;
+non-integer `mailboxId` or `replyToId`); `404 not_found` (unknown key in
+scope, `mailboxId` not the user's, or `replyToId` not a message of this
+conversation in scope); `409 no_recipients`; `502 send_failed`;
 `401 unauthorized`; `409 send_in_progress` and
 `422 idempotency_key_reused` (§5.8.1).
 
@@ -515,7 +525,7 @@ dropped connection without sending the email twice.
   Without the header the request is not idempotent (a retry may send
   twice).
 - The server fingerprints the request (endpoint, path key, `mailboxId`,
-  and the body fields) and, for a key it has seen:
+  and the body fields, `replyToId` included) and, for a key it has seen:
   - earlier request **succeeded** → the same `201` body again (same
     `key`, `threadId`, `messageId`); nothing is sent;
   - earlier request **failed** with `400`/`404`/`409 no_recipients`/

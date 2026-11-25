@@ -34,10 +34,12 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
@@ -214,6 +216,50 @@ class ConversationControllerTest {
 
     @Test
     @WithMockUser(username = "chat-user@example.com")
+    void aBubbleReplyAnswersThatMessage() throws Exception {
+        Long invoice = messageWithSubject("Invoice").getId();
+
+        mockMvc.perform(post("/chats/{key}/send", adaKey)
+                        .param("body", "Paid it")
+                        .param("replyTo", invoice.toString())
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/chats/" + adaKey));
+
+        verify(replyService).sendReplyTo(eq("Invoice"), isNull(), eq("Paid it"), anyList(),
+                eq(List.of("ada@acme.com")), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void aBubbleReplyToAMessageOfAnotherConversationSendsNothing() throws Exception {
+        Long project = messageWithSubject("Project").getId();
+
+        mockMvc.perform(post("/chats/{key}/send", adaKey)
+                        .param("body", "Paid it")
+                        .param("replyTo", project.toString())
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/chats/" + adaKey))
+                .andExpect(flash().attribute("sendError", "That message is not in this conversation any more."));
+
+        verifyNoInteractions(replyService);
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void everyBubbleOffersAReplyAction() throws Exception {
+        Long invoice = messageWithSubject("Invoice").getId();
+        String body = mockMvc.perform(get("/chats/{key}/pane", adaKey))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).contains("data-reply-id=\"" + invoice + "\"");
+        assertThat(body).contains("name=\"replyTo\"");
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
     void searchFiltersConversationsByParticipant() throws Exception {
         String body = mockMvc.perform(get("/chats").param("q", "Bob"))
                 .andExpect(status().isOk())
@@ -336,6 +382,12 @@ class ConversationControllerTest {
 
         assertThat(body).contains("Add a message or an attachment.");
         verifyNoInteractions(replyService);
+    }
+
+    private Message messageWithSubject(String subject) {
+        return messages.findAll().stream()
+                .filter(m -> subject.equals(m.getSubject()))
+                .findFirst().orElseThrow();
     }
 
     private String seed(String subject, Participant sender, List<Participant> to, String html,

@@ -14,7 +14,7 @@ next.
 
 ## Related repositories
 
-- **`email-messenger`** (this repo) — BACKEND: mobile REST API (`/api/v1`: auth, me, conversation list, one conversation (paged) + mark read, send + new conversation, mailboxes + signature / sync frequency / default sending mailbox, account + signed-in devices + display name / password / email change),
+- **`email-messenger`** (this repo) — BACKEND: mobile REST API (`/api/v1`: auth, me, conversation list, one conversation (paged) + mark read, send (incl. reply to one message) + new conversation, mailboxes + signature / sync frequency / default sending mailbox, account + signed-in devices + display name / password / email change),
   Thymeleaf website, persistence, all authoritative business rules.
 - **`conexus-mail-mobile`** — FRONTEND: Flutter client. Its `lib/domain/`
   mirrors rules defined here.
@@ -153,12 +153,13 @@ commit. Add follow-ups as they emerge.
       (today `blob_ref` is always null — attachments aren't downloadable),
       then Media/Files/Links tabs in the signature rail scoped to the
       conversationKey, with links harvested from bubble HTML at import time.
-- [ ] Reply-to-a-specific-bubble: quote-reply UI targeting one message that
-      uses that message's Message-ID for In-Reply-To/References
-      (`ReplyService` currently always threads onto the thread's last
-      message, which mis-threads replies to older bubbles); make the #thread
-      badges clickable filter chips that dim the merged timeline to one
-      thread.
+- [x] Reply-to-a-specific-bubble, part 1 (2026-11-25): per-bubble "↩ Reply"
+      on `/chats` with a "Replying to …" banner, and `replyToId` on
+      `POST /api/v1/conversations/{key}/messages` (API.md §5.8); both send
+      onto that message's thread with its Message-ID as
+      In-Reply-To/References through `ChatSendService` → `ReplyService.sendReplyTo`.
+- [ ] Reply-to-a-specific-bubble, part 2: make the #thread badges
+      clickable filter chips that dim the merged timeline to one thread.
 
 ## Conventions
 

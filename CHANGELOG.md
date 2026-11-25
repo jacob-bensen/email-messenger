@@ -3,6 +3,36 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-25 — Reply to one specific message (website + API)
+
+- Chosen from the `CLAUDE.md` roadmap ("Reply-to-a-specific-bubble"): the
+  two items above it need external accounts/credentials or are
+  website-only, and the top `INTERNAL_TODO.md` contract items are blocked
+  (attachment storage, a product decision, a mobile OAuth design). A reply
+  always threaded onto the latest message, mis-threading answers to older
+  bubbles. Needs both repos.
+- Contract first: `docs/API.md` §5.8 gains `replyToId` (a message of this
+  conversation in scope; implies a reply; `404 not_found` otherwise,
+  nothing sent); the §5.8.1 fingerprint includes it.
+- Shared service layer: `ChatService.replyTarget` resolves the message in
+  scope; `ChatSendService.sendToConversation(…, replyToId, …)` sends via
+  the new `ReplyService.sendReplyTo` (that thread's subject, In-Reply-To /
+  References = that message's Message-ID) and records the copy with the same
+  `In-Reply-To`, so §5.6 `replyToId` links back. New rejection
+  `NO_SUCH_MESSAGE`. No migration.
+- Website: every bubble on `/chats` gets a "↩ Reply" action that fills a
+  hidden `replyTo` field and shows a "Replying to …" banner (cancel ×);
+  the send handler passes it to the same service; a stale target flashes
+  `sendError`. Click handling is delegated on `#messages`, so bubbles
+  morphed in by the live refresh work too.
+- Tests: `ApiSendIntegrationTest` (+2: reply to an older message on its
+  own thread with `replyToId` round trip; foreign / unknown / non-integer
+  id), `ConversationControllerTest` (+3: bubble reply, foreign message,
+  Reply action rendered), `ReplyServiceTest` (+2: headers set / omitted).
+  `./mvnw -B verify`: 916 run, 0 failures, 0 errors, 1 skipped (the
+  Docker-only Testcontainers test).
+- Follow-up: the #thread badge filter chips (roadmap part 2).
+
 ## 2026-11-25 — Page the conversation timeline over the API
 
 - Chosen from both `INTERNAL_TODO.md` files ("whole conversation in one

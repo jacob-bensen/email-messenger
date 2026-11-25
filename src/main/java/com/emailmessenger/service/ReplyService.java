@@ -64,6 +64,20 @@ public class ReplyService {
     }
 
     /**
+     * Replies to one specific message: subject {@code Re: <threadSubject>},
+     * {@code In-Reply-To}/{@code References} set to {@code inReplyTo} when it is
+     * known (a message without a Message-ID gets no threading headers).
+     */
+    public void sendReplyTo(String threadSubject, String inReplyTo, String body,
+                            List<OutgoingAttachment> attachments, List<String> toRecipients, String from) {
+        if (toRecipients == null || toRecipients.isEmpty()) {
+            return;
+        }
+        compose(from, toRecipients.toArray(String[]::new), "Re: " + threadSubject, body, attachments,
+                inReplyTo);
+    }
+
+    /**
      * Sends a brand-new email (its own subject, no threading headers) to the
      * given recipients. Used when a chat message isn't explicitly a reply.
      */

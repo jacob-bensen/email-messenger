@@ -214,14 +214,40 @@
     }
     var toggle = paneWrap.querySelector('[data-reply-toggle]');
     var subject = paneWrap.querySelector('[data-subject-input]');
-    if (toggle && subject) {
-      var sync = function () {
-        subject.disabled = toggle.checked;
-        subject.placeholder = toggle.checked ? 'Reply keeps the existing subject' : 'Subject (optional)';
-      };
-      toggle.addEventListener('change', sync);
-      sync();
+    var target = paneWrap.querySelector('[data-reply-target]');
+    var quote = paneWrap.querySelector('[data-reply-quote]');
+    var sync = function () {
+      if (!subject) return;
+      var replying = (toggle && toggle.checked) || (target && target.value);
+      subject.disabled = !!replying;
+      subject.placeholder = replying ? 'Reply keeps the existing subject' : 'Subject (optional)';
+    };
+    if (toggle) toggle.addEventListener('change', sync);
+    // A bubble's Reply answers that one message (its email thread and Message-ID).
+    if (target && quote) {
+      var quoteText = quote.querySelector('[data-reply-quote-text]');
+      // Delegated on #messages: the live refresh replaces the bubbles, not the container.
+      var msgs = paneWrap.querySelector('#messages');
+      if (msgs) msgs.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-reply-to]');
+        if (!btn) return;
+        var bubble = document.getElementById('msg-' + btn.getAttribute('data-reply-id'));
+        var text = bubble ? (bubble.querySelector('.bubble-text') || bubble).textContent.trim() : '';
+        quoteText.textContent = text.length > 90 ? text.slice(0, 90) + '…' : text;
+        target.value = btn.getAttribute('data-reply-id');
+        quote.hidden = false;
+        sync();
+        var box = paneWrap.querySelector('.reply-form textarea');
+        if (box) box.focus();
+      });
+      var cancel = quote.querySelector('[data-reply-cancel]');
+      if (cancel) cancel.addEventListener('click', function () {
+        target.value = '';
+        quote.hidden = true;
+        sync();
+      });
     }
+    sync();
   }
 
   function initPane() { localizeTimes(paneWrap); decorateMessages(); wirePane(); }

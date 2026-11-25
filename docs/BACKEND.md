@@ -44,7 +44,12 @@ API response needs must be loaded inside the service transaction.
 - **Sending** (`ChatSendService` → `ReplyService` then
   `OutboundMessageService`): one service for the website's compose boxes and
   `/api/v1` owns validation, recipients, sending account, signature, default
-  subject and reply-vs-new. Mail goes out through the single app-wide SMTP
+  subject and reply-vs-new. A reply to one message (`replyToId` /
+  the website's per-bubble Reply) resolves that message inside the
+  conversation in scope (`ChatService.replyTarget`), goes onto its thread
+  via `ReplyService.sendReplyTo` with its Message-ID as `In-Reply-To`, and
+  the recorded copy stores the same `In-Reply-To` so the bubble links back.
+  A plain "reply" still continues the latest thread. Mail goes out through the single app-wide SMTP
   relay with From set to the user's mailbox address, plain text only; only
   after the relay accepts it is a local outbound copy recorded (its own
   transaction; SMTP never runs inside one). The two steps are not atomic: a

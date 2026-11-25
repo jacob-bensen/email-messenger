@@ -199,6 +199,31 @@ class ReplyServiceTest {
     }
 
     @Test
+    void sendReplyToThreadsOntoTheGivenMessageId() throws Exception {
+        MimeMessage mimeMsg = new MimeMessage((Session) null);
+        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
+
+        replyService.sendReplyTo("Lunch", "<older@x>", "Yes", List.of(), List.of("bob@acme.com"), "me@mybox.com");
+
+        verify(mailSender).send(mimeMsg);
+        assertThat(mimeMsg.getSubject()).isEqualTo("Re: Lunch");
+        assertThat(mimeMsg.getHeader("In-Reply-To")[0]).isEqualTo("<older@x>");
+        assertThat(mimeMsg.getHeader("References")[0]).isEqualTo("<older@x>");
+        assertThat(mimeMsg.getAllRecipients()[0].toString()).isEqualTo("bob@acme.com");
+    }
+
+    @Test
+    void sendReplyToWithoutAMessageIdSendsNoThreadingHeaders() throws Exception {
+        MimeMessage mimeMsg = new MimeMessage((Session) null);
+        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
+
+        replyService.sendReplyTo("Lunch", null, "Yes", List.of(), List.of("bob@acme.com"), null);
+
+        assertThat(mimeMsg.getHeader("In-Reply-To")).isNull();
+        assertThat(mimeMsg.getSubject()).isEqualTo("Re: Lunch");
+    }
+
+    @Test
     void sendReplyPropagatesMailSendExceptionOnFailure() {
         EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
         Participant alice = new Participant("alice@example.com", "Alice");

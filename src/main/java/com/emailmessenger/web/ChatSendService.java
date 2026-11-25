@@ -36,7 +36,8 @@ public class ChatSendService {
         EMPTY_MESSAGE("Add a message or an attachment."),
         BODY_TOO_LONG("The message is too long."),
         NO_SUCH_CONVERSATION("No such conversation."),
-        NO_MEMBERS("This conversation has no one to send to.");
+        NO_MEMBERS("This conversation has no one to send to."),
+        NO_SUCH_MESSAGE("That message is not in this conversation any more.");
 
         private final String message;
 
@@ -89,11 +90,13 @@ public class ChatSendService {
     /**
      * Sends into an existing conversation, to all its members. {@code selected}
      * (may be null) scopes the conversation and picks the sending account.
-     * {@code asReply} continues the most recently active thread; otherwise a
-     * new email with {@code subject} is pinned to this conversation.
+     * {@code replyToId} (may be null) answers that message of the conversation:
+     * its thread, {@code In-Reply-To} its Message-ID. Otherwise {@code asReply}
+     * continues the most recently active thread, and without it a new email with
+     * {@code subject} is pinned to this conversation.
      */
     public SendResult sendToConversation(User owner, MailAccount selected, String key, String body,
-                                         String subject, boolean asReply,
+                                         String subject, boolean asReply, Long replyToId,
                                          List<OutgoingAttachment> attachments) {
         List<OutgoingAttachment> files = attachments == null ? List.of() : attachments;
         String text = requireContent(body, files);
@@ -113,13 +116,27 @@ public class ChatSendService {
         String from = sender != null ? sender.getUsername() : owner.getEmail();
         String outgoingBody = withSignature(text, sender);
 
+        if (replyToId != null) {
+            ChatService.ReplyTarget target;
+            try {
+                target = chatService.replyTarget(owner, scope, key, replyToId);
+            } catch (ChatService.UnknownMessageException e) {
+                throw new SendRejectedException(Rejection.NO_SUCH_MESSAGE);
+            }
+            if (target == null) {
+                throw new SendRejectedException(Rejection.NO_SUCH_CONVERSATION);
+            }
+            replyService.sendReplyTo(target.threadSubject(), target.messageIdHeader(), outgoingBody, files,
+                    recipients, from);
+            return result(outbound.recordReply(target.threadId(), owner, outgoingBody, files,
+                    target.messageIdHeader()));
+        }
+
         List<EmailThread> conversationThreads = threads.findThreadsByConversationKey(owner, key);
         if (asReply && !conversationThreads.isEmpty()) {
             EmailThread target = conversationThreads.get(0);
             replyService.sendReply(target.getId(), target.getSubject(), outgoingBody, files, recipients, from);
-            Message recorded = outbound.recordReply(target.getId(), owner, outgoingBody, files);
-            return new SendResult(recorded.getThread().getConversationKey(),
-                    recorded.getThread().getId(), recorded.getId());
+            return result(outbound.recordReply(target.getId(), owner, outgoingBody, files, null));
         }
         String subj = subjectOrDefault(subject);
         replyService.sendNewEmail(subj, outgoingBody, files, recipients, from);

@@ -98,6 +98,36 @@ public class ChatService {
         return new ChatPage(chat, all.size(), start > 0);
     }
 
+    /** The email a reply goes onto: its thread and the Message-ID to answer (may be null). */
+    public record ReplyTarget(Long threadId, String threadSubject, String messageIdHeader) {}
+
+    /**
+     * Message {@code messageId} of the conversation in scope as a reply target.
+     * Null when there is no such conversation.
+     *
+     * @throws UnknownMessageException when the message is not in the conversation
+     */
+    @Transactional(readOnly = true)
+    public ReplyTarget replyTarget(User owner, String mailboxAddress, String conversationKey, long messageId) {
+        if (conversationKey == null || conversationKey.isBlank()) {
+            return null;
+        }
+        List<Message> loaded = mailboxAddress == null || mailboxAddress.isBlank()
+                ? threads.findMessagesByConversationKey(owner, conversationKey)
+                : threads.findMessagesByConversationKeyForMailbox(
+                        owner, mailboxAddress.trim().toLowerCase(Locale.ROOT), conversationKey);
+        if (loaded.isEmpty()) {
+            return null;
+        }
+        int at = indexOf(loaded, messageId);
+        if (at < 0) {
+            throw new UnknownMessageException();
+        }
+        Message target = loaded.get(at);
+        return new ReplyTarget(target.getThread().getId(), target.getThread().getSubject(),
+                target.getMessageIdHeader());
+    }
+
     private static int indexOf(List<Message> messages, long id) {
         for (int i = 0; i < messages.size(); i++) {
             if (messages.get(i).getId() == id) {

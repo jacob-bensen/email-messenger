@@ -45,6 +45,19 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **Sent messages can appear twice.** `recordReply` stores the local
       copy with no Message-ID and `recordNewEmail` with a synthetic one, so
       the Sent-folder import cannot de-duplicate against either.
+- [ ] **The plain "reply" path ignores the mailbox scope.** Without
+      `replyToId`, `ChatSendService` continues
+      `findThreadsByConversationKey(owner, key).get(0)` — unscoped — so with
+      `mailboxId` / `?mailbox=` it can reply on a thread that belongs to
+      another mailbox. It also records the copy with no `In-Reply-To`, so
+      such bubbles show no `replyToId`. Route it through
+      `ChatService.replyTarget` (latest message in scope) like the
+      per-message reply (2026-11-25).
+- [ ] **Replies to a message without a Message-ID** (e.g. bubbles recorded
+      by `recordReply`, which stores none) go onto the right thread but
+      carry no `In-Reply-To`, so neither the recipient's client nor §5.6
+      `replyToId` links them. Generating and sending our own Message-ID
+      for outbound replies would fix this and the duplicate below.
 - [ ] **Conversation keys go stale** when the owner connects or removes a
       mailbox: existing threads are not re-keyed (the startup backfill only
       fills null keys).

@@ -813,6 +813,52 @@ body {
   opacity: 0.9;
 }
 .reply-ref:hover { text-decoration: underline; opacity: 1; }
+
+/* Per-bubble Reply action: faint until the bubble is hovered or focused. */
+.bubble-reply {
+  border: 0;
+  background: none;
+  padding: 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0.35;
+}
+.bubble-group > div:hover .bubble-reply,
+.bubble-reply:focus-visible { opacity: 1; }
+.bubble-reply:hover { color: var(--brand); }
+
+/* "Replying to …" banner above the compose box. */
+.reply-quote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--brand);
+  border-radius: 6px;
+  background: rgba(47, 133, 90, 0.08);
+  font-size: 13px;
+}
+.reply-quote[hidden] { display: none; }
+.reply-quote-label { font-weight: 600; color: var(--brand); flex-shrink: 0; }
+.reply-quote-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+.reply-quote-cancel {
+  border: 0;
+  background: none;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+}
 .bubble-flash { animation: bubbleFlash 1.2s ease; }
 @keyframes bubbleFlash {
   0%   { box-shadow: 0 0 0 3px var(--brand); }
