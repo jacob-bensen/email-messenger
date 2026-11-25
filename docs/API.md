@@ -10,7 +10,7 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-24)
+## 1. Current state (2026-11-25)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline, mark-read, sending
@@ -19,7 +19,8 @@ into a conversation, starting a new one (both retry-safe with an
 with an IMAP password, sync now, remove, signature, sync frequency and
 default sending mailbox), and the account: plan summary,
 signed-in devices, sign a device out, edit the display name, change the
-password and change the email address (§5). Gmail OAuth connect and
+password and change the email address, and a live event stream of
+changed conversations (§5). Gmail OAuth connect and
 reconnect are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -880,13 +881,51 @@ Errors: `400 validation_failed` (body malformed, or over 2000
 characters); `404 not_found` (not one of the user's mailboxes);
 `401 unauthorized`. Nothing changes on any error.
 
+### 5.24 GET /api/v1/events
+Bearer token required. A Server-Sent Events stream of changes to the
+user's conversations, so a client can update list rows (and an open
+conversation) in place instead of refetching on a timer. Same source as
+the website's `/chats/events` (§3): a mailbox poll — scheduled,
+IMAP IDLE, `…/sync` or the list's background refresh — that commits at
+least one imported message (received or sent).
+
+- `200 text/event-stream`. Request body: none. Errors before the stream
+  starts: `401 unauthorized`.
+- Event `conversations-changed`, data is one line of JSON:
+  ```
+  event: conversations-changed
+  data: {"imported":2,"conversations":[{…§5.5 row…}],"counts":{"all":12,"unread":3,"awaiting":1,"attachments":4}}
+  ```
+  - `imported` (integer ≥ 1): messages that poll imported.
+  - `conversations` (array): the §5.5 row of every conversation that poll
+    added a message to, as the **unscoped** list shows it (`accounts`
+    filled), most recently active first. A conversation that no longer
+    exists by the time the event is built is left out, so the array may be
+    shorter than the number of changes (or empty).
+  - `counts` (object): §5.5 `counts` for the unscoped list after the
+    change.
+- Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`), so
+  proxies keep the connection and the client can detect a dead one.
+- The server ends the stream after 30 minutes; clients reconnect. There
+  are no event ids and no replay: changes made while a client was not
+  connected are not re-sent, so a client refetches (§5.5, §5.6) after it
+  (re)connects. Mark-read, sends made through §5.8/§5.9 and deletions do
+  not produce events. Fan-out is in-memory, so it works on a single
+  backend instance only.
+
+Client rule (mobile): an unscoped, unfiltered list with no search replaces
+or inserts each row by `key` and re-sorts by `lastActivityAt`; any other
+list view, whose membership or order the event cannot decide, refetches
+its first page. An open conversation whose key is in `conversations`
+refetches §5.6.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Live updates: SSE (or push) with enough detail to update without a
-   full refetch.
-2. Attachments on send (multipart). (The idempotency key landed
+1. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
-3. A way for a Google-only account (`passwordSet: false`, §5.4, landed
+2. A way for a Google-only account (`passwordSet: false`, §5.4, landed
    2026-11-24) to set a first password, and Google sign-in on mobile.
+3. Push notifications (no app process running); §5.24 covers only a
+   foreground client.

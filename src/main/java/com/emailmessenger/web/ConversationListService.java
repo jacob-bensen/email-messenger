@@ -12,11 +12,13 @@ import com.emailmessenger.service.ConversationLabels;
 import com.emailmessenger.service.ConversationListItem;
 import org.jsoup.Jsoup;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -114,6 +116,18 @@ public class ConversationListService {
         return assemble(owner, summaries, mbox == null);
     }
 
+    /**
+     * The unscoped list rows (account tags included) of just these
+     * conversations, most recently active first; unknown keys are skipped.
+     */
+    @Transactional(readOnly = true)
+    public List<ConversationListItem> itemsFor(User owner, Collection<String> keys) {
+        if (keys.isEmpty()) {
+            return List.of();
+        }
+        return assemble(owner, threads.conversationSummariesForKeys(owner, keys), true);
+    }
+
     /** Conversation counts per triage tile for the given scope (null = all accounts). */
     @Transactional(readOnly = true)
     public ChatCounts counts(User owner, String mailboxAddress) {
@@ -152,7 +166,16 @@ public class ConversationListService {
         if (summaries.isEmpty()) {
             return summaries.map(s -> null);
         }
-        List<String> keys = summaries.getContent().stream()
+        List<ConversationListItem> items = assemble(owner, summaries.getContent(), includeAccounts);
+        return new PageImpl<>(items, summaries.getPageable(), summaries.getTotalElements());
+    }
+
+    private List<ConversationListItem> assemble(User owner, List<ConversationSummaryRow> summaries,
+                                                boolean includeAccounts) {
+        if (summaries.isEmpty()) {
+            return List.of();
+        }
+        List<String> keys = summaries.stream()
                 .map(ConversationSummaryRow::getConversationKey).toList();
 
         Map<String, ConversationPreviewRow> previews = firstByKey(
@@ -165,9 +188,9 @@ public class ConversationListService {
         Map<String, List<String>> accountsByKey = includeAccounts
                 ? accountsByKey(senders, recipients, ownerAddresses) : Map.of();
 
-        return summaries.map(s -> toItem(s, previews.get(s.getConversationKey()),
+        return summaries.stream().map(s -> toItem(s, previews.get(s.getConversationKey()),
                 membersByKey.getOrDefault(s.getConversationKey(), List.of()),
-                accountsByKey.getOrDefault(s.getConversationKey(), List.of())));
+                accountsByKey.getOrDefault(s.getConversationKey(), List.of()))).toList();
     }
 
     private ConversationListItem toItem(ConversationSummaryRow summary, ConversationPreviewRow preview,

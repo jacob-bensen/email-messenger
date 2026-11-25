@@ -18,9 +18,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -70,6 +73,18 @@ class ApiConversationService {
         polling.refreshDueForUserAsync(owner.getId());
         Page<ConversationListItem> rows = conversations.list(owner, scope, query, filter, PageRequest.of(page, size));
         return ApiDtos.ConversationPage.of(rows, conversations.counts(owner, scope));
+    }
+
+    /**
+     * §5.24 event data for a poll that touched {@code keys}, or empty when
+     * the user is gone. Runs in its own transaction: it is called from an
+     * after-commit listener, where the poll's transaction is already done.
+     */
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    Optional<ApiDtos.ConversationsChanged> changed(Long userId, int imported, Set<String> keys) {
+        return users.findById(userId).map(owner -> new ApiDtos.ConversationsChanged(imported,
+                conversations.itemsFor(owner, keys).stream().map(ApiDtos.ConversationRow::of).toList(),
+                ApiDtos.CountsResponse.of(conversations.counts(owner, null))));
     }
 
     @Transactional(readOnly = true)

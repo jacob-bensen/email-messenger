@@ -32,8 +32,11 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **Timestamps are zone-less.** `LocalDateTime` values are UTC by
       convention only; the API converts them to `Z` instants at the DTO
       edge (`ApiDtos`), which is right only while stored values are UTC.
-- [ ] **Live events carry only a count** (`{"imported":N}`), so any client
-      must refetch the whole list.
+- [ ] **Live events cover imports only.** `GET /api/v1/events` (§5.24,
+      2026-11-25) sends the changed rows, but mark-read, sends (§5.8/5.9,
+      website compose) and mailbox removal produce no event, so a second
+      device only sees those on its next refetch. The website's
+      `/chats/events` still sends a count only and refetches.
 
 ## 2. Logic drift and correctness
 
@@ -115,7 +118,13 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] `ClientIp` trusts the leftmost `X-Forwarded-For` value (spoofable
       without a trusted proxy). No rate limit on register, forgot-password,
       send or `/chats/refresh`. No Content-Security-Policy.
-- [ ] `ChatEventStream` is in-memory: single instance only.
+- [ ] `ChatEventStream` and `ApiEventStream` are in-memory: single
+      instance only. `ChatEventStream` does not end its streams on
+      shutdown (`ApiEventStream` does), so an open `/chats` tab holds up
+      graceful shutdown until its timeout.
+- [ ] `ApiEventStream` builds each event with three list queries plus
+      four counts per poll that imported mail, for each user with an open
+      stream; fine at today's scale, worth batching if polls get frequent.
 - [ ] Search is `LIKE '%q%'` with no full-text index; a conversation loads
       all its messages with no pagination — on the website and in
       `GET /api/v1/conversations/{key}` alike. Long histories need a

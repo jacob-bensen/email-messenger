@@ -3,6 +3,38 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-25 — Live conversation events for the API
+
+- Chosen from `docs/API.md` §6 item 1 and the mobile roadmap's first M3
+  item ("Live updates with enough detail to update a list row in place");
+  also clears `INTERNAL_TODO.md` §1 "Live events carry only a count" for
+  the API. The contract items above it are blocked (attachment storage, a
+  first-password decision, a mobile OAuth design). Needs both repos.
+- Contract first: new `docs/API.md` §5.24 `GET /api/v1/events` (bearer
+  SSE). Event `conversations-changed` carries `imported`, the unscoped
+  §5.5 rows of every conversation the poll touched and the unscoped
+  `counts`; `:ping` every 25 s; no replay, so clients refetch after a
+  reconnect. The client placement rule (unfiltered list: replace by key,
+  order by `lastActivityAt`; anything else refetches) is in the contract.
+  §6 renumbered; push notifications added there.
+- `NewMailEvent` gains `conversationKeys`, collected by
+  `MailboxPollingService` from the imported messages' threads (received
+  and sent). New `EmailThreadRepository.conversationSummariesForKeys` and
+  `ConversationListService.itemsFor(owner, keys)` (the list's own
+  assembly, so rows match §5.5 exactly). New `api.ApiEventStream` (per-user
+  emitters; builds the event once per user in a `REQUIRES_NEW` read
+  transaction after commit, never throws into the poll; completes all
+  streams on `ContextClosedEvent`) and `ApiEventsController`.
+  `ApiSecurityConfig` permits `ASYNC` dispatches (the stream's request was
+  already authenticated). No migration. The website stream is unchanged.
+- Tests: `ApiEventsIntegrationTest` (real HTTP, no test transaction: the
+  stream receives the row and counts for a published event, unknown keys
+  skipped; `401` envelope without a token), `ApiEventStreamTest` (+5:
+  built once per user, no subscriber → no query, build failure contained,
+  deleted user, dead emitter dropped), `MailboxPollingServiceTest` (event
+  carries the key). `./mvnw -B verify`: 914 run, 0 failures, 0 errors,
+  1 skipped (the Docker-only Testcontainers test).
+
 ## 2026-11-24 — Mailbox settings over the API (signature, sync frequency, default sender)
 
 - Chosen from `INTERNAL_TODO.md` §1 "Mailbox settings are website-only"

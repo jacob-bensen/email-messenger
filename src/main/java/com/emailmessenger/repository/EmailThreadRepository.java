@@ -230,6 +230,21 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
             """)
     Page<ConversationSummaryRow> conversationSummaries(@Param("owner") User owner, Pageable pageable);
 
+    // conversationSummaries restricted to the given keys, unpaged: the rows a
+    // live event re-sends after a poll touched those conversations.
+    @Query("""
+            SELECT t.conversationKey AS conversationKey,
+                   MAX(msg.sentAt) AS lastActivity,
+                   COUNT(DISTINCT t.id) AS threadCount,
+                   COUNT(DISTINCT CASE WHEN t.unread = true THEN t.id END) AS unreadCount
+            FROM EmailThread t JOIN t.messages msg
+            WHERE t.owner = :owner AND t.conversationKey IN :keys
+            GROUP BY t.conversationKey
+            ORDER BY MAX(msg.sentAt) DESC
+            """)
+    List<ConversationSummaryRow> conversationSummariesForKeys(@Param("owner") User owner,
+                                                             @Param("keys") Collection<String> keys);
+
     interface ConversationSummaryRow {
         String getConversationKey();
         LocalDateTime getLastActivity();
