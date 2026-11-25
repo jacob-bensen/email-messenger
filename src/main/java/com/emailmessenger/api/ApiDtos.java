@@ -152,6 +152,9 @@ final class ApiDtos {
 
     record NewConversationRequest(List<String> to, String subject, String body) {}
 
+    /** Data of the {@code conversations-changed} event on §5.24. */
+    record ConversationsChangedEvent(int imported, List<String> keys) {}
+
     record SendResponse(String key, long threadId, long messageId) {
 
         static SendResponse of(ChatSendService.SendResult result) {

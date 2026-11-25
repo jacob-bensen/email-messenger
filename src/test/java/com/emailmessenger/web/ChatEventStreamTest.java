@@ -8,6 +8,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -36,7 +37,7 @@ class ChatEventStreamTest {
         stream.subscribe(1L);
         stream.subscribe(1L); // second tab
 
-        stream.onNewMail(new NewMailEvent(1L, 3));
+        stream.onNewMail(new NewMailEvent(1L, 3, Set.of()));
 
         verify(created.get(0)).send(any(SseEmitter.SseEventBuilder.class));
         verify(created.get(1)).send(any(SseEmitter.SseEventBuilder.class));
@@ -47,7 +48,7 @@ class ChatEventStreamTest {
         stream.subscribe(1L);
         stream.subscribe(2L);
 
-        stream.onNewMail(new NewMailEvent(1L, 1));
+        stream.onNewMail(new NewMailEvent(1L, 1, Set.of()));
 
         verify(created.get(0)).send(any(SseEmitter.SseEventBuilder.class));
         verify(created.get(1), never()).send(any(SseEmitter.SseEventBuilder.class));
@@ -59,7 +60,7 @@ class ChatEventStreamTest {
         doThrow(new IOException("broken pipe"))
                 .when(created.get(0)).send(any(SseEmitter.SseEventBuilder.class));
 
-        stream.onNewMail(new NewMailEvent(1L, 1));
+        stream.onNewMail(new NewMailEvent(1L, 1, Set.of()));
 
         assertThat(stream.activeCount(1L)).isZero();
     }
@@ -77,13 +78,13 @@ class ChatEventStreamTest {
         verify(created.get(1)).send(any(SseEmitter.SseEventBuilder.class));
 
         // The survivor still gets real events afterwards.
-        stream.onNewMail(new NewMailEvent(1L, 2));
+        stream.onNewMail(new NewMailEvent(1L, 2, Set.of()));
         verify(created.get(1), times(2)).send(any(SseEmitter.SseEventBuilder.class));
     }
 
     @Test
     void eventForUserWithNoSubscribersIsANoOp() {
-        stream.onNewMail(new NewMailEvent(99L, 1));
+        stream.onNewMail(new NewMailEvent(99L, 1, Set.of()));
         assertThat(stream.activeCount(99L)).isZero();
     }
 }

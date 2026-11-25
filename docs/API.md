@@ -20,7 +20,8 @@ into a conversation, starting a new one (both retry-safe with an
 with an IMAP password, sync now, remove, signature, sync frequency and
 default sending mailbox), and the account: plan summary,
 signed-in devices, sign a device out, edit the display name, change the
-password and change the email address (§5). Gmail OAuth connect and
+password and change the email address, plus a live event stream of
+changed conversations (§5). Gmail OAuth connect and
 reconnect are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -908,12 +909,45 @@ Errors: `400 validation_failed` (body malformed, or over 2000
 characters); `404 not_found` (not one of the user's mailboxes);
 `401 unauthorized`. Nothing changes on any error.
 
+### 5.24 GET /api/v1/events
+Bearer token required. A Server-Sent Events stream of changes to the
+user's conversations, so a client can refresh what it shows without
+polling. Fed by the same mailbox poll (scheduled, IMAP IDLE, sync now)
+that drives the website's `/chats/events` (§3).
+
+- `200 text/event-stream`. The server ends the stream after 30 minutes,
+  and within one keepalive interval (25 s) once the token stops being
+  valid (sign-out, device removed §5.17–5.18, password change §5.20,
+  expiry). Clients reconnect after a normal end with a short delay; a
+  reconnect that answers `401` means the device was signed out.
+- Event `conversations-changed`, sent after a poll commits with at least
+  one imported message (received or sent mail):
+  ```
+  event: conversations-changed
+  data: {"imported":2,"keys":["154e1e0a1872533ddf397a16e5a65dcf"]}
+  ```
+  - `imported` (integer ≥ 1): messages imported by that poll.
+  - `keys` (string[], sorted, no duplicates): the conversation keys (§4)
+    the messages landed in. May be `[]` if none could be keyed. A key may
+    be new (a conversation the client has never seen).
+  The event says *what* changed, not the new state: clients refetch the
+  list (§5.5) and, when the conversation they show is in `keys`, that
+  conversation (§5.6). Unknown event names must be ignored.
+- Comment line `:ping` every 25 s.
+- No event ids and no replay: events missed while disconnected are not
+  resent, so clients refetch once after (re)connecting. Fan-out is
+  in-memory (single backend instance only). Messages sent through the API
+  or website do not produce an event until a later poll imports their
+  Sent-folder copy (if any).
+
+Errors: `401 unauthorized` (JSON envelope, before the stream starts).
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Live updates: SSE (or push) with enough detail to update without a
-   full refetch.
+1. Push notifications (no open stream needed); richer live events that
+   carry row data instead of keys (§5.24 landed 2026-11-25).
 2. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
 3. A way for a Google-only account (`passwordSet: false`, §5.4, landed

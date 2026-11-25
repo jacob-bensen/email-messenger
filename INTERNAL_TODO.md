@@ -32,8 +32,17 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **Timestamps are zone-less.** `LocalDateTime` values are UTC by
       convention only; the API converts them to `Z` instants at the DTO
       edge (`ApiDtos`), which is right only while stored values are UTC.
-- [ ] **Live events carry only a count** (`{"imported":N}`), so any client
-      must refetch the whole list.
+- [ ] **Live events name conversations, not their new state.** §5.24
+      (2026-11-25) sends the changed conversation keys, so the app refetches
+      list page 0 and the open conversation; rows are not patched in place.
+      The website's `/chats/events` still sends a count only. Sends made
+      through the API/website produce no event (other devices see them on
+      the next poll of the Sent folder, or never if the mailbox does not
+      keep sent mail).
+- [ ] **Live events need an open connection.** Backgrounded apps get
+      nothing until resumed; Web Push / mobile push is the follow-up
+      (`CLAUDE.md` roadmap "Live delivery, part 2"). Fan-out is in-memory,
+      single instance only.
 
 ## 2. Logic drift and correctness
 

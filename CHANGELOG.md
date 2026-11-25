@@ -3,6 +3,30 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-25 — Live conversation events over the API
+
+- Chosen from `docs/API.md` §6 Planned #1 and the mobile roadmap's first
+  open item (M3 "Live updates"); the contract items above it in both
+  `INTERNAL_TODO.md` files stay blocked (attachment storage, Google-only
+  password decision, mobile OAuth design). Needs both repos.
+- Contract first: `docs/API.md` §5.24 `GET /api/v1/events`, a bearer SSE
+  stream with `conversations-changed` events
+  (`{"imported":N,"keys":[...]}`); §1 and §6 updated.
+- `NewMailEvent` gains `conversationKeys`; `MailboxPollingService` collects
+  the key of every message it imports (inbox and Sent). The website stream
+  (`ChatEventStream`) is unchanged.
+- `api.ApiEventStream` (per-token subscriptions; after-commit fan-out;
+  keepalive pings and closes streams whose token was revoked or expired,
+  via new `ApiTokenRepository.findActiveIdsIn`) and `ApiEventsController`.
+  The API chain permits the `ASYNC` dispatch that completes an SSE response
+  (the bearer header is only checked on the original request).
+- Tests: `ApiEventStreamTest` (5), `ApiEventsIntegrationTest` (3),
+  `MailboxPollingServiceTest` asserts the event's keys.
+  `./mvnw -B verify`: 917 run, 0 failures, 0 errors, 1 skipped (the
+  Docker-only Testcontainers test); BUILD SUCCESS.
+- Deferred (`INTERNAL_TODO.md` §1): row data in events, events for sends,
+  push for backgrounded apps.
+
 ## 2026-11-25 — Page the conversation timeline over the API
 
 - Chosen from both `INTERNAL_TODO.md` files ("whole conversation in one

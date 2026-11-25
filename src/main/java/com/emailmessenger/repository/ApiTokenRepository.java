@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,4 +36,7 @@ public interface ApiTokenRepository extends JpaRepository<ApiToken, Long> {
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM ApiToken t WHERE t.user.id = :userId AND t.expiresAt > :now")
     int deleteActiveByUserId(@Param("userId") long userId, @Param("now") LocalDateTime now);
+
+    @Query("SELECT t.id FROM ApiToken t WHERE t.id IN :ids AND t.expiresAt > :now")
+    List<Long> findActiveIdsIn(@Param("ids") Collection<Long> ids, @Param("now") LocalDateTime now);
 }
