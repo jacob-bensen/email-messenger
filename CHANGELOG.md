@@ -3,6 +3,36 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-25 — Live conversation-list events over the API
+
+- Chosen from the mobile §ROADMAP (M3 "Live updates with enough detail to
+  update a list row in place") and both `INTERNAL_TODO.md` files ("Live
+  events carry only a count", "No live refresh"). The items above it are
+  blocked on attachment storage, a product decision or a mobile OAuth
+  design. Needs both repos.
+- Contract first: `docs/API.md` §5.24 `GET /api/v1/events` (bearer SSE):
+  `conversations-changed` carries the §5.5 rows (unscoped, ≤ 50, newest
+  first) of the conversations a sync changed, the unscoped counts and a
+  `truncated` flag, plus the client rule for patching the list. §1 and §6
+  updated.
+- `NewMailEvent` gains `conversationKeys`; `MailboxPollingService` collects
+  the threads each poll touched and reads their keys at the end.
+- `ConversationListService.rows(owner, keys, limit)` (shared service layer,
+  new `EmailThreadRepository.conversationSummariesForKeys`) builds the
+  rows with the same assembly as the list.
+- API: `ApiEventsController`, `ApiEventStream` (per-user registry,
+  keepalive, after-commit listener; a failure building the event is logged
+  and never fails the poll), `ApiConversationService.changes`
+  (`REQUIRES_NEW`, read-only), `ApiDtos.ConversationsChanged`.
+  `ApiSecurityConfig` permits ASYNC dispatches.
+- The website's `/chats/events` is unchanged (still a count).
+- Tests: `ApiEventsIntegrationTest` (end to end through MockMvc: committed
+  import → event with row + counts; other users' events not streamed;
+  401 envelope), `ApiEventStreamTest` (5), `ConversationListServiceTest`
+  +1, `MailboxPollingServiceTest` asserts the keys. `./mvnw -B verify`:
+  918 run, 0 failures, 0 errors, 1 skipped (the Docker-only
+  Testcontainers test). BUILD SUCCESS.
+
 ## 2026-11-25 — Page the conversation timeline over the API
 
 - Chosen from both `INTERNAL_TODO.md` files ("whole conversation in one

@@ -32,8 +32,11 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **Timestamps are zone-less.** `LocalDateTime` values are UTC by
       convention only; the API converts them to `Z` instants at the DTO
       edge (`ApiDtos`), which is right only while stored values are UTC.
-- [ ] **Live events carry only a count** (`{"imported":N}`), so any client
-      must refetch the whole list.
+- [ ] **Live events cover imported mail only.** `GET /api/v1/events`
+      (§5.24, 2026-11-25) sends the changed rows after a mailbox sync; a
+      read or a send on another device (or the website) is not streamed,
+      so other devices see it on their next refetch. The website's
+      `/chats/events` still carries only a count.
 
 ## 2. Logic drift and correctness
 
@@ -115,7 +118,12 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] `ClientIp` trusts the leftmost `X-Forwarded-For` value (spoofable
       without a trusted proxy). No rate limit on register, forgot-password,
       send or `/chats/refresh`. No Content-Security-Policy.
-- [ ] `ChatEventStream` is in-memory: single instance only.
+- [ ] `ChatEventStream` and `ApiEventStream` are in-memory: single
+      instance only.
+- [ ] An open `/api/v1/events` stream outlives its token: signing the
+      device out (or the token expiring) does not close it, so it keeps
+      receiving list rows for up to 30 minutes. Close a user's streams on
+      revocation, or re-check the token in the listener.
 - [ ] Search is `LIKE '%q%'` with no full-text index.
 - [ ] `GET /api/v1/conversations/{key}` pages its payload (`before` /
       `limit`, 2026-11-25) but `ChatService.page` still loads and sorts

@@ -17,9 +17,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -36,6 +39,7 @@ class ApiConversationService {
     static final int MAX_PAGE_SIZE = 100;
     static final int DEFAULT_MESSAGE_LIMIT = 50;
     static final int MAX_MESSAGE_LIMIT = 200;
+    static final int MAX_EVENT_ITEMS = 50;
 
     private final UserRepository users;
     private final MailAccountService mailAccounts;
@@ -89,6 +93,27 @@ class ApiConversationService {
             throw noSuchConversation();
         }
         return ApiDtos.ConversationDetail.of(page);
+    }
+
+    /**
+     * §5.24 event data for one user's changed conversations. Runs in its own
+     * transaction: it is called from an after-commit listener, where the
+     * import's transaction is already finished.
+     */
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    Optional<ApiDtos.ConversationsChanged> changes(Long userId, Set<String> keys) {
+        User owner = users.findById(userId).orElse(null);
+        if (owner == null || keys.isEmpty()) {
+            return Optional.empty();
+        }
+        List<ConversationListItem> rows = conversations.rows(owner, keys, MAX_EVENT_ITEMS + 1);
+        boolean truncated = rows.size() > MAX_EVENT_ITEMS;
+        List<ApiDtos.ConversationRow> items = rows.stream().limit(MAX_EVENT_ITEMS)
+                .map(ApiDtos.ConversationRow::of).toList();
+        ConversationListService.ChatCounts counts = conversations.counts(owner, null);
+        return Optional.of(new ApiDtos.ConversationsChanged(items,
+                new ApiDtos.CountsResponse(counts.all(), counts.unread(), counts.awaiting(), counts.attachments()),
+                truncated));
     }
 
     @Transactional

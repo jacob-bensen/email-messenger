@@ -12,11 +12,14 @@ import com.emailmessenger.service.ConversationLabels;
 import com.emailmessenger.service.ConversationListItem;
 import org.jsoup.Jsoup;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -112,6 +115,21 @@ public class ConversationListService {
                 pageable);
         // Only the cross-account Hub needs per-row account tags.
         return assemble(owner, summaries, mbox == null);
+    }
+
+    /**
+     * The unscoped list rows (account tags filled) of the given conversations,
+     * most recently active first, at most {@code limit}; unknown keys are
+     * skipped. Feeds the API's live list updates.
+     */
+    @Transactional(readOnly = true)
+    public List<ConversationListItem> rows(User owner, Collection<String> keys, int limit) {
+        if (keys.isEmpty()) {
+            return List.of();
+        }
+        List<ConversationSummaryRow> summaries =
+                threads.conversationSummariesForKeys(owner, keys, PageRequest.of(0, limit));
+        return assemble(owner, new PageImpl<>(summaries), true).getContent();
     }
 
     /** Conversation counts per triage tile for the given scope (null = all accounts). */

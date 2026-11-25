@@ -20,7 +20,8 @@ into a conversation, starting a new one (both retry-safe with an
 with an IMAP password, sync now, remove, signature, sync frequency and
 default sending mailbox), and the account: plan summary,
 signed-in devices, sign a device out, edit the display name, change the
-password and change the email address (§5). Gmail OAuth connect and
+password and change the email address, and a live stream of
+conversation-list changes (§5.24). Gmail OAuth connect and
 reconnect are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -908,12 +909,51 @@ Errors: `400 validation_failed` (body malformed, or over 2000
 characters); `404 not_found` (not one of the user's mailboxes);
 `401 unauthorized`. Nothing changes on any error.
 
+### 5.24 GET /api/v1/events
+Bearer token required. Server-Sent Events stream of changes to the user's
+conversation list, detailed enough to update list rows in place without
+refetching. Same sources as the website's `/chats/events` (§3): sent after
+any mailbox sync commits with at least one imported message — the
+background poll, IMAP IDLE, `POST /api/v1/mailboxes/{id}/sync`, the
+website's refresh.
+
+- `200 text/event-stream` (request with `Accept: text/event-stream`). The
+  server closes the stream after 30 minutes; clients reconnect. A `401`
+  (JSON envelope, §5.1) is answered before the stream opens.
+- Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`).
+- No event ids and no replay: events that happen while disconnected are
+  lost, so a client refetches the list (§5.5) after every (re)connect.
+- Fan-out is in-memory, so it works on a single backend instance only.
+
+Event `conversations-changed`, data is one line of JSON:
+```
+event: conversations-changed
+data: {"items":[{…§5.5 row…}],"counts":{"all":12,"unread":3,"awaiting":2,"attachments":1},"truncated":false}
+```
+- `items` (array): the current list row (exact §5.5 item shape) of each
+  conversation that gained a message in this sync, most recently active
+  first, at most 50. Rows are the **unscoped** list form (no `mailboxId`,
+  so `accounts` is filled) and ignore any search or filter.
+- `counts` (object): §5.5 `counts` for the unscoped list after the sync.
+- `truncated` (boolean): `true` when more than 50 conversations changed;
+  `items` then holds the 50 most recently active and the client should
+  refetch instead of patching.
+
+Client rule: when showing the unscoped, unfiltered, unsearched list,
+replace each row with the same `key` (or insert it), re-sort by
+`lastActivityAt` descending, and take `counts` (`totalItems` =
+`counts.all`). Any other view (search, filter, mailbox scope) or
+`truncated: true`: refetch. A conversation screen whose `key` is in
+`items` refetches its newest page.
+
+Errors: `401 unauthorized`.
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Live updates: SSE (or push) with enough detail to update without a
-   full refetch.
+1. Push notifications (no app open), and live events for reads and sends
+   made on another device (§5.24 covers imported mail only).
 2. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
 3. A way for a Google-only account (`passwordSet: false`, §5.4, landed

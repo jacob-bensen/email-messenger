@@ -91,6 +91,9 @@ final class ApiDtos {
 
     record CountsResponse(long all, long unread, long awaiting, long attachments) {}
 
+    /** docs/API.md §5.24 {@code conversations-changed} event data. */
+    record ConversationsChanged(List<ConversationRow> items, CountsResponse counts, boolean truncated) {}
+
     record ConversationDetail(String key, String title, String initials, boolean group, long threadCount,
                               int messageCount, boolean hasMore, List<MemberResponse> members,
                               List<RunResponse> runs) {
