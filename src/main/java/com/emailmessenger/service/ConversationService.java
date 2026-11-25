@@ -74,7 +74,7 @@ public class ConversationService {
      * is the correspondent, used for the header identity.
      */
     public SenderConversation buildSenderConversation(List<Message> messages, String senderEmail) {
-        BuiltRuns built = buildRuns(messages);
+        BuiltRuns built = buildRuns(messages, messageIdIndex(messages));
 
         // Header identity is the correspondent (the requested address), taken
         // from their first received message rather than an outbound one.
@@ -99,12 +99,31 @@ public class ConversationService {
      * the member list so the chat is keyed by the other people.
      */
     public ChatConversation buildChatConversation(List<Message> messages, Set<String> ownerAddresses) {
-        BuiltRuns built = buildRuns(messages);
-        List<ChatMember> members = buildMembers(messages, ownerAddresses);
-        String key = messages.isEmpty() ? null : messages.get(0).getThread().getConversationKey();
+        return buildChatConversation(messages, messages, ownerAddresses);
+    }
+
+    /**
+     * One page of a conversation: bubbles from {@code page}, a contiguous slice of
+     * {@code all}. Members, title, thread count and reply targets come from
+     * {@code all}, so they do not change from page to page.
+     */
+    public ChatConversation buildChatConversation(List<Message> all, List<Message> page,
+                                                  Set<String> ownerAddresses) {
+        BuiltRuns built = buildRuns(page, messageIdIndex(all));
+        List<ChatMember> members = buildMembers(all, ownerAddresses);
+        String key = all.isEmpty() ? null : all.get(0).getThread().getConversationKey();
         String initials = members.isEmpty() ? "?" : members.get(0).initials();
+        long threadCount = page == all ? built.threadCount() : distinctThreadCount(all);
         return new ChatConversation(key, titleFor(members), initials,
-                members, built.threadCount(), built.runs());
+                members, threadCount, built.runs());
+    }
+
+    private static int distinctThreadCount(List<Message> messages) {
+        Set<EmailThread> threads = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Message msg : messages) {
+            threads.add(msg.getThread());
+        }
+        return threads.size();
     }
 
     /** The non-owner participants of the conversation, each with their latest signature. */
@@ -186,8 +205,7 @@ public class ConversationService {
     }
 
     /** Shared bubble-run grouping: a new run per thread change or direction flip. */
-    private BuiltRuns buildRuns(List<Message> messages) {
-        Map<String, Long> idIndex = messageIdIndex(messages);
+    private BuiltRuns buildRuns(List<Message> messages, Map<String, Long> idIndex) {
         // Identity set: EmailThread keeps default equals/hashCode, so this counts
         // distinct threads even when one recurs in non-consecutive runs.
         Set<EmailThread> distinctThreads = Collections.newSetFromMap(new IdentityHashMap<>());

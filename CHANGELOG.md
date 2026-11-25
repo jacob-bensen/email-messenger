@@ -3,6 +3,30 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-25 — Page the conversation timeline over the API
+
+- Chosen from both `INTERNAL_TODO.md` files ("whole conversation in one
+  response"): the top items above it are blocked on attachment storage, a
+  product decision (Google-only passwords) or a mobile OAuth design. Needs
+  both repos.
+- Contract first: `docs/API.md` §5.6 gains `limit` (1–200, default 50) and
+  a `before` message-id cursor, a `hasMore` flag, a defined timeline order
+  (`sentAt` with missing last, then `id`) and the client rule for joining a
+  run split across pages; `messageCount` / `threadCount` / members stay
+  whole-conversation. `replyToId` now resolves across pages. §5.8 says how
+  a refetch after sending keeps older pages.
+- `ChatService.page` (new, shared service layer) returns a `ChatPage`;
+  `ConversationService.buildChatConversation(all, page, owners)` builds the
+  bubbles from the slice and members / thread count / reply targets from
+  the whole conversation. The website path is unchanged.
+- API: `ApiConversationService.get` validates `limit`, maps an unknown
+  cursor to `404 not_found`; `ConversationDetail` gains `hasMore`.
+- Tests: `ApiConversationIntegrationTest` +2 (paging with a cursor,
+  bad paging parameters). `./mvnw test`: 909 run, 0 failures, 0 errors,
+  1 skipped (the Docker-only Testcontainers test).
+- Deferred: the server still reads the whole conversation per page
+  (`INTERNAL_TODO.md` §3).
+
 ## 2026-11-24 — Mailbox settings over the API (signature, sync frequency, default sender)
 
 - Chosen from `INTERNAL_TODO.md` §1 "Mailbox settings are website-only"

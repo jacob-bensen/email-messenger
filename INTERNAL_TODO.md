@@ -116,10 +116,13 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       without a trusted proxy). No rate limit on register, forgot-password,
       send or `/chats/refresh`. No Content-Security-Policy.
 - [ ] `ChatEventStream` is in-memory: single instance only.
-- [ ] Search is `LIKE '%q%'` with no full-text index; a conversation loads
-      all its messages with no pagination — on the website and in
-      `GET /api/v1/conversations/{key}` alike. Long histories need a
-      cursor (`before=<messageId>`) before they get slow.
+- [ ] Search is `LIKE '%q%'` with no full-text index.
+- [ ] `GET /api/v1/conversations/{key}` pages its payload (`before` /
+      `limit`, 2026-11-25) but `ChatService.page` still loads and sorts
+      every message of the conversation per request (members and counts
+      need them); move the slice into SQL (keyset on `sent_at`, `id`) with
+      separate member/count queries when histories get long. The website's
+      `/chats/{key}` still renders the whole conversation.
 - [ ] `GET /api/v1/conversations/{key}` omits member signatures (the
       website shows them in the side panel); add with the signature →
       contact card roadmap item.

@@ -5,7 +5,6 @@ import com.emailmessenger.domain.User;
 import com.emailmessenger.email.MailAccountService;
 import com.emailmessenger.email.MailboxPollingService;
 import com.emailmessenger.repository.UserRepository;
-import com.emailmessenger.service.ChatConversation;
 import com.emailmessenger.service.ConversationListItem;
 import com.emailmessenger.web.ChatSendService;
 import com.emailmessenger.web.ChatService;
@@ -35,6 +34,8 @@ class ApiConversationService {
 
     static final int DEFAULT_PAGE_SIZE = 30;
     static final int MAX_PAGE_SIZE = 100;
+    static final int DEFAULT_MESSAGE_LIMIT = 50;
+    static final int MAX_MESSAGE_LIMIT = 200;
 
     private final UserRepository users;
     private final MailAccountService mailAccounts;
@@ -73,14 +74,21 @@ class ApiConversationService {
     }
 
     @Transactional(readOnly = true)
-    ApiDtos.ConversationDetail get(ApiPrincipal principal, String key, Long mailboxId) {
+    ApiDtos.ConversationDetail get(ApiPrincipal principal, String key, Long mailboxId, Long before, int limit) {
+        if (limit < 1 || limit > MAX_MESSAGE_LIMIT) {
+            throw invalid("limit must be between 1 and " + MAX_MESSAGE_LIMIT + ".");
+        }
         User owner = owner(principal);
-        String scope = scope(owner, mailboxId);
-        ChatConversation chat = scope != null ? chats.buildFor(owner, scope, key) : chats.buildFor(owner, key);
-        if (chat == null) {
+        ChatService.ChatPage page;
+        try {
+            page = chats.page(owner, scope(owner, mailboxId), key, before, limit);
+        } catch (ChatService.UnknownMessageException e) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "not_found", e.getMessage());
+        }
+        if (page == null) {
             throw noSuchConversation();
         }
-        return ApiDtos.ConversationDetail.of(chat);
+        return ApiDtos.ConversationDetail.of(page);
     }
 
     @Transactional

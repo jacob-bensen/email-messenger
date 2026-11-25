@@ -202,6 +202,7 @@ class ApiConversationIntegrationTest {
                 .andExpect(jsonPath("$.group").value(false))
                 .andExpect(jsonPath("$.threadCount").value(1))
                 .andExpect(jsonPath("$.messageCount").value(1))
+                .andExpect(jsonPath("$.hasMore").value(false))
                 .andExpect(jsonPath("$.members", hasSize(1)))
                 .andExpect(jsonPath("$.members[0].email").value("bob@acme.com"))
                 .andExpect(jsonPath("$.members[0].label").value("Bob Builder"))
@@ -216,6 +217,63 @@ class ApiConversationIntegrationTest {
 
         mockMvc.perform(get("/api/v1/conversations?filter=unread").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.items", hasSize(1)));
+    }
+
+    @Test
+    void pagesTheTimelineNewestFirstWithABeforeCursor() throws Exception {
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob Builder"));
+        EmailThread thread = threads.save(new EmailThread(owner, "Chat", "<chat@x>"));
+        List<Long> ids = new java.util.ArrayList<>();
+        for (int i = 1; i <= 5; i++) {
+            Message m = new Message(thread, bob, "Chat", "m" + i, null, LocalDateTime.of(2026, 1, i, 9, 0));
+            m.addRecipient(me, RecipientType.TO);
+            Message saved = messages.save(m);
+            thread.addMessage(saved, true);
+            ids.add(saved.getId());
+        }
+        thread.setConversationKey(keyService.compute(thread, ownerAddressService.addressesFor(owner)));
+        threads.saveAndFlush(thread);
+        em.clear();
+        String url = "/api/v1/conversations/" + thread.getConversationKey();
+
+        mockMvc.perform(get(url + "?limit=2").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.messageCount").value(5))
+                .andExpect(jsonPath("$.threadCount").value(1))
+                .andExpect(jsonPath("$.hasMore").value(true))
+                .andExpect(jsonPath("$.title").value("Bob Builder"))
+                .andExpect(jsonPath("$.runs", hasSize(1)))
+                .andExpect(jsonPath("$.runs[0].messages[*].bodyText").value(org.hamcrest.Matchers.contains("m4", "m5")));
+        mockMvc.perform(get(url + "?limit=2&before=" + ids.get(3)).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.hasMore").value(true))
+                .andExpect(jsonPath("$.runs[0].messages[*].bodyText").value(org.hamcrest.Matchers.contains("m2", "m3")));
+        mockMvc.perform(get(url + "?limit=5&before=" + ids.get(1)).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.hasMore").value(false))
+                .andExpect(jsonPath("$.messageCount").value(5))
+                .andExpect(jsonPath("$.runs[0].messages[*].bodyText").value(org.hamcrest.Matchers.contains("m1")));
+        mockMvc.perform(get(url + "?before=" + ids.get(0)).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.hasMore").value(false))
+                .andExpect(jsonPath("$.runs", hasSize(0)));
+        mockMvc.perform(get(url).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.hasMore").value(false))
+                .andExpect(jsonPath("$.runs[0].messages", hasSize(5)));
+    }
+
+    @Test
+    void rejectsBadPagingParameters() throws Exception {
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        inbound("Lunch", bob, List.of(me), "pizza?", true, LocalDateTime.of(2026, 1, 1, 9, 0));
+        String url = "/api/v1/conversations/"
+                + keyService.keyFor(List.of("bob@acme.com"), ownerAddressService.addressesFor(owner));
+
+        for (String query : List.of("?limit=0", "?limit=201", "?before=abc", "?limit=x")) {
+            mockMvc.perform(get(url + query).header("Authorization", "Bearer " + token))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("validation_failed"));
+        }
+        mockMvc.perform(get(url + "?before=987654321").header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("not_found"));
     }
 
     @Test

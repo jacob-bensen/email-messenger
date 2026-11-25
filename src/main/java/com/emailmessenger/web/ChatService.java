@@ -10,6 +10,8 @@ import com.emailmessenger.service.ConversationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
@@ -34,6 +36,21 @@ public class ChatService {
         this.ownerAddressService = ownerAddressService;
     }
 
+    /** Timeline order for paging (docs/API.md §5.6): sent-at, missing last, then id. */
+    static final Comparator<Message> TIMELINE_ORDER = Comparator
+            .comparing(Message::getSentAt, Comparator.nullsLast(Comparator.naturalOrder()))
+            .thenComparing(Message::getId);
+
+    /** One page of a conversation; {@code totalMessages} counts the whole conversation in scope. */
+    public record ChatPage(ChatConversation conversation, int totalMessages, boolean hasMore) {}
+
+    /** The {@code before} cursor is not a message of the conversation in scope. */
+    public static final class UnknownMessageException extends RuntimeException {
+        UnknownMessageException() {
+            super("No such message in this conversation.");
+        }
+    }
+
     @Transactional(readOnly = true)
     public ChatConversation buildFor(User owner, String conversationKey) {
         if (conversationKey == null || conversationKey.isBlank()) {
@@ -45,6 +62,49 @@ public class ChatService {
         }
         return conversationService.buildChatConversation(
                 messages, ownerAddressService.addressesFor(owner));
+    }
+
+    /**
+     * The newest {@code limit} messages older than message {@code before} (or the
+     * newest overall when {@code before} is null), scoped to {@code mailboxAddress}
+     * when it is set. Null when there is no such conversation.
+     *
+     * @throws UnknownMessageException when {@code before} is not in the conversation
+     */
+    @Transactional(readOnly = true)
+    public ChatPage page(User owner, String mailboxAddress, String conversationKey, Long before, int limit) {
+        if (conversationKey == null || conversationKey.isBlank()) {
+            return null;
+        }
+        List<Message> loaded = mailboxAddress == null || mailboxAddress.isBlank()
+                ? threads.findMessagesByConversationKey(owner, conversationKey)
+                : threads.findMessagesByConversationKeyForMailbox(
+                        owner, mailboxAddress.trim().toLowerCase(Locale.ROOT), conversationKey);
+        if (loaded.isEmpty()) {
+            return null;
+        }
+        List<Message> all = new ArrayList<>(loaded);
+        all.sort(TIMELINE_ORDER);
+        int end = all.size();
+        if (before != null) {
+            end = indexOf(all, before);
+            if (end < 0) {
+                throw new UnknownMessageException();
+            }
+        }
+        int start = Math.max(0, end - limit);
+        ChatConversation chat = conversationService.buildChatConversation(
+                all, all.subList(start, end), ownerAddressService.addressesFor(owner));
+        return new ChatPage(chat, all.size(), start > 0);
+    }
+
+    private static int indexOf(List<Message> messages, long id) {
+        for (int i = 0; i < messages.size(); i++) {
+            if (messages.get(i).getId() == id) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**

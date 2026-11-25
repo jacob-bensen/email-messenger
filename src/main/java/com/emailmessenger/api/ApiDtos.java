@@ -16,6 +16,7 @@ import com.emailmessenger.service.HtmlText;
 import com.emailmessenger.service.SenderBubbleRun;
 import com.emailmessenger.service.SenderView;
 import com.emailmessenger.web.ChatSendService;
+import com.emailmessenger.web.ChatService;
 import com.emailmessenger.web.ConversationListService;
 import com.emailmessenger.web.MailboxProvider;
 import com.emailmessenger.web.MailboxView;
@@ -91,11 +92,13 @@ final class ApiDtos {
     record CountsResponse(long all, long unread, long awaiting, long attachments) {}
 
     record ConversationDetail(String key, String title, String initials, boolean group, long threadCount,
-                              int messageCount, List<MemberResponse> members, List<RunResponse> runs) {
+                              int messageCount, boolean hasMore, List<MemberResponse> members,
+                              List<RunResponse> runs) {
 
-        static ConversationDetail of(ChatConversation chat) {
+        static ConversationDetail of(ChatService.ChatPage page) {
+            ChatConversation chat = page.conversation();
             return new ConversationDetail(chat.key(), chat.title(), chat.initials(), chat.isGroup(),
-                    chat.threadCount(), chat.messageCount(),
+                    chat.threadCount(), page.totalMessages(), page.hasMore(),
                     chat.members().stream().map(MemberResponse::of).toList(),
                     chat.runs().stream().map(RunResponse::of).toList());
         }
