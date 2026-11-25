@@ -18,7 +18,8 @@ message, newest first), mark-read, sending
 into a conversation, starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove, signature, sync frequency and
-default sending mailbox), and the account: plan summary,
+default sending mailbox), a live new-mail event stream naming the
+changed conversations, and the account: plan summary,
 signed-in devices, sign a device out, edit the display name, change the
 password and change the email address (§5). Gmail OAuth connect and
 reconnect are website-only. The website's own machine endpoints (§3) still use the
@@ -77,10 +78,12 @@ Server-Sent Events stream of new-mail notifications for the signed-in user.
 - Event `new-mail`, data is JSON:
   ```
   event: new-mail
-  data: {"imported":2}
+  data: {"imported":2,"conversationKeys":["9f86d081884c7d65…"]}
   ```
-  Sent after a poll commits with at least one imported message. It carries a
-  count only — no conversation keys or message ids — so the client refetches.
+  Sent after a poll commits with at least one imported message. Same data
+  as the API stream (§5.24): the count and the changed conversation keys,
+  no message ids, so the client refetches. The website's page script reads
+  neither field; any `new-mail` triggers its in-place refresh.
 - Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`).
 - No event ids, no replay of missed events. Fan-out is in-memory, so it
   works on a single backend instance only.
@@ -908,12 +911,44 @@ Errors: `400 validation_failed` (body malformed, or over 2000
 characters); `404 not_found` (not one of the user's mailboxes);
 `401 unauthorized`. Nothing changes on any error.
 
+### 5.24 GET /api/v1/events
+Bearer token required. Server-Sent Events stream of new-mail notifications
+for the caller, the API twin of the website's `GET /chats/events` (§3): both
+are fed by the same in-memory fan-out (`ChatEventStream`) and carry the same
+events.
+
+- `200 text/event-stream`. Nothing is sent on connect. The server closes
+  the stream after 30 minutes; clients reconnect (and should refetch what
+  they show, since events missed while disconnected are not replayed).
+- Event `new-mail`, data is one line of JSON:
+  ```
+  event: new-mail
+  data: {"imported":2,"conversationKeys":["9f86d081884c7d65…","2c26b46b68ffc68f…"]}
+  ```
+  - `imported` (integer ≥ 1): messages imported by one mailbox poll
+    (received + sent).
+  - `conversationKeys` (array of strings, ≥ 1, sorted, distinct): the
+    conversation keys (§4) of the threads those messages landed in. A
+    client refetches the conversation list when it shows any of them (or
+    always, since a key may be new), and refetches an open conversation's
+    newest page when its key is listed. Keys are the per-thread keys of the
+    unscoped (all mailboxes) list.
+  Sent after the poll commits with at least one imported message — from
+  the scheduled poll, IMAP IDLE, `POST /api/v1/mailboxes/{id}/sync`, or the
+  refresh that `GET /api/v1/conversations` starts. Messages sent through
+  §5.8/§5.9 do not produce an event (the sending device already has them).
+- Comment line `:ping` every 25 s; clients ignore comment lines.
+- No event ids, no `Last-Event-ID` replay. Single backend instance only.
+
+Errors: `401 unauthorized` (JSON envelope, before the stream starts).
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Live updates: SSE (or push) with enough detail to update without a
-   full refetch.
+1. Live updates beyond §5.24: the changed rows themselves in the event
+   (so the list updates without a refetch), and push notifications when
+   the app is not running.
 2. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
 3. A way for a Google-only account (`passwordSet: false`, §5.4, landed

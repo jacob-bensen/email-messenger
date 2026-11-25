@@ -17,7 +17,7 @@ API response needs must be loaded inside the service transaction.
 | `service` | Conversation model: `ConversationKeyService`, `ConversationService` (bubble runs), `ReplyService` (SMTP send), `EmailBodyCleaner` / `IMTransformService` (quote + signature stripping, markdown), view-model records |
 | `email` | Mailbox integration: `MailAccountService` (connect/list/remove, mail preferences, signatures — rules in `MailPreferencesRules`), `EmailImportService` (MIME → threads), `MailboxPollingService` + `PollingPolicy`, `ImapIdleService`, `JakartaImapClient`, `GmailOAuthClient`, `CredentialEncryptor` |
 | `web` | Thymeleaf controllers plus the chat-facing services `ChatService`, `ChatSendService` (the send flow), `ConversationListService`, `OutboundMessageService`, `SavedSearchService`, `ChatEventStream` (SSE) |
-| `api` | `/api/v1` for the mobile client: `ApiSecurityConfig` (stateless bearer chain), `ApiTokenService`, `ApiAuthService`, `ApiConversationService` (list → `web.ConversationListService`; one conversation (a page of it, `ChatService.page`) + mark read → `web.ChatService`; send / start a conversation → `web.ChatSendService`, retry-safe via `ApiSendIdempotency`; `service.HtmlText` gives bubbles a plain-text body), `ApiMailboxService` (list / connect / remove / preferences / signature → `email.MailAccountService` + `MailPreferencesRules`, connect fields validated as `web.MailboxForm`, sync now → `email.MailboxSyncService`, presets from `web.MailboxProvider`, error hints from `web.MailboxView.errorHint`), `ApiAccountService` (billing line → `auth.AccountService.billingSummary`; display name / password / email → `auth.AccountService.changeDisplayName` / `changePassword` / `changeEmail`; devices → `auth.SignedInDeviceService`), JSON error envelope (`ApiExceptionHandler`), DTO records in `ApiDtos`. Controllers stay thin and call the same services as the website |
+| `api` | `/api/v1` for the mobile client: `ApiSecurityConfig` (stateless bearer chain), `ApiTokenService`, `ApiAuthService`, `ApiConversationService` (list → `web.ConversationListService`; one conversation (a page of it, `ChatService.page`) + mark read → `web.ChatService`; send / start a conversation → `web.ChatSendService`, retry-safe via `ApiSendIdempotency`; `service.HtmlText` gives bubbles a plain-text body), `ApiMailboxService` (list / connect / remove / preferences / signature → `email.MailAccountService` + `MailPreferencesRules`, connect fields validated as `web.MailboxForm`, sync now → `email.MailboxSyncService`, presets from `web.MailboxProvider`, error hints from `web.MailboxView.errorHint`), `ApiEventsController` (`GET /api/v1/events` → the same `web.ChatEventStream` as `/chats/events`), `ApiAccountService` (billing line → `auth.AccountService.billingSummary`; display name / password / email → `auth.AccountService.changeDisplayName` / `changePassword` / `changeEmail`; devices → `auth.SignedInDeviceService`), JSON error envelope (`ApiExceptionHandler`), DTO records in `ApiDtos`. Controllers stay thin and call the same services as the website |
 | `auth` | `SecurityConfig`, users, registration, Google OIDC, password reset, email verification, login throttle, account settings, `SignedInDeviceService` (list / revoke API tokens, shared by `/account` and `/api/v1/account/devices`; a password change revokes every token but the caller's, a password reset revokes all) |
 | `billing` | Stripe checkout/portal/webhook, `PlanLimits` / `PlanLimitService`, trial and banner logic |
 | `team` | Teams and invites (membership only — teams grant no data access yet) |
@@ -37,8 +37,9 @@ API response needs must be loaded inside the service transaction.
   enforces the thread cap for new threads; inbound mail sets `unread`.
 - **Polling** (`MailboxPollingService.pollOne`): fetches INBOX and the Sent
   folder past stored UID cursors, imports, schedules the next poll, and
-  publishes `NewMailEvent(userId, importedCount)`, which `ChatEventStream`
-  forwards over SSE after commit. Cadence: Free 15 min, paid 5 min (users can
+  publishes `NewMailEvent(userId, importedCount, conversationKeys)`, which
+  `ChatEventStream` forwards over SSE after commit to browser tabs and API
+  streams alike. Cadence: Free 15 min, paid 5 min (users can
   only slow it down); five consecutive failures suspend the mailbox. Paid
   mailboxes also get an IMAP IDLE worker thread.
 - **Sending** (`ChatSendService` → `ReplyService` then
@@ -82,7 +83,9 @@ id/secret are set), persistent remember-me, CSRF on everything except the
 Stripe webhook. API password sign-in goes through the same
 `AuthenticationManager` as form login, so the audit listeners and login
 throttle are shared. API controllers get an `ApiPrincipal(userId, email,
-tokenId)` instead of a `Principal` name. A Google-provisioned user has a random password hash and
+tokenId)` instead of a `Principal` name. The API chain permits `ASYNC`
+dispatches: the SSE stream's writes run on them after the authenticated
+`REQUEST` dispatch, and a stateless chain has no context to restore there. A Google-provisioned user has a random password hash and
 `users.password_set = false` (V19); `AccountService` refuses password and
 email changes for them (`PASSWORD_NOT_SET`), and `Me.passwordSet` exposes
 the flag to clients. There

@@ -3,6 +3,29 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-25 — Live new-mail stream over the API
+
+- Chosen from `docs/API.md` §6 item 1 / the mobile roadmap (M3 "Live
+  updates") and `INTERNAL_TODO.md` ("Live events carry only a count"):
+  the items above it are blocked (attachment storage, Google-only password
+  decision, mobile OAuth design). Needs both repos.
+- Contract first: `docs/API.md` §5.24 `GET /api/v1/events` (bearer SSE,
+  event `new-mail` with `imported` + sorted `conversationKeys`); §3
+  `/chats/events` carries the same data; §6 item 1 narrowed to rows in the
+  event and push.
+- `NewMailEvent` gains `conversationKeys`; `MailboxPollingService` collects
+  the imported messages and reads their threads' keys after the batch (a
+  later message can re-key a thread). `ChatEventStream` (now public,
+  shared) sends `{"imported","conversationKeys"}` as JSON.
+- `api.ApiEventsController` subscribes the caller to `ChatEventStream`;
+  `ApiSecurityConfig` permits `ASYNC` dispatches so the stream's writes are
+  not rejected by the stateless chain. No migration.
+- Website: unchanged behavior (its script ignores the new field).
+- Tests: `ApiEventsIntegrationTest` (+3: 401 envelope, event body for the
+  caller only, revoked token), `MailboxPollingServiceTest` asserts the
+  sorted distinct keys. `./mvnw test`: 912 run, 0 failures, 0 errors,
+  1 skipped (the Docker-only Testcontainers test).
+
 ## 2026-11-25 — Page the conversation timeline over the API
 
 - Chosen from both `INTERNAL_TODO.md` files ("whole conversation in one

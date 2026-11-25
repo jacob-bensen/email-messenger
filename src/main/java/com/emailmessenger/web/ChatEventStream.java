@@ -3,6 +3,7 @@ package com.emailmessenger.web;
 import com.emailmessenger.email.NewMailEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -15,8 +16,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Registry of open SSE connections (one per browser tab on the chats view),
- * keyed by user id. {@link NewMailEvent}s fan out here as {@code new-mail}
+ * Registry of open SSE connections, keyed by user id: browser tabs on the
+ * chats view ({@code /chats/events}) and API clients ({@code /api/v1/events},
+ * docs/API.md §5.24). {@link NewMailEvent}s fan out here as {@code new-mail}
  * events, which the page turns into an in-place refresh — no reload.
  *
  * <p>The listener runs after commit when a transaction is active (so the
@@ -24,7 +26,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * (the scheduler's self-invoked poll path runs without one).
  */
 @Component
-class ChatEventStream {
+public class ChatEventStream {
 
     private static final Logger log = LoggerFactory.getLogger(ChatEventStream.class);
 
@@ -33,7 +35,7 @@ class ChatEventStream {
 
     private final Map<Long, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
 
-    SseEmitter subscribe(Long userId) {
+    public SseEmitter subscribe(Long userId) {
         SseEmitter emitter = createEmitter();
         List<SseEmitter> forUser =
                 emitters.computeIfAbsent(userId, id -> new CopyOnWriteArrayList<>());
@@ -54,7 +56,8 @@ class ChatEventStream {
             try {
                 emitter.send(SseEmitter.event()
                         .name("new-mail")
-                        .data("{\"imported\":" + event.importedCount() + "}"));
+                        .data(new NewMailData(event.importedCount(), event.conversationKeys()),
+                                MediaType.APPLICATION_JSON));
             } catch (Exception e) {
                 // Dead connection (closed tab, dropped network) — drop it; the
                 // live tab's EventSource will have reconnected on its own.
@@ -62,6 +65,9 @@ class ChatEventStream {
             }
         }
     }
+
+    /** The {@code new-mail} event's JSON data (docs/API.md §5.24). */
+    record NewMailData(int imported, List<String> conversationKeys) {}
 
     /**
      * Comment-only ping so idle connections aren't reaped by proxies, and so
