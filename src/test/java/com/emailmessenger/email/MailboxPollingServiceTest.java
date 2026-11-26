@@ -1,6 +1,7 @@
 package com.emailmessenger.email;
 
 import com.emailmessenger.auth.UserService;
+import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.domain.Message;
 import com.emailmessenger.domain.User;
@@ -185,8 +186,9 @@ class MailboxPollingServiceTest {
         MimeMessage m1 = plainMessage("<active-1@test>", "Hello", "a@example.com", "Body");
         when(imapClient.fetchSinceUid(any(ImapCredentials.class), any()))
                 .thenReturn(new ImapClient.IncrementalFetch(List.of(m1), 7L));
+        Message importedMessage = importedInto("k-event");
         when(importService.importMessage(any(MimeMessage.class), any(User.class)))
-                .thenReturn(Optional.of(Mockito.mock(Message.class)));
+                .thenReturn(Optional.of(importedMessage));
 
         int imported = polling.refreshActiveUserNow(owner.getId());
 
@@ -308,8 +310,9 @@ class MailboxPollingServiceTest {
         MimeMessage m1 = plainMessage("<event-1@test>", "Hello", "a@example.com", "Body");
         when(imapClient.fetchSinceUid(any(ImapCredentials.class), eq(100L)))
                 .thenReturn(new ImapClient.IncrementalFetch(List.of(m1), 101L));
+        Message importedMessage = importedInto("k-event");
         when(importService.importMessage(any(MimeMessage.class), any(User.class)))
-                .thenReturn(Optional.of(Mockito.mock(Message.class)));
+                .thenReturn(Optional.of(importedMessage));
         User owner = userRepository.findByEmail("polling-owner@example.com").orElseThrow();
 
         polling.pollOne(account.getId());
@@ -319,6 +322,7 @@ class MailboxPollingServiceTest {
                 .satisfies(e -> {
                     assertThat(e.userId()).isEqualTo(owner.getId());
                     assertThat(e.importedCount()).isEqualTo(1);
+                    assertThat(e.conversationKeys()).containsExactly("k-event");
                 });
     }
 
@@ -330,6 +334,14 @@ class MailboxPollingServiceTest {
         polling.pollOne(account.getId());
 
         assertThat(events.stream(NewMailEvent.class)).isEmpty();
+    }
+
+    private static Message importedInto(String conversationKey) {
+        EmailThread thread = Mockito.mock(EmailThread.class);
+        when(thread.getConversationKey()).thenReturn(conversationKey);
+        Message message = Mockito.mock(Message.class);
+        when(message.getThread()).thenReturn(thread);
+        return message;
     }
 
     private MimeMessage plainMessage(String messageId, String subject, String from, String body)

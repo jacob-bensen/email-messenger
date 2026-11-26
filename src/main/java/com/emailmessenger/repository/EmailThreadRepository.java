@@ -451,6 +451,28 @@ public interface EmailThreadRepository extends JpaRepository<EmailThread, Long> 
                                                               @Param("requireAwaiting") boolean requireAwaiting,
                                                               Pageable pageable);
 
+    // The summary rows of specific conversations in a scope (:mailbox null = all
+    // accounts), same shape and scope rule as conversationSummariesFiltered;
+    // powers docs/API.md §5.25 (update list rows in place after a live event).
+    @Query("""
+            SELECT t.conversationKey AS conversationKey,
+                   MAX(msg.sentAt) AS lastActivity,
+                   COUNT(DISTINCT t.id) AS threadCount,
+                   COUNT(DISTINCT CASE WHEN t.unread = true THEN t.id END) AS unreadCount
+            FROM EmailThread t JOIN t.messages msg
+            WHERE t.owner = :owner AND t.conversationKey IN :keys
+              AND (CAST(:mailbox AS string) IS NULL OR (
+                    EXISTS (SELECT 1 FROM Message sm WHERE sm.thread = t
+                            AND LOWER(sm.sender.email) = CAST(:mailbox AS string))
+                    OR EXISTS (SELECT 1 FROM MessageRecipient rr JOIN rr.message rm JOIN rr.participant rp
+                               WHERE rm.thread = t AND LOWER(rp.email) = CAST(:mailbox AS string))))
+            GROUP BY t.conversationKey
+            ORDER BY MAX(msg.sentAt) DESC
+            """)
+    List<ConversationSummaryRow> conversationSummariesForKeys(@Param("owner") User owner,
+                                                              @Param("mailbox") String mailbox,
+                                                              @Param("keys") Collection<String> keys);
+
     // Dashboard tile count for a given scope + triage filter (no free-text).
     @Query("""
             SELECT COUNT(DISTINCT t.conversationKey) FROM EmailThread t

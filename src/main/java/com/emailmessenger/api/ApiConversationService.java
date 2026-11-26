@@ -19,7 +19,10 @@ import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.function.Supplier;
 
 /**
@@ -36,6 +39,7 @@ class ApiConversationService {
     static final int MAX_PAGE_SIZE = 100;
     static final int DEFAULT_MESSAGE_LIMIT = 50;
     static final int MAX_MESSAGE_LIMIT = 200;
+    static final int MAX_ROW_KEYS = 50;
 
     private final UserRepository users;
     private final MailAccountService mailAccounts;
@@ -71,6 +75,21 @@ class ApiConversationService {
         polling.refreshDueForUserAsync(owner.getId());
         Page<ConversationListItem> rows = conversations.list(owner, scope, query, filter, PageRequest.of(page, size));
         return ApiDtos.ConversationPage.of(rows, conversations.counts(owner, scope));
+    }
+
+    @Transactional(readOnly = true)
+    ApiDtos.ConversationRows rows(ApiPrincipal principal, List<String> keys, Long mailboxId) {
+        Set<String> distinct = keys == null ? Set.of() : keys.stream()
+                .filter(k -> k != null && !k.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (distinct.isEmpty() || distinct.size() > MAX_ROW_KEYS) {
+            throw invalid("Give between 1 and " + MAX_ROW_KEYS + " conversation keys.");
+        }
+        User owner = owner(principal);
+        String scope = scope(owner, mailboxId);
+        return ApiDtos.ConversationRows.of(conversations.rows(owner, scope, distinct),
+                conversations.counts(owner, scope));
     }
 
     @Transactional(readOnly = true)

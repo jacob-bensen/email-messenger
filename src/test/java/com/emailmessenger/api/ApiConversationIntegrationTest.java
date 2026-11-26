@@ -152,6 +152,77 @@ class ApiConversationIntegrationTest {
     }
 
     @Test
+    void rowsReturnsTheRequestedConversationsMostRecentFirstWithCounts() throws Exception {
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob Builder"));
+        Participant cy = participants.save(new Participant("cy@acme.com", "Cy"));
+        Participant di = participants.save(new Participant("di@acme.com", "Di"));
+        inbound("Old", bob, List.of(me), "older message", false, LocalDateTime.of(2026, 1, 1, 9, 0));
+        inbound("New", cy, List.of(me), "newest message", true, LocalDateTime.of(2026, 1, 2, 9, 30));
+        inbound("Mid", di, List.of(me), "middle message", false, LocalDateTime.of(2026, 1, 1, 12, 0));
+        String bobKey = keyOf("Bob Builder");
+        String cyKey = keyOf("Cy");
+
+        mockMvc.perform(get("/api/v1/conversations/rows?key=" + bobKey + "&key=" + cyKey
+                        + "&key=" + bobKey + "&key=0000000000000000000000000000dead")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(2)))
+                .andExpect(jsonPath("$.items[0].key").value(cyKey))
+                .andExpect(jsonPath("$.items[0].preview").value("newest message"))
+                .andExpect(jsonPath("$.items[0].unread").value(true))
+                .andExpect(jsonPath("$.items[0].lastActivityAt").value("2026-01-02T09:30:00Z"))
+                .andExpect(jsonPath("$.items[1].key").value(bobKey))
+                .andExpect(jsonPath("$.counts.all").value(3))
+                .andExpect(jsonPath("$.counts.unread").value(1));
+    }
+
+    @Test
+    void rowsFollowTheMailboxScopeAndLeaveOutOtherUsersConversations() throws Exception {
+        mailAccounts.save(new MailAccount(owner, "imap.example.com", 993, true, "ada@example.com", "ciphertext"));
+        MailAccount work = mailAccounts.save(new MailAccount(owner, "imap.acme.com", 993, true,
+                "work@acme.com", "ciphertext"));
+        Participant workAddress = participants.save(new Participant("work@acme.com", "Work"));
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        Participant cy = participants.save(new Participant("cy@acme.com", "Cy"));
+        inbound("Work", bob, List.of(workAddress), "work", false, LocalDateTime.of(2026, 1, 1, 9, 0));
+        inbound("Home", cy, List.of(me), "home", false, LocalDateTime.of(2026, 1, 2, 9, 0));
+        String bobKey = keyOf("Bob");
+        String cyKey = keyOf("Cy");
+        User eve = userService.register("eve@example.com", "correct-horse", "Eve");
+        EmailThread evesThread = threads.save(new EmailThread(eve, "Eve's", "<eve@x>"));
+        evesThread.setConversationKey("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+        threads.saveAndFlush(evesThread);
+
+        mockMvc.perform(get("/api/v1/conversations/rows?key=" + bobKey + "&key=" + cyKey
+                        + "&key=eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee&mailboxId=" + work.getId())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andExpect(jsonPath("$.items[0].key").value(bobKey))
+                .andExpect(jsonPath("$.items[0].accounts", hasSize(0)))
+                .andExpect(jsonPath("$.counts.all").value(1));
+
+        mockMvc.perform(get("/api/v1/conversations/rows?key=" + bobKey)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.items[0].accounts[0]").value("work@acme.com"));
+    }
+
+    @Test
+    void rowsRejectsMissingOrTooManyKeys() throws Exception {
+        StringBuilder many = new StringBuilder();
+        for (int i = 0; i < 51; i++) {
+            many.append(i == 0 ? "" : "&").append("key=k").append(i);
+        }
+        for (String query : List.of("", "key=", "mailboxId=x&key=a", many.toString())) {
+            mockMvc.perform(get("/api/v1/conversations/rows?" + query).header("Authorization", "Bearer " + token))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("validation_failed"));
+        }
+        mockMvc.perform(get("/api/v1/conversations/rows?key=a"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void anotherUsersMailboxIsNotFound() throws Exception {
         User other = userService.register("eve@example.com", "correct-horse", "Eve");
         MailAccount theirs = mailAccounts.save(new MailAccount(other, "imap.example.com", 993, true,
@@ -342,6 +413,17 @@ class ApiConversationIntegrationTest {
         mockMvc.perform(get("/api/v1/conversations?filter=unread").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.items", hasSize(1)))
                 .andExpect(jsonPath("$.counts.unread").value(1));
+    }
+
+    private String keyOf(String title) throws Exception {
+        String json = mockMvc.perform(get("/api/v1/conversations").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        for (var item : objectMapper.readTree(json).get("items")) {
+            if (item.get("title").asText().equals(title)) {
+                return item.get("key").asText();
+            }
+        }
+        throw new AssertionError("No conversation titled " + title);
     }
 
     private void inbound(String subject, Participant sender, List<Participant> to, String body,

@@ -37,8 +37,10 @@ API response needs must be loaded inside the service transaction.
   enforces the thread cap for new threads; inbound mail sets `unread`.
 - **Polling** (`MailboxPollingService.pollOne`): fetches INBOX and the Sent
   folder past stored UID cursors, imports, schedules the next poll, and
-  publishes `NewMailEvent(userId, importedCount)`, which `ChatEventStream`
-  forwards over SSE after commit. Cadence: Free 15 min, paid 5 min (users can
+  publishes `NewMailEvent(userId, importedCount, conversationKeys)`, which
+  `ChatEventStream` forwards over SSE after commit: a count to browser tabs
+  (`/chats/events`) and the changed keys to API clients (`/api/v1/events`,
+  `docs/API.md` §5.24). Cadence: Free 15 min, paid 5 min (users can
   only slow it down); five consecutive failures suspend the mailbox. Paid
   mailboxes also get an IMAP IDLE worker thread.
 - **Sending** (`ChatSendService` → `ReplyService` then

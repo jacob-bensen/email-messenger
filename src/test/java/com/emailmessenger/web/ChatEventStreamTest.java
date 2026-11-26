@@ -2,12 +2,15 @@ package com.emailmessenger.web;
 
 import com.emailmessenger.email.NewMailEvent;
 import org.junit.jupiter.api.Test;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -22,7 +25,7 @@ class ChatEventStreamTest {
 
     // Spy the emitters so the sends (which SseEmitter buffers until a real
     // async request attaches) can be observed.
-    private final ChatEventStream stream = new ChatEventStream() {
+    private final ChatEventStream stream = new ChatEventStream(new ObjectMapper()) {
         @Override
         protected SseEmitter createEmitter() {
             SseEmitter spy = Mockito.spy(new SseEmitter(1000L));
@@ -36,7 +39,7 @@ class ChatEventStreamTest {
         stream.subscribe(1L);
         stream.subscribe(1L); // second tab
 
-        stream.onNewMail(new NewMailEvent(1L, 3));
+        stream.onNewMail(new NewMailEvent(1L, 3, List.of("k1")));
 
         verify(created.get(0)).send(any(SseEmitter.SseEventBuilder.class));
         verify(created.get(1)).send(any(SseEmitter.SseEventBuilder.class));
@@ -47,7 +50,7 @@ class ChatEventStreamTest {
         stream.subscribe(1L);
         stream.subscribe(2L);
 
-        stream.onNewMail(new NewMailEvent(1L, 1));
+        stream.onNewMail(new NewMailEvent(1L, 1, List.of("k1")));
 
         verify(created.get(0)).send(any(SseEmitter.SseEventBuilder.class));
         verify(created.get(1), never()).send(any(SseEmitter.SseEventBuilder.class));
@@ -59,7 +62,7 @@ class ChatEventStreamTest {
         doThrow(new IOException("broken pipe"))
                 .when(created.get(0)).send(any(SseEmitter.SseEventBuilder.class));
 
-        stream.onNewMail(new NewMailEvent(1L, 1));
+        stream.onNewMail(new NewMailEvent(1L, 1, List.of("k1")));
 
         assertThat(stream.activeCount(1L)).isZero();
     }
@@ -77,13 +80,45 @@ class ChatEventStreamTest {
         verify(created.get(1)).send(any(SseEmitter.SseEventBuilder.class));
 
         // The survivor still gets real events afterwards.
-        stream.onNewMail(new NewMailEvent(1L, 2));
+        stream.onNewMail(new NewMailEvent(1L, 2, List.of("k1")));
         verify(created.get(1), times(2)).send(any(SseEmitter.SseEventBuilder.class));
     }
 
     @Test
+    void apiSubscribersGetTheChangedKeysAndBrowserTabsTheCount() throws IOException {
+        stream.subscribe(1L);
+        stream.subscribeApi(1L);
+
+        stream.onNewMail(new NewMailEvent(1L, 2, List.of("k1", "k2")));
+
+        assertThat(sent(created.get(0))).isEqualTo("event:new-mail\ndata:{\"imported\":2}");
+        assertThat(sent(created.get(1)))
+                .isEqualTo("event:conversations-changed\ndata:{\"imported\":2,\"keys\":[\"k1\",\"k2\"]}");
+    }
+
+    @Test
+    void droppedApiSubscriberIsForgotten() throws IOException {
+        stream.subscribeApi(1L);
+        doThrow(new IOException("gone"))
+                .when(created.get(0)).send(any(SseEmitter.SseEventBuilder.class));
+
+        stream.onNewMail(new NewMailEvent(1L, 1, List.of("k1")));
+
+        assertThat(stream.activeCount(1L)).isZero();
+    }
+
+    private static String sent(SseEmitter emitter) throws IOException {
+        ArgumentCaptor<SseEmitter.SseEventBuilder> captor = ArgumentCaptor.forClass(SseEmitter.SseEventBuilder.class);
+        verify(emitter).send(captor.capture());
+        return captor.getValue().build().stream()
+                .map(d -> String.valueOf(d.getData()))
+                .collect(Collectors.joining())
+                .strip(); // the spy's real send() already built it once, adding a trailing newline
+    }
+
+    @Test
     void eventForUserWithNoSubscribersIsANoOp() {
-        stream.onNewMail(new NewMailEvent(99L, 1));
+        stream.onNewMail(new NewMailEvent(99L, 1, List.of("k1")));
         assertThat(stream.activeCount(99L)).isZero();
     }
 }

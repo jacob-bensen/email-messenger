@@ -3,6 +3,33 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-26 — Live conversation updates over the API
+
+- Chosen from the mobile roadmap (M3 "Live updates with enough detail to
+  update a list row in place") and `INTERNAL_TODO.md` §1 ("Live events
+  carry only a count"); the contract items above it are blocked. Needs
+  both repos.
+- Contract first: `docs/API.md` §5.24 `GET /api/v1/events` (bearer SSE,
+  `conversations-changed` with `imported` + the changed conversation
+  `keys`) and §5.25 `GET /api/v1/conversations/rows?key=…` (the §5.5 rows
+  of up to 50 keys plus counts, same scope rule). §6 "Planned" now starts
+  at push notifications.
+- `NewMailEvent` carries the distinct conversation keys of the messages a
+  poll imported (received and sent); `MailboxPollingService` collects them.
+- `ChatEventStream` is shared: `subscribeApi` registers API streams, which
+  get the JSON payload; browser tabs keep `new-mail {"imported":N}`.
+  New `ApiEventsController`.
+- `ConversationListService.rows` + `EmailThreadRepository.conversationSummariesForKeys`
+  build rows for given keys with the website list's assembly (no forked
+  logic); `ApiConversationService.rows` validates and maps.
+- `ApiSecurityConfig` permits the `ASYNC` dispatch (the bearer filter runs
+  once per request; the stream's original request was authorized).
+- Tests: `ApiEventsIntegrationTest` (3), `ApiConversationIntegrationTest`
+  +3 (rows order/counts/dedupe, scope and other users, bad keys),
+  `ChatEventStreamTest` +2, `MailboxPollingServiceTest` asserts the keys.
+  `./mvnw verify`: 917 run, 0 failures, 0 errors, 1 skipped (the
+  Docker-only Testcontainers test).
+
 ## 2026-11-25 — Page the conversation timeline over the API
 
 - Chosen from both `INTERNAL_TODO.md` files ("whole conversation in one

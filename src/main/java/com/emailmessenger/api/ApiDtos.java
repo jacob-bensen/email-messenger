@@ -72,7 +72,15 @@ final class ApiDtos {
         static ConversationPage of(Page<ConversationListItem> rows, ConversationListService.ChatCounts counts) {
             return new ConversationPage(rows.getContent().stream().map(ConversationRow::of).toList(),
                     rows.getNumber(), rows.getSize(), rows.getTotalElements(), rows.hasNext(),
-                    new CountsResponse(counts.all(), counts.unread(), counts.awaiting(), counts.attachments()));
+                    CountsResponse.of(counts));
+        }
+    }
+
+    record ConversationRows(List<ConversationRow> items, CountsResponse counts) {
+
+        static ConversationRows of(List<ConversationListItem> rows, ConversationListService.ChatCounts counts) {
+            return new ConversationRows(rows.stream().map(ConversationRow::of).toList(),
+                    CountsResponse.of(counts));
         }
     }
 
@@ -89,7 +97,12 @@ final class ApiDtos {
         }
     }
 
-    record CountsResponse(long all, long unread, long awaiting, long attachments) {}
+    record CountsResponse(long all, long unread, long awaiting, long attachments) {
+
+        static CountsResponse of(ConversationListService.ChatCounts counts) {
+            return new CountsResponse(counts.all(), counts.unread(), counts.awaiting(), counts.attachments());
+        }
+    }
 
     record ConversationDetail(String key, String title, String initials, boolean group, long threadCount,
                               int messageCount, boolean hasMore, List<MemberResponse> members,

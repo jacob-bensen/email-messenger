@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1")
 class ApiConversationController {
@@ -32,6 +34,13 @@ class ApiConversationController {
                                   @RequestParam(required = false) Long mailboxId,
                                   @RequestParam(required = false) String filter) {
         return conversations.list(principal, page, size, query, mailboxId, filter);
+    }
+
+    @GetMapping("/conversations/rows")
+    ApiDtos.ConversationRows rows(@AuthenticationPrincipal ApiPrincipal principal,
+                                  @RequestParam(name = "key", required = false) List<String> keys,
+                                  @RequestParam(required = false) Long mailboxId) {
+        return conversations.rows(principal, keys, mailboxId);
     }
 
     @GetMapping("/conversations/{key}")
