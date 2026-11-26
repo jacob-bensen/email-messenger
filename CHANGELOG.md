@@ -3,6 +3,31 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-26 (2) — Live sends and read state (`conversation-changed`)
+
+- Chosen from `INTERNAL_TODO.md` §1 "Live events cover new mail only": the
+  items above it are blocked (attachment storage, a Google-only password
+  decision, a mobile OAuth design). Needs both repos. The mobile repo's
+  unrun gates from the previous run were run first (all green after a
+  `dart format` pass).
+- Contract first: `docs/API.md` §5.24 gains event `conversation-changed`
+  (`{"change":"sent"|"read","conversationKeys":[…]}`), delivered after
+  commit; read only when a thread actually flipped; the originating device
+  gets the echo too (it may skip refetching during its own in-flight send).
+  §1 and §3 (`/chats/events`) updated.
+- New `web.ConversationChangedEvent`; `ChatSendService` publishes `SENT`
+  after recording (website and API share it), `ChatService.markRead`
+  publishes `READ` (website open/pane and API §5.7 share it).
+  `ChatEventStream` forwards both events through one `broadcast`.
+  `fragments/live-refresh.html` refreshes on the new event too. No
+  migration.
+- Tests: `ChatEventStreamTest` (+2: per-user delivery, payload with sorted
+  distinct keys), `ApiConversationIntegrationTest` (+1: one `READ` event
+  for two mark-reads), `ApiSendIntegrationTest` (reply and new conversation
+  publish `SENT` with the key; a mail failure publishes nothing).
+  `./mvnw -B test`: 915 run, 0 failures, 0 errors, 1 skipped (Docker-only
+  Testcontainers test), exit 0.
+
 ## 2026-11-26 — Live new-mail events over the API
 
 - Chosen from `docs/API.md` §6 Planned #1 / mobile `docs/DESIGN.md` M3

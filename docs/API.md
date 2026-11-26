@@ -20,8 +20,8 @@ into a conversation, starting a new one (both retry-safe with an
 with an IMAP password, sync now, remove, signature, sync frequency and
 default sending mailbox), and the account: plan summary,
 signed-in devices, sign a device out, edit the display name, change the
-password and change the email address, plus a live new-mail event stream
-(§5.24) (§5). Gmail OAuth connect and
+password and change the email address, plus a live event stream for new mail,
+sends and read state (§5.24) (§5). Gmail OAuth connect and
 reconnect are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -70,7 +70,7 @@ the last minute. Used by the website's 60-second heartbeat.
   (received + sent). Per-mailbox IMAP failures are logged and count as 0.
 
 ### GET /chats/events
-Server-Sent Events stream of new-mail notifications for the signed-in user.
+Server-Sent Events stream of new-mail and conversation-change notifications for the signed-in user.
 
 - Auth: session cookie.
 - `200 text/event-stream`. The server closes the stream after 30 minutes;
@@ -83,6 +83,11 @@ Server-Sent Events stream of new-mail notifications for the signed-in user.
   Sent after a poll commits with at least one imported message. Same
   payload as the API stream (§5.24); the website ignores
   `conversationKeys` and refetches the rail and open pane.
+- Event `conversation-changed` (sends and read state), same payload as
+  §5.24; the website refreshes the same way. Opening an unread
+  conversation echoes one `read` event back to the tab that opened it,
+  costing one extra in-place refresh (the refresh's own mark-read finds
+  nothing unread, so it does not loop).
 - Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`).
 - No event ids, no replay of missed events. Fan-out is in-memory, so it
   works on a single backend instance only.
@@ -911,12 +916,14 @@ characters); `404 not_found` (not one of the user's mailboxes);
 `401 unauthorized`. Nothing changes on any error.
 
 ### 5.24 GET /api/v1/events
-Bearer token required. Server-Sent Events stream of new-mail notifications
-for the signed-in user — the same fan-out (`ChatEventStream`) as the
+Bearer token required. Server-Sent Events stream of new-mail and
+conversation-change notifications for the signed-in user — the same fan-out (`ChatEventStream`) as the
 website's `GET /chats/events` (§3). A client keeps it open while it is in
 the foreground and reacts to each event instead of polling.
 
 - Request: `Authorization: Bearer <token>`, `Accept: text/event-stream`.
+- Implemented events: `new-mail` (2026-11-26) and `conversation-changed`
+  (2026-11-26, sends and read state).
 - `200 text/event-stream`. Errors before the stream opens use the §5.1
   envelope as JSON: `401 unauthorized`.
 - The server closes the stream after 30 minutes; the client reconnects.
@@ -940,7 +947,27 @@ the foreground and reacts to each event instead of polling.
     `conversationKeys`, refetch that conversation's newest page (§5.6,
     keeping older pages as in §5.8). List rows are not sent in the event
     because a row depends on the client's scope, filter and search.
-- Unknown event names must be ignored (future events, e.g. read state).
+- Event `conversation-changed`, sent after a conversation changes through
+  the user's own action on any client (website or API), so the user's
+  other tabs and devices catch up:
+  ```
+  event: conversation-changed
+  data: {"change":"sent","conversationKeys":["154e1e0a1872533ddf397a16e5a65dcf"]}
+  ```
+  - `change` (string): `sent` — a message was sent into the conversation
+    (§5.8, §5.9 or the website's compose boxes) and recorded; `read` —
+    opening or marking the conversation read (§5.7 or the website) turned
+    at least one unread thread read. Marking an already-read conversation
+    read sends nothing. Clients treat an unknown `change` value like any
+    other change.
+  - `conversationKeys` (string[], sorted, no duplicates, normally one): the
+    §4 keys of the changed conversations.
+  - The device that caused the change receives it too. Client rule: as for
+    `new-mail`. A client may skip refetching the open conversation while
+    its own send into it is in flight, since the send's response is
+    followed by that refetch anyway.
+- Events are delivered after the change commits. Unknown event names must
+  be ignored (future events).
 
 ## 6. Planned (not implemented)
 

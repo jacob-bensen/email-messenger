@@ -7,6 +7,7 @@ import com.emailmessenger.email.OwnerAddressService;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.service.ChatConversation;
 import com.emailmessenger.service.ConversationService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,13 +28,16 @@ public class ChatService {
     private final EmailThreadRepository threads;
     private final ConversationService conversationService;
     private final OwnerAddressService ownerAddressService;
+    private final ApplicationEventPublisher events;
 
     ChatService(EmailThreadRepository threads,
                 ConversationService conversationService,
-                OwnerAddressService ownerAddressService) {
+                OwnerAddressService ownerAddressService,
+                ApplicationEventPublisher events) {
         this.threads = threads;
         this.conversationService = conversationService;
         this.ownerAddressService = ownerAddressService;
+        this.events = events;
     }
 
     /** Timeline order for paging (docs/API.md §5.6): sent-at, missing last, then id. */
@@ -133,6 +137,10 @@ public class ChatService {
      * account keeps its own unread state); otherwise marks every thread of the key.
      * No-op when nothing is unread. Returns how many threads the conversation has
      * in that scope, so 0 means there is no such conversation.
+     *
+     * <p>Publishes a {@code read} {@link ConversationChangedEvent} only when a
+     * thread actually flipped, so a client that marks read in reaction to that
+     * event does not start a loop.
      */
     @Transactional
     public int markRead(User owner, String mailboxAddress, String conversationKey) {
@@ -146,10 +154,16 @@ public class ChatService {
             conversationThreads = threads.findThreadsByConversationKeyForMailbox(
                     owner, mailboxAddress.trim().toLowerCase(Locale.ROOT), conversationKey);
         }
+        boolean changed = false;
         for (EmailThread thread : conversationThreads) {
             if (thread.isUnread()) {
                 thread.markRead();
+                changed = true;
             }
+        }
+        if (changed) {
+            events.publishEvent(new ConversationChangedEvent(
+                    owner.getId(), ConversationChangedEvent.Change.READ, List.of(conversationKey)));
         }
         return conversationThreads.size();
     }

@@ -16,18 +16,22 @@ import com.emailmessenger.service.ConversationKeyService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import com.emailmessenger.web.ConversationChangedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@RecordApplicationEvents
 class ApiConversationIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -290,6 +295,21 @@ class ApiConversationIntegrationTest {
         mockMvc.perform(get("/api/v1/conversations").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.items[0].unread").value(false))
                 .andExpect(jsonPath("$.counts.unread").value(0));
+    }
+
+    @Test
+    void markReadAnnouncesTheChangeOnlyWhenSomethingWasUnread(ApplicationEvents events) throws Exception {
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        inbound("Lunch", bob, List.of(me), "pizza?", true, LocalDateTime.of(2026, 1, 1, 9, 0));
+        String key = keyService.keyFor(List.of("bob@acme.com"), ownerAddressService.addressesFor(owner));
+
+        for (int i = 0; i < 2; i++) {
+            mockMvc.perform(post("/api/v1/conversations/" + key + "/read").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isNoContent());
+        }
+
+        assertThat(events.stream(ConversationChangedEvent.class)).containsExactly(
+                new ConversationChangedEvent(owner.getId(), ConversationChangedEvent.Change.READ, List.of(key)));
     }
 
     @Test

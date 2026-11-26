@@ -86,7 +86,7 @@ Errors render `error.html` via `GlobalExceptionHandler` (statuses listed in
 | `app-nav :: nav` (sidebar; billing-portal and logout forms) | `chat`, `compose`, `account*`, `mailboxes/index` |
 | `settings-nav :: nav(active)` | `account*`, `mailboxes/index` |
 | `chat-pane :: pane` / `:: missing` (conversation + send form) | `chat`; returned directly by `GET /chats/{key}/pane` |
-| `live-refresh :: script` (SSE + 60 s heartbeat) | `chat` |
+| `live-refresh :: script` (SSE `new-mail` + `conversation-changed`, 60 s heartbeat) | `chat` |
 | `seo :: meta(...)` (includes `sw-register`) | all public pages, `conversation` |
 | `sw-register :: register` | `chat`, `conversation`, `seo` |
 | `cookie-banner :: banner` | all public pages |

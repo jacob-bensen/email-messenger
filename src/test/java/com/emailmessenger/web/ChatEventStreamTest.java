@@ -7,6 +7,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -91,5 +92,27 @@ class ChatEventStreamTest {
     void newMailPayloadCarriesCountAndConversationKeys() {
         assertThat(ChatEventStream.newMailData(new NewMailEvent(1L, 2, List.of("aaaa", "bbbb"))))
                 .isEqualTo("{\"imported\":2,\"conversationKeys\":[\"aaaa\",\"bbbb\"]}");
+    }
+
+    @Test
+    void conversationChangedEventIsSentToThatUsersSubscribers() throws IOException {
+        stream.subscribe(1L);
+        stream.subscribe(2L);
+
+        stream.onConversationChanged(new ConversationChangedEvent(
+                1L, ConversationChangedEvent.Change.SENT, List.of("k1")));
+
+        verify(created.get(0)).send(any(SseEmitter.SseEventBuilder.class));
+        verify(created.get(1), never()).send(any(SseEmitter.SseEventBuilder.class));
+    }
+
+    @Test
+    void conversationChangedDataMatchesTheContract() {
+        List<String> keys = new ArrayList<>(Arrays.asList("b", null, "a", "b"));
+
+        String data = ChatEventStream.conversationChangedData(new ConversationChangedEvent(
+                1L, ConversationChangedEvent.Change.READ, keys));
+
+        assertThat(data).isEqualTo("{\"change\":\"read\",\"conversationKeys\":[\"a\",\"b\"]}");
     }
 }

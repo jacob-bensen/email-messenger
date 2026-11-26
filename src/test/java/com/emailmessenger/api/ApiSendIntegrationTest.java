@@ -19,6 +19,7 @@ import com.emailmessenger.service.ReplyService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import com.emailmessenger.web.ConversationChangedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mail.MailSendException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +58,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@RecordApplicationEvents
 class ApiSendIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -94,7 +98,7 @@ class ApiSendIntegrationTest {
     }
 
     @Test
-    void replyContinuesTheLatestThreadAndRecordsAnOutboundBubble() throws Exception {
+    void replyContinuesTheLatestThreadAndRecordsAnOutboundBubble(ApplicationEvents events) throws Exception {
         long before = messages.count();
 
         send(bobKey, Map.of("body", "On my way", "asReply", true))
@@ -106,6 +110,8 @@ class ApiSendIntegrationTest {
         verify(replyService).sendReply(eq(lunch.getId().longValue()), eq("Lunch"), eq("On my way"),
                 eq(List.of()), eq(List.of("bob@acme.com")), eq("ada@example.com"));
         assertThat(messages.count()).isEqualTo(before + 1);
+        assertThat(events.stream(ConversationChangedEvent.class)).containsExactly(
+                new ConversationChangedEvent(owner.getId(), ConversationChangedEvent.Change.SENT, List.of(bobKey)));
         em.flush();
         em.clear();
         mockMvc.perform(get("/api/v1/conversations/" + bobKey).header("Authorization", "Bearer " + token))
@@ -189,7 +195,7 @@ class ApiSendIntegrationTest {
     }
 
     @Test
-    void aMailServerFailureIsSendFailedAndRecordsNothing() throws Exception {
+    void aMailServerFailureIsSendFailedAndRecordsNothing(ApplicationEvents events) throws Exception {
         doThrow(new MailSendException("relay down")).when(replyService)
                 .sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
         long before = messages.count();
@@ -198,10 +204,11 @@ class ApiSendIntegrationTest {
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.error.code").value("send_failed"));
         assertThat(messages.count()).isEqualTo(before);
+        assertThat(events.stream(ConversationChangedEvent.class)).isEmpty();
     }
 
     @Test
-    void startsAConversationKeyedByTheRecipients() throws Exception {
+    void startsAConversationKeyedByTheRecipients(ApplicationEvents events) throws Exception {
         String expected = keyService.keyFor(List.of("cy@acme.com", "dee@acme.com"),
                 ownerAddressService.addressesFor(owner));
 
@@ -216,6 +223,8 @@ class ApiSendIntegrationTest {
 
         verify(replyService).sendNewEmail(eq("Kickoff"), eq("Monday at 10?"), eq(List.of()),
                 eq(List.of("cy@acme.com", "dee@acme.com")), eq("ada@example.com"));
+        assertThat(events.stream(ConversationChangedEvent.class)).containsExactly(
+                new ConversationChangedEvent(owner.getId(), ConversationChangedEvent.Change.SENT, List.of(expected)));
         em.flush();
         em.clear();
         mockMvc.perform(get("/api/v1/conversations/" + expected).header("Authorization", "Bearer " + token))
