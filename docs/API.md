@@ -10,7 +10,7 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-25)
+## 1. Current state (2026-11-26)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline (paged by
@@ -20,7 +20,8 @@ into a conversation, starting a new one (both retry-safe with an
 with an IMAP password, sync now, remove, signature, sync frequency and
 default sending mailbox), and the account: plan summary,
 signed-in devices, sign a device out, edit the display name, change the
-password and change the email address (§5). Gmail OAuth connect and
+password and change the email address, plus a live new-mail event stream
+(§5.24) (§5). Gmail OAuth connect and
 reconnect are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -77,10 +78,11 @@ Server-Sent Events stream of new-mail notifications for the signed-in user.
 - Event `new-mail`, data is JSON:
   ```
   event: new-mail
-  data: {"imported":2}
+  data: {"imported":2,"conversationKeys":["154e1e0a1872533ddf397a16e5a65dcf"]}
   ```
-  Sent after a poll commits with at least one imported message. It carries a
-  count only — no conversation keys or message ids — so the client refetches.
+  Sent after a poll commits with at least one imported message. Same
+  payload as the API stream (§5.24); the website ignores
+  `conversationKeys` and refetches the rail and open pane.
 - Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`).
 - No event ids, no replay of missed events. Fan-out is in-memory, so it
   works on a single backend instance only.
@@ -908,12 +910,44 @@ Errors: `400 validation_failed` (body malformed, or over 2000
 characters); `404 not_found` (not one of the user's mailboxes);
 `401 unauthorized`. Nothing changes on any error.
 
+### 5.24 GET /api/v1/events
+Bearer token required. Server-Sent Events stream of new-mail notifications
+for the signed-in user — the same fan-out (`ChatEventStream`) as the
+website's `GET /chats/events` (§3). A client keeps it open while it is in
+the foreground and reacts to each event instead of polling.
+
+- Request: `Authorization: Bearer <token>`, `Accept: text/event-stream`.
+- `200 text/event-stream`. Errors before the stream opens use the §5.1
+  envelope as JSON: `401 unauthorized`.
+- The server closes the stream after 30 minutes; the client reconnects.
+  A token revoked or expired while the stream is open is noticed only at
+  the next connect (`401`). No event ids, no replay: after a reconnect the
+  client refetches what it shows. In-memory fan-out (single instance).
+- Comment line `:ping` every 25 s; clients ignore comment lines.
+- Event `new-mail`, sent after a mailbox poll (scheduled, IMAP IDLE, sync
+  now, the list's on-open refresh) commits with at least one imported
+  message:
+  ```
+  event: new-mail
+  data: {"imported":2,"conversationKeys":["154e1e0a1872533ddf397a16e5a65dcf"]}
+  ```
+  - `imported` (integer ≥ 1): messages imported (received + sent).
+  - `conversationKeys` (string[], sorted, no duplicates): the §4 keys of
+    the conversations those messages landed in. May be empty when a
+    thread has no key yet.
+  - Client rule: refetch the conversation list it shows (§5.5, its own
+    page/filter/search) and, when the open conversation's key is in
+    `conversationKeys`, refetch that conversation's newest page (§5.6,
+    keeping older pages as in §5.8). List rows are not sent in the event
+    because a row depends on the client's scope, filter and search.
+- Unknown event names must be ignored (future events, e.g. read state).
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Live updates: SSE (or push) with enough detail to update without a
-   full refetch.
+1. Push notifications when no client is open (website Web Push and
+   mobile push); live updates while open are §5.24.
 2. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
 3. A way for a Google-only account (`passwordSet: false`, §5.4, landed

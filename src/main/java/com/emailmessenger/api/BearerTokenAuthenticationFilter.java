@@ -29,6 +29,16 @@ class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
         this.tokens = tokens;
     }
 
+    /**
+     * The chain is stateless, so an async dispatch (an SSE stream completing,
+     * §5.24) has no stored security context; re-read the token instead of
+     * letting authorization reject the dispatch.
+     */
+    @Override
+    protected boolean shouldNotFilterAsyncDispatch() {
+        return false;
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {

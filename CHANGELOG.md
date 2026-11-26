@@ -3,6 +3,34 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-26 — Live new-mail events over the API
+
+- Chosen from `docs/API.md` §6 Planned #1 / mobile `docs/DESIGN.md` M3
+  "Live updates" and `INTERNAL_TODO.md` §1 "Live events carry only a
+  count": the contract items above it are blocked on attachment storage, a
+  product decision (Google-only passwords) or a mobile OAuth design. Needs
+  both repos.
+- Contract first: new `docs/API.md` §5.24 `GET /api/v1/events` (bearer
+  SSE, same fan-out as `/chats/events`); the `new-mail` data gains
+  `conversationKeys` (sorted, distinct) for both streams; the client rule
+  (refetch the list, refetch the open conversation only when its key is
+  named, ignore unknown events, refetch after reconnect). §3 and §6
+  updated.
+- `NewMailEvent` carries the keys; `MailboxPollingService` collects them
+  from the imported messages' threads (received and sent). `ChatEventStream`
+  is public (shared by `web` and `api`) and writes the payload with Jackson.
+  New `api.ApiEventsController`. `BearerTokenAuthenticationFilter` now also
+  runs on async dispatches, which a stateless chain needs for an SSE
+  response to complete. No migration; website JS unchanged (it ignores the
+  new field).
+- Tests: `ApiEventsIntegrationTest` (+2: delivery with keys to the right
+  user only, 401 without/with a bad token), `ChatEventStreamTest` (+1:
+  payload), `MailboxPollingServiceTest` (event keys sorted/distinct).
+  `./mvnw -B verify`: 912 run, 0 failures, 0 errors, 1 skipped (the
+  Docker-only Testcontainers test), BUILD SUCCESS.
+- Deferred (`INTERNAL_TODO.md`): events for sends/reads from other
+  clients; closing a stream when its token is revoked.
+
 ## 2026-11-25 — Page the conversation timeline over the API
 
 - Chosen from both `INTERNAL_TODO.md` files ("whole conversation in one
