@@ -3,6 +3,37 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-26 — Live events over the API
+
+- Chosen from the mobile §ROADMAP (M3 "Live updates with enough detail to
+  update a list row in place") and the server's contract gap "Live events
+  carry only a count". The items above it are blocked (attachments,
+  Google-only passwords, mobile Gmail OAuth, owner-only branch cleanup).
+  Needs both repos.
+- Contract first: `docs/API.md` §5.24 `GET /api/v1/events` (bearer SSE,
+  `new-mail` with `imported`, the changed §5.5 rows, `complete`, `counts`;
+  `:ping` keepalive; no replay), client rule for patching the list; §3 and
+  §6 point at it.
+- `NewMailEvent` now carries the touched conversation keys, collected by
+  `MailboxPollingService` from each imported message's thread.
+- `EmailThreadRepository.conversationSummariesForKeys` and
+  `ConversationListService.items(owner, keys)`: the unscoped rows (accounts
+  tagged) for just those keys, via the same `assemble` as the list.
+- `web.SseSubscribers`: the per-user emitter registry extracted from
+  `ChatEventStream`, now shared with the new `api.ApiEventStream` /
+  `ApiEventsController`. Events are built per emitter (a built
+  `SseEventBuilder` can't be sent twice).
+- `ApiConversationService.newMailUpdate` (read-only, `REQUIRES_NEW`, since
+  it runs after the poll's commit); at most 50 rows, else `complete:false`.
+  A failure is logged, never thrown into the finished poll.
+- `ApiSecurityConfig` permits the `ASYNC` dispatch: the bearer filter
+  doesn't re-run on it, so a completed stream was answered `401`
+  (`ApiEventsIntegrationTest` fails without the permit).
+- Tests: `ApiEventStreamTest`, `ApiEventsIntegrationTest`,
+  `ApiConversationServiceTest`, `ConversationListServiceTest` (+1),
+  `MailboxPollingServiceTest` (keys). `mvn -q -B test`: 919 tests, 0
+  failures, 0 errors, 1 skipped.
+
 ## 2026-11-25 — Page the conversation timeline over the API
 
 - Chosen from both `INTERNAL_TODO.md` files ("whole conversation in one

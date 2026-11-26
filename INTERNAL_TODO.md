@@ -32,8 +32,11 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **Timestamps are zone-less.** `LocalDateTime` values are UTC by
       convention only; the API converts them to `Z` instants at the DTO
       edge (`ApiDtos`), which is right only while stored values are UTC.
-- [ ] **Live events carry only a count** (`{"imported":N}`), so any client
-      must refetch the whole list.
+- [ ] **Live events cover polled mail only.** `GET /api/v1/events`
+      (§5.24, 2026-11-26) sends changed rows after a poll, but a send
+      (website or app), mark-read or mailbox removal publishes nothing, so
+      another signed-in device sees those only on its next list fetch. The
+      website's `/chats/events` is still count-only.
 
 ## 2. Logic drift and correctness
 
@@ -115,7 +118,9 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] `ClientIp` trusts the leftmost `X-Forwarded-For` value (spoofable
       without a trusted proxy). No rate limit on register, forgot-password,
       send or `/chats/refresh`. No Content-Security-Policy.
-- [ ] `ChatEventStream` is in-memory: single instance only.
+- [ ] `ChatEventStream` and `ApiEventStream` are in-memory: single
+      instance only. Each open app stream holds a servlet async request
+      for up to 30 min; there is no per-user cap on open streams.
 - [ ] Search is `LIKE '%q%'` with no full-text index.
 - [ ] `GET /api/v1/conversations/{key}` pages its payload (`before` /
       `limit`, 2026-11-25) but `ChatService.page` still loads and sorts
@@ -128,6 +133,11 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       contact card roadmap item.
 
 ## 4. Missing tests
+
+- [ ] `ApiConversationService.newMailUpdate` runs in `REQUIRES_NEW` from
+      an after-commit listener; it is unit-tested with mocks and the query
+      (`ConversationListService.items`) on H2, but not end to end from a
+      real committed poll (the test suite rolls back every transaction).
 
 - [ ] Only one test exercises real PostgreSQL, and it needs Docker; the
       large JPQL conversation queries are otherwise checked on H2 only.

@@ -72,7 +72,7 @@ final class ApiDtos {
         static ConversationPage of(Page<ConversationListItem> rows, ConversationListService.ChatCounts counts) {
             return new ConversationPage(rows.getContent().stream().map(ConversationRow::of).toList(),
                     rows.getNumber(), rows.getSize(), rows.getTotalElements(), rows.hasNext(),
-                    new CountsResponse(counts.all(), counts.unread(), counts.awaiting(), counts.attachments()));
+                    CountsResponse.of(counts));
         }
     }
 
@@ -89,7 +89,16 @@ final class ApiDtos {
         }
     }
 
-    record CountsResponse(long all, long unread, long awaiting, long attachments) {}
+    record CountsResponse(long all, long unread, long awaiting, long attachments) {
+
+        static CountsResponse of(ConversationListService.ChatCounts counts) {
+            return new CountsResponse(counts.all(), counts.unread(), counts.awaiting(), counts.attachments());
+        }
+    }
+
+    /** {@code new-mail} event data on {@code /api/v1/events} (§5.24). */
+    record NewMailUpdate(int imported, List<ConversationRow> conversations, boolean complete,
+                         CountsResponse counts) {}
 
     record ConversationDetail(String key, String title, String initials, boolean group, long threadCount,
                               int messageCount, boolean hasMore, List<MemberResponse> members,

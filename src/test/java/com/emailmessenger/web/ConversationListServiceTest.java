@@ -94,6 +94,26 @@ class ConversationListServiceTest {
     }
 
     @Test
+    void itemsForKeysReturnsJustThoseConversationsNewestFirstWithAccounts() {
+        Participant ada = participants.save(new Participant("ada@acme.com", "Ada"));
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        Participant cy = participants.save(new Participant("cy@acme.com", "Cy"));
+        inbound("A", ada, List.of(me), "from ada", false, LocalDateTime.of(2026, 3, 1, 9, 0));
+        inbound("B", bob, List.of(me), "from bob", true, LocalDateTime.of(2026, 3, 2, 9, 0));
+        inbound("C", cy, List.of(me), "from cy", false, LocalDateTime.of(2026, 3, 3, 9, 0));
+        var addresses = ownerAddressService.addressesFor(owner);
+        String adaKey = keyService.keyFor(List.of("ada@acme.com"), addresses);
+        String bobKey = keyService.keyFor(List.of("bob@acme.com"), addresses);
+
+        List<ConversationListItem> items = listService.items(owner, List.of(adaKey, bobKey, "no-such-key"));
+
+        assertThat(items).extracting(ConversationListItem::title).containsExactly("Bob", "Ada");
+        assertThat(items.get(0).unread()).isTrue();
+        assertThat(items.get(0).accounts()).containsExactly("owner@chat.com");
+        assertThat(listService.items(owner, List.of())).isEmpty();
+    }
+
+    @Test
     void orderIsByEmailTimestampAndStableAcrossReads() {
         Participant ada = participants.save(new Participant("ada@acme.com", "Ada"));
         Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));

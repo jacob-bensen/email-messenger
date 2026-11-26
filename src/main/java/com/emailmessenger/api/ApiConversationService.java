@@ -17,9 +17,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -36,6 +39,7 @@ class ApiConversationService {
     static final int MAX_PAGE_SIZE = 100;
     static final int DEFAULT_MESSAGE_LIMIT = 50;
     static final int MAX_MESSAGE_LIMIT = 200;
+    static final int MAX_EVENT_ROWS = 50;
 
     private final UserRepository users;
     private final MailAccountService mailAccounts;
@@ -89,6 +93,21 @@ class ApiConversationService {
             throw noSuchConversation();
         }
         return ApiDtos.ConversationDetail.of(page);
+    }
+
+    /**
+     * §5.24 event data. Runs from an after-commit listener, so it takes its own
+     * transaction rather than joining the poll's finished one.
+     */
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    Optional<ApiDtos.NewMailUpdate> newMailUpdate(Long userId, int imported, Set<String> keys) {
+        return users.findById(userId).map(owner -> {
+            List<ConversationListItem> rows = conversations.items(owner, keys);
+            return new ApiDtos.NewMailUpdate(imported,
+                    rows.stream().limit(MAX_EVENT_ROWS).map(ApiDtos.ConversationRow::of).toList(),
+                    rows.size() <= MAX_EVENT_ROWS,
+                    ApiDtos.CountsResponse.of(conversations.counts(owner, null)));
+        });
     }
 
     @Transactional
