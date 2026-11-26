@@ -15,8 +15,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Registry of open SSE connections (one per browser tab on the chats view),
- * keyed by user id. {@link NewMailEvent}s fan out here as {@code new-mail}
+ * Registry of open SSE connections (one per browser tab on the chats view,
+ * one per signed-in app via {@code GET /api/v1/events}), keyed by user id. {@link NewMailEvent}s fan out here as {@code new-mail}
  * events, which the page turns into an in-place refresh — no reload.
  *
  * <p>The listener runs after commit when a transaction is active (so the
@@ -24,7 +24,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * (the scheduler's self-invoked poll path runs without one).
  */
 @Component
-class ChatEventStream {
+public class ChatEventStream {
 
     private static final Logger log = LoggerFactory.getLogger(ChatEventStream.class);
 
@@ -33,7 +33,7 @@ class ChatEventStream {
 
     private final Map<Long, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
 
-    SseEmitter subscribe(Long userId) {
+    public SseEmitter subscribe(Long userId) {
         SseEmitter emitter = createEmitter();
         List<SseEmitter> forUser =
                 emitters.computeIfAbsent(userId, id -> new CopyOnWriteArrayList<>());

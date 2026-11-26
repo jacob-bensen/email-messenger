@@ -3,6 +3,30 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-26 — Live new-mail events over the API
+
+- Chosen from the mobile roadmap (`DESIGN.md` §ROADMAP M3 "Live updates")
+  and the "No live refresh" gap in the mobile `INTERNAL_TODO.md`: the
+  contract items above it stay blocked (attachment storage, the Google-only
+  password decision, a mobile OAuth design). Needs both repos.
+- Contract first: `docs/API.md` §5.24 `GET /api/v1/events` — the bearer
+  twin of the website's `/chats/events`: `new-mail` events with
+  `{"imported":N}`, `:ping` every 25 s, 30-minute streams, no replay (so
+  clients refetch after reconnecting), `401` envelope before the stream.
+  §1 and §6 updated; "update a row in place" stays planned (§6 item 1).
+- `api.ApiEventsController` subscribes the token's user to the same
+  `web.ChatEventStream` the website uses (now `public` with a public
+  `subscribe`) — one fan-out, no forked logic. `ApiSecurityConfig` permits
+  `DispatcherType.ASYNC`: the stateless chain has no security context on
+  the re-dispatch when a stream times out, and the original request was
+  already authorized.
+- Tests: `ApiEventsIntegrationTest` (+2: only the token user's events
+  arrive, in SSE wire format; no/bad token is a `401` envelope without
+  starting the stream). `mvn -B test`: 911 run, 0 failures, 0 errors,
+  1 skipped (the Docker-only Testcontainers test).
+- Deferred (`INTERNAL_TODO.md`): conversation keys in the event; closing
+  streams on token revoke; a per-user connection cap.
+
 ## 2026-11-25 — Page the conversation timeline over the API
 
 - Chosen from both `INTERNAL_TODO.md` files ("whole conversation in one

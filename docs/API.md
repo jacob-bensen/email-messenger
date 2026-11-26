@@ -10,7 +10,7 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-25)
+## 1. Current state (2026-11-26)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline (paged by
@@ -20,7 +20,8 @@ into a conversation, starting a new one (both retry-safe with an
 with an IMAP password, sync now, remove, signature, sync frequency and
 default sending mailbox), and the account: plan summary,
 signed-in devices, sign a device out, edit the display name, change the
-password and change the email address (§5). Gmail OAuth connect and
+password and change the email address (§5), and a live new-mail event
+stream (§5.24). Gmail OAuth connect and
 reconnect are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -84,6 +85,8 @@ Server-Sent Events stream of new-mail notifications for the signed-in user.
 - Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`).
 - No event ids, no replay of missed events. Fan-out is in-memory, so it
   works on a single backend instance only.
+- The mobile app uses the bearer-token twin, `GET /api/v1/events`
+  (§5.24), fed by the same fan-out.
 
 ### GET /chats/{key}/pane
 HTML fragment (not JSON) of one conversation, used by the website to swap
@@ -908,13 +911,48 @@ Errors: `400 validation_failed` (body malformed, or over 2000
 characters); `404 not_found` (not one of the user's mailboxes);
 `401 unauthorized`. Nothing changes on any error.
 
+### 5.24 GET /api/v1/events
+Server-Sent Events stream of new-mail notifications for the token's user —
+the bearer-token twin of the website's `GET /chats/events` (§3), fed by the
+same in-memory fan-out (`ChatEventStream`).
+
+- Auth: `Authorization: Bearer <token>`. Without a valid token: `401
+  unauthorized` (JSON envelope, before the stream starts).
+- Request: none. Send `Accept: text/event-stream` (or none, or `*/*`).
+- `200 text/event-stream`. The server closes the stream after 30 minutes;
+  clients reconnect (back off on failures — the reference client waits 2 s,
+  doubling to 60 s).
+- Event `new-mail`, data is one line of JSON:
+  ```
+  event: new-mail
+  data: {"imported":2}
+  ```
+  `imported` (integer ≥ 1): messages imported by one poll of the user's
+  mailboxes (received + sent), sent after that poll commits. It carries a
+  count only — no conversation keys or message ids — so a client refetches
+  what it shows (the conversation list, an open conversation). Clients must
+  ignore event names they do not know and fields they do not know.
+- Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`); a client
+  that hears nothing (no event, no ping) for well over that may treat the
+  connection as dead and reconnect.
+- No event ids, no `Last-Event-ID` replay: mail imported while a client was
+  disconnected is not re-sent, so a client refetches after (re)connecting.
+  Fan-out is in-memory: single backend instance only.
+- A token revoked or expired while a stream is open does not close that
+  stream; the next reconnect gets `401`.
+- Every signed-in device gets every event; nothing here marks anything
+  read or triggers a poll (polling runs on the server's schedule, IMAP IDLE
+  for paid plans, and the refresh `GET /api/v1/conversations` fires).
+
 ## 6. Planned (not implemented)
 
 Intended resources, in build order (see the mobile repo's
 `docs/DESIGN.md` §ROADMAP):
-1. Live updates: SSE (or push) with enough detail to update without a
-   full refetch.
-2. Attachments on send (multipart). (The idempotency key landed
+1. Live updates with detail: `new-mail` events (§5.24) carry a count
+   only; adding the changed conversation keys would let a client update a
+   list row in place without refetching the list.
+2. Push notifications (no client is connected when the app is closed).
+3. Attachments on send (multipart). (The idempotency key landed
    2026-11-20, §5.8.1.)
-3. A way for a Google-only account (`passwordSet: false`, §5.4, landed
+4. A way for a Google-only account (`passwordSet: false`, §5.4, landed
    2026-11-24) to set a first password, and Google sign-in on mobile.
