@@ -20,8 +20,8 @@ into a conversation, starting a new one (both retry-safe with an
 with an IMAP password, sync now, remove, signature, sync frequency and
 default sending mailbox), and the account: plan summary,
 signed-in devices, sign a device out, edit the display name, change the
-password and change the email address, plus a live new-mail event stream
-(§5.24) (§5). Gmail OAuth connect and
+password and change the email address, plus a live event stream of new
+mail and of sends / mark-reads from the user's other clients (§5.24) (§5). Gmail OAuth connect and
 reconnect are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -70,7 +70,8 @@ the last minute. Used by the website's 60-second heartbeat.
   (received + sent). Per-mailbox IMAP failures are logged and count as 0.
 
 ### GET /chats/events
-Server-Sent Events stream of new-mail notifications for the signed-in user.
+Server-Sent Events stream of new-mail and conversation-change notifications
+for the signed-in user.
 
 - Auth: session cookie.
 - `200 text/event-stream`. The server closes the stream after 30 minutes;
@@ -83,6 +84,9 @@ Server-Sent Events stream of new-mail notifications for the signed-in user.
   Sent after a poll commits with at least one imported message. Same
   payload as the API stream (§5.24); the website ignores
   `conversationKeys` and refetches the rail and open pane.
+- Event `conversation-updated` (same payload as §5.24): the chats page
+  refetches its rail and open pane in place; pages without the in-place
+  refresh ignore it (never a reload, so a form post in flight is safe).
 - Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`).
 - No event ids, no replay of missed events. Fan-out is in-memory, so it
   works on a single backend instance only.
@@ -911,8 +915,8 @@ characters); `404 not_found` (not one of the user's mailboxes);
 `401 unauthorized`. Nothing changes on any error.
 
 ### 5.24 GET /api/v1/events
-Bearer token required. Server-Sent Events stream of new-mail notifications
-for the signed-in user — the same fan-out (`ChatEventStream`) as the
+Bearer token required. Server-Sent Events stream of new-mail and conversation-change
+notifications for the signed-in user — the same fan-out (`ChatEventStream`) as the
 website's `GET /chats/events` (§3). A client keeps it open while it is in
 the foreground and reacts to each event instead of polling.
 
@@ -940,7 +944,26 @@ the foreground and reacts to each event instead of polling.
     `conversationKeys`, refetch that conversation's newest page (§5.6,
     keeping older pages as in §5.8). List rows are not sent in the event
     because a row depends on the client's scope, filter and search.
-- Unknown event names must be ignored (future events, e.g. read state).
+- Event `conversation-updated`, sent after the user changes a conversation
+  through the shared service layer — from any device, the website or this
+  API — so the user's *other* clients catch up (the acting client receives
+  it too):
+  ```
+  event: conversation-updated
+  data: {"change":"sent","conversationKeys":["154e1e0a1872533ddf397a16e5a65dcf"]}
+  ```
+  - `change` (string): `sent` — a message was sent and recorded (§5.8,
+    §5.9 or a website compose box; an idempotent replay sends nothing);
+    `read` — a conversation was marked read (§5.7, or opening it on the
+    website) and at least one thread was unread before. Clients must
+    treat an unknown `change` like `sent`.
+  - `conversationKeys` (string[], sorted, no duplicates): the §4 keys of
+    the changed conversations (one today).
+  - Client rule: refetch the conversation list it shows (§5.5). For
+    `sent` (and unknown changes), also refetch the open conversation's
+    newest page when its key is listed, as for `new-mail`; `read` does
+    not change a timeline, so the open conversation is left alone.
+- Unknown event names must be ignored (future events).
 
 ## 6. Planned (not implemented)
 

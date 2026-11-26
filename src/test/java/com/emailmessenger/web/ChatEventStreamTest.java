@@ -92,4 +92,23 @@ class ChatEventStreamTest {
         assertThat(ChatEventStream.newMailData(new NewMailEvent(1L, 2, List.of("aaaa", "bbbb"))))
                 .isEqualTo("{\"imported\":2,\"conversationKeys\":[\"aaaa\",\"bbbb\"]}");
     }
+
+    @Test
+    void conversationUpdatedIsSentToThatUsersSubscribersOnly() throws IOException {
+        stream.subscribe(1L);
+        stream.subscribe(2L);
+
+        stream.onConversationUpdated(new ConversationUpdatedEvent(1L,
+                ConversationUpdatedEvent.Change.READ, List.of("aaaa")));
+
+        verify(created.get(0)).send(any(SseEmitter.SseEventBuilder.class));
+        verify(created.get(1), never()).send(any(SseEmitter.SseEventBuilder.class));
+    }
+
+    @Test
+    void conversationUpdatedPayloadCarriesTheChangeAndSortedDistinctKeys() {
+        assertThat(ChatEventStream.conversationUpdatedData(new ConversationUpdatedEvent(1L,
+                ConversationUpdatedEvent.Change.SENT, List.of("bbbb", "aaaa", "bbbb"))))
+                .isEqualTo("{\"change\":\"sent\",\"conversationKeys\":[\"aaaa\",\"bbbb\"]}");
+    }
 }

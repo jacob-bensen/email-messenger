@@ -20,7 +20,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /**
  * Registry of open SSE connections (browser tabs on the chats view and API
  * clients on {@code /api/v1/events}), keyed by user id. {@link NewMailEvent}s
- * fan out here as {@code new-mail} events ({@code docs/API.md} §5.24).
+ * fan out here as {@code new-mail} events and {@link ConversationUpdatedEvent}s
+ * as {@code conversation-updated} events ({@code docs/API.md} §5.24).
  *
  * <p>The listener runs after commit when a transaction is active (so the
  * browser's follow-up fetch sees the imported rows) and immediately otherwise
@@ -51,18 +52,26 @@ public class ChatEventStream {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onNewMail(NewMailEvent event) {
-        List<SseEmitter> forUser = emitters.get(event.userId());
+        broadcast(event.userId(), "new-mail", newMailData(event));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onConversationUpdated(ConversationUpdatedEvent event) {
+        broadcast(event.userId(), "conversation-updated", conversationUpdatedData(event));
+    }
+
+    private void broadcast(Long userId, String name, String data) {
+        List<SseEmitter> forUser = emitters.get(userId);
         if (forUser == null) {
             return;
         }
-        String data = newMailData(event);
         for (SseEmitter emitter : forUser) {
             try {
-                emitter.send(SseEmitter.event().name("new-mail").data(data));
+                emitter.send(SseEmitter.event().name(name).data(data));
             } catch (Exception e) {
                 // Dead connection (closed tab, dropped network) — drop it; the
                 // live tab's EventSource will have reconnected on its own.
-                remove(event.userId(), emitter);
+                remove(userId, emitter);
             }
         }
     }
@@ -88,6 +97,17 @@ public class ChatEventStream {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("imported", event.importedCount());
         body.put("conversationKeys", event.conversationKeys());
+        return json(body);
+    }
+
+    static String conversationUpdatedData(ConversationUpdatedEvent event) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("change", event.change().wireName());
+        body.put("conversationKeys", event.conversationKeys());
+        return json(body);
+    }
+
+    private static String json(Map<String, Object> body) {
         try {
             return JSON.writeValueAsString(body);
         } catch (JsonProcessingException e) {

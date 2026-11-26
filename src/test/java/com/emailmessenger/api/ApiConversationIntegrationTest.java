@@ -13,6 +13,7 @@ import com.emailmessenger.repository.MailAccountRepository;
 import com.emailmessenger.repository.MessageRepository;
 import com.emailmessenger.repository.ParticipantRepository;
 import com.emailmessenger.service.ConversationKeyService;
+import com.emailmessenger.web.ConversationUpdatedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -22,6 +23,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@RecordApplicationEvents
 class ApiConversationIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -48,6 +52,7 @@ class ApiConversationIntegrationTest {
     @Autowired MessageRepository messages;
     @Autowired ParticipantRepository participants;
     @Autowired MailAccountRepository mailAccounts;
+    @Autowired ApplicationEvents events;
     @PersistenceContext EntityManager em;
 
     private User owner;
@@ -290,6 +295,9 @@ class ApiConversationIntegrationTest {
         mockMvc.perform(get("/api/v1/conversations").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.items[0].unread").value(false))
                 .andExpect(jsonPath("$.counts.unread").value(0));
+        // Only the call that changed something tells the user's other devices.
+        org.assertj.core.api.Assertions.assertThat(events.stream(ConversationUpdatedEvent.class)).containsExactly(
+                new ConversationUpdatedEvent(owner.getId(), ConversationUpdatedEvent.Change.READ, List.of(key)));
     }
 
     @Test
@@ -314,6 +322,7 @@ class ApiConversationIntegrationTest {
         }
         em.clear();
         org.assertj.core.api.Assertions.assertThat(threads.findById(thread.getId()).orElseThrow().isUnread()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(events.stream(ConversationUpdatedEvent.class)).isEmpty();
     }
 
     @Test

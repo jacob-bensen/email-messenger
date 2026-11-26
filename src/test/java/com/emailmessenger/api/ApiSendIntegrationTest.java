@@ -16,6 +16,7 @@ import com.emailmessenger.repository.MessageRepository;
 import com.emailmessenger.repository.ParticipantRepository;
 import com.emailmessenger.service.ConversationKeyService;
 import com.emailmessenger.service.ReplyService;
+import com.emailmessenger.web.ConversationUpdatedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -27,6 +28,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mail.MailSendException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +58,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@RecordApplicationEvents
 class ApiSendIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -69,6 +73,7 @@ class ApiSendIntegrationTest {
     @Autowired ApiSendRequestRepository sendRequests;
     @PersistenceContext EntityManager em;
     @MockitoBean ReplyService replyService;
+    @Autowired ApplicationEvents events;
 
     private User owner;
     private Participant me;
@@ -198,6 +203,7 @@ class ApiSendIntegrationTest {
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.error.code").value("send_failed"));
         assertThat(messages.count()).isEqualTo(before);
+        assertThat(events.stream(ConversationUpdatedEvent.class)).isEmpty();
     }
 
     @Test
@@ -259,6 +265,21 @@ class ApiSendIntegrationTest {
 
         verify(replyService, times(1)).sendReply(anyLong(), anyString(), anyString(), anyList(), anyList(), any());
         assertThat(messages.count()).isEqualTo(before + 1);
+        assertThat(events.stream(ConversationUpdatedEvent.class)).hasSize(1);
+    }
+
+    @Test
+    void aRecordedSendIsAnnouncedToTheUsersOtherDevices() throws Exception {
+        send(bobKey, Map.of("body", "On my way", "asReply", true)).andExpect(status().isCreated());
+        String newKey = keyService.keyFor(List.of("cy@acme.com"), ownerAddressService.addressesFor(owner));
+        mockMvc.perform(post("/api/v1/conversations").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"to\":[\"cy@acme.com\"],\"body\":\"hi\"}"))
+                .andExpect(status().isCreated());
+
+        assertThat(events.stream(ConversationUpdatedEvent.class)).containsExactly(
+                new ConversationUpdatedEvent(owner.getId(), ConversationUpdatedEvent.Change.SENT, List.of(bobKey)),
+                new ConversationUpdatedEvent(owner.getId(), ConversationUpdatedEvent.Change.SENT, List.of(newKey)));
     }
 
     @Test

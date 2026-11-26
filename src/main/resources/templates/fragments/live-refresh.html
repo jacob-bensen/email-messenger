@@ -3,7 +3,8 @@
 <!--
   Live-delivery client. Two signals feed it:
     1. An SSE stream (/chats/events) that fires the instant a poll or IMAP
-       IDLE wake imports mail — this is the fast path.
+       IDLE wake imports mail (new-mail), or a send / mark-read on another
+       tab or device changes a conversation (conversation-updated).
     2. A foreground heartbeat that POSTs /chats/refresh roughly every minute
        while the tab is visible, which actively syncs mailboxes that have no
        IDLE connection (free tier) and doubles as a fallback when SSE is down.
@@ -68,6 +69,11 @@
     // EventSource reconnects on its own after drops and server timeouts.
     var source = new EventSource('/chats/events');
     source.addEventListener('new-mail', function () { update(); });
+    // A send or read on another tab/device: only pages that morph in place
+    // react, so a form post in flight on this page is never cut by a reload.
+    source.addEventListener('conversation-updated', function () {
+      if (window.ConexusLive && window.ConexusLive.refresh) update();
+    });
   }
 }());
 </script>
