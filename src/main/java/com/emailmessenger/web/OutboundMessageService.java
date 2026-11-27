@@ -12,6 +12,7 @@ import com.emailmessenger.repository.MessageRepository;
 import com.emailmessenger.repository.ParticipantRepository;
 import com.emailmessenger.service.ConversationKeyService;
 import com.emailmessenger.service.OutgoingAttachment;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,19 +36,22 @@ class OutboundMessageService {
     private final ConversationKeyService conversationKeyService;
     private final OwnerAddressService ownerAddressService;
     private final Clock clock;
+    private final ApplicationEventPublisher events;
 
     OutboundMessageService(EmailThreadRepository threadRepo,
                            MessageRepository messageRepo,
                            ParticipantRepository participantRepo,
                            ConversationKeyService conversationKeyService,
                            OwnerAddressService ownerAddressService,
-                           Clock clock) {
+                           Clock clock,
+                           ApplicationEventPublisher events) {
         this.threadRepo = threadRepo;
         this.messageRepo = messageRepo;
         this.participantRepo = participantRepo;
         this.conversationKeyService = conversationKeyService;
         this.ownerAddressService = ownerAddressService;
         this.clock = clock;
+        this.events = events;
     }
 
     /** Returns the recorded message, or {@code null} when the thread is not the owner's. */
@@ -72,6 +76,7 @@ class OutboundMessageService {
         thread.setConversationKey(
                 conversationKeyService.compute(thread, ownerAddressService.addressesFor(owner)));
         threadRepo.save(thread);
+        announceSent(owner, thread);
         return saved;
     }
 
@@ -103,6 +108,7 @@ class OutboundMessageService {
         // Pin it to the conversation the user is in, so it appears in that chat.
         thread.setConversationKey(conversationKey);
         threadRepo.save(thread);
+        announceSent(owner, thread);
         return saved;
     }
 
@@ -119,6 +125,14 @@ class OutboundMessageService {
         for (OutgoingAttachment att : attachments) {
             message.addAttachment(new Attachment(message, att.filename(), att.contentType(),
                     (long) att.content().length, null));
+        }
+    }
+
+    /** Other tabs and devices of the user refetch (docs/API.md §5.24), after commit. */
+    private void announceSent(User owner, EmailThread thread) {
+        if (thread.getConversationKey() != null) {
+            events.publishEvent(ConversationChangedEvent.of(
+                    owner.getId(), ConversationChangedEvent.Change.SENT, thread.getConversationKey()));
         }
     }
 }

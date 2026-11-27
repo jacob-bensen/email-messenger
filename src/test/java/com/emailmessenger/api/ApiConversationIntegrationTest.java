@@ -1,5 +1,8 @@
 package com.emailmessenger.api;
 
+import com.emailmessenger.web.ConversationChangedEvent;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.domain.EmailThread;
 import com.emailmessenger.domain.MailAccount;
@@ -37,7 +40,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@RecordApplicationEvents
 class ApiConversationIntegrationTest {
+
+    @Autowired ApplicationEvents events;
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
@@ -290,6 +296,22 @@ class ApiConversationIntegrationTest {
         mockMvc.perform(get("/api/v1/conversations").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.items[0].unread").value(false))
                 .andExpect(jsonPath("$.counts.unread").value(0));
+    }
+
+    @Test
+    void markReadAnnouncesAReadChangeOnlyWhenSomethingWasUnread() throws Exception {
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob"));
+        inbound("Lunch", bob, List.of(me), "pizza?", true, LocalDateTime.of(2026, 1, 1, 9, 0));
+        String key = keyService.keyFor(List.of("bob@acme.com"), ownerAddressService.addressesFor(owner));
+
+        for (int i = 0; i < 2; i++) {
+            mockMvc.perform(post("/api/v1/conversations/" + key + "/read").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isNoContent());
+        }
+
+        org.assertj.core.api.Assertions.assertThat(events.stream(ConversationChangedEvent.class).toList())
+                .containsExactly(new ConversationChangedEvent(
+                        owner.getId(), ConversationChangedEvent.Change.READ, List.of(key)));
     }
 
     @Test

@@ -3,6 +3,31 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-27 — Live sends and reads (`conversation-changed`)
+
+- Chosen from `INTERNAL_TODO.md` §1 "Live events cover new mail only", the
+  top contract item not blocked on attachment storage, a product decision or
+  a mobile OAuth design. Needs both repos.
+- Contract first: `docs/API.md` §5.24 gains event `conversation-changed`
+  (`change`: `sent` | `read`, unknown values treated as `sent`;
+  `conversationKeys`), and the client rule (refetch the list; refetch the open
+  conversation only for `sent`). §3 says the website listens to it too.
+- New `web.ConversationChangedEvent`. Published by
+  `OutboundMessageService.recordReply` / `recordNewEmail` (every website and
+  API send) and by `ChatService.markRead` only when a thread was actually
+  unread, so a tab refetching its pane on a `read` event cannot set off
+  another one. `ChatEventStream` fans both event types out after commit
+  through one `broadcast`. `live-refresh.html` refetches on the new event.
+  No migration.
+- Tests: `ChatEventStreamTest` (+2), `ApiEventsIntegrationTest` (+1: wire
+  format), `ApiConversationIntegrationTest` (+1: one `read` event for two
+  mark-reads), `ApiSendIntegrationTest` (+1: `sent` for reply and new email).
+- Branch: the stored routine prompt says to work on `master`, but this
+  session's git policy allows pushing only to `claude/gifted-carson-r849lc`,
+  so the work went there.
+- `./mvnw -B test`: 917 run, 0 failures, 0 errors, 1 skipped (the
+  Docker-only Testcontainers test). `verify` was not run separately.
+
 ## 2026-11-26 — Live new-mail events over the API
 
 - Chosen from `docs/API.md` §6 Planned #1 / mobile `docs/DESIGN.md` M3

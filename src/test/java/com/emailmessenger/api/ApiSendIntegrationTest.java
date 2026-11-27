@@ -1,5 +1,8 @@
 package com.emailmessenger.api;
 
+import com.emailmessenger.web.ConversationChangedEvent;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.domain.ApiSendRequest;
 import com.emailmessenger.domain.EmailThread;
@@ -55,7 +58,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@RecordApplicationEvents
 class ApiSendIntegrationTest {
+
+    @Autowired ApplicationEvents events;
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
@@ -112,6 +118,16 @@ class ApiSendIntegrationTest {
                 .andExpect(jsonPath("$.messageCount").value(2))
                 .andExpect(jsonPath("$.runs[1].outbound").value(true))
                 .andExpect(jsonPath("$.runs[1].messages[0].bodyText").value("On my way"));
+    }
+
+    @Test
+    void sendsAnnounceASentChangeToTheUsersOtherDevices() throws Exception {
+        send(bobKey, Map.of("body", "On my way", "asReply", true)).andExpect(status().isCreated());
+        send(bobKey, Map.of("body", "Separate topic")).andExpect(status().isCreated());
+
+        assertThat(events.stream(ConversationChangedEvent.class).toList()).containsExactly(
+                new ConversationChangedEvent(owner.getId(), ConversationChangedEvent.Change.SENT, List.of(bobKey)),
+                new ConversationChangedEvent(owner.getId(), ConversationChangedEvent.Change.SENT, List.of(bobKey)));
     }
 
     @Test

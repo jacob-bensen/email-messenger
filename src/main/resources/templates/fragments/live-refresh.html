@@ -68,6 +68,8 @@
     // EventSource reconnects on its own after drops and server timeouts.
     var source = new EventSource('/chats/events');
     source.addEventListener('new-mail', function () { update(); });
+    // Sends and reads from another tab or device (docs/API.md §5.24).
+    source.addEventListener('conversation-changed', function () { update(); });
   }
 }());
 </script>

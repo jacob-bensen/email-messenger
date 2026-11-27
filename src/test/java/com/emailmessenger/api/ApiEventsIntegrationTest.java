@@ -1,5 +1,6 @@
 package com.emailmessenger.api;
 
+import com.emailmessenger.web.ConversationChangedEvent;
 import com.emailmessenger.auth.UserService;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.NewMailEvent;
@@ -67,6 +68,24 @@ class ApiEventsIntegrationTest {
         assertThat(body).contains("event:new-mail")
                 .contains("data:{\"imported\":2,\"conversationKeys\":[\"154e1e0a1872533ddf397a16e5a65dcf\"]}")
                 .doesNotContain("someone-else");
+    }
+
+    @Test
+    void streamDeliversConversationChangedEvents() throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/v1/events")
+                        .header("Authorization", "Bearer " + token)
+                        .accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        eventStream.onConversationChanged(new ConversationChangedEvent(
+                owner.getId(), ConversationChangedEvent.Change.SENT, List.of("bbbb", "aaaa", "bbbb")));
+        eventStream.onConversationChanged(new ConversationChangedEvent(
+                owner.getId(), ConversationChangedEvent.Change.READ, List.of("cccc")));
+
+        assertThat(result.getResponse().getContentAsString())
+                .contains("event:conversation-changed\ndata:{\"change\":\"sent\",\"conversationKeys\":[\"aaaa\",\"bbbb\"]}")
+                .contains("data:{\"change\":\"read\",\"conversationKeys\":[\"cccc\"]}");
     }
 
     @Test

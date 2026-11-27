@@ -83,6 +83,9 @@ Server-Sent Events stream of new-mail notifications for the signed-in user.
   Sent after a poll commits with at least one imported message. Same
   payload as the API stream (§5.24); the website ignores
   `conversationKeys` and refetches the rail and open pane.
+- Event `conversation-changed` (`{"change":"sent"|"read","conversationKeys":[…]}`),
+  same payload and rules as §5.24; the website refetches the rail and open
+  pane for it too, so a send or read on another device or tab shows up.
 - Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`).
 - No event ids, no replay of missed events. Fan-out is in-memory, so it
   works on a single backend instance only.
@@ -911,8 +914,8 @@ characters); `404 not_found` (not one of the user's mailboxes);
 `401 unauthorized`. Nothing changes on any error.
 
 ### 5.24 GET /api/v1/events
-Bearer token required. Server-Sent Events stream of new-mail notifications
-for the signed-in user — the same fan-out (`ChatEventStream`) as the
+Bearer token required. Server-Sent Events stream of new-mail and conversation-change
+notifications for the signed-in user — the same fan-out (`ChatEventStream`) as the
 website's `GET /chats/events` (§3). A client keeps it open while it is in
 the foreground and reacts to each event instead of polling.
 
@@ -940,7 +943,25 @@ the foreground and reacts to each event instead of polling.
     `conversationKeys`, refetch that conversation's newest page (§5.6,
     keeping older pages as in §5.8). List rows are not sent in the event
     because a row depends on the client's scope, filter and search.
-- Unknown event names must be ignored (future events, e.g. read state).
+- Event `conversation-changed`, sent after the user's own change to a
+  conversation commits — from any device, the website or the API:
+  ```
+  event: conversation-changed
+  data: {"change":"sent","conversationKeys":["154e1e0a1872533ddf397a16e5a65dcf"]}
+  ```
+  - `change` (string): `sent` — a message was sent and recorded in the
+    conversation (§5.8, §5.9, website compose); `read` — at least one
+    unread thread of the conversation was marked read (§5.7, or opening it
+    on the website). Marking an already-read conversation sends nothing.
+    Clients must treat an unknown `change` like `sent`.
+  - `conversationKeys` (string[], sorted, no duplicates, at least one).
+  - The device that made the change receives the event too (the server
+    does not know which stream belongs to which device).
+  - Client rule: refetch the conversation list it shows (§5.5). For `sent`
+    (and unknown values), also refetch the open conversation's newest page
+    when its key is listed, as for `new-mail`; for `read` the bubbles did
+    not change, so the open conversation is not refetched.
+- Unknown event names must be ignored (future events).
 
 ## 6. Planned (not implemented)
 

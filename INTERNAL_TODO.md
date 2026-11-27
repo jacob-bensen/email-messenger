@@ -32,10 +32,12 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **Timestamps are zone-less.** `LocalDateTime` values are UTC by
       convention only; the API converts them to `Z` instants at the DTO
       edge (`ApiDtos`), which is right only while stored values are UTC.
-- [ ] **Live events cover new mail only** (`docs/API.md` §5.24, landed
-      2026-11-26 with conversation keys). Sends from another device or the
-      website, mark-read elsewhere and mailbox removal publish nothing, so
-      other clients catch up only on their next refetch. A list client still
+- [ ] **Live events miss mailbox changes** (`docs/API.md` §5.24). New
+      mail, sends and reads publish since 2026-11-27 (`conversation-changed`);
+      connecting, removing or re-syncing a mailbox (which can drop or add
+      whole conversations) publishes nothing beyond the poll's `new-mail`.
+      The device that sent or read also receives its own event (no stream ↔
+      device link), costing it one redundant refetch. A list client still
       refetches its first page per event (rows depend on its filter/search).
 
 ## 2. Logic drift and correctness
