@@ -131,9 +131,10 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       need them); move the slice into SQL (keyset on `sent_at`, `id`) with
       separate member/count queries when histories get long. The website's
       `/chats/{key}` still renders the whole conversation.
-- [ ] `GET /api/v1/conversations/{key}` omits member signatures (the
-      website shows them in the side panel); add with the signature →
-      contact card roadmap item.
+- [ ] Member signatures (`API.md` §5.6, 2026-11-27) are re-extracted from
+      every message body on each request (as the website's side panel
+      does); store the parsed signature at import time with the signature
+      → contact card roadmap item.
 
 ## 4. Missing tests
 

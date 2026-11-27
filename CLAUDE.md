@@ -14,7 +14,7 @@ next.
 
 ## Related repositories
 
-- **`email-messenger`** (this repo) — BACKEND: mobile REST API (`/api/v1`: auth, me, conversation list, one conversation (paged) + mark read, send + new conversation, mailboxes + signature / sync frequency / default sending mailbox, account + signed-in devices + display name / password / email change, live events over SSE: new mail, sends, read state),
+- **`email-messenger`** (this repo) — BACKEND: mobile REST API (`/api/v1`: auth, me, conversation list, one conversation (paged, with member signatures) + mark read, send + new conversation, mailboxes + signature / sync frequency / default sending mailbox, account + signed-in devices + display name / password / email change, live events over SSE: new mail, sends, read state),
   Thymeleaf website, persistence, all authoritative business rules.
 - **`conexus-mail-mobile`** — FRONTEND: Flutter client. Its `lib/domain/`
   mirrors rules defined here.
@@ -143,7 +143,8 @@ commit. Add follow-ups as they emerge.
       bubble, and suppress MAILER-DAEMON pseudo-conversations from the chats
       list.
 - [ ] Signature → living contact card: parse the signatures
-      `EmailBodyCleaner` already lifts into structured fields (phone → tel:
+      `EmailBodyCleaner` already lifts (and `/api/v1` already returns raw
+      per member since 2026-11-27, `docs/API.md` §5.6) into structured fields (phone → tel:
       link, title, company, sites) shown in the signature rail; record
       signature changes over time and surface diffs ("phone number changed")
       as subtle timeline events; backfill missing display names from parsed

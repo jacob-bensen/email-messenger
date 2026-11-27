@@ -104,11 +104,14 @@ final class ApiDtos {
         }
     }
 
-    record MemberResponse(String email, String displayName, String initials, String label) {
+    record MemberResponse(String email, String displayName, String initials, String label,
+                          String signatureHtml, String signatureText) {
 
         static MemberResponse of(ChatMember member) {
+            String signature = member.hasSignature() ? member.signatureHtml() : null;
             return new MemberResponse(member.email(), blankToNull(member.displayName()),
-                    member.initials(), member.label());
+                    member.initials(), member.label(),
+                    signature, signature == null ? null : HtmlText.toPlainText(signature));
         }
     }
 

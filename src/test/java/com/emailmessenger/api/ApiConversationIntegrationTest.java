@@ -32,7 +32,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -212,6 +214,8 @@ class ApiConversationIntegrationTest {
                 .andExpect(jsonPath("$.members", hasSize(1)))
                 .andExpect(jsonPath("$.members[0].email").value("bob@acme.com"))
                 .andExpect(jsonPath("$.members[0].label").value("Bob Builder"))
+                .andExpect(jsonPath("$.members[0].signatureHtml").isEmpty())
+                .andExpect(jsonPath("$.members[0].signatureText").isEmpty())
                 .andExpect(jsonPath("$.runs", hasSize(1)))
                 .andExpect(jsonPath("$.runs[0].outbound").value(false))
                 .andExpect(jsonPath("$.runs[0].sender.email").value("bob@acme.com"))
@@ -223,6 +227,26 @@ class ApiConversationIntegrationTest {
 
         mockMvc.perform(get("/api/v1/conversations?filter=unread").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.items", hasSize(1)));
+    }
+
+    @Test
+    void membersCarryTheirLatestSignatureOnEveryPage() throws Exception {
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob Builder"));
+        inbound("Old", bob, List.of(me), "Hi\n--\nBob\nOld Corp", true, LocalDateTime.of(2026, 1, 1, 9, 0));
+        inbound("New", bob, List.of(me), "Hello again\n--\nBob Builder\nAcme Corp", true,
+                LocalDateTime.of(2026, 1, 2, 9, 0));
+        inbound("Plain", bob, List.of(me), "No sign-off", true, LocalDateTime.of(2026, 1, 3, 9, 0));
+        String key = keyService.keyFor(List.of("bob@acme.com"), ownerAddressService.addressesFor(owner));
+
+        for (String query : List.of("", "?limit=1")) {
+            mockMvc.perform(get("/api/v1/conversations/" + key + query).header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.members[0].signatureText").value("Bob Builder\nAcme Corp"))
+                    .andExpect(jsonPath("$.members[0].signatureHtml").value(
+                            containsString("Acme Corp")))
+                    .andExpect(jsonPath("$.runs[0].messages[0].bodyText").value(
+                            not(containsString("Corp"))));
+        }
     }
 
     @Test

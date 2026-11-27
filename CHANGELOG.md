@@ -3,6 +3,23 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-27 — Member signatures in the conversation API
+
+- Chosen from `INTERNAL_TODO.md` §3 ("`GET /api/v1/conversations/{key}`
+  omits member signatures"): the remaining §1 contract items are blocked
+  (attachment storage, a password-for-Google-only decision, a mobile OAuth
+  design) and the mobile roadmap's open items need external credentials.
+  Needs both repos (the app's new People sheet).
+- Contract first: `docs/API.md` §5.6 `members[]` gains `signatureHtml` and
+  `signatureText` (string or `null`), the same latest signature
+  `ConversationService` already computes for the website's side panel.
+- `ApiDtos.MemberResponse` maps `ChatMember.signatureHtml` (blank → `null`)
+  and derives the text with `HtmlText.toPlainText`, as message bodies do.
+  No service change, no migration.
+- Tests: `ApiConversationIntegrationTest` (+1: latest signature wins, is
+  the same on a one-message page, and stays out of the bubble body; the
+  existing test asserts `null` without a signature).
+
 ## 2026-11-27 — Live sends and read state on the event streams
 
 - Chosen from `INTERNAL_TODO.md` §1 "Live events cover new mail only" (the

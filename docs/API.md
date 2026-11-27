@@ -14,7 +14,7 @@ section is promoted to Implemented.
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline (paged by
-message, newest first), mark-read, sending
+message, newest first, with each member's latest signature), mark-read, sending
 into a conversation, starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove, signature, sync frequency and
@@ -380,7 +380,11 @@ into the newer page's first run when both have the same `outbound` and
   "messageCount": 2,
   "hasMore": false,
   "members": [
-    { "email": "ada@acme.com", "displayName": "Ada Lovelace", "initials": "AL", "label": "Ada Lovelace" }
+    {
+      "email": "ada@acme.com", "displayName": "Ada Lovelace", "initials": "AL", "label": "Ada Lovelace",
+      "signatureHtml": "<p>Ada Lovelace<br>Analytical Engines Ltd<br>+44 20 7946 0000</p>",
+      "signatureText": "Ada Lovelace\nAnalytical Engines Ltd\n+44 20 7946 0000"
+    }
   ],
   "runs": [
     {
@@ -411,6 +415,14 @@ into the newer page's first run when both have the same `outbound` and
 - `members` (array): the non-owner participants in first-seen order.
   `displayName` is a string or `null`; `label` is the display name, else the
   email (§4 title input); `initials` per §4.
+  `signatureHtml` (string or `null`): the member's most recent email
+  signature in this conversation (scope included), lifted out of their
+  newest message that has one — the same signature the website's side
+  panel shows. Server-sanitized like `bodyHtml`. `null` when none was
+  detected. `signatureText` (string or `null`): the same signature as plain
+  text by the `bodyText` rule; `null` exactly when `signatureHtml` is.
+  Like the other member fields it comes from every message in scope, not
+  just this page.
 - `runs` (array, chronological): consecutive messages from the same side
   within the same email thread. `outbound` (boolean): sent by the user.
   `sender` (object): who sent the run's messages (`displayName` may be
@@ -432,8 +444,7 @@ into the newer page's first run when both have the same `outbound` and
     `null`), `sizeBytes` (integer or `null`). Metadata only — attachment
     bytes are not stored yet, so there is no download endpoint.
 
-Signatures (shown in the website's side panel) are not part of the
-response yet. Every page is built from the same `ChatService` timeline the
+Every page is built from the same `ChatService` timeline the
 website renders whole; the server still reads the full conversation for
 each page (only the payload is paged).
 
