@@ -12,6 +12,7 @@ import com.emailmessenger.repository.MessageRepository;
 import com.emailmessenger.repository.ParticipantRepository;
 import com.emailmessenger.service.ConversationKeyService;
 import com.emailmessenger.service.OutgoingAttachment;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,13 +36,16 @@ class OutboundMessageService {
     private final ConversationKeyService conversationKeyService;
     private final OwnerAddressService ownerAddressService;
     private final Clock clock;
+    private final ApplicationEventPublisher events;
 
     OutboundMessageService(EmailThreadRepository threadRepo,
                            MessageRepository messageRepo,
                            ParticipantRepository participantRepo,
                            ConversationKeyService conversationKeyService,
                            OwnerAddressService ownerAddressService,
-                           Clock clock) {
+                           Clock clock,
+                           ApplicationEventPublisher events) {
+        this.events = events;
         this.threadRepo = threadRepo;
         this.messageRepo = messageRepo;
         this.participantRepo = participantRepo;
@@ -72,6 +76,7 @@ class OutboundMessageService {
         thread.setConversationKey(
                 conversationKeyService.compute(thread, ownerAddressService.addressesFor(owner)));
         threadRepo.save(thread);
+        publishSent(owner, thread);
         return saved;
     }
 
@@ -103,7 +108,14 @@ class OutboundMessageService {
         // Pin it to the conversation the user is in, so it appears in that chat.
         thread.setConversationKey(conversationKey);
         threadRepo.save(thread);
+        publishSent(owner, thread);
         return saved;
+    }
+
+    /** Lets the user's other tabs and devices show the bubble (docs/API.md §5.24). */
+    private void publishSent(User owner, EmailThread thread) {
+        events.publishEvent(ConversationUpdatedEvent.of(
+                owner.getId(), ConversationUpdatedEvent.Reason.SENT, thread.getConversationKey()));
     }
 
     private Participant resolveOwnerParticipant(User owner) {

@@ -88,6 +88,26 @@ class ChatEventStreamTest {
     }
 
     @Test
+    void conversationUpdatedReachesOnlyThatUsersSubscribers() throws IOException {
+        stream.subscribe(1L);
+        stream.subscribe(2L);
+
+        stream.onConversationUpdated(ConversationUpdatedEvent.of(1L, ConversationUpdatedEvent.Reason.SENT, "aaaa"));
+
+        verify(created.get(0)).send(any(SseEmitter.SseEventBuilder.class));
+        verify(created.get(1), never()).send(any(SseEmitter.SseEventBuilder.class));
+    }
+
+    @Test
+    void conversationUpdatedPayloadCarriesReasonAndKeys() {
+        assertThat(ChatEventStream.conversationUpdatedData(
+                ConversationUpdatedEvent.of(1L, ConversationUpdatedEvent.Reason.READ, "aaaa")))
+                .isEqualTo("{\"reason\":\"read\",\"conversationKeys\":[\"aaaa\"]}");
+        assertThat(ConversationUpdatedEvent.of(1L, ConversationUpdatedEvent.Reason.SENT, null).conversationKeys())
+                .isEmpty();
+    }
+
+    @Test
     void newMailPayloadCarriesCountAndConversationKeys() {
         assertThat(ChatEventStream.newMailData(new NewMailEvent(1L, 2, List.of("aaaa", "bbbb"))))
                 .isEqualTo("{\"imported\":2,\"conversationKeys\":[\"aaaa\",\"bbbb\"]}");
