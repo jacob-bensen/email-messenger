@@ -59,8 +59,30 @@ public class ReplyService {
         String[] recipients = (toRecipients == null || toRecipients.isEmpty())
                 ? new String[]{ lastMessage.getSender().getEmail() }
                 : toRecipients.toArray(String[]::new);
-        compose(from, recipients, "Re: " + threadSubject, body, attachments,
-                lastMessage.getMessageIdHeader());
+        String inReplyTo = lastMessage.getMessageIdHeader();
+        compose(from, recipients, "Re: " + threadSubject, body, attachments, inReplyTo, inReplyTo, null);
+    }
+
+    /** The thread a targeted reply joined and the Message-ID it answered (null when the target had none). */
+    public record ReplyTarget(long threadId, String inReplyTo) {}
+
+    /**
+     * Replies to one specific message rather than the thread's latest: its
+     * thread's subject, {@code In-Reply-To} its Message-ID, {@code References}
+     * its parent then itself. {@code messageId} becomes the outgoing
+     * Message-ID so the recorded copy can carry the same one.
+     */
+    @Transactional(readOnly = true)
+    public ReplyTarget sendReplyTo(long targetMessageId, String body, List<OutgoingAttachment> attachments,
+                                   List<String> toRecipients, String from, String messageId) {
+        Message target = messageRepository.findById(targetMessageId)
+                .orElseThrow(() -> new IllegalArgumentException("No message " + targetMessageId));
+        String header = target.getMessageIdHeader();
+        String references = header == null ? null
+                : target.getInReplyTo() == null ? header : target.getInReplyTo() + " " + header;
+        compose(from, toRecipients.toArray(String[]::new), "Re: " + target.getThread().getSubject(), body,
+                attachments, header, references, messageId);
+        return new ReplyTarget(target.getThread().getId(), header);
     }
 
     /**
@@ -72,11 +94,12 @@ public class ReplyService {
         if (toRecipients == null || toRecipients.isEmpty()) {
             return;
         }
-        compose(from, toRecipients.toArray(String[]::new), subject, body, attachments, null);
+        compose(from, toRecipients.toArray(String[]::new), subject, body, attachments, null, null, null);
     }
 
     private void compose(String from, String[] recipients, String subject, String body,
-                         List<OutgoingAttachment> attachments, String inReplyTo) {
+                         List<OutgoingAttachment> attachments, String inReplyTo, String references,
+                         String messageId) {
         boolean multipart = attachments != null && !attachments.isEmpty();
         MimeMessage mimeMessage = mailSender.createMimeMessage();
         try {
@@ -87,7 +110,11 @@ public class ReplyService {
             helper.setText(body == null ? "" : body, false);
             if (inReplyTo != null) {
                 mimeMessage.setHeader("In-Reply-To", inReplyTo);
-                mimeMessage.setHeader("References", inReplyTo);
+                mimeMessage.setHeader("References", references);
+            }
+            if (messageId != null) {
+                // JavaMailSenderImpl keeps an explicit Message-ID across saveChanges().
+                mimeMessage.setHeader("Message-ID", messageId);
             }
             if (multipart) {
                 for (OutgoingAttachment att : attachments) {

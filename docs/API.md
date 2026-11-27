@@ -468,7 +468,7 @@ picks the sending account.
 
 Request:
 ```json
-{ "body": "Pizza at noon works.", "subject": null, "asReply": true }
+{ "body": "Pizza at noon works.", "subject": null, "asReply": true, "replyToMessageId": null }
 ```
 - `body` (string, required): the message text, plain text. Must not be
   blank; at most 100 000 characters. Attachments cannot be sent through the
@@ -480,6 +480,17 @@ Request:
   `Re: <thread subject>`, `In-Reply-To`/`References` set to that thread's
   latest message); `false` sends a new email that the server files under
   this same conversation.
+- `replyToMessageId` (integer, optional): the `id` (§5.6 `messages[].id`)
+  of one message of this conversation (in `mailboxId` scope) to answer.
+  When given, the mail continues **that message's** email thread (subject
+  `Re: <that thread's subject>`), with `In-Reply-To` set to that message's
+  Message-ID and `References` to its parent's Message-ID (when known)
+  followed by its own; `asReply` and `subject` are ignored. The recorded
+  message's `replyToId` (§5.6) is then this id — unless the target has no
+  Message-ID (e.g. replies sent from ConexusMail without a target), in which case the
+  reply still lands in the target's thread but carries no threading
+  headers and `replyToId` is `null`. Absent or `null` → the `asReply`
+  rule above.
 
 Server rules (clients must not predict beyond the bubble text):
 - Recipients are the conversation's members (§5.6 `members`), reply-all.
@@ -489,6 +500,9 @@ Server rules (clients must not predict beyond the bubble text):
   `-- ` line, so the recorded bubble matches what recipients got.
 - The mail is sent first and recorded only after the mail server accepted
   it. The recorded message is outbound and its thread is marked read.
+- A `replyToMessageId` reply is sent with a server-generated Message-ID
+  that the recorded copy keeps, so later replies to it (from anyone)
+  thread onto it and the Sent-folder import does not record it twice.
 
 `201`:
 ```json
@@ -503,8 +517,10 @@ Server rules (clients must not predict beyond the bubble text):
   by the page's `hasMore`.
 
 Errors: `400 validation_failed` (body blank or too long, malformed JSON,
-non-integer `mailboxId`); `404 not_found` (unknown key in scope, or
-`mailboxId` not the user's); `409 no_recipients`; `502 send_failed`;
+non-integer `mailboxId` or `replyToMessageId`); `404 not_found` (unknown
+key in scope, `mailboxId` not the user's, or `replyToMessageId` is not a
+message of this conversation in scope — a client should drop the reply
+target and refetch); `409 no_recipients`; `502 send_failed`;
 `401 unauthorized`; `409 send_in_progress` and
 `422 idempotency_key_reused` (§5.8.1).
 

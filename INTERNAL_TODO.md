@@ -47,9 +47,13 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       leaves a sent email with no bubble (until the Sent-folder import, if
       the user's mailbox stores it). An outbox table would fix both this and
       idempotency.
-- [ ] **Sent messages can appear twice.** `recordReply` stores the local
-      copy with no Message-ID and `recordNewEmail` with a synthetic one, so
-      the Sent-folder import cannot de-duplicate against either.
+- [ ] **Sent messages can appear twice.** A plain reply (`asReply`) is
+      recorded with no Message-ID and `recordNewEmail` with a synthetic one
+      that the sent mail does not carry, so the Sent-folder import cannot
+      de-duplicate against either. Targeted replies (`replyToMessageId`,
+      2026-11-27) already send and record the same generated Message-ID;
+      give the other two paths the same treatment (and an `In-Reply-To` on
+      plain replies, so their bubbles link back too).
 - [ ] **Conversation keys go stale** when the owner connects or removes a
       mailbox: existing threads are not re-keyed (the startup backfill only
       fills null keys).
@@ -136,6 +140,11 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       contact card roadmap item.
 
 ## 4. Missing tests
+
+- [ ] `ReplyService` sets an explicit `Message-ID` and relies on
+      `JavaMailSenderImpl` keeping it across `saveChanges()`; only unit
+      tests with a mocked sender cover it. Assert it end to end in the
+      GreenMail test.
 
 - [ ] Only one test exercises real PostgreSQL, and it needs Docker; the
       large JPQL conversation queries are otherwise checked on H2 only.

@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * The send flow shared by the website's chat compose boxes and
@@ -37,6 +38,7 @@ public class ChatSendService {
         EMPTY_MESSAGE("Add a message or an attachment."),
         BODY_TOO_LONG("The message is too long."),
         NO_SUCH_CONVERSATION("No such conversation."),
+        NO_SUCH_MESSAGE("That message is not in this conversation any more."),
         NO_MEMBERS("This conversation has no one to send to.");
 
         private final String message;
@@ -95,9 +97,11 @@ public class ChatSendService {
      * (may be null) scopes the conversation and picks the sending account.
      * {@code asReply} continues the most recently active thread; otherwise a
      * new email with {@code subject} is pinned to this conversation.
+     * {@code replyToMessageId} (may be null) overrides both: the mail answers
+     * that one message of the conversation, in its thread.
      */
     public SendResult sendToConversation(User owner, MailAccount selected, String key, String body,
-                                         String subject, boolean asReply,
+                                         String subject, boolean asReply, Long replyToMessageId,
                                          List<OutgoingAttachment> attachments) {
         List<OutgoingAttachment> files = attachments == null ? List.of() : attachments;
         String text = requireContent(body, files);
@@ -113,15 +117,26 @@ public class ChatSendService {
         if (recipients.isEmpty()) {
             throw new SendRejectedException(Rejection.NO_MEMBERS);
         }
+        if (replyToMessageId != null && !contains(conversation, replyToMessageId)) {
+            throw new SendRejectedException(Rejection.NO_SUCH_MESSAGE);
+        }
         MailAccount sender = sendingAccount(owner, accounts, selected);
         String from = sender != null ? sender.getUsername() : owner.getEmail();
         String outgoingBody = withSignature(text, sender);
+
+        if (replyToMessageId != null) {
+            String messageId = newMessageId();
+            ReplyService.ReplyTarget target = replyService.sendReplyTo(
+                    replyToMessageId, outgoingBody, files, recipients, from, messageId);
+            return sent(owner, outbound.recordReply(target.threadId(), owner, outgoingBody, files,
+                    target.inReplyTo(), messageId));
+        }
 
         List<EmailThread> conversationThreads = threads.findThreadsByConversationKey(owner, key);
         if (asReply && !conversationThreads.isEmpty()) {
             EmailThread target = conversationThreads.get(0);
             replyService.sendReply(target.getId(), target.getSubject(), outgoingBody, files, recipients, from);
-            return sent(owner, outbound.recordReply(target.getId(), owner, outgoingBody, files));
+            return sent(owner, outbound.recordReply(target.getId(), owner, outgoingBody, files, null, null));
         }
         String subj = subjectOrDefault(subject);
         replyService.sendNewEmail(subj, outgoingBody, files, recipients, from);
@@ -172,6 +187,17 @@ public class ChatSendService {
             }
         }
         return out;
+    }
+
+    /** Checked against the scoped conversation, so a message outside the mailbox scope is refused too. */
+    private static boolean contains(ChatConversation conversation, long messageId) {
+        return conversation.runs().stream()
+                .flatMap(run -> run.messages().stream())
+                .anyMatch(m -> Long.valueOf(messageId).equals(m.messageId()));
+    }
+
+    private static String newMessageId() {
+        return "<" + UUID.randomUUID() + "@conexusmail.com>";
     }
 
     private static String requireContent(String body, List<OutgoingAttachment> attachments) {

@@ -66,6 +66,9 @@
                   <span class="bubble-attachment-name" th:text="${att.filename}">file.txt</span>
                 </li>
               </ul>
+              <button type="button" class="bubble-reply-btn" title="Reply to this message"
+                      aria-label="Reply to this message"
+                      th:attr="data-reply-to=${bubble.messageId()},data-reply-sender=${run.outbound() ? 'You' : (run.sender().displayName() != null ? run.sender().displayName() : run.sender().email())}">↩</button>
             </div>
             <div class="bubble-time" th:attr="data-ts=${bubble.sentAtEpochMilli()}"
                  th:text="${#temporals.format(bubble.sentAt(), 'MMM d, h:mm a')}">Jan 1, 12:00 PM</div>
@@ -81,6 +84,12 @@
             th:object="${replyForm}" method="post" enctype="multipart/form-data" class="reply-form">
         <input type="hidden" th:if="${_csrf != null}"
                th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <input type="hidden" name="replyTo" value="" data-reply-target disabled>
+        <div class="reply-quote" data-reply-quote hidden>
+          <span class="reply-quote-label">Replying to <strong data-reply-quote-sender></strong></span>
+          <span class="reply-quote-text" data-reply-quote-text></span>
+          <button type="button" class="reply-quote-cancel" aria-label="Cancel reply" data-reply-cancel>×</button>
+        </div>
         <input type="text" name="subject" class="reply-subject"
                placeholder="Subject (optional)" data-subject-input>
         <div class="reply-row">

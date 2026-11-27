@@ -3,6 +3,36 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-27 — Reply to a specific bubble (API, website, mobile)
+
+- Chosen from the `CLAUDE.md` roadmap ("Reply-to-a-specific-bubble"): the
+  `INTERNAL_TODO.md` §1 items above it are blocked on attachment storage,
+  a product decision or a mobile OAuth design, and the roadmap items above
+  it need external setup (support mailbox, Google publishing, VAPID/push,
+  DSN corpus). Needs both repos; the #thread filter-chip half was split
+  out as its own roadmap item.
+- Contract first: `docs/API.md` §5.8 request gains optional
+  `replyToMessageId` (that message's thread and Message-ID; `asReply` and
+  `subject` ignored; `404 not_found` when it is not in the conversation in
+  scope); it is part of the idempotency fingerprint.
+- `ChatSendService.sendToConversation` takes `replyToMessageId`, checks it
+  against the scoped conversation (new `Rejection.NO_SUCH_MESSAGE`), and
+  calls the new `ReplyService.sendReplyTo` (subject `Re: <thread>`,
+  `In-Reply-To` = target, `References` = target's parent + target, explicit
+  generated `Message-ID`). `OutboundMessageService.recordReply` stores
+  `inReplyTo` and that Message-ID, so §5.6 `replyToId` and the website's
+  "↩ In reply to" link resolve, and the Sent-folder import de-duplicates
+  the copy. Website: a ↩ button per bubble (`chat-pane.html`) fills a
+  hidden `replyTo` and a "Replying to …" quote bar with cancel
+  (`chat.html`, delegated so it survives live morphs; CSS in `main.css`);
+  `POST /chats/{key}/send` takes `replyTo`. No migration.
+- Tests: `ReplyServiceTest` (+2), `ApiSendIntegrationTest` (+2: targeted
+  reply threads onto the older thread with `replyToId`; foreign target is
+  404 and sends nothing), `ConversationControllerTest` (+2: button
+  rendered, `replyTo` round-trip, foreign target refused).
+  `./mvnw -B clean verify`: 921 run, 0 failures, 0 errors, 1 skipped (the
+  Docker-only Testcontainers test), BUILD SUCCESS.
+
 ## 2026-11-27 — Live sends and read state on the event streams
 
 - Chosen from `INTERNAL_TODO.md` §1 "Live events cover new mail only" (the

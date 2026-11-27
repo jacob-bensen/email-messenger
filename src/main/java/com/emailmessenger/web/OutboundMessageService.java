@@ -50,9 +50,15 @@ class OutboundMessageService {
         this.clock = clock;
     }
 
-    /** Returns the recorded message, or {@code null} when the thread is not the owner's. */
+    /**
+     * Returns the recorded message, or {@code null} when the thread is not the owner's.
+     * {@code inReplyTo} and {@code messageIdHeader} (both nullable) are the
+     * headers the sent mail carried, so the bubble links to the message it
+     * answers and the Sent-folder import recognises the copy.
+     */
     @Transactional
-    Message recordReply(Long threadId, User owner, String body, List<OutgoingAttachment> attachments) {
+    Message recordReply(Long threadId, User owner, String body, List<OutgoingAttachment> attachments,
+                        String inReplyTo, String messageIdHeader) {
         EmailThread thread = threadRepo.findByIdAndOwner(threadId, owner).orElse(null);
         if (thread == null) {
             return null;
@@ -62,6 +68,8 @@ class OutboundMessageService {
         Message reply = new Message(thread, me, "Re: " + thread.getSubject(),
                 body == null ? "" : body, null, LocalDateTime.now(clock));
         reply.markOutbound();
+        reply.setInReplyTo(inReplyTo);
+        reply.setMessageIdHeader(messageIdHeader);
         addAttachments(reply, attachments);
 
         Message saved = messageRepo.save(reply);

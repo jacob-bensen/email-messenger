@@ -36,8 +36,10 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
@@ -210,6 +212,40 @@ class ConversationControllerTest {
 
         verify(replyService).sendReply(anyLong(), anyString(), anyString(),
                 anyList(), anyList(), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void bubblesOfferReplyAndReplyToAnswersThatMessage() throws Exception {
+        long adaMessage = threads.findThreadsByConversationKey(owner, adaKey).get(0).getMessages().get(0).getId();
+        assertThat(mockMvc.perform(get("/chats/{key}", adaKey)).andReturn().getResponse().getContentAsString())
+                .contains("data-reply-to=\"" + adaMessage + "\"")
+                .contains("data-reply-sender=\"Ada Lovelace\"");
+        when(replyService.sendReplyTo(eq(adaMessage), eq("Paid it."), anyList(), anyList(), anyString(), anyString()))
+                .thenReturn(new ReplyService.ReplyTarget(
+                        threads.findThreadsByConversationKey(owner, adaKey).get(0).getId(), null));
+
+        mockMvc.perform(post("/chats/{key}/send", adaKey)
+                        .param("body", "Paid it.")
+                        .param("replyTo", String.valueOf(adaMessage))
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/chats/" + adaKey))
+                .andExpect(flash().attribute("successMessage", "Reply sent."));
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void replyToAMessageOfAnotherConversationIsRefused() throws Exception {
+        long groupMessage = threads.findThreadsByConversationKey(owner, groupKey).get(0).getMessages().get(0).getId();
+
+        mockMvc.perform(post("/chats/{key}/send", adaKey)
+                        .param("body", "Paid it.")
+                        .param("replyTo", String.valueOf(groupMessage))
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(redirectedUrl("/chats/" + adaKey))
+                .andExpect(flash().attributeExists("sendError"));
+        verifyNoInteractions(replyService);
     }
 
     @Test

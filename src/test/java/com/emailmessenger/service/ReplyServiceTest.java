@@ -141,6 +141,48 @@ class ReplyServiceTest {
     }
 
     @Test
+    void sendReplyToAnswersTheTargetMessageWithItsHeadersAndTheGivenMessageId() throws Exception {
+        EmailThread thread = new EmailThread(OWNER, "Lunch", "<root@test>");
+        org.springframework.test.util.ReflectionTestUtils.setField(thread, "id", 3L);
+        Participant alice = new Participant("alice@example.com", "Alice");
+        Message target = new Message(thread, alice, "Re: Lunch", "body", null, LocalDateTime.now());
+        target.setMessageIdHeader("<older@example.com>");
+        target.setInReplyTo("<root@test>");
+        MimeMessage mimeMsg = new MimeMessage((Session) null);
+        when(messageRepository.findById(7L)).thenReturn(java.util.Optional.of(target));
+        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
+
+        ReplyService.ReplyTarget result = replyService.sendReplyTo(7L, "Yes", List.of(),
+                List.of("alice@example.com", "bob@example.com"), "me@mybox.com", "<new@conexusmail.com>");
+
+        verify(mailSender).send(mimeMsg);
+        assertThat(result).isEqualTo(new ReplyService.ReplyTarget(3L, "<older@example.com>"));
+        assertThat(mimeMsg.getSubject()).isEqualTo("Re: Lunch");
+        assertThat(mimeMsg.getAllRecipients()).hasSize(2);
+        assertThat(mimeMsg.getHeader("In-Reply-To")).containsExactly("<older@example.com>");
+        assertThat(mimeMsg.getHeader("References")).containsExactly("<root@test> <older@example.com>");
+        assertThat(mimeMsg.getHeader("Message-ID")).containsExactly("<new@conexusmail.com>");
+    }
+
+    @Test
+    void sendReplyToATargetWithoutMessageIdSendsNoThreadingHeaders() throws Exception {
+        EmailThread thread = new EmailThread(OWNER, "Lunch", "<root@test>");
+        org.springframework.test.util.ReflectionTestUtils.setField(thread, "id", 3L);
+        Message target = new Message(thread, new Participant("me@mybox.com", null), "Re: Lunch", "body", null,
+                LocalDateTime.now());
+        MimeMessage mimeMsg = new MimeMessage((Session) null);
+        when(messageRepository.findById(7L)).thenReturn(java.util.Optional.of(target));
+        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
+
+        ReplyService.ReplyTarget result = replyService.sendReplyTo(7L, "Yes", List.of(),
+                List.of("alice@example.com"), "me@mybox.com", "<new@conexusmail.com>");
+
+        assertThat(result.inReplyTo()).isNull();
+        assertThat(mimeMsg.getHeader("In-Reply-To")).isNull();
+        assertThat(mimeMsg.getHeader("References")).isNull();
+    }
+
+    @Test
     void sendReplyOmitsThreadingHeadersWhenLastMessageHasNoMessageId() throws Exception {
         EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
         Participant alice = new Participant("alice@example.com", "Alice");

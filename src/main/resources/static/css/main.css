@@ -813,6 +813,50 @@ body {
   opacity: 0.9;
 }
 .reply-ref:hover { text-decoration: underline; opacity: 1; }
+.bubble { position: relative; }
+.bubble-reply-btn {
+  position: absolute;
+  top: 4px;
+  right: -28px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface, #fff);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 24px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.bubble-me .bubble-reply-btn { right: auto; left: -28px; }
+.bubble:hover .bubble-reply-btn,
+.bubble-reply-btn:focus-visible { opacity: 1; }
+@media (hover: none) { .bubble-reply-btn { opacity: 0.6; } }
+.reply-quote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--brand);
+  border-radius: 6px;
+  background: var(--surface-muted, rgba(0, 0, 0, 0.04));
+  font-size: 13px;
+  min-width: 0;
+}
+.reply-quote[hidden] { display: none; }
+.reply-quote-label { flex: none; color: var(--text-muted); }
+.reply-quote-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reply-quote-cancel {
+  flex: none;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+}
 .bubble-flash { animation: bubbleFlash 1.2s ease; }
 @keyframes bubbleFlash {
   0%   { box-shadow: 0 0 0 3px var(--brand); }

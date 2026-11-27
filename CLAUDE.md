@@ -153,12 +153,13 @@ commit. Add follow-ups as they emerge.
       (today `blob_ref` is always null — attachments aren't downloadable),
       then Media/Files/Links tabs in the signature rail scoped to the
       conversationKey, with links harvested from bubble HTML at import time.
-- [ ] Reply-to-a-specific-bubble: quote-reply UI targeting one message that
-      uses that message's Message-ID for In-Reply-To/References
-      (`ReplyService` currently always threads onto the thread's last
-      message, which mis-threads replies to older bubbles); make the #thread
-      badges clickable filter chips that dim the merged timeline to one
-      thread.
+- [x] Reply-to-a-specific-bubble (done 2026-11-27): ↩ button per bubble
+      on `/chats` and swipe/long-press on mobile set `replyTo` /
+      `replyToMessageId` (`docs/API.md` §5.8); `ReplyService.sendReplyTo`
+      threads onto that message's Message-ID and the recorded copy keeps a
+      generated Message-ID + `In-Reply-To`, so its bubble links back.
+- [ ] #thread badges as clickable filter chips that dim the merged
+      timeline to one thread (split out of the reply-to-bubble item).
 
 ## Conventions
 

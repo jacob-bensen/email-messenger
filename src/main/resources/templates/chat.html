@@ -214,14 +214,16 @@
     }
     var toggle = paneWrap.querySelector('[data-reply-toggle]');
     var subject = paneWrap.querySelector('[data-subject-input]');
-    if (toggle && subject) {
-      var sync = function () {
-        subject.disabled = toggle.checked;
-        subject.placeholder = toggle.checked ? 'Reply keeps the existing subject' : 'Subject (optional)';
-      };
-      toggle.addEventListener('change', sync);
-      sync();
-    }
+    var target = paneWrap.querySelector('[data-reply-target]');
+    var sync = function () {
+      if (!toggle || !subject) return;
+      var replying = toggle.checked || (target && !target.disabled);
+      subject.disabled = replying;
+      toggle.disabled = !!(target && !target.disabled);
+      subject.placeholder = replying ? 'Reply keeps the existing subject' : 'Subject (optional)';
+    };
+    if (toggle) toggle.addEventListener('change', sync);
+    sync();
   }
 
   function initPane() { localizeTimes(paneWrap); decorateMessages(); wirePane(); }
@@ -324,6 +326,38 @@
     } else {
       showEmpty();
     }
+  });
+
+  // A bubble's "Reply" answers that one message (its Message-ID), not the
+  // latest thread. Delegated, so it survives pane swaps and live morphs.
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest) return;
+    var target = paneWrap.querySelector('[data-reply-target]');
+    var quote = paneWrap.querySelector('[data-reply-quote]');
+    if (!target || !quote) return;
+    var toggle = paneWrap.querySelector('[data-reply-toggle]');
+    var notify = function () { if (toggle) toggle.dispatchEvent(new Event('change')); };
+    if (e.target.closest('[data-reply-cancel]')) {
+      target.value = '';
+      target.disabled = true;
+      quote.hidden = true;
+      notify();
+      return;
+    }
+    var btn = e.target.closest('.bubble-reply-btn');
+    if (!btn) return;
+    var bubble = btn.closest('.bubble');
+    var text = bubble ? bubble.querySelector('.bubble-text') : null;
+    var snippet = text ? text.textContent.trim().replace(/\s+/g, ' ') : '';
+    target.value = btn.getAttribute('data-reply-to');
+    target.disabled = false;
+    quote.querySelector('[data-reply-quote-sender]').textContent = btn.getAttribute('data-reply-sender') || '';
+    quote.querySelector('[data-reply-quote-text]').textContent =
+      snippet.length > 120 ? snippet.slice(0, 120) + '…' : snippet;
+    quote.hidden = false;
+    notify();
+    var box = paneWrap.querySelector('.reply-form textarea');
+    if (box) box.focus();
   });
 
   // Smooth-scroll to a quoted message regardless of which pane is loaded.

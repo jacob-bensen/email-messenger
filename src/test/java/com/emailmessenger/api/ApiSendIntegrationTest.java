@@ -33,6 +33,7 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
+import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,6 +49,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -120,6 +122,48 @@ class ApiSendIntegrationTest {
                 .andExpect(jsonPath("$.messageCount").value(2))
                 .andExpect(jsonPath("$.runs[1].outbound").value(true))
                 .andExpect(jsonPath("$.runs[1].messages[0].bodyText").value("On my way"));
+    }
+
+    @Test
+    void replyToMessageIdAnswersThatMessageInItsOwnThread() throws Exception {
+        EmailThread later = inbound("Dinner", bob, List.of(me), "Dinner Friday?", LocalDateTime.of(2026, 11, 17, 18, 0));
+        assertThat(later.getConversationKey()).isEqualTo(bobKey);
+        long target = messages.findByThreadIdOrderBySentAtAsc(lunch.getId()).get(0).getId();
+        ArgumentCaptor<String> messageId = ArgumentCaptor.forClass(String.class);
+        when(replyService.sendReplyTo(eq(target), eq("Pizza works"), eq(List.of()), eq(List.of("bob@acme.com")),
+                eq("ada@example.com"), messageId.capture()))
+                .thenReturn(new ReplyService.ReplyTarget(lunch.getId(), "<Lunch@x>"));
+
+        String json = send(bobKey, Map.of("body", "Pizza works", "replyToMessageId", target,
+                        "subject", "ignored"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.threadId").value(lunch.getId()))
+                .andReturn().getResponse().getContentAsString();
+
+        long recordedId = objectMapper.readTree(json).get("messageId").asLong();
+        Message recorded = messages.findById(recordedId).orElseThrow();
+        assertThat(recorded.getInReplyTo()).isEqualTo("<Lunch@x>");
+        assertThat(recorded.getMessageIdHeader()).isEqualTo(messageId.getValue()).endsWith("@conexusmail.com>");
+        em.flush();
+        em.clear();
+        mockMvc.perform(get("/api/v1/conversations/" + bobKey).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.runs[2].thread.id").value(lunch.getId()))
+                .andExpect(jsonPath("$.runs[2].messages[0].replyToId").value(target));
+    }
+
+    @Test
+    void replyToAMessageOutsideTheConversationIsNotFoundAndSendsNothing() throws Exception {
+        Participant cy = participants.save(new Participant("cy@acme.com", "Cy"));
+        EmailThread other = inbound("Other", cy, List.of(me), "Hi", LocalDateTime.of(2026, 11, 16, 10, 0));
+        long foreign = messages.findByThreadIdOrderBySentAtAsc(other.getId()).get(0).getId();
+        long before = messages.count();
+
+        send(bobKey, Map.of("body", "Pizza works", "replyToMessageId", foreign))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("not_found"));
+
+        verifyNoInteractions(replyService);
+        assertThat(messages.count()).isEqualTo(before);
     }
 
     @Test
@@ -319,7 +363,7 @@ class ApiSendIntegrationTest {
     @Test
     void aClaimWithoutARecordedOutcomeIsInProgress() throws Exception {
         sendRequests.saveAndFlush(new ApiSendRequest(owner.getId(), "k-4",
-                ApiSendIdempotency.fingerprint("messages", bobKey, null, "hi", null, false),
+                ApiSendIdempotency.fingerprint("messages", bobKey, null, "hi", null, false, null),
                 LocalDateTime.now()));
 
         sendWithKey(bobKey, "k-4", Map.of("body", "hi"))
