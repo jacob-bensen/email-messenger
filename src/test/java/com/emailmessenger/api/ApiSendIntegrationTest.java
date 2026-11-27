@@ -21,6 +21,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import com.emailmessenger.web.ConversationUpdatedEvent;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -55,7 +58,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@RecordApplicationEvents
 class ApiSendIntegrationTest {
+
+    @Autowired ApplicationEvents events;
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
@@ -112,6 +118,9 @@ class ApiSendIntegrationTest {
                 .andExpect(jsonPath("$.messageCount").value(2))
                 .andExpect(jsonPath("$.runs[1].outbound").value(true))
                 .andExpect(jsonPath("$.runs[1].messages[0].bodyText").value("On my way"));
+        assertThat(events.stream(ConversationUpdatedEvent.class))
+                .containsExactly(new ConversationUpdatedEvent(owner.getId(),
+                        ConversationUpdatedEvent.Reason.SENT, List.of(bobKey)));
     }
 
     @Test
@@ -198,6 +207,7 @@ class ApiSendIntegrationTest {
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.error.code").value("send_failed"));
         assertThat(messages.count()).isEqualTo(before);
+        assertThat(events.stream(ConversationUpdatedEvent.class)).isEmpty();
     }
 
     @Test

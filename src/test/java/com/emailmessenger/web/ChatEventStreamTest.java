@@ -92,4 +92,30 @@ class ChatEventStreamTest {
         assertThat(ChatEventStream.newMailData(new NewMailEvent(1L, 2, List.of("aaaa", "bbbb"))))
                 .isEqualTo("{\"imported\":2,\"conversationKeys\":[\"aaaa\",\"bbbb\"]}");
     }
+
+    @Test
+    void conversationUpdatedPayloadNamesTheReasonAndSortedKeys() {
+        assertThat(ChatEventStream.conversationUpdatedData(new ConversationUpdatedEvent(
+                1L, ConversationUpdatedEvent.Reason.READ, List.of("b", "a", "b"))))
+                .isEqualTo("{\"reason\":\"read\",\"conversationKeys\":[\"a\",\"b\"]}");
+    }
+
+    @Test
+    void conversationUpdatedIsSentOnlyToThatUser() throws IOException {
+        stream.subscribe(1L);
+        stream.subscribe(2L);
+
+        stream.onConversationUpdated(new ConversationUpdatedEvent(
+                1L, ConversationUpdatedEvent.Reason.SENT, List.of("k")));
+
+        verify(created.get(0)).send(any(SseEmitter.SseEventBuilder.class));
+        verify(created.get(1), never()).send(any(SseEmitter.SseEventBuilder.class));
+    }
+
+    @Test
+    void conversationUpdatedNeedsAKey() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> new ConversationUpdatedEvent(
+                1L, ConversationUpdatedEvent.Reason.SENT, List.of()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

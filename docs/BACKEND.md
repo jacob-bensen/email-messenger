@@ -40,7 +40,10 @@ API response needs must be loaded inside the service transaction.
   publishes `NewMailEvent(userId, importedCount, conversationKeys)`, which
   `ChatEventStream` forwards after commit to the website's `/chats/events`
   and the API's `/api/v1/events` (`ApiEventsController`; the bearer filter
-  also runs on the stream's async dispatch) — one fan-out, same payload. Cadence: Free 15 min, paid 5 min (users can
+  also runs on the stream's async dispatch) — one fan-out, same payload.
+  `ChatSendService` (after recording) and `ChatService.markRead` (only when
+  a thread was unread) publish `ConversationUpdatedEvent` (`sent` / `read`),
+  forwarded the same way as `conversation-updated`. Cadence: Free 15 min, paid 5 min (users can
   only slow it down); five consecutive failures suspend the mailbox. Paid
   mailboxes also get an IMAP IDLE worker thread.
 - **Sending** (`ChatSendService` → `ReplyService` then
