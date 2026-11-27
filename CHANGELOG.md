@@ -19,6 +19,8 @@ history of this repo is in `master/CHANGELOG.md`.
 - Tests: `ApiConversationIntegrationTest` (+1: latest signature wins, is
   the same on a one-message page, and stays out of the bubble body; the
   existing test asserts `null` without a signature).
+  `./mvnw -q -B verify`: 916 run, 0 failures, 0 errors, 1 skipped (the
+  Docker-only Testcontainers test), exit 0.
 
 ## 2026-11-27 — Live sends and read state on the event streams
 
