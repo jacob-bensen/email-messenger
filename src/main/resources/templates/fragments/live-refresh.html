@@ -3,7 +3,8 @@
 <!--
   Live-delivery client. Two signals feed it:
     1. An SSE stream (/chats/events) that fires the instant a poll or IMAP
-       IDLE wake imports mail — this is the fast path.
+       IDLE wake imports mail, or a send / mark-read happens elsewhere —
+       this is the fast path.
     2. A foreground heartbeat that POSTs /chats/refresh roughly every minute
        while the tab is visible, which actively syncs mailboxes that have no
        IDLE connection (free tier) and doubles as a fallback when SSE is down.
@@ -67,7 +68,11 @@
   if (window.EventSource) {
     // EventSource reconnects on its own after drops and server timeouts.
     var source = new EventSource('/chats/events');
-    source.addEventListener('new-mail', function () { update(); });
+    // A send or mark-read from another tab or the mobile app changes the
+    // rail (and maybe the open pane) just as new mail does (API.md §5.24).
+    ['new-mail', 'message-sent', 'conversation-read'].forEach(function (name) {
+      source.addEventListener(name, function () { update(); });
+    });
   }
 }());
 </script>

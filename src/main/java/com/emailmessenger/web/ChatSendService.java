@@ -12,6 +12,7 @@ import com.emailmessenger.service.ChatMember;
 import com.emailmessenger.service.ConversationKeyService;
 import com.emailmessenger.service.OutgoingAttachment;
 import com.emailmessenger.service.ReplyService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -73,10 +74,12 @@ public class ChatSendService {
     private final MailAccountService mailAccounts;
     private final OwnerAddressService ownerAddresses;
     private final ConversationKeyService keys;
+    private final ApplicationEventPublisher events;
 
     ChatSendService(ChatService chatService, EmailThreadRepository threads, ReplyService replyService,
                     OutboundMessageService outbound, MailAccountService mailAccounts,
-                    OwnerAddressService ownerAddresses, ConversationKeyService keys) {
+                    OwnerAddressService ownerAddresses, ConversationKeyService keys,
+                    ApplicationEventPublisher events) {
         this.chatService = chatService;
         this.threads = threads;
         this.replyService = replyService;
@@ -84,6 +87,7 @@ public class ChatSendService {
         this.mailAccounts = mailAccounts;
         this.ownerAddresses = ownerAddresses;
         this.keys = keys;
+        this.events = events;
     }
 
     /**
@@ -117,13 +121,11 @@ public class ChatSendService {
         if (asReply && !conversationThreads.isEmpty()) {
             EmailThread target = conversationThreads.get(0);
             replyService.sendReply(target.getId(), target.getSubject(), outgoingBody, files, recipients, from);
-            Message recorded = outbound.recordReply(target.getId(), owner, outgoingBody, files);
-            return new SendResult(recorded.getThread().getConversationKey(),
-                    recorded.getThread().getId(), recorded.getId());
+            return sent(owner, outbound.recordReply(target.getId(), owner, outgoingBody, files));
         }
         String subj = subjectOrDefault(subject);
         replyService.sendNewEmail(subj, outgoingBody, files, recipients, from);
-        return result(outbound.recordNewEmail(owner, key, subj, outgoingBody, recipients, files));
+        return sent(owner, outbound.recordNewEmail(owner, key, subj, outgoingBody, recipients, files));
     }
 
     /**
@@ -146,7 +148,7 @@ public class ChatSendService {
         String outgoingBody = withSignature(text, sender);
 
         replyService.sendNewEmail(subj, outgoingBody, files, recipients, from);
-        return result(outbound.recordNewEmail(owner, key, subj, outgoingBody, recipients, files));
+        return sent(owner, outbound.recordNewEmail(owner, key, subj, outgoingBody, recipients, files));
     }
 
     /**
@@ -187,8 +189,14 @@ public class ChatSendService {
         return subject == null || subject.isBlank() ? DEFAULT_SUBJECT : subject.trim();
     }
 
-    private static SendResult result(Message recorded) {
+    /**
+     * The record call has committed by now, so the event goes out at once and
+     * every open stream (the sender's other devices and tabs) sees the bubble.
+     */
+    private SendResult sent(User owner, Message recorded) {
         EmailThread thread = recorded.getThread();
+        events.publishEvent(ConversationChangedEvent.of(
+                owner.getId(), ConversationChangedEvent.Kind.SENT, thread.getConversationKey()));
         return new SendResult(thread.getConversationKey(), thread.getId(), recorded.getId());
     }
 

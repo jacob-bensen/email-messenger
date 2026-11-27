@@ -4,6 +4,7 @@ import com.emailmessenger.auth.UserService;
 import com.emailmessenger.domain.User;
 import com.emailmessenger.email.NewMailEvent;
 import com.emailmessenger.web.ChatEventStream;
+import com.emailmessenger.web.ConversationChangedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -67,6 +68,24 @@ class ApiEventsIntegrationTest {
         assertThat(body).contains("event:new-mail")
                 .contains("data:{\"imported\":2,\"conversationKeys\":[\"154e1e0a1872533ddf397a16e5a65dcf\"]}")
                 .doesNotContain("someone-else");
+    }
+
+    @Test
+    void streamDeliversSendsAndReadsUnderTheirOwnNames() throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/v1/events")
+                        .header("Authorization", "Bearer " + token)
+                        .accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        eventStream.onConversationChanged(new ConversationChangedEvent(
+                owner.getId(), ConversationChangedEvent.Kind.SENT, List.of("k1")));
+        eventStream.onConversationChanged(new ConversationChangedEvent(
+                owner.getId(), ConversationChangedEvent.Kind.READ, List.of("k2")));
+
+        assertThat(result.getResponse().getContentAsString())
+                .contains("event:message-sent\ndata:{\"conversationKeys\":[\"k1\"]}")
+                .contains("event:conversation-read\ndata:{\"conversationKeys\":[\"k2\"]}");
     }
 
     @Test

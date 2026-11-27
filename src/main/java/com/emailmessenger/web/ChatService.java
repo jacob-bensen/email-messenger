@@ -7,6 +7,7 @@ import com.emailmessenger.email.OwnerAddressService;
 import com.emailmessenger.repository.EmailThreadRepository;
 import com.emailmessenger.service.ChatConversation;
 import com.emailmessenger.service.ConversationService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,13 +28,16 @@ public class ChatService {
     private final EmailThreadRepository threads;
     private final ConversationService conversationService;
     private final OwnerAddressService ownerAddressService;
+    private final ApplicationEventPublisher events;
 
     ChatService(EmailThreadRepository threads,
                 ConversationService conversationService,
-                OwnerAddressService ownerAddressService) {
+                OwnerAddressService ownerAddressService,
+                ApplicationEventPublisher events) {
         this.threads = threads;
         this.conversationService = conversationService;
         this.ownerAddressService = ownerAddressService;
+        this.events = events;
     }
 
     /** Timeline order for paging (docs/API.md §5.6): sent-at, missing last, then id. */
@@ -131,7 +135,8 @@ public class ChatService {
      * Marks the opened conversation's threads read. Scoped to {@code mailboxAddress}
      * when an account is selected (so the same correspondent reached via another
      * account keeps its own unread state); otherwise marks every thread of the key.
-     * No-op when nothing is unread. Returns how many threads the conversation has
+     * No-op when nothing is unread; otherwise publishes a
+     * {@link ConversationChangedEvent.Kind#READ} event after commit. Returns how many threads the conversation has
      * in that scope, so 0 means there is no such conversation.
      */
     @Transactional
@@ -146,10 +151,18 @@ public class ChatService {
             conversationThreads = threads.findThreadsByConversationKeyForMailbox(
                     owner, mailboxAddress.trim().toLowerCase(Locale.ROOT), conversationKey);
         }
+        boolean changed = false;
         for (EmailThread thread : conversationThreads) {
             if (thread.isUnread()) {
                 thread.markRead();
+                changed = true;
             }
+        }
+        // Only a real change is published: the website's pane refresh marks
+        // read again on every conversation-read event, and must not echo.
+        if (changed) {
+            events.publishEvent(ConversationChangedEvent.of(
+                    owner.getId(), ConversationChangedEvent.Kind.READ, conversationKey));
         }
         return conversationThreads.size();
     }

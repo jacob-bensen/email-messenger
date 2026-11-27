@@ -13,6 +13,7 @@ import com.emailmessenger.repository.MailAccountRepository;
 import com.emailmessenger.repository.MessageRepository;
 import com.emailmessenger.repository.ParticipantRepository;
 import com.emailmessenger.service.ConversationKeyService;
+import com.emailmessenger.web.ConversationChangedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -22,12 +23,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@RecordApplicationEvents
 class ApiConversationIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -49,6 +54,7 @@ class ApiConversationIntegrationTest {
     @Autowired ParticipantRepository participants;
     @Autowired MailAccountRepository mailAccounts;
     @PersistenceContext EntityManager em;
+    @Autowired ApplicationEvents events;
 
     private User owner;
     private Participant me;
@@ -290,6 +296,10 @@ class ApiConversationIntegrationTest {
         mockMvc.perform(get("/api/v1/conversations").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.items[0].unread").value(false))
                 .andExpect(jsonPath("$.counts.unread").value(0));
+        // Only the first call changed anything, so only it is announced (§5.24).
+        assertThat(events.stream(ConversationChangedEvent.class))
+                .containsExactly(new ConversationChangedEvent(
+                        owner.getId(), ConversationChangedEvent.Kind.READ, List.of(key)));
     }
 
     @Test
