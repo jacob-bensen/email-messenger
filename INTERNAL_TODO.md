@@ -131,9 +131,10 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       need them); move the slice into SQL (keyset on `sent_at`, `id`) with
       separate member/count queries when histories get long. The website's
       `/chats/{key}` still renders the whole conversation.
-- [ ] `GET /api/v1/conversations/{key}` omits member signatures (the
-      website shows them in the side panel); add with the signature →
-      contact card roadmap item.
+- [ ] `members[].signature` (`docs/API.md` §5.6, 2026-11-28) is raw
+      sanitized HTML + text. Structured fields (phone, title, company) and
+      change history are the `CLAUDE.md` "Signature → living contact card"
+      roadmap item.
 
 ## 4. Missing tests
 

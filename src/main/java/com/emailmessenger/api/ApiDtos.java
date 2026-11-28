@@ -104,13 +104,19 @@ final class ApiDtos {
         }
     }
 
-    record MemberResponse(String email, String displayName, String initials, String label) {
+    record MemberResponse(String email, String displayName, String initials, String label,
+                          SignatureResponse signature) {
 
         static MemberResponse of(ChatMember member) {
+            SignatureResponse signature = member.hasSignature()
+                    ? new SignatureResponse(member.signatureHtml(), HtmlText.toPlainText(member.signatureHtml()))
+                    : null;
             return new MemberResponse(member.email(), blankToNull(member.displayName()),
-                    member.initials(), member.label());
+                    member.initials(), member.label(), signature);
         }
     }
+
+    record SignatureResponse(String html, String text) {}
 
     record RunResponse(boolean outbound, SenderResponse sender, ThreadResponse thread,
                        List<MessageResponse> messages) {

@@ -32,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -212,6 +213,7 @@ class ApiConversationIntegrationTest {
                 .andExpect(jsonPath("$.members", hasSize(1)))
                 .andExpect(jsonPath("$.members[0].email").value("bob@acme.com"))
                 .andExpect(jsonPath("$.members[0].label").value("Bob Builder"))
+                .andExpect(jsonPath("$.members[0].signature").isEmpty())
                 .andExpect(jsonPath("$.runs", hasSize(1)))
                 .andExpect(jsonPath("$.runs[0].outbound").value(false))
                 .andExpect(jsonPath("$.runs[0].sender.email").value("bob@acme.com"))
@@ -352,6 +354,37 @@ class ApiConversationIntegrationTest {
         mockMvc.perform(get("/api/v1/conversations?filter=unread").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.items", hasSize(1)))
                 .andExpect(jsonPath("$.counts.unread").value(1));
+    }
+
+    @Test
+    void membersCarryTheirLatestSignatureOnEveryPage() throws Exception {
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob Builder"));
+        inboundHtml("Quote", bob, "<p>Here is the quote.</p><div class=\"gmail_signature\">"
+                + "Bob Builder<br>Acme Corp<br>+1 555 0100</div>", LocalDateTime.of(2026, 1, 1, 9, 0));
+        inboundHtml("Quote 2", bob, "<p>Any news?</p>", LocalDateTime.of(2026, 1, 2, 9, 0));
+        String key = keyService.keyFor(List.of("bob@acme.com"), ownerAddressService.addressesFor(owner));
+
+        mockMvc.perform(get("/api/v1/conversations/" + key + "?limit=1")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasMore").value(true))
+                .andExpect(jsonPath("$.runs[0].messages[0].bodyText").value("Any news?"))
+                .andExpect(jsonPath("$.members[0].signature.html").value(containsString("Acme Corp")))
+                .andExpect(jsonPath("$.members[0].signature.text").value("Bob Builder\nAcme Corp\n+1 555 0100"));
+
+        mockMvc.perform(get("/api/v1/conversations/" + key).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.runs[0].messages[0].bodyText").value("Here is the quote."));
+    }
+
+    private void inboundHtml(String subject, Participant sender, String html, LocalDateTime at) {
+        EmailThread thread = threads.save(new EmailThread(owner, subject, "<" + subject + "@x>"));
+        Message m = new Message(thread, sender, subject, null, html, at);
+        m.addRecipient(me, RecipientType.TO);
+        thread.addMessage(messages.save(m), true);
+        thread.setConversationKey(keyService.compute(thread, ownerAddressService.addressesFor(owner)));
+        threads.saveAndFlush(thread);
+        em.flush();
+        em.clear();
     }
 
     private void inbound(String subject, Participant sender, List<Participant> to, String body,

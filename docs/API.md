@@ -10,11 +10,11 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-27)
+## 1. Current state (2026-11-28)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline (paged by
-message, newest first), mark-read, sending
+message, newest first, with each member's latest signature), mark-read, sending
 into a conversation, starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove, signature, sync frequency and
@@ -380,7 +380,13 @@ into the newer page's first run when both have the same `outbound` and
   "messageCount": 2,
   "hasMore": false,
   "members": [
-    { "email": "ada@acme.com", "displayName": "Ada Lovelace", "initials": "AL", "label": "Ada Lovelace" }
+    {
+      "email": "ada@acme.com", "displayName": "Ada Lovelace", "initials": "AL", "label": "Ada Lovelace",
+      "signature": {
+        "html": "<p>Ada Lovelace<br>Analytical Engines Ltd<br>+44 20 7946 0000</p>",
+        "text": "Ada Lovelace\nAnalytical Engines Ltd\n+44 20 7946 0000"
+      }
+    }
   ],
   "runs": [
     {
@@ -410,7 +416,15 @@ into the newer page's first run when both have the same `outbound` and
   Ask for them with `before` = that message's `id`.
 - `members` (array): the non-owner participants in first-seen order.
   `displayName` is a string or `null`; `label` is the display name, else the
-  email (§4 title input); `initials` per §4.
+  email (§4 title input); `initials` per §4. `signature` (object or
+  `null`): the member's most recent signature — the newest message they
+  sent in the conversation (in scope, across every page) that carried one
+  — or `null` when none was detected. `html` (string, non-blank) is
+  sanitized the same way as `bodyHtml`; `text` (string) is the same
+  signature as plain text by the `bodyText` rule. It is the block the
+  server lifts out of bubbles (signature containers such as Gmail's
+  `gmail_signature` or Outlook's `#Signature`, else everything after a
+  `-- ` delimiter line), so it never also appears in a bubble.
 - `runs` (array, chronological): consecutive messages from the same side
   within the same email thread. `outbound` (boolean): sent by the user.
   `sender` (object): who sent the run's messages (`displayName` may be
@@ -432,8 +446,8 @@ into the newer page's first run when both have the same `outbound` and
     `null`), `sizeBytes` (integer or `null`). Metadata only — attachment
     bytes are not stored yet, so there is no download endpoint.
 
-Signatures (shown in the website's side panel) are not part of the
-response yet. Every page is built from the same `ChatService` timeline the
+`members[].signature` is the same value the website's side panel shows
+for that person on `/chats/{key}`. Every page is built from the same `ChatService` timeline the
 website renders whole; the server still reads the full conversation for
 each page (only the payload is paged).
 

@@ -3,6 +3,26 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-28 — Member signatures in the conversation API
+
+- Chosen from `INTERNAL_TODO.md` §3 "`GET /api/v1/conversations/{key}`
+  omits member signatures". The items above it need attachment storage, a
+  product decision (first password for Google-only accounts), a mobile
+  OAuth design, or push credentials (FCM/APNs, not available to the
+  routine). Needs both repos.
+- Contract first: `docs/API.md` §5.6 `members[]` gains `signature`
+  (`{"html","text"}` or `null`): the member's newest detected signature
+  across the whole conversation in scope, the same value the website's
+  side panel shows on `/chats/{key}`.
+- `ApiDtos.MemberResponse` maps the existing `ChatMember.signatureHtml`
+  (built by `ConversationService` for the website) and derives `text` with
+  `service.HtmlText` — no new business logic, no migration.
+- Tests: `ApiConversationIntegrationTest` (+1: the signature is on a page
+  that does not hold the message it came from, and is stripped from that
+  message's bubble; existing test asserts `null`).
+  `./mvnw -B verify`: 916 run, 0 failures, 0 errors, 1 skipped (the
+  Docker-only Testcontainers test), BUILD SUCCESS.
+
 ## 2026-11-27 — Live sends and read state on the event streams
 
 - Chosen from `INTERNAL_TODO.md` §1 "Live events cover new mail only" (the
