@@ -142,12 +142,15 @@ commit. Add follow-ups as they emerge.
       them to the original outbound message — render status + retry on the
       bubble, and suppress MAILER-DAEMON pseudo-conversations from the chats
       list.
-- [ ] Signature → living contact card: parse the signatures
-      `EmailBodyCleaner` already lifts into structured fields (phone → tel:
-      link, title, company, sites) shown in the signature rail; record
-      signature changes over time and surface diffs ("phone number changed")
-      as subtle timeline events; backfill missing display names from parsed
-      signatures.
+- [x] Signature → contact card, part 1 (done 2026-11-28): parse the
+      signatures `EmailBodyCleaner` already lifts into structured fields
+      (`SignatureCards` → `ContactCard`: title, company, phones as tel:
+      links, sites) shown in the signature rail and on the API
+      (`members[].signature`, API.md §5.6) for the mobile contact sheet.
+- [ ] Signature → living contact card, part 2: record signature changes
+      over time and surface diffs ("phone number changed") as subtle
+      timeline events; backfill missing display names from parsed
+      signatures (store the parsed card at import rather than per request).
 - [ ] Per-person shared files & links: store attachment bytes (blob store;
       plan-capped via `PlanLimitKind`), download endpoint for the 📎 chips
       (today `blob_ref` is always null — attachments aren't downloadable),

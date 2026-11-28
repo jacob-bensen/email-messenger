@@ -14,7 +14,7 @@ section is promoted to Implemented.
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline (paged by
-message, newest first), mark-read, sending
+message, newest first, with each member's parsed signature card), mark-read, sending
 into a conversation, starting a new one (both retry-safe with an
 `Idempotency-Key`), mailboxes (list, connect
 with an IMAP password, sync now, remove, signature, sync frequency and
@@ -380,7 +380,16 @@ into the newer page's first run when both have the same `outbound` and
   "messageCount": 2,
   "hasMore": false,
   "members": [
-    { "email": "ada@acme.com", "displayName": "Ada Lovelace", "initials": "AL", "label": "Ada Lovelace" }
+    {
+      "email": "ada@acme.com", "displayName": "Ada Lovelace", "initials": "AL", "label": "Ada Lovelace",
+      "signature": {
+        "text": "Ada Lovelace\nHead of Engineering\nAcme Corp\n+1 (555) 123-4567\nwww.acme.com",
+        "title": "Head of Engineering",
+        "company": "Acme Corp",
+        "phones": [ { "display": "+1 (555) 123-4567", "tel": "+15551234567" } ],
+        "websites": [ "https://www.acme.com" ]
+      }
+    }
   ],
   "runs": [
     {
@@ -411,6 +420,24 @@ into the newer page's first run when both have the same `outbound` and
 - `members` (array): the non-owner participants in first-seen order.
   `displayName` is a string or `null`; `label` is the display name, else the
   email (§4 title input); `initials` per §4.
+  - `signature` (object or `null`): the member's most recent signature,
+    from the newest inbound message of theirs (in the whole conversation in
+    scope) that has one; `null` when none was detected. The website's
+    signature panel shows the same card (`ChatMember.card`).
+    - `text` (string, non-empty): the signature as plain text, same rules
+      as `bodyText`.
+    - `title`, `company` (string or `null`): best-effort, parsed by the
+      server from the signature's lines. A line (split further on `|`, `•`,
+      `·`) that is the member's name or email, a sign-off ("Best", "Sent
+      from my …"), or holds a phone, URL or email address is skipped; the
+      first remaining one is `title`, the second `company`. A single
+      remaining "X at Y" is split into the two. Clients show them as given.
+    - `phones` (array, ≤ 5, may be empty): `display` is the number as
+      written; `tel` is its dialable form (`+` and digits only, 7–15
+      digits), unique within the array. From `tel:` links and numbers in the text.
+    - `websites` (array of strings, ≤ 5, may be empty): absolute `http(s)`
+      URLs from links and `http(s)://` / `www.` text, `www.` ones prefixed
+      with `https://`; unique ignoring case and a trailing `/`.
 - `runs` (array, chronological): consecutive messages from the same side
   within the same email thread. `outbound` (boolean): sent by the user.
   `sender` (object): who sent the run's messages (`displayName` may be

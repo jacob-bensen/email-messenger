@@ -141,8 +141,10 @@ public class ConversationService {
         }
         List<ChatMember> members = new ArrayList<>();
         for (Participant p : byEmail.values()) {
+            String signature = latestSignatureFor(messages, p.getEmail());
             members.add(new ChatMember(p.getEmail(), p.getDisplayName(), p.initials(),
-                    labelFor(p), latestSignatureFor(messages, p.getEmail())));
+                    labelFor(p), signature,
+                    SignatureCards.parse(signature, p.getDisplayName(), p.getEmail())));
         }
         return members;
     }

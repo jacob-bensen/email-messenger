@@ -127,6 +127,7 @@
         <div class="signature-card-email"
              th:if="${chat.members()[0].label() != chat.members()[0].email()}"
              th:text="${chat.members()[0].email()}">ada@acme.com</div>
+        <div th:replace="~{fragments/chat-pane :: contactFields(${chat.members()[0].card()})}"></div>
         <div class="signature-card-body" th:if="${chat.members()[0].hasSignature()}"
              th:utext="${chat.members()[0].signatureHtml()}">Signature</div>
         <div class="signature-card-empty" th:unless="${chat.members()[0].hasSignature()}">
@@ -146,7 +147,10 @@
               </span>
               <span class="member-chevron" aria-hidden="true">▾</span>
             </summary>
-            <div class="signature-card-body member-signature" th:utext="${m.signatureHtml()}">Signature</div>
+            <div class="member-signature">
+              <div th:replace="~{fragments/chat-pane :: contactFields(${m.card()})}"></div>
+              <div class="signature-card-body" th:utext="${m.signatureHtml()}">Signature</div>
+            </div>
           </details>
           <div th:unless="${m.hasSignature()}" class="member-summary member-summary-static">
             <span class="member-avatar" aria-hidden="true" th:text="${m.initials()}">AB</span>
@@ -162,6 +166,25 @@
   </aside>
 
 </th:block>
+
+<!-- Parsed contact fields above a signature (ContactCard, docs/API.md §5.6). -->
+<ul th:fragment="contactFields(card)" class="contact-fields"
+    th:if="${card != null and card.hasFields()}">
+  <li class="contact-role" th:if="${card.title() != null or card.company() != null}">
+    <span th:if="${card.title() != null}" class="contact-title" th:text="${card.title()}">Head of Engineering</span>
+    <span th:if="${card.title() != null and card.company() != null}" aria-hidden="true"> · </span>
+    <span th:if="${card.company() != null}" class="contact-company" th:text="${card.company()}">Acme Corp</span>
+  </li>
+  <li th:each="phone : ${card.phones()}" class="contact-phone">
+    <span aria-hidden="true">📞</span>
+    <a th:href="'tel:' + ${phone.tel()}" th:text="${phone.display()}">+1 555 123 4567</a>
+  </li>
+  <li th:each="site : ${card.websites()}" class="contact-site">
+    <span aria-hidden="true">🔗</span>
+    <a th:href="${site}" target="_blank" rel="noopener noreferrer nofollow"
+       th:text="${#strings.replace(#strings.replace(site, 'https://', ''), 'http://', '')}">acme.com</a>
+  </li>
+</ul>
 
 <!-- Shown if the pane is requested for a conversation that no longer resolves. -->
 <div th:fragment="missing" class="chat-empty-pane">

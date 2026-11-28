@@ -135,9 +135,12 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       need them); move the slice into SQL (keyset on `sent_at`, `id`) with
       separate member/count queries when histories get long. The website's
       `/chats/{key}` still renders the whole conversation.
-- [ ] `GET /api/v1/conversations/{key}` omits member signatures (the
-      website shows them in the side panel); add with the signature →
-      contact card roadmap item.
+- [ ] `SignatureCards` re-parses every member's signature on each
+      conversation request (cheap jsoup + regex, but per request); store
+      the card at import with the signature-history follow-up.
+- [ ] `SignatureCards` title/company is a line heuristic (first two
+      descriptive lines): a postal address or tagline line can land in
+      `company`, and non-English sign-offs are not skipped.
 
 - [ ] Reply threading has no stored `References` chain: a reply's
       `References` is the answered message's `In-Reply-To` + its

@@ -3,6 +3,36 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-28 — Signature contact cards (API, website, mobile)
+
+- Chosen from the `CLAUDE.md` roadmap "Signature → living contact card"
+  (its parsing half; history/diffs/name backfill split into part 2) and
+  the `INTERNAL_TODO.md` §3 gap "conversation API omits member
+  signatures". The roadmap items above it are blocked on a support-address
+  decision, Google verification, VAPID/push design or are larger; the §1
+  contract items stay blocked (attachment storage, product decision,
+  mobile OAuth design). Needs both repos.
+- Contract first: `docs/API.md` §5.6 `members[].signature` (object or
+  `null`: `text`, `title`, `company`, `phones[{display, tel}]` ≤ 5,
+  `websites[]` ≤ 5) with the parsing rules.
+- New `service.ContactCard` record + `service.SignatureCards.parse`
+  (text via `HtmlText`; phones from `tel:` links and 7–15-digit runs,
+  ISO dates skipped; websites from `http(s)` links and `http(s)://` /
+  `www.` text; title/company = first two lines/segments that are not the
+  member's name/email, a sign-off, or contact data; "X at Y" splits).
+  `ChatMember` gains `card`, built in `ConversationService.buildMembers`,
+  so the website and API share it. `ApiDtos.MemberResponse.signature`.
+- Website: signature panel (1:1 and each group member) shows the card's
+  title · company, `tel:` phone links and website links above the raw
+  signature (`chat-pane :: contactFields`, `.contact-fields` CSS). No
+  migration.
+- Tests: `SignatureCardsTest` (new, 8), `ApiConversationIntegrationTest`
+  (+1: latest signature as a card; `signature` null without one),
+  `ConversationControllerTest` (contact fields + `tel:` link rendered).
+  `./mvnw -B verify`: 932 run, 0 failures, 0 errors, 1 skipped (the
+  Docker-only Testcontainers test), BUILD SUCCESS. The rail was not viewed
+  in a real browser (no local Postgres this run).
+
 ## 2026-11-28 — Reply to a specific bubble (API, website, mobile)
 
 - Chosen from the `CLAUDE.md` roadmap "Reply-to-a-specific-bubble" (a

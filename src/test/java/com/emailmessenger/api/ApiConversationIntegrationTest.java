@@ -212,6 +212,7 @@ class ApiConversationIntegrationTest {
                 .andExpect(jsonPath("$.members", hasSize(1)))
                 .andExpect(jsonPath("$.members[0].email").value("bob@acme.com"))
                 .andExpect(jsonPath("$.members[0].label").value("Bob Builder"))
+                .andExpect(jsonPath("$.members[0].signature").isEmpty())
                 .andExpect(jsonPath("$.runs", hasSize(1)))
                 .andExpect(jsonPath("$.runs[0].outbound").value(false))
                 .andExpect(jsonPath("$.runs[0].sender.email").value("bob@acme.com"))
@@ -223,6 +224,27 @@ class ApiConversationIntegrationTest {
 
         mockMvc.perform(get("/api/v1/conversations?filter=unread").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.items", hasSize(1)));
+    }
+
+    @Test
+    void membersCarryTheirLatestSignatureAsAContactCard() throws Exception {
+        Participant bob = participants.save(new Participant("bob@acme.com", "Bob Builder"));
+        inbound("Old", bob, List.of(me), "Hi\n\n--\nBob\nIntern", false, LocalDateTime.of(2026, 1, 1, 9, 0));
+        inbound("New", bob, List.of(me),
+                "See you there\n\n--\nBob Builder\nSite Lead | Builder & Co\nTel: +44 20 7946 0958\nhttps://builder.example",
+                false, LocalDateTime.of(2026, 1, 2, 9, 0));
+        String key = keyService.keyFor(List.of("bob@acme.com"), ownerAddressService.addressesFor(owner));
+
+        mockMvc.perform(get("/api/v1/conversations/" + key).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.members[0].signature.text").value(
+                        "Bob Builder\nSite Lead | Builder & Co\nTel: +44 20 7946 0958\nhttps://builder.example"))
+                .andExpect(jsonPath("$.members[0].signature.title").value("Site Lead"))
+                .andExpect(jsonPath("$.members[0].signature.company").value("Builder & Co"))
+                .andExpect(jsonPath("$.members[0].signature.phones", hasSize(1)))
+                .andExpect(jsonPath("$.members[0].signature.phones[0].display").value("+44 20 7946 0958"))
+                .andExpect(jsonPath("$.members[0].signature.phones[0].tel").value("+442079460958"))
+                .andExpect(jsonPath("$.members[0].signature.websites[0]").value("https://builder.example"));
     }
 
     @Test

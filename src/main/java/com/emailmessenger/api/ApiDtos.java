@@ -11,6 +11,7 @@ import com.emailmessenger.domain.MailAccount;
 import com.emailmessenger.service.BubbleMessage;
 import com.emailmessenger.service.ChatConversation;
 import com.emailmessenger.service.ChatMember;
+import com.emailmessenger.service.ContactCard;
 import com.emailmessenger.service.ConversationListItem;
 import com.emailmessenger.service.HtmlText;
 import com.emailmessenger.service.SenderBubbleRun;
@@ -104,13 +105,27 @@ final class ApiDtos {
         }
     }
 
-    record MemberResponse(String email, String displayName, String initials, String label) {
+    record MemberResponse(String email, String displayName, String initials, String label,
+                          SignatureResponse signature) {
 
         static MemberResponse of(ChatMember member) {
             return new MemberResponse(member.email(), blankToNull(member.displayName()),
-                    member.initials(), member.label());
+                    member.initials(), member.label(),
+                    member.card() == null ? null : SignatureResponse.of(member.card()));
         }
     }
+
+    record SignatureResponse(String text, String title, String company,
+                             List<PhoneResponse> phones, List<String> websites) {
+
+        static SignatureResponse of(ContactCard card) {
+            return new SignatureResponse(card.text(), card.title(), card.company(),
+                    card.phones().stream().map(p -> new PhoneResponse(p.display(), p.tel())).toList(),
+                    card.websites());
+        }
+    }
+
+    record PhoneResponse(String display, String tel) {}
 
     record RunResponse(boolean outbound, SenderResponse sender, ThreadResponse thread,
                        List<MessageResponse> messages) {

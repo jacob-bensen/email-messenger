@@ -120,6 +120,10 @@ class ConversationControllerTest {
         assertThat(body).contains("About the invoice");
         assertThat(body).contains("class=\"signature-rail\"");
         assertThat(body).contains("555-1000");
+        // The signature's parsed contact fields sit above it, phone as a tel: link.
+        assertThat(body).contains("class=\"contact-fields\"");
+        assertThat(body).contains("href=\"tel:5551000\"");
+        assertThat(body).contains("class=\"contact-title\">Acme<");
         // 1:1 → no group member dropdowns.
         assertThat(body).doesNotContain("class=\"member-list\"");
     }
