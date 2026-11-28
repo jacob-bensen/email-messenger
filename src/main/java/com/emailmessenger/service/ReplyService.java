@@ -32,35 +32,26 @@ public class ReplyService {
         this.mailSender = mailSender;
     }
 
-    public void sendReply(long threadId, String threadSubject, String body) {
-        sendReply(threadId, threadSubject, body, List.of());
-    }
-
-    public void sendReply(long threadId, String threadSubject, String body,
-                          List<OutgoingAttachment> attachments) {
-        sendReply(threadId, threadSubject, body, attachments, List.of(), null);
-    }
+    /**
+     * Where a reply goes: the email thread it continues, that thread's subject,
+     * and the threading headers that answer one message in it. Headers are
+     * null when the answered message has no Message-ID. Built by {@link ReplyThreading}.
+     */
+    public record Threading(long threadId, String threadSubject, String inReplyTo, String references) {}
 
     /**
-     * Replies on an existing thread, continuing its subject and threading
-     * headers. {@code toRecipients} are the conversation's participants (reply-all
-     * for a group); when empty, defaults to the last message's sender.
-     * {@code from} is the sender's own address; null falls back to the configured
-     * mailbox.
+     * Replies on an existing thread to {@code toRecipients} (the conversation's
+     * participants). {@code from} is the sender's own address; null falls back
+     * to the configured mailbox. {@code messageId} is the Message-ID to send
+     * with, so the recorded copy can carry the same one.
      */
-    @Transactional(readOnly = true)
-    public void sendReply(long threadId, String threadSubject, String body,
-                          List<OutgoingAttachment> attachments, List<String> toRecipients,
-                          String from) {
-        List<Message> messages = messageRepository.findByThreadIdOrderBySentAtAsc(threadId);
-        if (messages.isEmpty()) return;
-
-        Message lastMessage = messages.get(messages.size() - 1);
-        String[] recipients = (toRecipients == null || toRecipients.isEmpty())
-                ? new String[]{ lastMessage.getSender().getEmail() }
-                : toRecipients.toArray(String[]::new);
-        compose(from, recipients, "Re: " + threadSubject, body, attachments,
-                lastMessage.getMessageIdHeader());
+    public void sendReply(Threading threading, String body, List<OutgoingAttachment> attachments,
+                          List<String> toRecipients, String from, String messageId) {
+        if (toRecipients == null || toRecipients.isEmpty()) {
+            return;
+        }
+        compose(from, toRecipients.toArray(String[]::new), "Re: " + threading.threadSubject(), body,
+                attachments, messageId, threading.inReplyTo(), threading.references());
     }
 
     /**
@@ -68,15 +59,16 @@ public class ReplyService {
      * given recipients. Used when a chat message isn't explicitly a reply.
      */
     public void sendNewEmail(String subject, String body, List<OutgoingAttachment> attachments,
-                             List<String> toRecipients, String from) {
+                             List<String> toRecipients, String from, String messageId) {
         if (toRecipients == null || toRecipients.isEmpty()) {
             return;
         }
-        compose(from, toRecipients.toArray(String[]::new), subject, body, attachments, null);
+        compose(from, toRecipients.toArray(String[]::new), subject, body, attachments, messageId, null, null);
     }
 
     private void compose(String from, String[] recipients, String subject, String body,
-                         List<OutgoingAttachment> attachments, String inReplyTo) {
+                         List<OutgoingAttachment> attachments, String messageId,
+                         String inReplyTo, String references) {
         boolean multipart = attachments != null && !attachments.isEmpty();
         MimeMessage mimeMessage = mailSender.createMimeMessage();
         try {
@@ -85,9 +77,13 @@ public class ReplyService {
             helper.setTo(recipients);
             helper.setSubject(subject);
             helper.setText(body == null ? "" : body, false);
+            // JavaMailSenderImpl keeps an explicitly set Message-ID across saveChanges().
+            if (messageId != null) {
+                mimeMessage.setHeader("Message-ID", messageId);
+            }
             if (inReplyTo != null) {
                 mimeMessage.setHeader("In-Reply-To", inReplyTo);
-                mimeMessage.setHeader("References", inReplyTo);
+                mimeMessage.setHeader("References", references != null ? references : inReplyTo);
             }
             if (multipart) {
                 for (OutgoingAttachment att : attachments) {

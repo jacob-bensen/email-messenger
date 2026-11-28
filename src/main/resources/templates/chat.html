@@ -215,14 +215,53 @@
     var toggle = paneWrap.querySelector('[data-reply-toggle]');
     var subject = paneWrap.querySelector('[data-subject-input]');
     if (toggle && subject) {
-      var sync = function () {
-        subject.disabled = toggle.checked;
-        subject.placeholder = toggle.checked ? 'Reply keeps the existing subject' : 'Subject (optional)';
-      };
-      toggle.addEventListener('change', sync);
-      sync();
+      toggle.addEventListener('change', syncReplyMode);
+      syncReplyMode();
     }
   }
+
+  // A bubble-targeted reply (replyTo) wins over the "latest thread" toggle,
+  // as on the server; both keep the thread's subject.
+  function syncReplyMode() {
+    var toggle = paneWrap.querySelector('[data-reply-toggle]');
+    var subject = paneWrap.querySelector('[data-subject-input]');
+    var target = paneWrap.querySelector('[data-reply-to-input]');
+    if (!toggle || !subject) return;
+    var targeted = !!(target && target.value);
+    toggle.disabled = targeted;
+    subject.disabled = targeted || toggle.checked;
+    subject.placeholder = subject.disabled ? 'Reply keeps the existing subject' : 'Subject (optional)';
+  }
+
+  function setReplyTarget(id, who, text) {
+    var target = paneWrap.querySelector('[data-reply-to-input]');
+    var quote = paneWrap.querySelector('[data-reply-quote]');
+    if (!target || !quote) return;
+    target.value = id || '';
+    quote.hidden = !id;
+    if (id) {
+      quote.querySelector('[data-reply-quote-who]').textContent = who;
+      var snippet = (text || '').replace(/\s+/g, ' ').trim();
+      quote.querySelector('[data-reply-quote-text]').textContent =
+        snippet.length > 90 ? snippet.slice(0, 90) + '…' : (snippet || 'Attachment');
+      var box = paneWrap.querySelector('.reply-form textarea');
+      if (box) box.focus();
+    }
+    syncReplyMode();
+  }
+
+  paneWrap.addEventListener('click', function (e) {
+    if (!e.target.closest) return;
+    var btn = e.target.closest('[data-reply-to]');
+    if (btn) {
+      var bubble = document.getElementById('msg-' + btn.getAttribute('data-reply-to'));
+      var body = bubble ? bubble.querySelector('.bubble-text') : null;
+      setReplyTarget(btn.getAttribute('data-reply-to'), btn.getAttribute('data-reply-who'),
+        body ? body.textContent : '');
+      return;
+    }
+    if (e.target.closest('[data-reply-cancel]')) setReplyTarget(null);
+  });
 
   function initPane() { localizeTimes(paneWrap); decorateMessages(); wirePane(); }
 

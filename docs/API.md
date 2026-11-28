@@ -10,7 +10,7 @@ Status legend: **Implemented** = exists in code and is tested.
 **Planned** = agreed direction, no code yet; shapes are not final until the
 section is promoted to Implemented.
 
-## 1. Current state (2026-11-27)
+## 1. Current state (2026-11-28)
 
 `/api/v1` exposes bearer-token sign-in, sign-out, the current user, the
 paged conversation list, one conversation's timeline (paged by
@@ -468,7 +468,7 @@ picks the sending account.
 
 Request:
 ```json
-{ "body": "Pizza at noon works.", "subject": null, "asReply": true }
+{ "body": "Pizza at noon works.", "subject": null, "asReply": true, "replyToMessageId": null }
 ```
 - `body` (string, required): the message text, plain text. Must not be
   blank; at most 100 000 characters. Attachments cannot be sent through the
@@ -480,6 +480,16 @@ Request:
   `Re: <thread subject>`, `In-Reply-To`/`References` set to that thread's
   latest message); `false` sends a new email that the server files under
   this same conversation.
+- `replyToMessageId` (integer, optional, default `null`): answers one
+  specific message — any message `id` of this conversation in scope (§5.6
+  `runs[].messages[].id`, inbound or your own, on any page). The send then
+  continues **that message's** email thread (subject `Re: <its thread
+  subject>`), with `In-Reply-To` = that message's Message-ID and
+  `References` = its own `In-Reply-To` (if any) followed by its Message-ID;
+  `asReply` and `subject` are ignored. If that message has no Message-ID
+  (some older copies of your own sends), the threading headers are
+  omitted but the thread and subject are still its own. Not a message of
+  this conversation in scope → `404 not_found`, nothing sent.
 
 Server rules (clients must not predict beyond the bubble text):
 - Recipients are the conversation's members (§5.6 `members`), reply-all.
@@ -489,6 +499,11 @@ Server rules (clients must not predict beyond the bubble text):
   `-- ` line, so the recorded bubble matches what recipients got.
 - The mail is sent first and recorded only after the mail server accepted
   it. The recorded message is outbound and its thread is marked read.
+- Every sent email carries a server-generated `Message-ID`, stored on the
+  recorded message, so the Sent-folder import recognizes it instead of
+  adding a second copy, and a later reply can answer it. A reply's
+  recorded message gets `replyToId` (§5.6) = the message it answered
+  (`replyToMessageId`, or the thread's latest message for `asReply`).
 
 `201`:
 ```json
@@ -503,8 +518,9 @@ Server rules (clients must not predict beyond the bubble text):
   by the page's `hasMore`.
 
 Errors: `400 validation_failed` (body blank or too long, malformed JSON,
-non-integer `mailboxId`); `404 not_found` (unknown key in scope, or
-`mailboxId` not the user's); `409 no_recipients`; `502 send_failed`;
+non-integer `mailboxId` or `replyToMessageId`); `404 not_found` (unknown
+key in scope, `mailboxId` not the user's, or `replyToMessageId` not a
+message of this conversation in scope); `409 no_recipients`; `502 send_failed`;
 `401 unauthorized`; `409 send_in_progress` and
 `422 idempotency_key_reused` (§5.8.1).
 
@@ -519,7 +535,7 @@ dropped connection without sending the email twice.
   Without the header the request is not idempotent (a retry may send
   twice).
 - The server fingerprints the request (endpoint, path key, `mailboxId`,
-  and the body fields) and, for a key it has seen:
+  and the body fields, including `replyToMessageId`) and, for a key it has seen:
   - earlier request **succeeded** → the same `201` body again (same
     `key`, `threadId`, `messageId`); nothing is sent;
   - earlier request **failed** with `400`/`404`/`409 no_recipients`/

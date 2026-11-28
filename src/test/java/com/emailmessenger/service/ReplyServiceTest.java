@@ -1,9 +1,5 @@
 package com.emailmessenger.service;
 
-import com.emailmessenger.domain.EmailThread;
-import com.emailmessenger.domain.Message;
-import com.emailmessenger.domain.Participant;
-import com.emailmessenger.domain.User;
 import com.emailmessenger.repository.MessageRepository;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
@@ -19,7 +15,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import jakarta.mail.Multipart;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,7 +33,9 @@ class ReplyServiceTest {
 
     ReplyService replyService;
 
-    private static final User OWNER = new User("owner@test.com", "h", null);
+    private static final ReplyService.Threading LUNCH =
+            new ReplyService.Threading(1L, "Lunch", "<pizza@acme.com>", "<root@acme.com> <pizza@acme.com>");
+    private static final List<String> ADA = List.of("ada@example.com");
 
     @BeforeEach
     void setUp() {
@@ -47,46 +44,61 @@ class ReplyServiceTest {
     }
 
     @Test
-    void sendReplyDoesNothingWhenThreadHasNoMessages() {
-        when(messageRepository.findByThreadIdOrderBySentAtAsc(1L)).thenReturn(List.of());
+    void sendReplyContinuesTheThreadSubjectAndAnswersTheTargetMessage() throws Exception {
+        MimeMessage mimeMsg = new MimeMessage((Session) null);
+        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
 
-        replyService.sendReply(1L, "Subject", "Hello");
+        replyService.sendReply(LUNCH, "Pizza it is", List.of(), ADA, "me@mybox.com", "<mine@conexusmail.com>");
+
+        verify(mailSender).send(any(MimeMessage.class));
+        assertThat(mimeMsg.getSubject()).isEqualTo("Re: Lunch");
+        assertThat(mimeMsg.getAllRecipients()[0].toString()).isEqualTo("ada@example.com");
+        assertThat(mimeMsg.getFrom()[0].toString()).isEqualTo("me@mybox.com");
+        assertThat(mimeMsg.getHeader("In-Reply-To")).containsExactly("<pizza@acme.com>");
+        assertThat(mimeMsg.getHeader("References")).containsExactly("<root@acme.com> <pizza@acme.com>");
+        assertThat(mimeMsg.getHeader("Message-ID")).containsExactly("<mine@conexusmail.com>");
+    }
+
+    @Test
+    void sendReplyOmitsThreadingHeadersWhenTheTargetHasNoMessageId() throws Exception {
+        MimeMessage mimeMsg = new MimeMessage((Session) null);
+        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
+
+        replyService.sendReply(new ReplyService.Threading(1L, "Lunch", null, null), "Reply body",
+                List.of(), ADA, null, "<mine@conexusmail.com>");
+
+        assertThat(mimeMsg.getSubject()).isEqualTo("Re: Lunch");
+        assertThat(mimeMsg.getHeader("In-Reply-To")).isNull();
+        assertThat(mimeMsg.getHeader("References")).isNull();
+        assertThat(mimeMsg.getFrom()[0].toString()).isEqualTo("noreply@conexusmail.com");
+    }
+
+    @Test
+    void sendReplySendsToEveryRecipient() throws Exception {
+        MimeMessage mimeMsg = new MimeMessage((Session) null);
+        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
+
+        replyService.sendReply(LUNCH, "body", List.of(),
+                List.of("ada@example.com", "bob@example.com"), "me@mybox.com", null);
+
+        assertThat(mimeMsg.getAllRecipients()).hasSize(2);
+    }
+
+    @Test
+    void sendReplyDoesNothingWithoutRecipients() {
+        replyService.sendReply(LUNCH, "body", List.of(), List.of(), "me@mybox.com", null);
 
         verify(mailSender, never()).send(any(MimeMessage.class));
     }
 
     @Test
-    void sendReplySendsMimeMessageToLastMessageSender() throws Exception {
-        EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
-        Participant alice = new Participant("alice@example.com", "Alice");
-        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
-
-        MimeMessage mimeMsg = new MimeMessage((Session) null);
-        when(messageRepository.findByThreadIdOrderBySentAtAsc(1L)).thenReturn(List.of(msg));
-        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
-
-        replyService.sendReply(1L, "Test Subject", "My reply body");
-
-        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
-        verify(mailSender).send(captor.capture());
-        assertThat(captor.getValue().getSubject()).isEqualTo("Re: Test Subject");
-        assertThat(captor.getValue().getAllRecipients()[0].toString())
-                .isEqualTo("alice@example.com");
-    }
-
-    @Test
     void sendReplyAttachesProvidedFilesAsMultipart() throws Exception {
-        EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
-        Participant alice = new Participant("alice@example.com", "Alice");
-        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
-
         MimeMessage mimeMsg = new MimeMessage((Session) null);
-        when(messageRepository.findByThreadIdOrderBySentAtAsc(1L)).thenReturn(List.of(msg));
         when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
 
         OutgoingAttachment att = new OutgoingAttachment(
                 "report.txt", "text/plain", "hello".getBytes(StandardCharsets.UTF_8));
-        replyService.sendReply(1L, "Subject", "See attached", List.of(att));
+        replyService.sendReply(LUNCH, "See attached", List.of(att), ADA, null, null);
 
         ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
         verify(mailSender).send(captor.capture());
@@ -103,113 +115,35 @@ class ReplyServiceTest {
     }
 
     @Test
-    void sendReplyUsesLastMessageSenderWhenMultipleMessages() throws Exception {
-        EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
-        Participant alice = new Participant("alice@example.com", "Alice");
-        Participant bob = new Participant("bob@example.com", "Bob");
-        Message first = new Message(thread, alice, "Test", "first", null, LocalDateTime.now().minusHours(1));
-        Message last = new Message(thread, bob, "Test", "last", null, LocalDateTime.now());
-
-        MimeMessage mimeMsg = new MimeMessage((Session) null);
-        when(messageRepository.findByThreadIdOrderBySentAtAsc(1L)).thenReturn(List.of(first, last));
-        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
-
-        replyService.sendReply(1L, "Subject", "Reply");
-
-        verify(mailSender).send(any(MimeMessage.class));
-        assertThat(mimeMsg.getAllRecipients()[0].toString()).isEqualTo("bob@example.com");
-    }
-
-    @Test
-    void sendReplySetsInReplyToAndReferencesHeadersFromLastMessageId() throws Exception {
-        EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
-        Participant alice = new Participant("alice@example.com", "Alice");
-        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
-        msg.setMessageIdHeader("<original-msg-42@example.com>");
-
-        MimeMessage mimeMsg = new MimeMessage((Session) null);
-        when(messageRepository.findByThreadIdOrderBySentAtAsc(1L)).thenReturn(List.of(msg));
-        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
-
-        replyService.sendReply(1L, "Subject", "Reply body");
-
-        verify(mailSender).send(any(MimeMessage.class));
-        assertThat(mimeMsg.getHeader("In-Reply-To"))
-                .containsExactly("<original-msg-42@example.com>");
-        assertThat(mimeMsg.getHeader("References"))
-                .containsExactly("<original-msg-42@example.com>");
-    }
-
-    @Test
-    void sendReplyOmitsThreadingHeadersWhenLastMessageHasNoMessageId() throws Exception {
-        EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
-        Participant alice = new Participant("alice@example.com", "Alice");
-        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
-        // messageIdHeader stays null
-
-        MimeMessage mimeMsg = new MimeMessage((Session) null);
-        when(messageRepository.findByThreadIdOrderBySentAtAsc(1L)).thenReturn(List.of(msg));
-        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
-
-        replyService.sendReply(1L, "Subject", "Reply body");
-
-        verify(mailSender).send(any(MimeMessage.class));
-        assertThat(mimeMsg.getHeader("In-Reply-To")).isNull();
-        assertThat(mimeMsg.getHeader("References")).isNull();
-    }
-
-    @Test
     void sendNewEmailSendsWithGivenSubjectRecipientsFromAndNoThreadingHeaders() throws Exception {
         MimeMessage mimeMsg = new MimeMessage((Session) null);
         when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
 
-        replyService.sendNewEmail("Lunch?", "Friday work?", List.of(),
-                List.of("ada@example.com"), "me@mybox.com");
+        replyService.sendNewEmail("Lunch?", "Friday work?", List.of(), ADA, "me@mybox.com",
+                "<new@conexusmail.com>");
 
         verify(mailSender).send(any(MimeMessage.class));
         assertThat(mimeMsg.getSubject()).isEqualTo("Lunch?");
         assertThat(mimeMsg.getAllRecipients()[0].toString()).isEqualTo("ada@example.com");
         assertThat(mimeMsg.getFrom()[0].toString()).isEqualTo("me@mybox.com");
         assertThat(mimeMsg.getHeader("In-Reply-To")).isNull();
+        assertThat(mimeMsg.getHeader("Message-ID")).containsExactly("<new@conexusmail.com>");
     }
 
     @Test
     void sendNewEmailDoesNothingWithoutRecipients() {
-        replyService.sendNewEmail("Subject", "Body", List.of(), List.of(), "me@mybox.com");
+        replyService.sendNewEmail("Subject", "Body", List.of(), List.of(), "me@mybox.com", null);
 
         verify(mailSender, never()).send(any(MimeMessage.class));
     }
 
     @Test
-    void replyUsesTheProvidedSenderAddressAndRecipientList() throws Exception {
-        EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
-        Participant alice = new Participant("alice@example.com", "Alice");
-        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
-
-        MimeMessage mimeMsg = new MimeMessage((Session) null);
-        when(messageRepository.findByThreadIdOrderBySentAtAsc(1L)).thenReturn(List.of(msg));
-        when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
-
-        replyService.sendReply(1L, "Subject", "body", List.of(),
-                List.of("ada@example.com", "bob@example.com"), "me@mybox.com");
-
-        verify(mailSender).send(any(MimeMessage.class));
-        assertThat(mimeMsg.getFrom()[0].toString()).isEqualTo("me@mybox.com");
-        assertThat(mimeMsg.getAllRecipients()).hasSize(2);
-    }
-
-    @Test
     void sendReplyPropagatesMailSendExceptionOnFailure() {
-        EmailThread thread = new EmailThread(OWNER, "Test", "<root@test>");
-        Participant alice = new Participant("alice@example.com", "Alice");
-        Message msg = new Message(thread, alice, "Test", "body", null, LocalDateTime.now());
-
         MimeMessage mimeMsg = new MimeMessage((Session) null);
-        when(messageRepository.findByThreadIdOrderBySentAtAsc(1L)).thenReturn(List.of(msg));
         when(mailSender.createMimeMessage()).thenReturn(mimeMsg);
         doThrow(new MailSendException("SMTP unavailable")).when(mailSender).send(any(MimeMessage.class));
 
-        assertThatThrownBy(() -> replyService.sendReply(1L, "Subject", "Hello"))
+        assertThatThrownBy(() -> replyService.sendReply(LUNCH, "Hello", List.of(), ADA, null, null))
                 .isInstanceOf(MailSendException.class)
                 .hasMessageContaining("SMTP unavailable");
     }

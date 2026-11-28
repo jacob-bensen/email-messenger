@@ -47,9 +47,13 @@ consumes from the top and appends what it discovers. Product roadmap lives in
       leaves a sent email with no bubble (until the Sent-folder import, if
       the user's mailbox stores it). An outbox table would fix both this and
       idempotency.
-- [ ] **Sent messages can appear twice.** `recordReply` stores the local
-      copy with no Message-ID and `recordNewEmail` with a synthetic one, so
-      the Sent-folder import cannot de-duplicate against either.
+- [ ] **Sent messages can still appear twice in two cases.** Since
+      2026-11-28 every send goes out with the Message-ID its recorded copy
+      stores, so the Sent-folder import skips it. Outbound rows recorded
+      before then have no (or an unsent) Message-ID, and a relay that
+      rewrites Message-ID (some ESPs do) defeats the match. Those older
+      replies also cannot be answered with threading headers (§5.8
+      `replyToMessageId` omits them).
 - [ ] **Conversation keys go stale** when the owner connects or removes a
       mailbox: existing threads are not re-keyed (the startup backfill only
       fills null keys).
@@ -134,6 +138,11 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] `GET /api/v1/conversations/{key}` omits member signatures (the
       website shows them in the side panel); add with the signature →
       contact card roadmap item.
+
+- [ ] Reply threading has no stored `References` chain: a reply's
+      `References` is the answered message's `In-Reply-To` + its
+      Message-ID, not the full chain. Store `References` at import (new
+      column) if deep threads mis-group in some clients.
 
 ## 4. Missing tests
 

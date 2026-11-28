@@ -14,7 +14,7 @@ next.
 
 ## Related repositories
 
-- **`email-messenger`** (this repo) — BACKEND: mobile REST API (`/api/v1`: auth, me, conversation list, one conversation (paged) + mark read, send + new conversation, mailboxes + signature / sync frequency / default sending mailbox, account + signed-in devices + display name / password / email change, live events over SSE: new mail, sends, read state),
+- **`email-messenger`** (this repo) — BACKEND: mobile REST API (`/api/v1`: auth, me, conversation list, one conversation (paged) + mark read, send (latest thread, new email, or reply to one message) + new conversation, mailboxes + signature / sync frequency / default sending mailbox, account + signed-in devices + display name / password / email change, live events over SSE: new mail, sends, read state),
   Thymeleaf website, persistence, all authoritative business rules.
 - **`conexus-mail-mobile`** — FRONTEND: Flutter client. Its `lib/domain/`
   mirrors rules defined here.
@@ -153,12 +153,13 @@ commit. Add follow-ups as they emerge.
       (today `blob_ref` is always null — attachments aren't downloadable),
       then Media/Files/Links tabs in the signature rail scoped to the
       conversationKey, with links harvested from bubble HTML at import time.
-- [ ] Reply-to-a-specific-bubble: quote-reply UI targeting one message that
-      uses that message's Message-ID for In-Reply-To/References
-      (`ReplyService` currently always threads onto the thread's last
-      message, which mis-threads replies to older bubbles); make the #thread
-      badges clickable filter chips that dim the merged timeline to one
-      thread.
+- [x] Reply-to-a-specific-bubble (done 2026-11-28): "↩ Reply" on each
+      bubble (website) / long-press → Reply (mobile) answers that message on
+      its own thread with its Message-ID in In-Reply-To/References
+      (`replyTo` form field, API `replyToMessageId`, `ReplyThreading`);
+      sends now carry a generated Message-ID stored on the recorded copy.
+- [ ] Make the #thread badges clickable filter chips that dim the merged
+      timeline to one thread (follow-up of the reply-to-bubble item).
 
 ## Conventions
 

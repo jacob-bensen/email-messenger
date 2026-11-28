@@ -50,7 +50,10 @@ API response needs must be loaded inside the service transaction.
 - **Sending** (`ChatSendService` → `ReplyService` then
   `OutboundMessageService`): one service for the website's compose boxes and
   `/api/v1` owns validation, recipients, sending account, signature, default
-  subject and reply-vs-new. Mail goes out through the single app-wide SMTP
+  subject and reply-vs-new (or a reply to one chosen message,
+  `ReplyThreading` resolving its thread and `In-Reply-To`/`References`).
+  Every send carries a generated `Message-ID` that the recorded copy
+  stores too, so the Sent-folder import de-duplicates it. Mail goes out through the single app-wide SMTP
   relay with From set to the user's mailbox address, plain text only; only
   after the relay accepts it is a local outbound copy recorded (its own
   transaction; SMTP never runs inside one). The two steps are not atomic: a
@@ -102,8 +105,10 @@ HTML error page elsewhere.
 
 Two methods take a bare id and rely on the caller to check ownership first:
 `MailboxPollingService.pollOne(accountId)` and
-`ReplyService.sendReply(threadId, …)`. A REST controller must do the same
-owner-scoped lookup the web controllers do.
+`ReplyThreading.answering(messageId)` / `latestIn(threadId)`.
+`ChatSendService` only resolves a message it found in the owner's scoped
+conversation; a REST controller must do the same owner-scoped lookup the
+web controllers do.
 
 ## Transactions
 Method-level `@Transactional` only. Services that return view models

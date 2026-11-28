@@ -38,6 +38,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
@@ -151,7 +152,7 @@ class ConversationControllerTest {
 
         // No "reply" flag → a brand-new email with the given subject, recorded as a bubble.
         verify(replyService).sendNewEmail(eq("Quick question"), eq("Are we still on for Friday?"),
-                anyList(), anyList(), anyString());
+                anyList(), anyList(), anyString(), anyString());
         assertThat(messages.count()).isEqualTo(before + 1);
     }
 
@@ -173,7 +174,7 @@ class ConversationControllerTest {
         // out under the standard "-- " delimiter.
         verify(replyService).sendNewEmail(eq("Quick question"),
                 eq("Are we still on for Friday?\n\n-- \nOwner\nAcme Corp"),
-                anyList(), anyList(), eq("chat-user@example.com"));
+                anyList(), anyList(), eq("chat-user@example.com"), anyString());
     }
 
     @Test
@@ -195,7 +196,51 @@ class ConversationControllerTest {
         // No ?mailbox= scope and two accounts: the preferred default wins over
         // the login-email fallback.
         verify(replyService).sendNewEmail(eq("From the hub"), eq("Which account sends this?"),
-                anyList(), anyList(), eq("second@example.com"));
+                anyList(), anyList(), eq("second@example.com"), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void eachBubbleOffersAReplyThatTargetsIt() throws Exception {
+        long invoice = invoiceMessageId();
+        String body = mockMvc.perform(get("/chats/{key}", adaKey))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).contains("data-reply-to=\"" + invoice + "\"");
+        assertThat(body).contains("name=\"replyTo\"");
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void replyToAnswersThatBubblesMessage() throws Exception {
+        long invoice = invoiceMessageId();
+        mockMvc.perform(post("/chats/{key}/send", adaKey)
+                        .param("body", "Paid today.")
+                        .param("replyTo", String.valueOf(invoice))
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/chats/" + adaKey))
+                .andExpect(flash().attribute("successMessage", "Reply sent."));
+
+        // seed() stores no Message-ID, so the reply carries no threading headers.
+        verify(replyService).sendReply(eq(new ReplyService.Threading(invoiceThreadId(), "Invoice", null, null)),
+                eq("Paid today."), anyList(), eq(List.of("ada@acme.com")), anyString(), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "chat-user@example.com")
+    void replyToAMessageOfAnotherConversationSendsNothing() throws Exception {
+        long invoice = invoiceMessageId();
+        mockMvc.perform(post("/chats/{key}/send", groupKey)
+                        .param("body", "Wrong chat")
+                        .param("replyTo", String.valueOf(invoice))
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/chats/" + groupKey))
+                .andExpect(flash().attribute("sendError", "That message is not in this conversation."));
+
+        verifyNoInteractions(replyService);
     }
 
     @Test
@@ -208,8 +253,8 @@ class ConversationControllerTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/chats/" + adaKey));
 
-        verify(replyService).sendReply(anyLong(), anyString(), anyString(),
-                anyList(), anyList(), anyString());
+        verify(replyService).sendReply(any(ReplyService.Threading.class), anyString(),
+                anyList(), anyList(), anyString(), anyString());
     }
 
     @Test
@@ -308,7 +353,7 @@ class ConversationControllerTest {
                 .andExpect(redirectedUrlPattern("/chats/*"));
 
         verify(replyService).sendNewEmail(eq("Hello there"), eq("Starting a new conversation."),
-                anyList(), anyList(), anyString());
+                anyList(), anyList(), anyString(), anyString());
         assertThat(messages.count()).isEqualTo(before + 1);
     }
 
@@ -349,5 +394,13 @@ class ConversationControllerTest {
         thread.setConversationKey(keyService.compute(thread, ownerAddressService.addressesFor(owner)));
         threads.saveAndFlush(thread);
         return thread.getConversationKey();
+    }
+
+    private long invoiceThreadId() {
+        return threads.findThreadsByConversationKey(owner, adaKey).get(0).getId();
+    }
+
+    private long invoiceMessageId() {
+        return messages.findByThreadIdOrderBySentAtAsc(invoiceThreadId()).get(0).getId();
     }
 }

@@ -12,6 +12,7 @@ import com.emailmessenger.service.ChatMember;
 import com.emailmessenger.service.ConversationKeyService;
 import com.emailmessenger.service.OutgoingAttachment;
 import com.emailmessenger.service.ReplyService;
+import com.emailmessenger.service.ReplyThreading;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
@@ -37,6 +38,7 @@ public class ChatSendService {
         EMPTY_MESSAGE("Add a message or an attachment."),
         BODY_TOO_LONG("The message is too long."),
         NO_SUCH_CONVERSATION("No such conversation."),
+        NO_SUCH_MESSAGE("That message is not in this conversation."),
         NO_MEMBERS("This conversation has no one to send to.");
 
         private final String message;
@@ -70,6 +72,7 @@ public class ChatSendService {
     private final ChatService chatService;
     private final EmailThreadRepository threads;
     private final ReplyService replyService;
+    private final ReplyThreading replyThreading;
     private final OutboundMessageService outbound;
     private final MailAccountService mailAccounts;
     private final OwnerAddressService ownerAddresses;
@@ -77,12 +80,13 @@ public class ChatSendService {
     private final ApplicationEventPublisher events;
 
     ChatSendService(ChatService chatService, EmailThreadRepository threads, ReplyService replyService,
-                    OutboundMessageService outbound, MailAccountService mailAccounts,
+                    ReplyThreading replyThreading, OutboundMessageService outbound, MailAccountService mailAccounts,
                     OwnerAddressService ownerAddresses, ConversationKeyService keys,
                     ApplicationEventPublisher events) {
         this.chatService = chatService;
         this.threads = threads;
         this.replyService = replyService;
+        this.replyThreading = replyThreading;
         this.outbound = outbound;
         this.mailAccounts = mailAccounts;
         this.ownerAddresses = ownerAddresses;
@@ -93,11 +97,12 @@ public class ChatSendService {
     /**
      * Sends into an existing conversation, to all its members. {@code selected}
      * (may be null) scopes the conversation and picks the sending account.
-     * {@code asReply} continues the most recently active thread; otherwise a
-     * new email with {@code subject} is pinned to this conversation.
+     * {@code replyToMessageId} (may be null) answers that message on its own
+     * thread; else {@code asReply} continues the most recently active thread;
+     * otherwise a new email with {@code subject} is pinned to this conversation.
      */
     public SendResult sendToConversation(User owner, MailAccount selected, String key, String body,
-                                         String subject, boolean asReply,
+                                         String subject, boolean asReply, Long replyToMessageId,
                                          List<OutgoingAttachment> attachments) {
         List<OutgoingAttachment> files = attachments == null ? List.of() : attachments;
         String text = requireContent(body, files);
@@ -109,6 +114,14 @@ public class ChatSendService {
         if (conversation == null) {
             throw new SendRejectedException(Rejection.NO_SUCH_CONVERSATION);
         }
+        ReplyService.Threading threading = null;
+        if (replyToMessageId != null) {
+            if (!contains(conversation, replyToMessageId)) {
+                throw new SendRejectedException(Rejection.NO_SUCH_MESSAGE);
+            }
+            threading = replyThreading.answering(replyToMessageId)
+                    .orElseThrow(() -> new SendRejectedException(Rejection.NO_SUCH_MESSAGE));
+        }
         List<String> recipients = conversation.members().stream().map(ChatMember::email).toList();
         if (recipients.isEmpty()) {
             throw new SendRejectedException(Rejection.NO_MEMBERS);
@@ -116,16 +129,29 @@ public class ChatSendService {
         MailAccount sender = sendingAccount(owner, accounts, selected);
         String from = sender != null ? sender.getUsername() : owner.getEmail();
         String outgoingBody = withSignature(text, sender);
+        String messageId = OutboundMessageService.newMessageId();
 
-        List<EmailThread> conversationThreads = threads.findThreadsByConversationKey(owner, key);
-        if (asReply && !conversationThreads.isEmpty()) {
-            EmailThread target = conversationThreads.get(0);
-            replyService.sendReply(target.getId(), target.getSubject(), outgoingBody, files, recipients, from);
-            return sent(owner, outbound.recordReply(target.getId(), owner, outgoingBody, files));
+        if (threading == null && asReply) {
+            List<EmailThread> conversationThreads = threads.findThreadsByConversationKey(owner, key);
+            if (!conversationThreads.isEmpty()) {
+                threading = replyThreading.latestIn(conversationThreads.get(0).getId()).orElse(null);
+            }
+        }
+        if (threading != null) {
+            replyService.sendReply(threading, outgoingBody, files, recipients, from, messageId);
+            return sent(owner, outbound.recordReply(threading.threadId(), owner, outgoingBody, files,
+                    messageId, threading.inReplyTo()));
         }
         String subj = subjectOrDefault(subject);
-        replyService.sendNewEmail(subj, outgoingBody, files, recipients, from);
-        return sent(owner, outbound.recordNewEmail(owner, key, subj, outgoingBody, recipients, files));
+        replyService.sendNewEmail(subj, outgoingBody, files, recipients, from, messageId);
+        return sent(owner, outbound.recordNewEmail(owner, key, subj, outgoingBody, recipients, files, messageId));
+    }
+
+    /** The conversation was built in scope, so this also enforces the mailbox scope. */
+    private static boolean contains(ChatConversation conversation, long messageId) {
+        return conversation.runs().stream()
+                .flatMap(run -> run.messages().stream())
+                .anyMatch(message -> message.messageId() != null && message.messageId() == messageId);
     }
 
     /**
@@ -147,8 +173,10 @@ public class ChatSendService {
         String key = keys.keyFor(recipients, ownerAddresses.addressesFor(owner));
         String outgoingBody = withSignature(text, sender);
 
-        replyService.sendNewEmail(subj, outgoingBody, files, recipients, from);
-        return sent(owner, outbound.recordNewEmail(owner, key, subj, outgoingBody, recipients, files));
+        String messageId = OutboundMessageService.newMessageId();
+
+        replyService.sendNewEmail(subj, outgoingBody, files, recipients, from, messageId);
+        return sent(owner, outbound.recordNewEmail(owner, key, subj, outgoingBody, recipients, files, messageId));
     }
 
     /**

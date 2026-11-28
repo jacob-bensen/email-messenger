@@ -50,9 +50,19 @@ class OutboundMessageService {
         this.clock = clock;
     }
 
-    /** Returns the recorded message, or {@code null} when the thread is not the owner's. */
+    /** A fresh Message-ID for an outgoing email, sent and recorded with it. */
+    static String newMessageId() {
+        return "<" + UUID.randomUUID() + "@conexusmail.com>";
+    }
+
+    /**
+     * Records a reply sent with {@code messageId}, answering the message whose
+     * Message-ID is {@code inReplyTo} (may be null). Returns the recorded
+     * message, or {@code null} when the thread is not the owner's.
+     */
     @Transactional
-    Message recordReply(Long threadId, User owner, String body, List<OutgoingAttachment> attachments) {
+    Message recordReply(Long threadId, User owner, String body, List<OutgoingAttachment> attachments,
+                        String messageId, String inReplyTo) {
         EmailThread thread = threadRepo.findByIdAndOwner(threadId, owner).orElse(null);
         if (thread == null) {
             return null;
@@ -61,6 +71,8 @@ class OutboundMessageService {
 
         Message reply = new Message(thread, me, "Re: " + thread.getSubject(),
                 body == null ? "" : body, null, LocalDateTime.now(clock));
+        reply.setMessageIdHeader(messageId);
+        reply.setInReplyTo(inReplyTo);
         reply.markOutbound();
         addAttachments(reply, attachments);
 
@@ -82,9 +94,9 @@ class OutboundMessageService {
      */
     @Transactional
     Message recordNewEmail(User owner, String conversationKey, String subject, String body,
-                        List<String> recipientEmails, List<OutgoingAttachment> attachments) {
+                        List<String> recipientEmails, List<OutgoingAttachment> attachments,
+                        String messageId) {
         Participant me = resolveOwnerParticipant(owner);
-        String messageId = "<" + UUID.randomUUID() + "@conexusmail.com>";
 
         EmailThread thread = threadRepo.save(new EmailThread(owner, subject, messageId));
         Message message = new Message(thread, me, subject,

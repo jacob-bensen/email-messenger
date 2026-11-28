@@ -3,6 +3,42 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-28 — Reply to a specific bubble (API, website, mobile)
+
+- Chosen from the `CLAUDE.md` roadmap "Reply-to-a-specific-bubble" (a
+  correctness fix: every reply threaded onto the thread's latest message,
+  mis-threading answers to older bubbles). The `INTERNAL_TODO.md` §1 items
+  above it remain blocked (attachment storage, a product decision, a
+  mobile OAuth design). Needs both repos. The #thread filter-chip half of
+  that roadmap item is split out as its own unchecked item.
+- Contract first: `docs/API.md` §5.8 gains optional `replyToMessageId`
+  (a message of the conversation in scope; answers it on its own thread
+  with its Message-ID in `In-Reply-To`/`References`; `404 not_found`
+  otherwise; part of the idempotency fingerprint) and documents that every
+  send carries a server-generated Message-ID stored on the recorded copy.
+- New `service.ReplyThreading` (`latestIn`, `answering` →
+  `ReplyService.Threading`). `ReplyService.sendReply(threading, …,
+  messageId)` / `sendNewEmail(…, messageId)` set `Message-ID`, and
+  `References` = answered `In-Reply-To` + Message-ID. `ChatSendService`
+  checks the target is in the scoped conversation (new
+  `Rejection.NO_SUCH_MESSAGE`), generates the Message-ID and records it with
+  `inReplyTo`, so the recorded bubble's `replyToId` points at what it
+  answered. Fixes the Sent-folder duplicate for new sends.
+- Website: each bubble's "↩ Reply" button (hover; always on touch) sets a
+  hidden `replyTo` field and shows a "Replying to …" chip with cancel above
+  the compose box; it disables the latest-thread toggle and subject.
+  `POST /chats/{key}/send` takes `replyTo`. No migration.
+- Tests: `ReplyServiceTest` rewritten for the new signatures,
+  `ReplyThreadingTest` (new, 4), `ApiSendIntegrationTest` (+3: answers an
+  older thread, answers your own sent message by its stored Message-ID,
+  foreign/unknown id is 404 with nothing sent), `ConversationControllerTest`
+  (+3: button rendered, `replyTo` threads onto that message, foreign id
+  flashes an error and sends nothing).
+  `./mvnw -B verify`: 923 run, 0 failures, 0 errors, 1 skipped (the
+  Docker-only Testcontainers test), BUILD SUCCESS. The website's inline
+  chat script passes `node --check`; the Reply chip was not exercised in a
+  real browser (no local Postgres this run).
+
 ## 2026-11-27 — Live sends and read state on the event streams
 
 - Chosen from `INTERNAL_TODO.md` §1 "Live events cover new mail only" (the

@@ -22,6 +22,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -108,8 +109,9 @@ class ApiSendIntegrationTest {
                 .andExpect(jsonPath("$.threadId").value(lunch.getId()))
                 .andExpect(jsonPath("$.messageId").isNumber());
 
-        verify(replyService).sendReply(eq(lunch.getId().longValue()), eq("Lunch"), eq("On my way"),
-                eq(List.of()), eq(List.of("bob@acme.com")), eq("ada@example.com"));
+        verify(replyService).sendReply(eq(new ReplyService.Threading(lunch.getId(), "Lunch",
+                        "<Lunch@x>", "<Lunch@x>")), eq("On my way"),
+                eq(List.of()), eq(List.of("bob@acme.com")), eq("ada@example.com"), anyString());
         assertThat(events.stream(ConversationChangedEvent.class))
                 .containsExactly(new ConversationChangedEvent(
                         owner.getId(), ConversationChangedEvent.Kind.SENT, List.of(bobKey)));
@@ -123,6 +125,70 @@ class ApiSendIntegrationTest {
     }
 
     @Test
+    void replyToMessageIdAnswersThatMessageOnItsOwnThread() throws Exception {
+        long pizza = messages.findByThreadIdOrderBySentAtAsc(lunch.getId()).get(0).getId();
+        EmailThread dinner = inbound("Dinner", bob, List.of(me), "Tacos tonight?",
+                LocalDateTime.of(2026, 11, 17, 18, 0));
+        assertThat(dinner.getConversationKey()).isEqualTo(bobKey);
+
+        String json = send(bobKey, Map.of("body", "Pizza it is", "replyToMessageId", pizza,
+                        "asReply", false, "subject", "ignored"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.threadId").value(lunch.getId()))
+                .andReturn().getResponse().getContentAsString();
+
+        // The older Lunch thread, not the latest (Dinner) one.
+        verify(replyService).sendReply(eq(new ReplyService.Threading(lunch.getId(), "Lunch",
+                        "<Lunch@x>", "<Lunch@x>")), eq("Pizza it is"),
+                eq(List.of()), eq(List.of("bob@acme.com")), eq("ada@example.com"), anyString());
+        long sent = objectMapper.readTree(json).get("messageId").asLong();
+        em.flush();
+        em.clear();
+        mockMvc.perform(get("/api/v1/conversations/" + bobKey).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.runs[2].messages[0].id").value(sent))
+                .andExpect(jsonPath("$.runs[2].messages[0].replyToId").value(pizza));
+    }
+
+    @Test
+    void aReplyCanAnswerYourOwnSentMessageByItsMessageId() throws Exception {
+        long first = objectMapper.readTree(send(bobKey, Map.of("body", "New topic", "subject", "Plans"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString()).get("messageId").asLong();
+        ArgumentCaptor<String> sentId = ArgumentCaptor.forClass(String.class);
+        verify(replyService).sendNewEmail(eq("Plans"), eq("New topic"), anyList(), anyList(), any(),
+                sentId.capture());
+        em.flush();
+        em.clear();
+        // The recorded copy carries the Message-ID that went out, so the
+        // Sent-folder import de-duplicates it and replies can thread onto it.
+        assertThat(messages.findById(first).orElseThrow().getMessageIdHeader()).isEqualTo(sentId.getValue());
+
+        send(bobKey, Map.of("body", "Also, bring snacks", "replyToMessageId", first))
+                .andExpect(status().isCreated());
+
+        ArgumentCaptor<ReplyService.Threading> threading = ArgumentCaptor.forClass(ReplyService.Threading.class);
+        verify(replyService).sendReply(threading.capture(), eq("Also, bring snacks"), anyList(), anyList(),
+                any(), anyString());
+        assertThat(threading.getValue().threadSubject()).isEqualTo("Plans");
+        assertThat(threading.getValue().inReplyTo()).isEqualTo(sentId.getValue());
+    }
+
+    @Test
+    void replyToAMessageOutsideTheConversationIsNotFound() throws Exception {
+        Participant cy = participants.save(new Participant("cy@acme.com", "Cy"));
+        EmailThread other = inbound("Elsewhere", cy, List.of(me), "Different person",
+                LocalDateTime.of(2026, 11, 17, 8, 0));
+        long foreign = messages.findByThreadIdOrderBySentAtAsc(other.getId()).get(0).getId();
+
+        send(bobKey, Map.of("body", "hi", "replyToMessageId", foreign))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("not_found"));
+        send(bobKey, Map.of("body", "hi", "replyToMessageId", 987654321L))
+                .andExpect(status().isNotFound());
+        verifyNoInteractions(replyService);
+    }
+
+    @Test
     void notAReplySendsANewEmailFiledUnderTheSameConversation() throws Exception {
         String json = send(bobKey, Map.of("body", "Separate topic"))
                 .andExpect(status().isCreated())
@@ -130,7 +196,7 @@ class ApiSendIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
 
         verify(replyService).sendNewEmail(eq("(no subject)"), eq("Separate topic"), eq(List.of()),
-                eq(List.of("bob@acme.com")), eq("ada@example.com"));
+                eq(List.of("bob@acme.com")), eq("ada@example.com"), anyString());
         long threadId = objectMapper.readTree(json).get("threadId").asLong();
         assertThat(threadId).isNotEqualTo(lunch.getId());
         em.flush();
@@ -156,7 +222,7 @@ class ApiSendIntegrationTest {
                 .andExpect(status().isCreated());
 
         verify(replyService).sendNewEmail(eq("Status"), eq("All good\n\n-- \nAda\nAcme Corp"), eq(List.of()),
-                eq(List.of("bob@acme.com")), eq("work@acme.com"));
+                eq(List.of("bob@acme.com")), eq("work@acme.com"), anyString());
     }
 
     @Test
@@ -199,7 +265,7 @@ class ApiSendIntegrationTest {
     @Test
     void aMailServerFailureIsSendFailedAndRecordsNothing() throws Exception {
         doThrow(new MailSendException("relay down")).when(replyService)
-                .sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+                .sendNewEmail(anyString(), anyString(), anyList(), anyList(), any(), anyString());
         long before = messages.count();
 
         send(bobKey, Map.of("body", "hello?"))
@@ -224,7 +290,7 @@ class ApiSendIntegrationTest {
                 .andExpect(jsonPath("$.key").value(expected));
 
         verify(replyService).sendNewEmail(eq("Kickoff"), eq("Monday at 10?"), eq(List.of()),
-                eq(List.of("cy@acme.com", "dee@acme.com")), eq("ada@example.com"));
+                eq(List.of("cy@acme.com", "dee@acme.com")), eq("ada@example.com"), anyString());
         assertThat(events.stream(ConversationChangedEvent.class))
                 .containsExactly(new ConversationChangedEvent(
                         owner.getId(), ConversationChangedEvent.Kind.SENT, List.of(expected)));
@@ -269,7 +335,7 @@ class ApiSendIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(content().json(first, true));
 
-        verify(replyService, times(1)).sendReply(anyLong(), anyString(), anyString(), anyList(), anyList(), any());
+        verify(replyService, times(1)).sendReply(any(ReplyService.Threading.class), anyString(), anyList(), anyList(), any(), anyString());
         assertThat(messages.count()).isEqualTo(before + 1);
         assertThat(events.stream(ConversationChangedEvent.class)).hasSize(1);
     }
@@ -281,7 +347,7 @@ class ApiSendIntegrationTest {
         sendWithKey(bobKey, "k-2", Map.of("body", "Second"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.error.code").value("idempotency_key_reused"));
-        verify(replyService, times(1)).sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+        verify(replyService, times(1)).sendNewEmail(anyString(), anyString(), anyList(), anyList(), any(), anyString());
     }
 
     @Test
@@ -309,17 +375,17 @@ class ApiSendIntegrationTest {
     @Test
     void aFailedSendFreesTheKeyForARetry() throws Exception {
         doThrow(new MailSendException("relay down")).doNothing().when(replyService)
-                .sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+                .sendNewEmail(anyString(), anyString(), anyList(), anyList(), any(), anyString());
 
         sendWithKey(bobKey, "k-3", Map.of("body", "hello?")).andExpect(status().isBadGateway());
         sendWithKey(bobKey, "k-3", Map.of("body", "hello?")).andExpect(status().isCreated());
-        verify(replyService, times(2)).sendNewEmail(anyString(), anyString(), anyList(), anyList(), any());
+        verify(replyService, times(2)).sendNewEmail(anyString(), anyString(), anyList(), anyList(), any(), anyString());
     }
 
     @Test
     void aClaimWithoutARecordedOutcomeIsInProgress() throws Exception {
         sendRequests.saveAndFlush(new ApiSendRequest(owner.getId(), "k-4",
-                ApiSendIdempotency.fingerprint("messages", bobKey, null, "hi", null, false),
+                ApiSendIdempotency.fingerprint("messages", bobKey, null, "hi", null, false, null),
                 LocalDateTime.now()));
 
         sendWithKey(bobKey, "k-4", Map.of("body", "hi"))

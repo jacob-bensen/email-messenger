@@ -67,8 +67,13 @@
                 </li>
               </ul>
             </div>
-            <div class="bubble-time" th:attr="data-ts=${bubble.sentAtEpochMilli()}"
-                 th:text="${#temporals.format(bubble.sentAt(), 'MMM d, h:mm a')}">Jan 1, 12:00 PM</div>
+            <div class="bubble-meta">
+              <span class="bubble-time" th:attr="data-ts=${bubble.sentAtEpochMilli()}"
+                    th:text="${#temporals.format(bubble.sentAt(), 'MMM d, h:mm a')}">Jan 1, 12:00 PM</span>
+              <button type="button" class="bubble-reply-btn"
+                      th:attr="data-reply-to=${bubble.messageId()},data-reply-who=${run.outbound() ? 'yourself' : (run.sender().displayName() != null ? run.sender().displayName() : run.sender().email())}"
+                      aria-label="Reply to this message">↩ Reply</button>
+            </div>
           </div>
         </div>
       </div>
@@ -81,6 +86,14 @@
             th:object="${replyForm}" method="post" enctype="multipart/form-data" class="reply-form">
         <input type="hidden" th:if="${_csrf != null}"
                th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <input type="hidden" name="replyTo" value="" data-reply-to-input>
+        <div class="reply-quote" data-reply-quote hidden>
+          <div class="reply-quote-body">
+            <span class="reply-quote-label">Replying to <strong data-reply-quote-who>Ada</strong></span>
+            <span class="reply-quote-text" data-reply-quote-text>Message preview</span>
+          </div>
+          <button type="button" class="reply-quote-cancel" data-reply-cancel aria-label="Cancel reply">×</button>
+        </div>
         <input type="text" name="subject" class="reply-subject"
                placeholder="Subject (optional)" data-subject-input>
         <div class="reply-row">

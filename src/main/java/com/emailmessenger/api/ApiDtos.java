@@ -148,7 +148,7 @@ final class ApiDtos {
         }
     }
 
-    record SendMessageRequest(String body, String subject, Boolean asReply) {}
+    record SendMessageRequest(String body, String subject, Boolean asReply, Long replyToMessageId) {}
 
     record NewConversationRequest(List<String> to, String subject, String body) {}
 
