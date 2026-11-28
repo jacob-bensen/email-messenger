@@ -9,6 +9,7 @@ import com.emailmessenger.repository.UserRepository;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +42,7 @@ public class MailAccountService {
     private final PlanLimitService planLimitService;
     private final EmailImportService importService;
     private final MailPreferencesRules preferencesRules;
+    private final ApplicationEventPublisher events;
 
     MailAccountService(MailAccountRepository repository,
                        UserRepository userRepository,
@@ -48,7 +50,8 @@ public class MailAccountService {
                        CredentialEncryptor encryptor,
                        PlanLimitService planLimitService,
                        EmailImportService importService,
-                       MailPreferencesRules preferencesRules) {
+                       MailPreferencesRules preferencesRules,
+                       ApplicationEventPublisher events) {
         this.repository = repository;
         this.userRepository = userRepository;
         this.imapClient = imapClient;
@@ -56,6 +59,7 @@ public class MailAccountService {
         this.planLimitService = planLimitService;
         this.importService = importService;
         this.preferencesRules = preferencesRules;
+        this.events = events;
     }
 
     @Transactional(readOnly = true)
@@ -79,7 +83,9 @@ public class MailAccountService {
                     if (current != null && account.getId().equals(current.getId())) {
                         user.setDefaultMailAccount(null);
                     }
+                    Long removedId = account.getId();
                     repository.delete(account);
+                    events.publishEvent(MailboxesChangedEvent.of(user.getId(), removedId));
                     return true;
                 })
                 .orElse(false);
@@ -108,7 +114,7 @@ public class MailAccountService {
         MailAccount saved = repository.save(account);
 
         runInitialSync(saved, credentials);
-        return repository.save(saved);
+        return saveAndPublish(saved);
     }
 
     /**
@@ -130,7 +136,7 @@ public class MailAccountService {
         MailAccount saved = repository.save(account);
 
         runInitialSync(saved, credentials);
-        return repository.save(saved);
+        return saveAndPublish(saved);
     }
 
     /**
@@ -152,7 +158,7 @@ public class MailAccountService {
         imapClient.verifyConnection(credentials);
 
         account.replaceCredentials(encryptor.encrypt(refreshToken), AuthType.XOAUTH2);
-        return repository.save(account);
+        return saveAndPublish(account);
     }
 
     /**
@@ -183,6 +189,7 @@ public class MailAccountService {
                 repository.save(account);
             }
         }
+        events.publishEvent(new MailboxesChangedEvent(user.getId(), List.of()));
     }
 
     /**
@@ -197,7 +204,14 @@ public class MailAccountService {
         MailAccount account = repository.findByIdAndUser(accountId, user)
                 .orElseThrow(NoSuchElementException::new);
         account.setSignature(signature == null || signature.isBlank() ? null : signature.strip());
-        return repository.save(account);
+        return saveAndPublish(account);
+    }
+
+    /** The stream delivers after commit, so a client's refetch sees the change. */
+    private MailAccount saveAndPublish(MailAccount account) {
+        MailAccount saved = repository.save(account);
+        events.publishEvent(MailboxesChangedEvent.of(saved.getUser().getId(), saved.getId()));
+        return saved;
     }
 
     private void runInitialSync(MailAccount account, ImapCredentials credentials) {

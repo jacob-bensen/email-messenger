@@ -44,7 +44,10 @@ API response needs must be loaded inside the service transaction.
   The same streams carry `ConversationChangedEvent` (`web`): `SENT` from
   `ChatSendService` once the outbound copy is recorded, `READ` from
   `ChatService.markRead` only when a thread actually flipped (after commit),
-  sent as `message-sent` / `conversation-read` (`docs/API.md` §5.24). Cadence: Free 15 min, paid 5 min (users can
+  sent as `message-sent` / `conversation-read`, and `MailboxesChangedEvent`
+  (`email`) from every `MailAccountService` mutation (connect, reconnect,
+  delete, signature, preferences), sent as `mailboxes-changed`
+  (`docs/API.md` §5.24). Cadence: Free 15 min, paid 5 min (users can
   only slow it down); five consecutive failures suspend the mailbox. Paid
   mailboxes also get an IMAP IDLE worker thread.
 - **Sending** (`ChatSendService` → `ReplyService` then

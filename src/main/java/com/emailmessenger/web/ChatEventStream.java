@@ -1,5 +1,6 @@
 package com.emailmessenger.web;
 
+import com.emailmessenger.email.MailboxesChangedEvent;
 import com.emailmessenger.email.NewMailEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,7 +22,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * Registry of open SSE connections (browser tabs on the chats view and API
  * clients on {@code /api/v1/events}), keyed by user id. {@link NewMailEvent}s
  * fan out here as {@code new-mail} events and {@link ConversationChangedEvent}s
- * as {@code message-sent} / {@code conversation-read} ({@code docs/API.md} §5.24).
+ * as {@code message-sent} / {@code conversation-read}, {@link MailboxesChangedEvent}s
+ * as {@code mailboxes-changed} ({@code docs/API.md} §5.24).
  *
  * <p>The listener runs after commit when a transaction is active (so the
  * browser's follow-up fetch sees the imported rows) and immediately otherwise
@@ -58,6 +60,11 @@ public class ChatEventStream {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onConversationChanged(ConversationChangedEvent event) {
         broadcast(event.userId(), event.kind().eventName(), changedData(event));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onMailboxesChanged(MailboxesChangedEvent event) {
+        broadcast(event.userId(), "mailboxes-changed", json(Map.of("mailboxIds", event.mailboxIds())));
     }
 
     private void broadcast(Long userId, String eventName, String data) {

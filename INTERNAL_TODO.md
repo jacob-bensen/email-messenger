@@ -32,10 +32,13 @@ consumes from the top and appends what it discovers. Product roadmap lives in
 - [ ] **Timestamps are zone-less.** `LocalDateTime` values are UTC by
       convention only; the API converts them to `Z` instants at the DTO
       edge (`ApiDtos`), which is right only while stored values are UTC.
-- [ ] **Live events cover new mail, sends and reads** (`docs/API.md`
-      §5.24; sends and reads landed 2026-11-27). Mailbox connect/removal,
-      profile changes and re-keying publish nothing, so other clients catch
-      up only on their next refetch. A list client still refetches its
+- [ ] **Live events cover new mail, sends, reads and mailbox changes**
+      (`docs/API.md` §5.24; sends and reads landed 2026-11-27, mailbox
+      connect/reconnect/removal/signature/preferences 2026-11-28 as
+      `mailboxes-changed`). Profile and plan changes, re-keying and a
+      poll's sync status (`lastSyncedAt` / `lastSyncError`, including a
+      mailbox suspended after five failures) publish nothing, so other
+      clients catch up only on their next refetch. A list client still refetches its
       first page per event (rows depend on its filter/search). A send
       recorded by a mailbox poll (Sent-folder import) arrives as
       `new-mail`, not `message-sent`.

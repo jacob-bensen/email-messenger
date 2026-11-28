@@ -21,7 +21,7 @@ with an IMAP password, sync now, remove, signature, sync frequency and
 default sending mailbox), and the account: plan summary,
 signed-in devices, sign a device out, edit the display name, change the
 password and change the email address, plus a live event stream for new
-mail, sends and read state (§5.24) (§5). Gmail OAuth connect and
+mail, sends, read state and mailbox changes (§5.24) (§5). Gmail OAuth connect and
 reconnect are website-only. The website's own machine endpoints (§3) still use the
 browser session cookie and are not for mobile use.
 
@@ -83,8 +83,9 @@ Server-Sent Events stream of change notifications for the signed-in user.
   Sent after a poll commits with at least one imported message. Same
   payload as the API stream (§5.24); the website ignores
   `conversationKeys` and refetches the rail and open pane.
-- Events `message-sent` and `conversation-read` (§5.24) on the same stream;
-  the website refreshes the rail and open pane on each, as for `new-mail`.
+- Events `message-sent`, `conversation-read` and `mailboxes-changed`
+  (§5.24) on the same stream; the website refreshes the rail and open pane
+  on each, as for `new-mail`.
 - Comment line `:ping` every 25 s (`mailbox.sse.keepalive-ms`).
 - No event ids, no replay of missed events. Fan-out is in-memory, so it
   works on a single backend instance only.
@@ -930,7 +931,7 @@ characters); `404 not_found` (not one of the user's mailboxes);
 
 ### 5.24 GET /api/v1/events
 Bearer token required. Server-Sent Events stream of change notifications
-(new mail, sends, read state) for the signed-in user — the same fan-out (`ChatEventStream`) as the
+(new mail, sends, read state, mailbox changes) for the signed-in user — the same fan-out (`ChatEventStream`) as the
 website's `GET /chats/events` (§3). A client keeps it open while it is in
 the foreground and reacts to each event instead of polling.
 
@@ -983,7 +984,29 @@ the foreground and reacts to each event instead of polling.
   - Client rule: refetch the conversation list (unread counts and dots);
     the open conversation's messages did not change, so do not refetch
     it.
-- The website's `GET /chats/events` (§3) carries the same three events.
+- Event `mailboxes-changed` (added 2026-11-28), sent after a change to the
+  user's mailboxes commits, from the API (§5.12, §5.14, §5.22, §5.23) or
+  the website's `/mailboxes` pages (the same `MailAccountService`), to
+  every open stream of the user including the one that made it: a mailbox
+  connected (IMAP password or Gmail OAuth), a Gmail mailbox reconnected, a
+  mailbox removed, a signature saved, or the mail preferences (sync
+  frequency, default sending mailbox) saved. A rejected change sends
+  nothing.
+  ```
+  event: mailboxes-changed
+  data: {"mailboxIds":[3]}
+  ```
+  - `mailboxIds` (integer[], sorted, no duplicates): the mailboxes
+    affected — a removed id is no longer in §5.10. Empty for a mail
+    preferences save (it is not about one mailbox).
+  - Client rule: refetch the mailbox list (§5.10) if it shows it, and
+    refetch the conversation list (§5.5): a connect imports its first
+    messages without a `new-mail` event, and a list scoped to a removed
+    mailbox (`mailboxId`) no longer applies.
+  - Not sent for sync status: a poll's `lastSyncedAt` / `lastSyncError`
+    change publishes nothing (polls run every few minutes per mailbox);
+    `POST …/sync` answers with the new state directly (§5.13).
+- The website's `GET /chats/events` (§3) carries the same four events.
 - Unknown event names must be ignored (future events).
 
 ## 6. Planned (not implemented)

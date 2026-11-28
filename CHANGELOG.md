@@ -3,6 +3,27 @@
 Dated entries from the full-stack sync routine, newest first. The earlier
 history of this repo is in `master/CHANGELOG.md`.
 
+## 2026-11-28 — Live mailbox changes (API, website, mobile)
+
+- Chosen from `INTERNAL_TODO.md` §1 "Live events cover new mail, sends and
+  reads" — the first §1 item not blocked (the ones above it need attachment
+  storage, a product decision or a mobile OAuth design). Needs both repos.
+- Contract first: `docs/API.md` §5.24 gains `mailboxes-changed`
+  (`{"mailboxIds":[…]}`, sorted, empty for a preferences save), sent after
+  a mailbox connect (IMAP or Gmail OAuth), Gmail reconnect, removal,
+  signature save or mail-preferences save commits, to every open stream of
+  the user; rejected changes send nothing; poll sync status is not
+  covered. §3 `/chats/events` carries it too.
+- New `email.MailboxesChangedEvent`, published by every
+  `MailAccountService` mutation, so the website's `/mailboxes` pages and
+  the API (`ApiMailboxService`) share it. `ChatEventStream.onMailboxesChanged`
+  sends it after commit. `fragments/live-refresh.html` refreshes the rail
+  and open pane on it (a connect imports mail with no `new-mail`). No
+  migration.
+- Tests: `MailAccountServiceTest` (+2: connect/signature/preferences/delete
+  each publish; failed connect, unknown delete and a refused frequency
+  publish nothing), `ChatEventStreamTest` (+1: name, payload, per user).
+
 ## 2026-11-28 — Reply to a specific bubble (API, website, mobile)
 
 - Chosen from the `CLAUDE.md` roadmap "Reply-to-a-specific-bubble" (a

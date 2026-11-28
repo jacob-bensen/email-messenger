@@ -69,8 +69,9 @@
     // EventSource reconnects on its own after drops and server timeouts.
     var source = new EventSource('/chats/events');
     // A send or mark-read from another tab or the mobile app changes the
-    // rail (and maybe the open pane) just as new mail does (API.md §5.24).
-    ['new-mail', 'message-sent', 'conversation-read'].forEach(function (name) {
+    // rail (and maybe the open pane) just as new mail does; a mailbox connect
+    // imports mail and changes the rail's mailbox scope (API.md §5.24).
+    ['new-mail', 'message-sent', 'conversation-read', 'mailboxes-changed'].forEach(function (name) {
       source.addEventListener(name, function () { update(); });
     });
   }

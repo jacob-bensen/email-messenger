@@ -1,5 +1,6 @@
 package com.emailmessenger.web;
 
+import com.emailmessenger.email.MailboxesChangedEvent;
 import com.emailmessenger.email.NewMailEvent;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -115,6 +116,20 @@ class ChatEventStreamTest {
 
         verify(created.get(0), never()).send(any(SseEmitter.SseEventBuilder.class));
         verify(created.get(1)).send(any(SseEmitter.SseEventBuilder.class));
+    }
+
+    @Test
+    void mailboxChangesGoOutAsMailboxesChangedWithSortedIds() throws IOException {
+        stream.subscribe(1L);
+        stream.subscribe(2L);
+
+        stream.onMailboxesChanged(new MailboxesChangedEvent(1L, List.of(7L, 3L, 7L)));
+
+        ArgumentCaptor<SseEmitter.SseEventBuilder> sent = ArgumentCaptor.forClass(SseEmitter.SseEventBuilder.class);
+        verify(created.get(0)).send(sent.capture());
+        assertThat(rendered(sent.getValue()))
+                .startsWith("event:mailboxes-changed\n").contains("data:{\"mailboxIds\":[3,7]}");
+        verify(created.get(1), never()).send(any(SseEmitter.SseEventBuilder.class));
     }
 
     private static String rendered(SseEmitter.SseEventBuilder event) {

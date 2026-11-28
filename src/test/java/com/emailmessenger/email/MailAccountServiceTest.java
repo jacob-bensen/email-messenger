@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
@@ -33,6 +35,7 @@ import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @Transactional
+@RecordApplicationEvents
 class MailAccountServiceTest {
 
     @Autowired MailAccountService mailAccountService;
@@ -44,6 +47,7 @@ class MailAccountServiceTest {
     @Autowired CredentialEncryptor encryptor;
 
     @MockitoBean ImapClient imapClient;
+    @Autowired ApplicationEvents applicationEvents;
 
     private User owner;
 
@@ -306,5 +310,34 @@ class MailAccountServiceTest {
         msg.setText(body);
         msg.setSentDate(new Date());
         return msg;
+    }    @Test
+    void everyMailboxChangePublishesMailboxesChanged() {
+        when(imapClient.fetchRecentInbox(any(ImapCredentials.class), anyInt())).thenReturn(List.of());
+        MailAccount saved = mailAccountService.connect(owner, "imap.example.com", 993, true,
+                "first@example.com", "pw1");
+        mailAccountService.updateSignature(owner, saved.getId(), "Best");
+        mailAccountService.updateMailPreferences(owner, null, saved.getId());
+        mailAccountService.delete(owner, saved.getId());
+
+        assertThat(applicationEvents.stream(MailboxesChangedEvent.class)).containsExactly(
+                new MailboxesChangedEvent(owner.getId(), List.of(saved.getId())),
+                new MailboxesChangedEvent(owner.getId(), List.of(saved.getId())),
+                new MailboxesChangedEvent(owner.getId(), List.of()),
+                new MailboxesChangedEvent(owner.getId(), List.of(saved.getId())));
     }
+
+    @Test
+    void rejectedChangesPublishNothing() {
+        doThrow(new ImapConnectionException("AUTHENTICATE failed", null))
+                .when(imapClient).verifyConnection(any(ImapCredentials.class));
+        catchThrowableOfType(() -> mailAccountService.connect(owner, "imap.example.com", 993, true,
+                "user@example.com", "wrong"), ImapConnectionException.class);
+        mailAccountService.delete(owner, 999_999L);
+        catchThrowableOfType(() -> mailAccountService.updateMailPreferences(owner, 7, null),
+                MailSettingsException.class);
+
+        assertThat(applicationEvents.stream(MailboxesChangedEvent.class)).isEmpty();
+    }
+
+
 }
